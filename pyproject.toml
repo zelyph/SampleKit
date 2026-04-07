@@ -1,0 +1,32 @@
+[project]
+name = "samplekit"
+version = "0.1.0"
+description = "Lightweight Python framework for documenting scientific samples with bidirectional Markdown I/O"
+authors = [{ name = "zelyph", email = "github@zelyph.fr" }]
+readme = "README.md"
+license = { text = "MIT" }
+dependencies = ["pyyaml>=5.0", "pandas>=1.0"]
+requires-python = ">=3.10"
+keywords = ["science", "measurement", "markdown", "yaml", "sample", "property"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["samplekit*"]
+
+[project.urls]
+Homepage = "https://github.com/zelyph/SampleKit"
+Repository = "https://github.com/zelyph/SampleKit"
