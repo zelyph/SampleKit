@@ -354,10 +354,10 @@ class Table:
         if not prop.unit and col.unit:
             prop.unit = col.unit
             prop.unit_math = col.unit_math
+        if prop.precision_unc == prop.precision and col.precision_unc:
+            prop.precision_unc = col.precision_unc
         if not prop.precision and col.precision:
             prop.precision = col.precision
-        if prop.precision_unc == prop.precision and col.precision_unc != col.precision:
-            prop.precision_unc = col.precision_unc
         if prop.symbol is None and col.symbol:
             prop.symbol = col.symbol
         if prop.symbol_math is None and col.symbol_math:

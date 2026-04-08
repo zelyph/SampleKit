@@ -1,6 +1,6 @@
 [project]
 name = "samplekit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Lightweight Python framework for documenting scientific samples with bidirectional Markdown I/O"
 authors = [{ name = "zelyph", email = "github@zelyph.fr" }]
 readme = "README.md"
@@ -28,5 +28,5 @@ build-backend = "setuptools.build_meta"
 include = ["samplekit*"]
 
 [project.urls]
-Homepage = "https://github.com/zelyph/SampleKit"
-Repository = "https://github.com/zelyph/SampleKit"
+Homepage = "https://github.com/zelyph/SampleKit-dev"
+Repository = "https://github.com/zelyph/SampleKit-dev"

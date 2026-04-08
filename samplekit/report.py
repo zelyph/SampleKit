@@ -128,7 +128,7 @@ def properties_table(
             sym = prop.symbol or name
             sym_cell = sym
         val_cell = format_property(prop, style, unit=False)
-        unit_cell = f"${prop.unit_math.translate(_LATEX_SPECIAL)}$" if math and prop.unit else prop.unit
+        unit_cell = f"${prop.unit_math}$" if math and prop.unit else prop.unit
         rows.append([sym_cell, val_cell, unit_cell])
 
     return markdown_table(rows, headers, align or ["c"] * len(headers))
