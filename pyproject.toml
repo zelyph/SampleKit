@@ -1,6 +1,6 @@
 [project]
 name = "samplekit"
-version = "0.1.1"
+version = "0.1.2"
 description = "Lightweight Python framework for documenting scientific samples with bidirectional Markdown I/O"
 authors = [{ name = "zelyph", email = "github@zelyph.fr" }]
 readme = "README.md"

@@ -97,6 +97,8 @@ class Sample:
         n = name if name is not None else (fp.stem if fp else "Unnamed")
         object.__setattr__(self, 'name', n)
         object.__setattr__(self, '_hydrating', False)
+        if type(self) is Sample:
+            self._auto_hydrate()
 
     def _auto_hydrate(self):
         """Load data from filepath if the file exists."""
