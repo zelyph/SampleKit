@@ -67,33 +67,43 @@ class Sample:
     """
     Named container of Properties and Tables.
 
-    Subclass and define properties in __init__. Properties and Tables
-    are auto-registered when assigned as instance attributes.
+    Parameters
+    ----------
+    path : str or Path, optional
+        Path to a Markdown file. If the file exists, properties and
+        tables are loaded automatically. The name defaults to the
+        file stem when not provided.
+    name : str, optional
+        Display name. If omitted, inferred from *path* or set to
+        ``"Unnamed"``.
 
     Examples
     --------
+    Load from file:
+
+    >>> sample = Sample("data/my_sample.md")
+    >>> sample.name
+    'my_sample'
+
+    Define a subclass with fixed properties:
+
     >>> class MySample(Sample):
-    ...     def __init__(self, name=None, filepath=None):
-    ...         super().__init__(name, filepath)
+    ...     def __init__(self, path=None, name=None):
+    ...         super().__init__(path, name)
     ...         self.temperature = Property(value=25.0, unit="°C", symbol_math="T")
-    ...         self.pressure = Property(value=101.3, unit="kPa", symbol_math="P")
     ...
-    ...     def template(self, style="math"):
-    ...         from .report import properties_table
-    ...         return properties_table(self, ["temperature", "pressure"], style=style)
-    >>>
-    >>> sample = MySample("EXP_001")
-    >>> sample.save("sample.md")
+    >>> s = MySample(name="EXP_001")
+    >>> s.save("sample.md")
     >>> loaded = MySample.load("sample.md")
     """
 
-    def __init__(self, name: str | None = None, filepath: str | Path | None = None):
+    def __init__(self, path: str | Path | None = None, name: str | None = None):
         # Use object.__setattr__ to bypass our custom __setattr__
         object.__setattr__(self, '_props', {})
         object.__setattr__(self, '_tables', {})
         object.__setattr__(self, '_order', [])
-        fp = Path(filepath) if filepath else None
-        object.__setattr__(self, '_filepath', fp)
+        fp = Path(path) if path else None
+        object.__setattr__(self, 'path', fp)
         n = name if name is not None else (fp.stem if fp else "Unnamed")
         object.__setattr__(self, 'name', n)
         object.__setattr__(self, '_hydrating', False)
@@ -101,8 +111,8 @@ class Sample:
             self._auto_hydrate()
 
     def _auto_hydrate(self):
-        """Load data from filepath if the file exists."""
-        fp = object.__getattribute__(self, '_filepath')
+        """Load data from path if the file exists."""
+        fp = object.__getattribute__(self, 'path')
         if fp is not None and fp.exists():
             object.__setattr__(self, '_hydrating', True)
             try:
@@ -125,7 +135,7 @@ class Sample:
 
     def __setattr__(self, name: str, value):
         object.__setattr__(self, name, value)
-        if name.startswith('_') or name == 'name':
+        if name.startswith('_') or name in ('name', 'path'):
             return
         if isinstance(value, Property):
             props = object.__getattribute__(self, '_props')
@@ -239,19 +249,19 @@ class Sample:
             object.__setattr__(self, 'name', name)
         self._hydrate_from_yaml(yaml_data)
 
-    def save(self, filepath: str | Path | None = None, style: str = "math") -> Path:
+    def save(self, path: str | Path | None = None, style: str = "math") -> Path:
         """Save to markdown file with YAML frontmatter.
 
         Parameters
         ----------
-        filepath : path, optional
-            Defaults to the filepath used at construction.
+        path : path, optional
+            Defaults to the path used at construction.
         style : "math" or "text"
             Controls math rendering in the body.
         """
-        fp = Path(filepath) if filepath else self._filepath
+        fp = Path(path) if path else self.path
         if fp is None:
-            raise ValueError("No filepath specified")
+            raise ValueError("No path specified")
 
         yaml_data = self._build_yaml_data()
         yaml_str = yaml.dump(
@@ -270,20 +280,20 @@ class Sample:
 
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(content, encoding="utf-8")
-        self._filepath = fp
+        self.path = fp
         return fp
 
     @classmethod
-    def load(cls, filepath: str | Path) -> Sample:
+    def load(cls, path: str | Path) -> Sample:
         """Load from a markdown file with YAML frontmatter.
 
         Creates an instance of *cls* (calling its __init__ to define
         properties), then hydrates from the YAML data via _auto_hydrate.
         """
-        fp = Path(filepath)
+        fp = Path(path)
         # _auto_hydrate (called by __init_subclass__ wrapper) will read
         # the file and hydrate since fp exists on disk.
-        return cls(filepath=fp)
+        return cls(path=fp)
 
     # ── Converters (delegated to samplekit.converters) ──
 

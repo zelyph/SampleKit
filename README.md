@@ -94,8 +94,8 @@ from samplekit import Sample, Property, Table, Column, report
 
 
 class Experiment(Sample):
-    def __init__(self, name=None, filepath=None):
-        super().__init__(name, filepath)
+    def __init__(self, path=None, name=None):
+        super().__init__(path, name)
 
         self.temperature = Property(
             value=25.0, uncertainty=0.5,
@@ -316,17 +316,18 @@ Column(
 ### `Sample`
 
 ```python
-Sample(name=None, filepath=None)
+Sample(path=None, name=None)
 ```
 
 Subclass it and declare Properties and Tables in `__init__`. Assignment auto-registers them and wires names, symbols, and dependencies.
 
 | Member | Description |
 |---|---|
+| `.path` | `Path` — file path (set at construction or after save). |
 | `.props` | `dict[str, Property]` — all registered properties. |
 | `.tables` | `dict[str, Table]` — all registered tables. |
-| `.save(filepath, style="math")` | Write YAML frontmatter + template body to `.md`. |
-| `.load(filepath)` | classmethod — load from `.md` file. |
+| `.save(path, style="math")` | Write YAML frontmatter + template body to `.md`. |
+| `.load(path)` | classmethod — load from `.md` file. |
 | `.template(style="math")` | Override for custom Markdown body. |
 | `.to_dict()` | Export all data as a plain dict. |
 | `.to_dataframe()` | Export scalar properties as a single-row DataFrame. |

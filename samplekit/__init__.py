@@ -7,7 +7,7 @@ from .sample_list import SampleList
 from . import report
 from . import converters
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
 __all__ = [
     "Property",
