@@ -1,0 +1,579 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="History" href="history.html"><link rel="prev" title="Models and formulas" href="models-and-formulas.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Current and outdated values - SampleKit 1.0.0-rc.1</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/move-existing-data.html">Move existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/first-model.html">A first model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/export-for-a-paper.html">An export for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/exit-codes.html">Exit codes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/explanations/current-and-outdated.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="current-and-outdated-values">
+<h1>Current and outdated values<a class="headerlink" href="#current-and-outdated-values" title="Link to this heading">¶</a></h1>
+<p>A computed value is only as good as the inputs it was computed from. Correct
+a hydrometer reading, and the alcohol computed from it last month is now wrong, though
+nothing in its number says so. SampleKit tells you, for every computed value,
+whether it is still what its formula gives from the file as it now is, and
+if not, why. This page says how it knows, what the states mean, and what to do
+about each.</p>
+<section id="the-record-a-computed-value-carries">
+<h2>The record a computed value carries<a class="headerlink" href="#the-record-a-computed-value-carries" title="Link to this heading">¶</a></h2>
+<p>When SampleKit computes a value, it writes beside it a record of what it was
+computed from:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">abv</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4.375000000000013</span>
+<span class="w">  </span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.13834964763236396</span>
+<span class="w">  </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="s">"%"</span>
+<span class="w">  </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">fg</span><span class="p">:</span><span class="w"> </span><span class="nv">100396ebe001</span><span class="p p-Indicator">,</span><span class="nt"> og</span><span class="p">:</span><span class="w"> </span><span class="nv">a8ea7995583e</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">56612a681e02</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">computed:</span></code> names each input the formula read, with a short code (a
+<strong>digest</strong>) of that input's content at the time.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fingerprint:</span></code> is the same kind of digest, of the value itself as the
+formula gave it.</p></li>
+</ul>
+<p>A digest is a short summary of content: the same numbers always give the same
+code, and any change to them gives a different one. It covers what a
+quantity <em>is</em>, its value, uncertainty and readings, and not how it is shown:
+changing a unit's spelling or a precision makes nothing outdated.</p>
+<p>With these two records, two questions are answered from the files alone, in
+milliseconds, with no Python and nothing run:</p>
+<ul class="simple">
+<li><p><strong>Has an input changed since?</strong> SampleKit computes the digest of <code class="docutils literal notranslate"><span class="pre">og</span></code> as it
+is now and compares it with the one recorded in <code class="docutils literal notranslate"><span class="pre">abv</span></code>'s <code class="docutils literal notranslate"><span class="pre">computed</span></code>.
+Different: <code class="docutils literal notranslate"><span class="pre">abv</span></code> is <strong>outdated</strong>.</p></li>
+<li><p><strong>Was this value changed by hand since?</strong> It computes <code class="docutils literal notranslate"><span class="pre">abv</span></code>'s own digest and
+compares it with its <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code>. Different: <code class="docutils literal notranslate"><span class="pre">abv</span></code> was <strong>edited</strong>.</p></li>
+</ul>
+<p>Stored codes are never compared with each other, only with what the content
+gives now. A hand edit changes the content and neither code, so comparing
+two stored codes would agree about something no longer true.</p>
+<p>A computed value whose input is itself not current is not current either: the
+problem is further up the chain, and <code class="docutils literal notranslate"><span class="pre">status</span></code> says so (<em>outdated — og (itself
+not current)</em>).</p>
+<section id="what-the-files-cannot-know-the-formula">
+<h3>What the files cannot know: the formula<a class="headerlink" href="#what-the-files-cannot-know-the-formula" title="Link to this heading">¶</a></h3>
+<p>A file records what a value read, never the code that computed it. <strong>Your
+computer records that instead</strong>, in SampleKit's state folder: for each
+sample and each formula, a digest of the formula that last computed its value
+(its code, read without comments and blank lines, what it declares, and the
+functions and constants of your model it uses). When you edit a formula, the
+values it computed are <em>formula changed</em>, and the next <code class="docutils literal notranslate"><span class="pre">compute</span></code> runs them
+again. What reads them is computed again only if their value actually moved.</p>
+<p>Anything else you change in the model makes nothing outdated: a comment, a
+docstring, a new figure, a helper no formula uses. This matters when a full
+recompute takes hours.</p>
+<p>This record is <strong>local to the computer</strong> that computed. A value computed on
+another computer is judged by its inputs alone; after editing a formula
+there, <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">compute</span> <span class="pre">--rerun</span></code> computes everything again.</p>
+</section>
+</section>
+<section id="the-states">
+<h2>The states<a class="headerlink" href="#the-states" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>State</p></th>
+<th class="head"><p>What it means</p></th>
+<th class="head"><p>What to do</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>current</strong></p></td>
+<td><p>the value is what its formula gives from the file as it is</p></td>
+<td><p>nothing</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>outdated</strong></p></td>
+<td><p>an input changed after the value was computed (<em>outdated — grain_mass</em>), a reading was corrected (<em>outdated — readings</em>), or the formula was edited (<em>formula changed</em>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--write</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>edited</strong></p></td>
+<td><p>someone typed this value over its formula: an <strong>override</strong> (<em>edited since it was computed</em>). A computed-looking value with no record at all (<em>record missing</em>) is treated the same way</p></td>
+<td><p>keep it, or <code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--force</span></code> to give it back to its formula</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>failed</strong></p></td>
+<td><p>the formula raised an error when last run; the file keeps the last value it gave</p></td>
+<td><p>read the error (<code class="docutils literal notranslate"><span class="pre">explain</span></code>), fix the data or the formula, compute again</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>never computed</strong></p></td>
+<td><p>the model declares this value and the file does not hold it yet (or, beside a value you entered, <em>uncertainty never computed</em>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--write</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>waiting</strong></p></td>
+<td><p>an input is empty: nobody entered it (<em>waits for fg</em>)</p></td>
+<td><p>enter the input; the next <code class="docutils literal notranslate"><span class="pre">compute</span></code> runs it</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Not current</strong> is the word for any of outdated, edited, failed and never
+computed: the values <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">--exit-code</span></code> fails on. A <strong>waiting</strong> value is not
+among them: a sample halfway through its measurements is not in error.</p>
+<p>One more word describes a whole sample rather than a value: <strong>defective</strong>,
+when <code class="docutils literal notranslate"><span class="pre">validate</span></code> reports a defect in its file (a value that is text where a
+number is expected, two rows with the same index, a unit that disagrees). A
+defective sample can still have only current values.</p>
+</section>
+<section id="seeing-the-states">
+<h2>Seeing the states<a class="headerlink" href="#seeing-the-states" title="Link to this heading">¶</a></h2>
+<p>The same states appear on every surface, in the same words:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">status</span> <span class="pre">FOLDER</span></code> lists every value not current or waiting, sample
+by sample, and says what to run. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">explain</span> <span class="pre">FILE</span> <span class="pre">VALUE</span></code> shows one
+value: its inputs, the state of each, and why it is in its state.</p></li>
+<li><p>In a table on the terminal, a value is marked <code class="docutils literal notranslate"><span class="pre">⚠</span></code> when outdated, <code class="docutils literal notranslate"><span class="pre">✎</span></code> when
+edited, <code class="docutils literal notranslate"><span class="pre">✗</span></code> when failed. The TUI adds <code class="docutils literal notranslate"><span class="pre">∅</span></code> for never computed or waiting,
+and <code class="docutils literal notranslate"><span class="pre">·</span></code> for readings with no statistic. <code class="docutils literal notranslate"><span class="pre">?</span></code> in the TUI lists every mark.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">state</span></code> is a <strong>field</strong>: <code class="docutils literal notranslate"><span class="pre">-f</span> <span class="pre">'state</span> <span class="pre">==</span> <span class="pre">outdated'</span></code> keeps the samples with an
+outdated value, and <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">name,state</span></code> shows each sample's states. Its words
+are <code class="docutils literal notranslate"><span class="pre">current</span></code>, <code class="docutils literal notranslate"><span class="pre">outdated</span></code>, <code class="docutils literal notranslate"><span class="pre">edited</span></code>, <code class="docutils literal notranslate"><span class="pre">failed</span></code>, <code class="docutils literal notranslate"><span class="pre">never_computed</span></code>, <code class="docutils literal notranslate"><span class="pre">waiting</span></code>,
+<code class="docutils literal notranslate"><span class="pre">defective</span></code>, and <code class="docutils literal notranslate"><span class="pre">not_current</span></code> for any of outdated, edited, failed and
+never computed. A sample can be in several at once.
+<code class="docutils literal notranslate"><span class="pre">brews.filter(&quot;state</span> <span class="pre">==</span> <span class="pre">failed&quot;)</span></code> in Python and <code class="docutils literal notranslate"><span class="pre">/</span></code> in the TUI read the
+same words.</p></li>
+<li><p>In Python, reading a value that is not current returns it, with a warning
+saying why; <code class="docutils literal notranslate"><span class="pre">sample.not_current()</span></code> lists everything <code class="docutils literal notranslate"><span class="pre">status</span></code> would report.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">never_computed</span></code>, <code class="docutils literal notranslate"><span class="pre">waiting</span></code>, <code class="docutils literal notranslate"><span class="pre">not_current</span></code> and <code class="docutils literal notranslate"><span class="pre">current</span></code> need the model, since
+only the model knows which values it owes: SampleKit reads what the model
+declares from its description, <code class="docutils literal notranslate"><span class="pre">.samplekit/model.json</span></code>, and runs nothing
+(<a class="reference internal" href="models-and-formulas.html#the-model-s-description"><span class="std std-ref">Models and formulas</span></a>); after
+an edit to the model, the first such command starts Python once to describe
+it again. Where the model cannot be read, those words select
+nothing, and a line says why. The other words are read from the files alone.</p>
+</section>
+<section id="what-makes-a-value-outdated-and-what-does-not">
+<h2>What makes a value outdated, and what does not<a class="headerlink" href="#what-makes-a-value-outdated-and-what-does-not" title="Link to this heading">¶</a></h2>
+<p>Outdated:</p>
+<ul class="simple">
+<li><p>a change to an input's value, uncertainty or readings, however it was made:
+<code class="docutils literal notranslate"><span class="pre">set</span></code>, the TUI, Python, or your text editor;</p></li>
+<li><p>a corrected reading, for a value computed from readings;</p></li>
+<li><p>an edit to the formula itself, or to a function or constant it uses;</p></li>
+<li><p>an input that was itself recomputed and moved.</p></li>
+</ul>
+<p>Not outdated:</p>
+<ul class="simple">
+<li><p>a change of unit spelling, symbol or precision (presentation, not content);</p></li>
+<li><p>a change to anything the formula does not declare it reads, which is why
+<code class="docutils literal notranslate"><span class="pre">depends_on</span></code> must be complete (<a class="reference internal" href="models-and-formulas.html"><span class="std std-doc">Models and formulas</span></a>);</p></li>
+<li><p>a comment, a docstring or a new figure in the model;</p></li>
+<li><p>an input that is an override: what reads it rests on it as it stands, and
+becomes outdated only if the override itself changes.</p></li>
+</ul>
+<p>Nothing is recomputed at the moment of a change. A change marks; <code class="docutils literal notranslate"><span class="pre">compute</span></code>
+recomputes, when you ask.</p>
+</section>
+<section id="overrides-and-force">
+<h2>Overrides, and <code class="docutils literal notranslate"><span class="pre">--force</span></code><a class="headerlink" href="#overrides-and-force" title="Link to this heading">¶</a></h2>
+<p>Sometimes the right value is not what the formula gives: a figure copied from
+a certificate, a correction you trust more than the model. You can type it
+over the formula, in the file, with <code class="docutils literal notranslate"><span class="pre">set</span></code>, in the TUI or in Python. It becomes
+an <strong>override</strong>:</p>
+<ul class="simple">
+<li><p>it is marked <code class="docutils literal notranslate"><span class="pre">✎</span></code> and listed as <em>edited since it was computed</em>;</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">compute</span></code> leaves it alone</strong>, even with <code class="docutils literal notranslate"><span class="pre">--rerun</span></code>: a value you typed is not
+replaced without being asked by name;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--force</span></code> (optionally with <code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">NAME</span></code>) gives it back to its formula.
+In the TUI, <code class="docutils literal notranslate"><span class="pre">c</span></code> on the value does so, after asking.</p></li>
+</ul>
+<p>The formula stays in the model; only this sample's value is held. An override
+counts as not current, so <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">--exit-code</span></code> fails on it; where overrides
+are deliberate, <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">--exit-code</span> <span class="pre">--accept</span> <span class="pre">edited</span></code> lets them pass.</p>
+</section>
+<section id="exports-and-figures-are-current-or-not-too">
+<h2>Exports and figures are current or not too<a class="headerlink" href="#exports-and-figures-are-current-or-not-too" title="Link to this heading">¶</a></h2>
+<p>A file SampleKit writes from your samples, an export, a table written with
+<code class="docutils literal notranslate"><span class="pre">-o</span></code>, a figure, is <strong>recorded in the project's history</strong>, by its exact
+content. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">explain</span> <span class="pre">FILE</span></code> then says, for that file, even copied
+elsewhere or renamed, what made it, from which samples, what changed since in
+what it was made from, and so whether it is still current, with the command
+that makes it again (<a class="reference internal" href="history.html"><span class="std std-doc">History</span></a>).</p>
+<p>An export is judged by the <strong>fields it writes</strong>, and by what those are
+computed from: changing a brew's grain mass leaves an export that shows no
+grain mass, and nothing computed from it, current.</p>
+<p>Before writing, an export's preview says which of the values it would write
+are not current. A CSV never carries the marks <code class="docutils literal notranslate"><span class="pre">⚠</span> <span class="pre">✎</span> <span class="pre">✗</span></code>; <code class="docutils literal notranslate"><span class="pre">--status</span></code> adds a
+<code class="docutils literal notranslate"><span class="pre">state</span></code> column when you want each row's state kept with the data.</p>
+</section>
+<section id="common-mistakes">
+<h2>Common mistakes<a class="headerlink" href="#common-mistakes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Thinking a value is current because its number looks right.</strong> Look at
+<code class="docutils literal notranslate"><span class="pre">status</span></code>, or the marks.</p></li>
+<li><p><strong>Expecting <code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--rerun</span></code> to replace an override.</strong> It does not; that is
+<code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p></li>
+<li><p><strong>Changing a unit and expecting values to be outdated.</strong> A unit is a label;
+change the numbers too if the unit really changed.</p></li>
+<li><p><strong>Editing a formula on one computer and computing on another.</strong> The second
+computer does not know the formula changed; use <code class="docutils literal notranslate"><span class="pre">--rerun</span></code> there.</p></li>
+<li><p><strong>Forgetting that <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">--exit-code</span></code> fails on overrides.</strong> Add
+<code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">edited</span></code> if they are intended.</p></li>
+</ul>
+</section>
+<section id="where-to-go-next">
+<h2>Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>A check that fails when something is not current:
+<a class="reference internal" href="../how-to/continuous-integration.html"><span class="std std-doc">Check a project in continuous integration</span></a>.</p></li>
+<li><p>Practised in tutorial step <a class="reference internal" href="../tutorial/04-computing.html"><span class="std std-doc">4</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">explain</span></code>, <code class="docutils literal notranslate"><span class="pre">compute</span></code> and their options: <a class="reference internal" href="../reference/cli.html"><span class="std std-doc">Command line
+reference</span></a>; the exit codes: <a class="reference internal" href="../reference/exit-codes.html"><span class="std std-doc">Exit
+codes</span></a>.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="history.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">History</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="models-and-formulas.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Models and formulas</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Current and outdated values</a><ul>
+<li><a class="reference internal" href="#the-record-a-computed-value-carries">The record a computed value carries</a><ul>
+<li><a class="reference internal" href="#what-the-files-cannot-know-the-formula">What the files cannot know: the formula</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#the-states">The states</a></li>
+<li><a class="reference internal" href="#seeing-the-states">Seeing the states</a></li>
+<li><a class="reference internal" href="#what-makes-a-value-outdated-and-what-does-not">What makes a value outdated, and what does not</a></li>
+<li><a class="reference internal" href="#overrides-and-force">Overrides, and <code class="docutils literal notranslate"><span class="pre">--force</span></code></a></li>
+<li><a class="reference internal" href="#exports-and-figures-are-current-or-not-too">Exports and figures are current or not too</a></li>
+<li><a class="reference internal" href="#common-mistakes">Common mistakes</a></li>
+<li><a class="reference internal" href="#where-to-go-next">Where to go next</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

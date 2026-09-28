@@ -1,0 +1,658 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="How-to guides" href="../how-to/index.html"><link rel="prev" title="History" href="history.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Projects - SampleKit 1.0.0-rc.1</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="history.html">History</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/move-existing-data.html">Move existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/first-model.html">A first model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/export-for-a-paper.html">An export for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/exit-codes.html">Exit codes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/explanations/projects.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="projects">
+<h1>Projects<a class="headerlink" href="#projects" title="Link to this heading">¶</a></h1>
+<p>A <strong>project</strong> is a folder with a <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> file: its samples, the rules
+for reading them, and optionally a model. This page says what a project
+decides, how SampleKit finds the project a sample belongs to, and what
+happens when one command reads samples from several projects.</p>
+<section id="why-a-project">
+<h2>Why a project<a class="headerlink" href="#why-a-project" title="Link to this heading">¶</a></h2>
+<p>The sample files hold the data. What they do not hold is said once for all of
+them, in the project:</p>
+<ul class="simple">
+<li><p><strong>how to show</strong> the quantities: their units' display forms, symbols and
+precisions (<a class="reference internal" href="values-and-uncertainty.html"><span class="std std-doc">Values and uncertainty</span></a>);</p></li>
+<li><p><strong>which files</strong> are samples, and where each sample's own files are
+(<a class="reference internal" href="samples-and-files.html"><span class="std std-doc">Samples and their files</span></a>);</p></li>
+<li><p><strong>the model</strong> that computes derived values
+(<a class="reference internal" href="models-and-formulas.html"><span class="std std-doc">Models and formulas</span></a>);</p></li>
+<li><p><strong>named selections and layouts</strong>: queries, profiles, exports, figures;</p></li>
+<li><p>the TUI's colours.</p></li>
+</ul>
+<p>A project is also the unit of <strong>one kind of sample</strong>: one set of
+quantities and one model. When the quantities or the formulas change from one
+series to the next, the next series is a new project.</p>
+<p>A project costs nothing to the person with ten samples. <strong>A folder of samples
+with no <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> works</strong>: every command reads it with the default
+settings. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">init</span></code> makes the file when you want one, and the
+<a class="reference internal" href="history.html"><span class="std std-doc">history</span></a> needs one.</p>
+</section>
+<section id="the-configuration-file">
+<h2>The configuration file<a class="headerlink" href="#the-configuration-file" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> is written in TOML, a plain text format of sections and
+<code class="docutils literal notranslate"><span class="pre">key</span> <span class="pre">=</span> <span class="pre">value</span></code> lines:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">schema_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+
+<span class="k">[collection]</span>
+<span class="n">recursive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"README.md"</span><span class="p">]</span>
+
+<span class="k">[model]</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"model/brew.py"</span>
+<span class="n">class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Brew"</span>
+
+<span class="k">[property.og]</span>
+<span class="n">symbol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"OG"</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">".3f"</span><span class="p">,</span><span class="w"> </span><span class="s2">".4f"</span><span class="p">]</span>
+
+<span class="k">[query.strong]</span>
+<span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'og &gt; 1.060'</span>
+</pre></div>
+</div>
+<p>Paths inside it are relative to the file itself, so a project can be moved or
+copied as a whole. You can edit it in any text editor, or section by section
+in the TUI (<code class="docutils literal notranslate"><span class="pre">P</span></code>, or <code class="docutils literal notranslate"><span class="pre">c</span></code> on the start page), which keeps its comments.
+The <a class="reference internal" href="../reference/configuration.html"><span class="std std-doc">configuration reference</span></a> lists every
+section and key.</p>
+<p><strong>A configuration is checked every time it is read.</strong> An unknown key, a
+misspelled section or a precision that is not valid is an error that names
+where it is and suggests the nearest valid name. A configuration with an error
+is set aside, and the command says so: the samples it covers are then read
+with the default settings, never with a half-read configuration.</p>
+</section>
+<section id="the-nearest-configuration">
+<h2>The nearest configuration<a class="headerlink" href="#the-nearest-configuration" title="Link to this heading">¶</a></h2>
+<p><strong>A sample follows the nearest <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> above it</strong>: in its own folder
+first, then in each folder above, up to the first one found. That one applies,
+with what it imports (below), and no other.</p>
+<p>So a project's configuration covers its subfolders too, unless a subfolder
+has a <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> of its own; that subfolder is then a <strong>separate
+project</strong>, with its own units, model and queries. A new project made inside
+another one is a project of its own; the TUI's setup says which project is
+above it.</p>
+<p><strong>A sample follows its project wherever a command runs from.</strong> What it shows,
+computes, filters, exports and draws is the same whether you run the command
+in its folder, from the folder above several projects, or name its file alone.</p>
+</section>
+<section id="importing-what-several-projects-share">
+<h2>Importing what several projects share<a class="headerlink" href="#importing-what-several-projects-share" title="Link to this heading">¶</a></h2>
+<p>Several collections often share their quantities, their units and a few
+tables: the same <code class="docutils literal notranslate"><span class="pre">[property.*]</span></code>, the same profiles. Rather than copying them
+into each <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, <strong>a configuration can import another</strong>:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># samples/ana/.samplekitrc</span>
+<span class="n">schema_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="n">import</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".."</span><span class="w">             </span><span class="c1"># the .samplekitrc of the folder above</span>
+
+<span class="k">[model]</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"../model/ana.py"</span>
+
+<span class="k">[property.og]</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".4f"</span><span class="w">         </span><span class="c1"># finer than the shared one; its unit and symbol stay</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">import</span></code> names a folder</strong>, relative to the file (or absolute, or starting
+with <code class="docutils literal notranslate"><span class="pre">~</span></code>), and takes that folder's <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>. The folder above keeps
+its own file for its own samples, and holds what is common.</p></li>
+<li><p><strong>Imports chain</strong>: a collection can import <code class="docutils literal notranslate"><span class="pre">data/</span></code>, which imports the root.
+A loop is refused, naming the files.</p></li>
+<li><p><strong>Everything is imported but the model</strong>: <code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">path</span></code> and <code class="docutils literal notranslate"><span class="pre">class</span></code> stay
+each project's own. The rest (<code class="docutils literal notranslate"><span class="pre">[render]</span></code>, <code class="docutils literal notranslate"><span class="pre">[collection]</span></code>, units, properties,
+styles, queries, profiles, exports, figures, <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code>, the TUI's
+colours, and <code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">python</span></code>) is imported.</p></li>
+<li><p><strong>Merged key by key</strong>, the importing file winning. Redeclaring
+<code class="docutils literal notranslate"><span class="pre">[property.og]</span> <span class="pre">precision</span></code> changes that precision and keeps the imported unit
+and symbol; redeclaring a profile's <code class="docutils literal notranslate"><span class="pre">sort</span></code> keeps its imported columns. A
+list, such as <code class="docutils literal notranslate"><span class="pre">exclude</span> <span class="pre">=</span> <span class="pre">[...]</span></code>, replaces the imported one whole.</p></li>
+<li><p><strong>A relative path reads from the file that declares it.</strong> An export
+imported from the root writes where the root's file says, and <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> imported from it looks in the root's folders. <code class="docutils literal notranslate"><span class="pre">{collection}</span></code> stands
+for the collection's folder: <code class="docutils literal notranslate"><span class="pre">files</span> <span class="pre">=</span> <span class="pre">[&quot;{collection}/photos/{name}*&quot;]</span></code>
+declared at the root finds each collection's own photos, and <code class="docutils literal notranslate"><span class="pre">output</span> <span class="pre">=</span> <span class="pre">&quot;exports/{collection}/og.csv&quot;</span></code> gives each collection its own file. Two
+collections that would write the same file are refused before either is
+written.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">--show-rc</span></code> names the files a configuration imports, and
+<code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">validate</span></code> notes a declaration that repeats the imported one: a
+copy to remove.</p>
+<p>Why only by <code class="docutils literal notranslate"><span class="pre">import</span></code>: a configuration merged without being asked is one
+nobody wrote. If a precision could come from the folder above on its own, a
+sample's table would change when someone edited a file two levels up, and
+nothing in the project you are working on would say why. An <code class="docutils literal notranslate"><span class="pre">import</span></code> line is
+in the file you are reading.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>To…</p></th>
+<th class="head"><p>Use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>see which configuration, model and Python a command would use</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">--show-rc</span> <span class="pre">FOLDER</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>name the configurations in use on any command</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-v</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>use one configuration for every sample, instead of the nearest</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--rc</span> <span class="pre">PATH</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="which-folders-a-command-reads">
+<h2>Which folders a command reads<a class="headerlink" href="#which-folders-a-command-reads" title="Link to this heading">¶</a></h2>
+<p>A command reads <strong>the folder you name, and only it</strong>: by default, not its
+subfolders. The scope is a question of what you are asking, so it is widened
+on the command line, by naming more (<code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">ana/brews</span> <span class="pre">tom/brews</span></code>), rather
+than set once and forgotten.</p>
+<p>A project can say that its subfolders are part of it:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[collection]</span>
+<span class="n">recursive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"README.md"</span><span class="p">,</span><span class="w"> </span><span class="s2">"draft-*"</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>With <code class="docutils literal notranslate"><span class="pre">recursive</span> <span class="pre">=</span> <span class="pre">true</span></code>, naming the project's folder reads every sample below
+it. <code class="docutils literal notranslate"><span class="pre">include</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude</span></code> choose file names by pattern; <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">list</span> <span class="pre">skipped</span></code> lists what an <code class="docutils literal notranslate"><span class="pre">exclude</span></code> left out, so that a pattern written too
+widely is found.</p>
+<p>When a recursive read meets a subfolder with its own <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, it reads
+that subfolder's samples too, but <strong>each under its own project</strong>: a collection
+can span several projects, and SampleKit shows them apart.</p>
+</section>
+<section id="several-projects-in-one-view">
+<h2>Several projects in one view<a class="headerlink" href="#several-projects-in-one-view" title="Link to this heading">¶</a></h2>
+<p>Comparing two series, or two people's notebooks, is a real need. So a
+command can read samples from several projects at once:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>samplekit<span class="w"> </span>status<span class="w"> </span>ana/brews<span class="w"> </span>tom/brews
+<span class="gp">$ </span>samplekit<span class="w"> </span>ana/brews<span class="w"> </span>tom/brews<span class="w"> </span>-c<span class="w"> </span>name,abv
+</pre></div>
+</div>
+<p><strong>Each sample keeps its own project's rules.</strong> Its units, precisions, model,
+queries and profiles are its project's, whatever else the command reads. What
+that looks like:</p>
+<ul class="simple">
+<li><p><strong>On the terminal, one table per project</strong>, headed by the project's folder.
+A table mixing two projects' precisions and models in one column would
+compare numbers declared differently, silently. With <code class="docutils literal notranslate"><span class="pre">--group</span></code>, each project
+comes first and its groups follow: <code class="docutils literal notranslate"><span class="pre">ana</span> <span class="pre">·</span> <span class="pre">style</span> <span class="pre">=</span> <span class="pre">stout</span></code>.</p></li>
+<li><p><strong>A CSV or JSON is one table</strong>, since a file has one header. Its rows each
+keep their project's precision. Add the field <code class="docutils literal notranslate"><span class="pre">project</span></code> (the project's
+folder name) or <code class="docutils literal notranslate"><span class="pre">path</span></code> to the columns to tell the rows apart. A profile
+written to a data format over several projects is refused, since each
+project's profile may differ: narrow the target to one project, or give
+<code class="docutils literal notranslate"><span class="pre">--rc</span></code>.</p></li>
+<li><p><strong>A query or a profile is looked up in each sample's own project.</strong>
+<code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">strong</span></code> keeps, in each project, the samples that project's <code class="docutils literal notranslate"><span class="pre">strong</span></code>
+selects. A query declared in a folder above reaches a sub-project's samples
+only when the sub-project imports it. Samples whose project lacks it are
+left out, said in one line; <code class="docutils literal notranslate"><span class="pre">-v</span></code> names each project.</p></li>
+<li><p><strong>A declared export</strong> writes the samples of the project that declares it;
+over several projects, each writes its own.</p></li>
+<li><p><strong>Computing</strong> runs each project's model on its own samples. When one project
+cannot run (its model is missing, say), the error names it and the others
+are still computed.</p></li>
+<li><p><strong>In the TUI</strong>, the collection is split by project, each part headed by its
+folder's name.</p></li>
+<li><p><strong>In Python</strong>, <code class="docutils literal notranslate"><span class="pre">sk.load(&quot;ana/brews&quot;,</span> <span class="pre">&quot;tom/brews&quot;)</span></code> gives one list; each
+sample keeps its project's rules, and <code class="docutils literal notranslate"><span class="pre">to_csv()</span></code> writes each row at its own
+project's precision.</p></li>
+</ul>
+<p>Two projects can share one model, by pointing their <code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">path</span></code> at the same
+file (<code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">=</span> <span class="pre">&quot;../shared/brew.py&quot;</span></code>): the formulas are then the same, and each
+project keeps its own configuration.</p>
+</section>
+<section id="what-the-current-folder-offers">
+<h2>What the current folder offers<a class="headerlink" href="#what-the-current-folder-offers" title="Link to this heading">¶</a></h2>
+<p>Where you run a command decides <strong>what is offered</strong>, never how a sample is
+read. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">list</span> <span class="pre">profiles</span></code> (and <code class="docutils literal notranslate"><span class="pre">queries</span></code>, <code class="docutils literal notranslate"><span class="pre">exports</span></code>, <code class="docutils literal notranslate"><span class="pre">figures</span></code>), the
+completion of <code class="docutils literal notranslate"><span class="pre">--profile</span></code> and <code class="docutils literal notranslate"><span class="pre">--query</span></code>, and <code class="docutils literal notranslate"><span class="pre">f</span></code> in the TUI show the
+configuration of the folder you are in, or of the target you name, with what
+it imports: at the root of several collections, what they have in common; in
+a collection, what is common and its own. Where that configuration imports
+another, each name says where it comes from:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span><span class="nb">cd</span><span class="w"> </span>samples/ana<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>samplekit<span class="w"> </span>list<span class="w"> </span>profiles
+<span class="go">overview  ../.samplekitrc</span>
+<span class="go">mash      local</span>
+<span class="go">strength  local over ../.samplekitrc</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">local</span> <span class="pre">over</span></code> is a profile the collection redeclares in part. Naming several
+targets lists each one's under its file.</p>
+<p>A command that would warn several times of one thing, such as a profile that
+several projects lack, says it once, in one line counting them and ending
+<code class="docutils literal notranslate"><span class="pre">-v</span> <span class="pre">shows</span> <span class="pre">them</span></code>; <code class="docutils literal notranslate"><span class="pre">-v</span></code> lists each beneath it.</p>
+</section>
+<section id="queries-profiles-and-groups">
+<h2>Queries, profiles and groups<a class="headerlink" href="#queries-profiles-and-groups" title="Link to this heading">¶</a></h2>
+<p>Three things shape what a command shows, and each answers one question:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>Answers</p></th>
+<th class="head"><p>Declared as</p></th>
+<th class="head"><p>Used with</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Query</strong></p></td>
+<td><p><em>which samples?</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[query.NAME]</span> <span class="pre">filter</span> <span class="pre">=</span> <span class="pre">'…'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">NAME</span></code>, <code class="docutils literal notranslate"><span class="pre">f</span></code> in the TUI, <code class="docutils literal notranslate"><span class="pre">.query()</span></code> in Python</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Profile</strong></p></td>
+<td><p><em>which columns, in which order, sorted how, grouped how?</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[profile.NAME]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--profile</span> <span class="pre">NAME</span></code>, <code class="docutils literal notranslate"><span class="pre">f</span></code> in the TUI, <code class="docutils literal notranslate"><span class="pre">profile=</span></code> in Python</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Group</strong></p></td>
+<td><p><em>split into which tables?</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--group</span> <span class="pre">FIELD</span></code>, or a profile's <code class="docutils literal notranslate"><span class="pre">group</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">g</span></code> in the TUI, <code class="docutils literal notranslate"><span class="pre">group_by()</span></code> in Python</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A query names no columns and a profile names no samples, so one of each can be
+combined: <code class="docutils literal notranslate"><span class="pre">--profile</span> <span class="pre">overview</span> <span class="pre">--query</span> <span class="pre">strong</span></code>. An option beside a profile
+replaces one part of it: <code class="docutils literal notranslate"><span class="pre">-c</span></code> the columns, <code class="docutils literal notranslate"><span class="pre">-s</span></code> the sort, <code class="docutils literal notranslate"><span class="pre">--group</span></code> the
+groups.</p>
+<p>A group is <strong>computed from the data</strong> each time, never saved as a list of
+samples. A set you choose by hand, the medal winners of a season, is
+a <strong>tag</strong> on each of them, reached by a query (<code class="docutils literal notranslate"><span class="pre">tags</span> <span class="pre">has</span> <span class="pre">reference</span></code>): the tag
+travels with the file, where a saved list of paths breaks when a file is
+renamed.</p>
+<p>In the TUI, <code class="docutils literal notranslate"><span class="pre">W</span></code> saves what the collection shows (its filter, columns, sort and
+grouping) as a query, a profile or an export of the project, which the command
+line can then use by name.</p>
+</section>
+<section id="common-mistakes">
+<h2>Common mistakes<a class="headerlink" href="#common-mistakes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Expecting a folder's configuration to add to the one above by itself.</strong>
+The nearest one applies alone, unless it says <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">=</span> <span class="pre">&quot;..&quot;</span></code>.</p></li>
+<li><p><strong>Copying the shared sections into each collection.</strong> Declare them once
+above and import them; <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">validate</span></code> notes the copies left.</p></li>
+<li><p><strong>Expecting a command to read subfolders by default.</strong> Name them, or set
+<code class="docutils literal notranslate"><span class="pre">recursive</span> <span class="pre">=</span> <span class="pre">true</span></code> in the project.</p></li>
+<li><p><strong>Comparing two projects in one CSV without a <code class="docutils literal notranslate"><span class="pre">project</span></code> column.</strong> Add it.</p></li>
+<li><p><strong>Declaring a query at the top of a tree of projects</strong> and expecting it in
+each without an import. Import the top's configuration in each project that
+uses it.</p></li>
+<li><p><strong>An imported export writing one file for every collection.</strong> Name the
+collection in its destination: <code class="docutils literal notranslate"><span class="pre">output</span> <span class="pre">=</span> <span class="pre">&quot;exports/{collection}/og.csv&quot;</span></code>.</p></li>
+<li><p><strong>Keeping a list of files as a &quot;group&quot;.</strong> Tag the samples instead.</p></li>
+</ul>
+</section>
+<section id="where-to-go-next">
+<h2>Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Two projects side by side: tutorial step <a class="reference internal" href="../tutorial/07-two-brewers.html"><span class="std std-doc">7</span></a>;
+queries and profiles: step <a class="reference internal" href="../tutorial/03-selecting.html"><span class="std std-doc">3</span></a>.</p></li>
+<li><p><a class="reference internal" href="../how-to/share-a-project.html"><span class="std std-doc">Share a project</span></a> with a colleague.</p></li>
+<li><p>Every key of <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>: <a class="reference internal" href="../reference/configuration.html"><span class="std std-doc">Configuration
+reference</span></a>; <code class="docutils literal notranslate"><span class="pre">init</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>:
+<a class="reference internal" href="../reference/cli.html"><span class="std std-doc">Command line reference</span></a>.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../how-to/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">How-to guides</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="history.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">History</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Projects</a><ul>
+<li><a class="reference internal" href="#why-a-project">Why a project</a></li>
+<li><a class="reference internal" href="#the-configuration-file">The configuration file</a></li>
+<li><a class="reference internal" href="#the-nearest-configuration">The nearest configuration</a></li>
+<li><a class="reference internal" href="#importing-what-several-projects-share">Importing what several projects share</a></li>
+<li><a class="reference internal" href="#which-folders-a-command-reads">Which folders a command reads</a></li>
+<li><a class="reference internal" href="#several-projects-in-one-view">Several projects in one view</a></li>
+<li><a class="reference internal" href="#what-the-current-folder-offers">What the current folder offers</a></li>
+<li><a class="reference internal" href="#queries-profiles-and-groups">Queries, profiles and groups</a></li>
+<li><a class="reference internal" href="#common-mistakes">Common mistakes</a></li>
+<li><a class="reference internal" href="#where-to-go-next">Where to go next</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

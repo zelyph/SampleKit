@@ -1,0 +1,699 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="prev" title="Exit codes" href="reference/exit-codes.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Changelog - SampleKit 1.0.0-rc.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/versions.css?v=dbc48dce" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/01-first-brews.html">Step 1 · First brews</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/02-measuring.html">Step 2 · Measuring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/03-selecting.html">Step 3 · Selecting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/04-computing.html">Step 4 · Computing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/06-figures.html">Step 6 · Figures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/08-python.html">Step 8 · Python</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="explanations/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="how-to/move-existing-data.html">Move existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/first-model.html">A first model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/export-for-a-paper.html">An export for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/exit-codes.html">Exit codes</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/changelog.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">¶</a></h1>
+<p>What changed in SampleKit from one version to the next, newest first. Each
+version says what was added, changed, removed and fixed, for someone who uses
+SampleKit rather than works on it.</p>
+<p>A version ending in <code class="docutils literal notranslate"><span class="pre">-rc.N</span></code> is a release candidate: tried before the version
+of that number is published, and replaced by it.</p>
+<section id="rc-1-2026-09-28">
+<h2>[1.0.0-rc.1] — 2026-09-28<a class="headerlink" href="#rc-1-2026-09-28" title="Link to this heading">¶</a></h2>
+<p>The first release candidate of SampleKit 1.0, and a new SampleKit. Version
+0.2.0 was a pure Python package for writing samples from a script. 1.0 keeps
+its idea — a sample is a Markdown file, with its data at the top — and is
+built around a command line and a full-screen terminal interface, written in
+Rust, with a Python package beside them for your formulas and your scripts.
+Both come from one source and carry one version (<code class="docutils literal notranslate"><span class="pre">1.0.0rc1</span></code> for Python).</p>
+<p>It does not read the files 0.2.0 wrote, and no command converts them: see
+<a class="reference internal" href="#upgrading-from-0-2-0">Upgrading from 0.2.0</a> below.</p>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
+<p><strong>The command line</strong>, <code class="docutils literal notranslate"><span class="pre">samplekit</span></code>, a program with no Python inside. Reading,
+selecting, showing, checking and exporting samples never start Python.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FOLDER</span></code> prints the path of each sample; with <code class="docutils literal notranslate"><span class="pre">-c</span></code> it shows a
+table of the columns you name, and with <code class="docutils literal notranslate"><span class="pre">--profile</span></code> a table declared in
+<code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>. <code class="docutils literal notranslate"><span class="pre">-f</span></code> filters (<code class="docutils literal notranslate"><span class="pre">-f</span> <span class="pre">'og</span> <span class="pre">&gt;</span> <span class="pre">1.050</span> <span class="pre">&amp;&amp;</span> <span class="pre">tags</span> <span class="pre">has</span> <span class="pre">medal'</span></code>), <code class="docutils literal notranslate"><span class="pre">-s</span></code>
+sorts, <code class="docutils literal notranslate"><span class="pre">--group</span></code> makes a table per value of a field, <code class="docutils literal notranslate"><span class="pre">--summary</span></code> summarises
+each column. <code class="docutils literal notranslate"><span class="pre">--csv</span></code>, <code class="docutils literal notranslate"><span class="pre">--tsv</span></code> and <code class="docutils literal notranslate"><span class="pre">--json</span></code> print the same table as data,
+and <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">FILE</span> <span class="pre">--write</span></code> writes it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list</span></code> enumerates what a collection holds and declares: its fields, tags,
+queries, profiles, exports, figures, a sample's own files, and the files it
+skipped and why.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">view</span></code> shows a sample whole: its values, then its tables, and its note with
+<code class="docutils literal notranslate"><span class="pre">--note</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">status</span></code> lists every computed value that is not current, and why;
+<code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">--exit-code</span></code> makes it a check for continuous integration.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compute</span></code> runs the model's formulas: alone it says what would run, with
+<code class="docutils literal notranslate"><span class="pre">--try</span></code> it computes and shows the results without writing, and with
+<code class="docutils literal notranslate"><span class="pre">--write</span></code> it writes each sample as soon as it is done. <code class="docutils literal notranslate"><span class="pre">explain</span> <span class="pre">FILE</span> <span class="pre">FIELD</span></code>
+says where one value came from, and prints a formula's error.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate</span></code> reports the defects of sample files and changes nothing.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span></code> creates a sample from what the project already knows, <code class="docutils literal notranslate"><span class="pre">set</span></code> changes
+its values (<code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">brew.md</span> <span class="pre">og=1.052</span> <span class="pre">og.u=0.001</span></code>, readings, table cells, the
+name), and <code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">add</span></code>, <code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">remove</span></code> and <code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">rename</span></code> change its tags. Each
+shows what it would change and writes only with <code class="docutils literal notranslate"><span class="pre">--write</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">NAME</span></code> writes a table declared in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> as CSV, TSV or
+JSON, after a preview; <code class="docutils literal notranslate"><span class="pre">--status</span></code> adds a column holding each row's state.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot</span></code> draws a figure with matplotlib, in a window or to a file: one
+declared in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> or by the model, or one given by its axes
+(<code class="docutils literal notranslate"><span class="pre">-x</span></code>, <code class="docutils literal notranslate"><span class="pre">-y</span></code>), over properties, attributes or a table's columns.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">open</span></code> opens a sample's own files — photos, reports, raw data — which
+<code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> says where to find.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">init</span></code> sets a project up: its <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, a model to fill in or the
+one you name with <code class="docutils literal notranslate"><span class="pre">--model</span> <span class="pre">PATH</span></code>, and a Python environment, <code class="docutils literal notranslate"><span class="pre">.venv/</span></code>, with
+the SampleKit package installed in it. At a terminal it asks; <code class="docutils literal notranslate"><span class="pre">--example</span></code>
+writes a project that runs, one formula of every kind.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tui</span></code> opens the full-screen interface on a folder, and <code class="docutils literal notranslate"><span class="pre">samplekit</span></code> alone,
+in a terminal, opens its start page.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">completions</span></code> sets up tab completion for bash, zsh, fish, elvish and
+PowerShell.</p></li>
+<li><p>Every command has <code class="docutils literal notranslate"><span class="pre">--help</span></code>, with examples, and <code class="docutils literal notranslate"><span class="pre">-h</span></code> for a short summary.
+Errors name what was asked, what exists instead, and the nearest name. Exit
+codes tell a usage error (1) from a data error (2) and a file the system
+refused (3).</p></li>
+</ul>
+<p><strong>A history of every change.</strong> Before SampleKit writes to a project, it keeps
+what the project held, in <code class="docutils literal notranslate"><span class="pre">.samplekit/history/</span></code>, beside <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>: the
+sample files, the configuration and the model's source. There is nothing to
+set up, and no Git to install.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">log</span></code> lists the snapshots, <code class="docutils literal notranslate"><span class="pre">diff</span></code> compares two states value by value
+(<code class="docutils literal notranslate"><span class="pre">abv</span> <span class="pre">6.8</span> <span class="pre">±</span> <span class="pre">0.1</span> <span class="pre">%</span> <span class="pre">→</span> <span class="pre">7.2</span> <span class="pre">±</span> <span class="pre">0.1</span> <span class="pre">%</span></code>), and <code class="docutils literal notranslate"><span class="pre">restore</span></code> puts files back: the last
+change taken back, or the state of a given snapshot.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--at</span></code> reads the whole project as it was at a snapshot or on a date:
+<code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">brews</span> <span class="pre">-c</span> <span class="pre">name,abv</span> <span class="pre">--at</span> <span class="pre">2026-09-12</span></code>. An export made again this
+way is the same file, byte for byte.</p></li>
+<li><p>A change made in your text editor is kept as a snapshot of its own, so it
+is never credited to the command that follows.</p></li>
+<li><p>A Python script's writes are one snapshot, with the script's source: <code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">--script</span> <span class="pre">N</span></code> prints the script as it ran, and <code class="docutils literal notranslate"><span class="pre">keep()</span></code> marks a snapshot of
+its own from inside a script.</p></li>
+<li><p>Every export and figure SampleKit writes is recorded. <code class="docutils literal notranslate"><span class="pre">explain</span> <span class="pre">FILE</span></code> finds
+it again, even copied into a manuscript's folder and renamed: what made it,
+from which samples, whether it is still current, and the command that makes
+it again.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">--export</span></code> writes the history as Markdown, to share beside the samples.</p></li>
+<li><p>One history over several computers: each writes its own branch in
+<code class="docutils literal notranslate"><span class="pre">.samplekit/history/</span></code>, and the next snapshot joins another computer's once
+your files hold its state — no command merges. <code class="docutils literal notranslate"><span class="pre">log</span></code> shows a <code class="docutils literal notranslate"><span class="pre">machine</span></code>
+column where more than one wrote, and an undo takes back only this
+computer's change. A synchronised folder shares it as it is; git, once the
+history's own <code class="docutils literal notranslate"><span class="pre">.gitignore</span></code> stops ignoring everything.</p></li>
+</ul>
+<p><strong>Current and outdated values.</strong> Every computed value carries a short record
+of what it was computed from. SampleKit compares it with the file as it is
+now, and knows — from the files alone, without running Python — which values
+are <em>outdated</em> (an input changed), <em>edited</em> (typed by hand over the formula),
+<em>failed</em> (the formula raised an error) or <em>never computed</em>. Your computer also
+keeps a digest of each formula, so that editing a formula makes outdated only
+the values it computed, and a comment or a docstring changes nothing. A value
+whose input nobody entered yet <em>waits</em> for it, and is not an error.</p>
+<ul class="simple">
+<li><p>The states appear in the same words everywhere: <code class="docutils literal notranslate"><span class="pre">status</span></code>, marks in tables
+(<code class="docutils literal notranslate"><span class="pre">⚠</span></code> outdated, <code class="docutils literal notranslate"><span class="pre">✎</span></code> edited, <code class="docutils literal notranslate"><span class="pre">✗</span></code> failed), the TUI, Python. <code class="docutils literal notranslate"><span class="pre">state</span></code> is also a
+field: <code class="docutils literal notranslate"><span class="pre">-f</span> <span class="pre">'state</span> <span class="pre">==</span> <span class="pre">outdated'</span></code>, <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">name,state</span></code>.</p></li>
+<li><p>A value typed over its formula is an <strong>override</strong>: <code class="docutils literal notranslate"><span class="pre">compute</span></code> leaves it
+alone until <code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--force</span></code> gives it back to its formula.</p></li>
+<li><p>A formula that fails does not stop the run: the other values are computed,
+the file records the error's type, and the full traceback is kept for
+<code class="docutils literal notranslate"><span class="pre">explain</span></code>. An interrupted run loses only the sample in progress.</p></li>
+</ul>
+<p><strong>The full-screen interface, the TUI</strong>, for a project you work in every day.</p>
+<ul class="simple">
+<li><p>A <strong>start page</strong>: recent projects, a new project set up by a few questions,
+a folder opened or configured, and the guide and demo.</p></li>
+<li><p><strong>The collection</strong>: filter, sort, group, choose columns, summarise, and
+save what it shows as a query, a profile or an export of the project.</p></li>
+<li><p><strong>A sample</strong>: its values, tables, readings and note, each value editable;
+its own files opened; a value computed, or everything not current.</p></li>
+<li><p><strong>The history</strong>: the snapshots, what each changed, and <code class="docutils literal notranslate"><span class="pre">u</span></code> to take the last
+change back.</p></li>
+<li><p><strong>The configuration</strong> edited from the TUI, and the colours set by role in
+<code class="docutils literal notranslate"><span class="pre">[tui.colors]</span></code>.</p></li>
+<li><p><strong>Editing as in a text editor</strong>, wherever you type — the filter, a value,
+a name, a setting, the note: the mouse selects, by word on a double click;
+<code class="docutils literal notranslate"><span class="pre">Shift</span></code> and the arrows select; <code class="docutils literal notranslate"><span class="pre">Ctrl</span></code> and the arrows move by word;
+<code class="docutils literal notranslate"><span class="pre">Ctrl+Backspace</span></code> and <code class="docutils literal notranslate"><span class="pre">Ctrl+Delete</span></code> take a word out; <code class="docutils literal notranslate"><span class="pre">Ctrl+Z</span></code> undoes,
+<code class="docutils literal notranslate"><span class="pre">Ctrl+Shift+Z</span></code> redoes; <code class="docutils literal notranslate"><span class="pre">Ctrl+C</span></code> copies a selection, <code class="docutils literal notranslate"><span class="pre">Ctrl+X</span></code> cuts, and a
+paste goes where the cursor is. In the note, Markdown by keys: <code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">_</span></code> or
+<code class="docutils literal notranslate"><span class="pre">~</span></code> around a selection, <code class="docutils literal notranslate"><span class="pre">Alt+1</span></code> to <code class="docutils literal notranslate"><span class="pre">Alt+6</span></code> a heading, <code class="docutils literal notranslate"><span class="pre">Alt+L</span></code> a link,
+<code class="docutils literal notranslate"><span class="pre">Alt+I</span></code> an image, <code class="docutils literal notranslate"><span class="pre">Alt+C</span></code> a code block.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">?</span></code> lists every key of the screen you are on.</p></li>
+</ul>
+<p><strong>A demo</strong>: a home brewer's notebook in eight steps, from three brews written
+by hand to a model, tables, figures, two projects and Python. The start page
+writes it for you (<code class="docutils literal notranslate"><span class="pre">g</span></code>), and it is also in the source, in <code class="docutils literal notranslate"><span class="pre">examples/brewing/</span></code>.</p>
+<p><strong>Several projects in one command.</strong> <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">status</span> <span class="pre">ana/brews</span> <span class="pre">tom/brews</span></code>
+reads both; each sample keeps its own project's units, precisions, model,
+queries and profiles, and the terminal shows one table per project.</p>
+<p><strong>New in the sample file</strong> (the format itself is under <em>Changed</em>):</p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">n/a</span></code></strong>, not applicable: a value that does not apply to this sample, as
+distinct from one nobody has measured yet. A formula reading it gives <code class="docutils literal notranslate"><span class="pre">n/a</span></code>
+too, without running.</p></li>
+<li><p><strong>Attributes</strong>: facts about a sample — a style, a supplier, a date, a list
+of hops — with no unit and no uncertainty, filtered and shown like
+properties.</p></li>
+<li><p><strong>Tags</strong>, a deliberate label on a sample (<code class="docutils literal notranslate"><span class="pre">tags:</span> <span class="pre">[medal]</span></code>), reached by a
+filter (<code class="docutils literal notranslate"><span class="pre">tags</span> <span class="pre">has</span> <span class="pre">medal</span></code>).</p></li>
+<li><p><strong>A sample's own files</strong> — photos, reports, raw data — found by the
+sample's name where <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> says, and opened from the command
+line, the TUI or Python.</p></li>
+</ul>
+<p><strong>A project's configuration</strong>, <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, in the project's folder: the
+model; queries, profiles, exports and figures by name; how a unit is shown in
+a table, in LaTeX and on a figure (<code class="docutils literal notranslate"><span class="pre">[unit.*]</span></code>); the precision, symbol and unit
+of each quantity, declared once (<code class="docutils literal notranslate"><span class="pre">[property.*]</span></code>); matplotlib's settings;
+which files are samples. Every key is checked: a misspelt one is an error
+that names the line and the nearest valid key.</p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">=</span> <span class="pre">&quot;..&quot;</span></code></strong> takes the configuration of the folder named, merged key
+by key beneath this one: what several collections share is declared once,
+at their common root, and each collection keeps its model and what is its
+own. Imports chain; a loop is refused. A relative path reads from the file
+that declares it, and <code class="docutils literal notranslate"><span class="pre">{collection}</span></code> names a sample's collection folder in
+<code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> and an export's <code class="docutils literal notranslate"><span class="pre">output</span></code>.</p></li>
+<li><p><strong>What the current folder offers</strong>: <code class="docutils literal notranslate"><span class="pre">list</span> <span class="pre">profiles</span></code>, <code class="docutils literal notranslate"><span class="pre">queries</span></code>, <code class="docutils literal notranslate"><span class="pre">exports</span></code>
+and <code class="docutils literal notranslate"><span class="pre">figures</span></code>, the completion and the TUI's <code class="docutils literal notranslate"><span class="pre">f</span></code> show the configuration of
+the folder a command runs from, with what it imports, each name marked
+<code class="docutils literal notranslate"><span class="pre">local</span></code> or with the file it comes from. A sample still follows its own
+collection's configuration wherever the command runs from.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate</span></code> notes a declaration identical to the one imported, a copy to
+remove, and <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code> names the files imported.</p></li>
+</ul>
+<p><strong>One warning a command.</strong> A command that would warn several times of one
+thing — samples a profile or an export several projects lack, targets that
+are not Markdown, histories not kept, what a model logged — says it once, in
+one line counting them and ending <em>-v shows them</em>; <code class="docutils literal notranslate"><span class="pre">-v</span></code> lists each.</p>
+<p><strong>The documentation</strong>, in four parts: a tutorial that follows the demo;
+explanations, a page per notion; how-to guides for a task you have in mind;
+and a reference — every command and option, the Python API, the TUI's keys,
+every key of <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, the sample file format, the exit codes.</p>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
+<p><strong>The note below the data is yours.</strong> 0.2.0 wrote the body of a file from the
+model's <code class="docutils literal notranslate"><span class="pre">template()</span></code> at every save. SampleKit now never writes, reformats or
+reads the note: not a character, not a line ending. Tables for a reader are
+what the command line, the TUI and exports show.</p>
+<p><strong>The sample file.</strong> A sample is still one Markdown file with its data in a
+YAML block at the top, written differently:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nn">---</span>
+<span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stout</span>
+<span class="nt">properties</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">og</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">1.058</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">0.001</span><span class="p p-Indicator">,</span><span class="nt"> readings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.057</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.058</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.059</span><span class="p p-Indicator">]}</span>
+<span class="w">  </span><span class="nt">volume</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">19.5</span><span class="p p-Indicator">,</span><span class="nt"> unit</span><span class="p">:</span><span class="w"> </span><span class="nv">L</span><span class="p p-Indicator">}</span>
+<span class="nt">tables</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">fermentation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">day</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">day</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="nv">d</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">    </span><span class="nt">rows</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">day</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="nt"> gravity</span><span class="p">:</span><span class="w"> </span><span class="nv">1.041</span><span class="p p-Indicator">}</span>
+<span class="nn">---</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">schema_version:</span> <span class="pre">1</span></code> heads the file. Quantities go under <code class="docutils literal notranslate"><span class="pre">properties:</span></code>,
+tables under <code class="docutils literal notranslate"><span class="pre">tables:</span></code>, and any other top-level key is an attribute.</p></li>
+<li><p>A quantity is a bare number or a short mapping: <code class="docutils literal notranslate"><span class="pre">v</span></code> for the value (was
+<code class="docutils literal notranslate"><span class="pre">value</span></code>), <code class="docutils literal notranslate"><span class="pre">u</span></code> for the standard uncertainty in the value's unit (was
+<code class="docutils literal notranslate"><span class="pre">uncertainty</span></code>), <code class="docutils literal notranslate"><span class="pre">readings</span></code> for the repeated measurements (was <code class="docutils literal notranslate"><span class="pre">data</span></code>), and
+<code class="docutils literal notranslate"><span class="pre">unit</span></code>. <code class="docutils literal notranslate"><span class="pre">og.v</span></code> and <code class="docutils literal notranslate"><span class="pre">og.u</span></code> are also how a filter, a column, <code class="docutils literal notranslate"><span class="pre">set</span></code> and Python
+name the two numbers.</p></li>
+<li><p>A table has <code class="docutils literal notranslate"><span class="pre">index</span></code>, <code class="docutils literal notranslate"><span class="pre">columns</span></code> as a mapping and <code class="docutils literal notranslate"><span class="pre">rows</span></code> (was <code class="docutils literal notranslate"><span class="pre">_index</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_columns</span></code> as a list, <code class="docutils literal notranslate"><span class="pre">_rows</span></code>), an index of one column or several, and
+cells that are quantities. <code class="docutils literal notranslate"><span class="pre">fermentation.gravity[3]</span></code> names the gravity on
+day 3.</p></li>
+<li><p>A precision and a LaTeX spelling are no longer written in each file
+(<code class="docutils literal notranslate"><span class="pre">precision</span></code>, <code class="docutils literal notranslate"><span class="pre">precision_unc</span></code>, <code class="docutils literal notranslate"><span class="pre">symbol_math</span></code>, <code class="docutils literal notranslate"><span class="pre">unit_math</span></code>): they are
+declared once in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, where a quantity's unit and symbol can be
+too. A formula is never written in a file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">name:</span></code> is optional: without it, the file's name without its extension
+stands for the sample's name.</p></li>
+<li><p>A computed value carries a short record of what it was computed from
+(<code class="docutils literal notranslate"><span class="pre">computed:</span></code>, <code class="docutils literal notranslate"><span class="pre">fingerprint:</span></code>), which is how SampleKit tells it is current.</p></li>
+<li><p>Names of properties, attributes, tables, columns and tags start with a
+letter or <code class="docutils literal notranslate"><span class="pre">_</span></code> and hold letters, digits and <code class="docutils literal notranslate"><span class="pre">_</span></code>, in any alphabet: <code class="docutils literal notranslate"><span class="pre">température</span></code> and
+<code class="docutils literal notranslate"><span class="pre">bière</span></code> are names, <code class="docutils literal notranslate"><span class="pre">dry-hopped</span></code> is not.</p></li>
+<li><p>The data is written in one fixed form: the first write to a file written
+by hand may change more lines than the value, and after that only what
+changed. A write goes to a temporary file first, and is refused if the file
+changed on disk since it was read.</p></li>
+</ul>
+<p><strong>Readings and their statistic.</strong> In 0.2.0, a list of measurements gave the
+mean and the sample standard deviation on its own. The value of readings is
+now <strong>the statistic the model declares</strong> — mean, median, minimum, maximum or
+a quartile, and standard error or a standard deviation for the uncertainty —
+or a value written beside them. Readings with neither have no value, and
+every surface says so rather than taking a mean nobody chose. The file notes
+which statistic gave the numbers (<code class="docutils literal notranslate"><span class="pre">statistics:</span> <span class="pre">{v:</span> <span class="pre">mean,</span> <span class="pre">u:</span> <span class="pre">standard_error}</span></code>).</p>
+<p><strong>Units, symbols and precision</strong> are the project's. A unit is a label, never
+converted; <code class="docutils literal notranslate"><span class="pre">[unit.&quot;degC&quot;]</span></code> says how it is shown in a table (<code class="docutils literal notranslate"><span class="pre">°C</span></code>), in LaTeX
+and on a figure. Two samples writing different units for one quantity are
+reported rather than put side by side. A declared precision rounds alike on
+the screen and in an export.</p>
+<p><strong>The model and computing.</strong> A project names its model, a subclass of
+<code class="docutils literal notranslate"><span class="pre">samplekit.Sample</span></code>, in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> (<code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">path</span></code> and <code class="docutils literal notranslate"><span class="pre">class</span></code>), and every
+tool uses it. Each computed value has a formula of its own and names what it
+reads:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">abv</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"%"</span><span class="p">,</span> <span class="n">compute_quantity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_abv</span><span class="p">,</span> <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="s2">"og"</span><span class="p">,</span> <span class="s2">"fg"</span><span class="p">])</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">compute=</span></code> gives the value, <code class="docutils literal notranslate"><span class="pre">compute_uncertainty=</span></code> (was <code class="docutils literal notranslate"><span class="pre">compute_unc</span></code>) the
+uncertainty beside a value you enter, and <code class="docutils literal notranslate"><span class="pre">compute_quantity=</span></code> both. A
+table's cells are computed a row at a time (<code class="docutils literal notranslate"><span class="pre">compute_rows</span></code>) or a column at
+once (<code class="docutils literal notranslate"><span class="pre">compute_columns</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">depends_on</span></code> names the inputs by name (<code class="docutils literal notranslate"><span class="pre">&quot;og&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;fermentation.gravity&quot;</span></code>),
+not as <code class="docutils literal notranslate"><span class="pre">Property</span></code> objects, and it is required: a model with a formula
+that declares nothing is refused before any formula runs.</p></li>
+<li><p><strong>A model declares no symbol and no precision</strong>: both are the project's,
+in <code class="docutils literal notranslate"><span class="pre">[property.*]</span></code>, as the unit's display is. <code class="docutils literal notranslate"><span class="pre">sk.Property</span></code> and <code class="docutils literal notranslate"><span class="pre">sk.Column</span></code>
+refuse <code class="docutils literal notranslate"><span class="pre">symbol=</span></code> and <code class="docutils literal notranslate"><span class="pre">precision=</span></code>, saying where each is declared.</p></li>
+<li><p><strong>Nothing is computed when a value is read.</strong> Values are computed when you
+ask — <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">compute</span></code>, <code class="docutils literal notranslate"><span class="pre">C</span></code> or <code class="docutils literal notranslate"><span class="pre">c</span></code> in the TUI, <code class="docutils literal notranslate"><span class="pre">compute()</span></code> in Python —
+and only what is not current, in the order the inputs require. A change to
+an input marks what reads it as outdated; it does not recompute it.</p></li>
+<li><p><strong>A value set over a formula is an override</strong>: the formula stays in the
+model, and the value is marked edited, where 0.2.0 dropped the formula.</p></li>
+<li><p>The command line runs the model in the Python of the nearest <code class="docutils literal notranslate"><span class="pre">.venv/</span></code>
+above the samples, or the interpreter <code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">python</span></code> names, where the
+SampleKit package must be installed in the same version. It runs without
+asking, as <code class="docutils literal notranslate"><span class="pre">python</span></code> runs a script you give it, and names the configuration
+and the model file before it starts.</p></li>
+<li><p>The model is described once, in <code class="docutils literal notranslate"><span class="pre">.samplekit/model.json</span></code>, written whenever
+it is imported and again when its files change: what only reads the model's
+declarations — <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">new</span></code> and <code class="docutils literal notranslate"><span class="pre">set</span></code>, a <code class="docutils literal notranslate"><span class="pre">state</span></code> filter, the TUI — reads
+the description and starts no Python. Python runs to compute and to draw.</p></li>
+<li><p>What a model prints goes to a log file; its warnings are shown during the
+run.</p></li>
+<li><p>Uncertainties are never propagated on their own: a formula that should give
+one returns it.</p></li>
+</ul>
+<p><strong>The Python package</strong> is built from the same Rust code as the command line,
+and changes its shape:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sk.load(path)</span></code> reads a sample or a folder, with the project's model
+(was <code class="docutils literal notranslate"><span class="pre">SampleList(path,</span> <span class="pre">sample_class=…)</span></code> and <code class="docutils literal notranslate"><span class="pre">Sample.load</span></code>); <code class="docutils literal notranslate"><span class="pre">sk.load(a,</span> <span class="pre">b)</span></code>
+reads several folders into one list.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Sample.new(path)</span></code> makes a sample, <code class="docutils literal notranslate"><span class="pre">save()</span></code> writes it, <code class="docutils literal notranslate"><span class="pre">compute()</span></code> computes
+what is not current, and <code class="docutils literal notranslate"><span class="pre">not_current()</span></code> lists what <code class="docutils literal notranslate"><span class="pre">status</span></code> would.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">SampleList</span></code> filters with the command line's language
+(<code class="docutils literal notranslate"><span class="pre">brews.filter(&quot;og</span> <span class="pre">&gt;</span> <span class="pre">1.050&quot;)</span></code>) as well as a function, sorts, groups
+(<code class="docutils literal notranslate"><span class="pre">group_by</span></code>), selects with a query of the project, and writes CSV, TSV or
+JSON at the project's precisions (<code class="docutils literal notranslate"><span class="pre">to_csv</span></code>, <code class="docutils literal notranslate"><span class="pre">to_tsv</span></code>, <code class="docutils literal notranslate"><span class="pre">to_json</span></code>,
+<code class="docutils literal notranslate"><span class="pre">to_dict</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sk.stats</span></code> names the statistics readings can stand for, and
+<code class="docutils literal notranslate"><span class="pre">sk.plot</span></code> draws the same figures as the command line.</p></li>
+<li><p>Reading a value that is not current returns it, with a warning saying why.</p></li>
+<li><p>The package ships type stubs that carry its documentation, so that an
+editor shows both.</p></li>
+<li><p>Python 3.11 or newer is required (was 3.10), and neither PyYAML nor pandas
+is needed.</p></li>
+</ul>
+<p><strong>Performance.</strong> The package is built in Rust. Reading and writing sample
+files is 25 to 35 times faster than 0.2.0, and the statistics of readings
+about 3 times faster. A value computed costs a little more — some 15 µs per
+formula run — for the record of what it read, which is how SampleKit knows
+afterwards that it is still current; beside a formula that takes seconds, it
+does not show. <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">new</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code> and the TUI start no Python while the
+model's description is current.</p>
+</section>
+<section id="removed">
+<h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Reading 0.2.0 files.</strong> Every command names such a file, says why, reads
+the rest and exits with code 2.</p></li>
+<li><p><strong>The long spellings <code class="docutils literal notranslate"><span class="pre">value:</span></code> and <code class="docutils literal notranslate"><span class="pre">uncertainty:</span></code>.</strong> They are not read, in a
+property, a table's cell or anywhere else in a sample file: such a file is
+not read, and every command names the key and what it is written now —
+<code class="docutils literal notranslate"><span class="pre">'value'</span> <span class="pre">is</span> <span class="pre">written</span> <span class="pre">'v'</span> <span class="pre">since</span> <span class="pre">schema</span> <span class="pre">1:</span> <span class="pre">rename</span> <span class="pre">it</span></code>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">template()</span></code> and the <code class="docutils literal notranslate"><span class="pre">report</span></code> module</strong>: the note is no longer generated.
+Tables for a paper are profiles and exports; figures are drawn with <code class="docutils literal notranslate"><span class="pre">plot</span></code>.</p></li>
+<li><p><strong>pandas</strong>: <code class="docutils literal notranslate"><span class="pre">to_dataframe()</span></code>, <code class="docutils literal notranslate"><span class="pre">stats()</span></code> on a list and the <code class="docutils literal notranslate"><span class="pre">converters</span></code>
+module. <code class="docutils literal notranslate"><span class="pre">to_csv()</span></code> or <code class="docutils literal notranslate"><span class="pre">to_dict()</span></code> give data pandas reads, and <code class="docutils literal notranslate"><span class="pre">--summary</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Summary</span></code> and <code class="docutils literal notranslate"><span class="pre">sk.stats</span></code> summarise.</p></li>
+<li><p><strong>Computing on read</strong>, and the cache a changed input cleared.</p></li>
+<li><p><strong>The automatic mean and standard deviation of a list</strong>: a statistic is
+declared.</p></li>
+</ul>
+</section>
+<section id="upgrading-from-0-2-0">
+<h3>Upgrading from 0.2.0<a class="headerlink" href="#upgrading-from-0-2-0" title="Link to this heading">¶</a></h3>
+<p>No command converts a 0.2.0 sample: the model has to be rewritten by hand
+anyway, and a tool that did half the work would take all the risk of writing
+to your files. <a class="reference internal" href="how-to/upgrade.html"><span class="std std-doc">Upgrade from an older SampleKit</span></a>
+shows how to carry each sample across — its values, uncertainties, readings,
+tables and text — with both versions installed side by side, into a new
+folder, and how to check the result.</p>
+</section>
+</section>
+<section id="id1">
+<h2>[0.2.0]<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<p>The previous SampleKit, a Python package published on the Python Package
+Index. Its changes are not recorded here.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="reference/exit-codes.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Exit codes</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Changelog</a><ul>
+<li><a class="reference internal" href="#rc-1-2026-09-28">[1.0.0-rc.1] — 2026-09-28</a><ul>
+<li><a class="reference internal" href="#added">Added</a></li>
+<li><a class="reference internal" href="#changed">Changed</a></li>
+<li><a class="reference internal" href="#removed">Removed</a></li>
+<li><a class="reference internal" href="#upgrading-from-0-2-0">Upgrading from 0.2.0</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id1">[0.2.0]</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=4b0c7688"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

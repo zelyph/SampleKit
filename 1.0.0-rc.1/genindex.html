@@ -1,0 +1,968 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="#"><link rel="search" title="Search" href="search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 --><title>Index - SampleKit 1.0.0-rc.1</title>
+<link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/versions.css?v=dbc48dce" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/01-first-brews.html">Step 1 · First brews</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/02-measuring.html">Step 2 · Measuring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/03-selecting.html">Step 3 · Selecting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/04-computing.html">Step 4 · Computing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/06-figures.html">Step 6 · Figures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/08-python.html">Step 8 · Python</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="explanations/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanations/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="how-to/move-existing-data.html">Move existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/first-model.html">A first model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/export-for-a-paper.html">An export for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/exit-codes.html">Exit codes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          
+<section class="genindex-section">
+  <h1 id="index">Index</h1>
+  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#K"><strong>K</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#O"><strong>O</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#Q"><strong>Q</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#U"><strong>U</strong></a> | <a href="#V"><strong>V</strong></a> | <a href="#W"><strong>W</strong></a> | <a href="#X"><strong>X</strong></a> | <a href="#Y"><strong>Y</strong></a></div>
+</section>
+<section id="A" class="genindex-section">
+  <h2>A</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Table.add">add() (samplekit.Table method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.affected_by_change">affected_by_change() (samplekit.Sample method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.BoundList.append">append() (samplekit.BoundList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.aspect">aspect (samplekit.FigureDeclaration attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.at">at() (samplekit.Table method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="B" class="genindex-section">
+  <h2>B</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.BoundList">BoundList (class in samplekit)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="C" class="genindex-section">
+  <h2>C</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Model.class_name">class_name (samplekit.Model attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.BoundList.clear">clear() (samplekit.BoundList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Collection">Collection (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Project.collection">collection (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Column">Column (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.column_names">column_names (samplekit.Table attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Profile.columns">columns (samplekit.Profile attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.ColumnSpec">ColumnSpec (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.ColumnView">ColumnView (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.compute">compute() (samplekit.Property method)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Sample.compute">(samplekit.Sample method)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.SampleList.compute">(samplekit.SampleList method)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.BoundList.copy">copy() (samplekit.BoundList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.count">count (samplekit.Summary attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.count">count() (samplekit.SampleList method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="D" class="genindex-section">
+  <h2>D</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Table.data_columns">data_columns (samplekit.Table attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.dependencies">dependencies() (samplekit.Sample method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Sample.dependents">dependents() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Query.directory">directory (samplekit.Query attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="E" class="genindex-section">
+  <h2>E</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Sample.edited">edited() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.edited_upstream">edited_upstream (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Collection.exclude">exclude (samplekit.Collection attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Export">Export (class in samplekit)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.SampleList.export">export() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Project.exports">exports (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.BoundList.extend">extend() (samplekit.BoundList method)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Table.extend">(samplekit.Table method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="F" class="genindex-section">
+  <h2>F</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Property.failure">failure (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Field">Field (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.ColumnSpec.field">field (samplekit.ColumnSpec attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.fields">fields (samplekit.SampleList attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.figsize">figsize (samplekit.FigureDeclaration attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.figure">figure() (in module samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Render.figure_style">figure_style (samplekit.Render attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration">FigureDeclaration (class in samplekit)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Project.figures">figures (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Export.filename">filename (samplekit.Export attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Sample.filename">(samplekit.Sample attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.Sample.files">files() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Query.filter">filter (samplekit.Query attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.filter">filter() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.first_quartile">first_quartile (samplekit.Summary attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Export.format">format (samplekit.Export attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.format">format() (samplekit.Property method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="G" class="genindex-section">
+  <h2>G</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.group">group (samplekit.FigureDeclaration attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.SampleList.group_by">group_by() (samplekit.SampleList method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="H" class="genindex-section">
+  <h2>H</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.ColumnSpec.header">header (samplekit.ColumnSpec attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="I" class="genindex-section">
+  <h2>I</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Collection.include">include (samplekit.Collection attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.index">index (samplekit.Table attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.index">index() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.index_unit">index_unit (samplekit.Table attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.index_values">index_values (samplekit.Table attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.BoundList.insert">insert() (samplekit.BoundList method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Property.invalidate">invalidate() (samplekit.Property method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.is_computed">is_computed (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.is_edited">is_edited (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.is_outdated">is_outdated (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.is_stale">is_stale (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.RowView.items">items() (samplekit.RowView method)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Sample.items">(samplekit.Sample method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="K" class="genindex-section">
+  <h2>K</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.keep">keep() (in module samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.RowView.keys">keys() (samplekit.RowView method)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Sample.keys">(samplekit.Sample method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.kind">kind (samplekit.FigureDeclaration attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="L" class="genindex-section">
+  <h2>L</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.ColumnSpec.label">label (samplekit.ColumnSpec attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.legend">legend (samplekit.FigureDeclaration attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.load">load() (in module samplekit)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="M" class="genindex-section">
+  <h2>M</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Project.matplotlib">matplotlib (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.maximum">maximum (samplekit.Summary attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.mean">mean (samplekit.Summary attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.median">median (samplekit.Summary attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Summary.minimum">minimum (samplekit.Summary attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Model">Model (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Project.model">model (samplekit.Project attribute)</a>
+</li>
+        <li>
+    module
+
+        <ul>
+          <li><a href="reference/python.html#module-samplekit">samplekit</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="N" class="genindex-section">
+  <h2>N</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.NA">NA (in module samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Export.name">name (samplekit.Export attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.FigureDeclaration.name">(samplekit.FigureDeclaration attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.Profile.name">(samplekit.Profile attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.Query.name">(samplekit.Query attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.Sample.name">(samplekit.Sample attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.Statistic.name">(samplekit.Statistic attribute)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Names">Names (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.new">new() (samplekit.Sample class method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.not_current">not_current() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.NotApplicable">NotApplicable (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.note">note (samplekit.Sample attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="O" class="genindex-section">
+  <h2>O</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Sample.open">open() (samplekit.Sample method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Sample.outdated">outdated() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Export.output">output (samplekit.Export attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="P" class="genindex-section">
+  <h2>P</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Export.path">path (samplekit.Export attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Field.path">(samplekit.Field attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.Model.path">(samplekit.Model attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.Sample.path">(samplekit.Sample attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.plot">plot() (in module samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.BoundList.pop">pop() (samplekit.BoundList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.population_stdev">population_stdev (samplekit.Summary attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.RowView.position">position (samplekit.RowView attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.ColumnSpec.precision">precision (samplekit.ColumnSpec attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.PropertyDeclaration.precision">(samplekit.PropertyDeclaration attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.Render.precision">(samplekit.Render attribute)</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Profile">Profile (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Export.profile">profile (samplekit.Export attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Project.profiles">profiles (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Project">Project (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.project">project (samplekit.Sample attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.SampleList.project">(samplekit.SampleList attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.Project.properties">properties (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property">Property (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.PropertyDeclaration">PropertyDeclaration (class in samplekit)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="Q" class="genindex-section">
+  <h2>Q</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Project.queries">queries (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Query">Query (class in samplekit)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Export.query">query (samplekit.Export attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.FigureDeclaration.query">(samplekit.FigureDeclaration attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.SampleList.query">query() (samplekit.SampleList method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="R" class="genindex-section">
+  <h2>R</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Property.readings">readings (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Collection.recursive">recursive (samplekit.Collection attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.BoundList.remove">remove() (samplekit.BoundList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Render">Render (class in samplekit)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Project.render">render (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.BoundList.reverse">reverse() (samplekit.BoundList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Project.root">root (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.RowView">RowView (class in samplekit)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="S" class="genindex-section">
+  <h2>S</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Sample">Sample (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.sample_stdev">sample_stdev (samplekit.Summary attribute)</a>
+</li>
+        <li>
+    samplekit
+
+        <ul>
+          <li><a href="reference/python.html#module-samplekit">module</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.SampleList">SampleList (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.save">save() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.save_all">save_all() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.set_dependencies">set_dependencies() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Profile.sort">sort (samplekit.Profile attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.BoundList.sort">sort() (samplekit.BoundList method)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.SampleList.sort">(samplekit.SampleList method)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.SampleList.sorted">sorted() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Unit.spelling">spelling (samplekit.Unit attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Sample.stale">stale() (samplekit.Sample method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.standard_error">standard_error (samplekit.Summary attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.state">state (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Statistic">Statistic (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.stats">stats (class in samplekit)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Property.stats">(samplekit.Property attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.SampleList.stats">stats() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.style">style (samplekit.FigureDeclaration attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Render.style">(samplekit.Render attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.Summary">Summary (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.symbol">symbol (samplekit.Property attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.PropertyDeclaration.symbol">(samplekit.PropertyDeclaration attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.PropertyDeclaration.symbol_variants">symbol_variants (samplekit.PropertyDeclaration attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="T" class="genindex-section">
+  <h2>T</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Table">Table (class in samplekit)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Render.table">table (samplekit.Render attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Sample.tags">tags (samplekit.Sample attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.ColumnSpec.template">template (samplekit.ColumnSpec attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.text">text (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Summary.third_quartile">third_quartile (samplekit.Summary attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.title">title (samplekit.FigureDeclaration attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Table.title">(samplekit.Table attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.SampleList.to_csv">to_csv() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.to_dict">to_dict() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.to_json">to_json() (samplekit.SampleList method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.SampleList.to_tsv">to_tsv() (samplekit.SampleList method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="U" class="genindex-section">
+  <h2>U</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Property.u">u (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.ColumnView.uncertainties">uncertainties (samplekit.ColumnView attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.uncertainties">uncertainties() (samplekit.Table method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.uncertainty">uncertainty (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Unit">Unit (class in samplekit)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Column.unit">unit (samplekit.Column attribute)</a>
+
+        <ul>
+          <li><a href="reference/python.html#samplekit.Property.unit">(samplekit.Property attribute)</a>
+</li>
+          <li><a href="reference/python.html#samplekit.PropertyDeclaration.unit">(samplekit.PropertyDeclaration attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/python.html#samplekit.Project.units">units (samplekit.Project attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.update">update() (samplekit.Table method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="V" class="genindex-section">
+  <h2>V</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Property.v">v (samplekit.Property attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Property.value">value (samplekit.Property attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.ColumnView.values">values (samplekit.ColumnView attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Table.values">values() (samplekit.Table method)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.Unit.variants">variants (samplekit.Unit attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="W" class="genindex-section">
+  <h2>W</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.Summary.weighted">weighted (samplekit.Summary attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="X" class="genindex-section">
+  <h2>X</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.x">x (samplekit.FigureDeclaration attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.x_label">x_label (samplekit.FigureDeclaration attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.x_limits">x_limits (samplekit.FigureDeclaration attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.x_scale">x_scale (samplekit.FigureDeclaration attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="Y" class="genindex-section">
+  <h2>Y</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.y">y (samplekit.FigureDeclaration attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.y_label">y_label (samplekit.FigureDeclaration attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.y_limits">y_limits (samplekit.FigureDeclaration attribute)</a>
+</li>
+        <li><a href="reference/python.html#samplekit.FigureDeclaration.y_scale">y_scale (samplekit.FigureDeclaration attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=4b0c7688"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

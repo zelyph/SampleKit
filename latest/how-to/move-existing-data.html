@@ -1,0 +1,524 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="A first model" href="first-model.html"><link rel="prev" title="How-to guides" href="index.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Move existing data in - SampleKit 1.0.0-rc.1</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanations/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Move existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="first-model.html">A first model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="export-for-a-paper.html">An export for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/exit-codes.html">Exit codes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/how-to/move-existing-data.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="move-existing-data-in">
+<h1>Move existing data in<a class="headerlink" href="#move-existing-data-in" title="Link to this heading">¶</a></h1>
+<p>This recipe turns measurements you already have — in a spreadsheet, a CSV
+file, or a notebook — into sample files: one Markdown file per sample, in a
+project of its own. Your original data is only read; SampleKit writes new
+files beside it.</p>
+<p>The example is a series of brews, each with a brewer, an original gravity and
+a volume. Replace the names with yours.</p>
+<section id="make-the-project">
+<h2>1. Make the project<a class="headerlink" href="#make-the-project" title="Link to this heading">¶</a></h2>
+<p>In an empty folder:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>mkdir<span class="w"> </span>notebook
+<span class="gp">$ </span><span class="nb">cd</span><span class="w"> </span>notebook
+<span class="gp">$ </span>samplekit<span class="w"> </span>init<span class="w"> </span>--no-model<span class="w"> </span>--no-venv<span class="w"> </span>--write
+</pre></div>
+</div>
+<p>This writes <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> and an empty <code class="docutils literal notranslate"><span class="pre">samples/</span></code> folder. <code class="docutils literal notranslate"><span class="pre">--no-model</span></code>
+leaves the model for later (<a class="reference internal" href="first-model.html"><span class="std std-doc">A first model</span></a>), and
+<code class="docutils literal notranslate"><span class="pre">--no-venv</span></code> makes no Python environment, which reading and writing samples do
+not need. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">init</span></code> alone asks these questions one at a time, each
+answer saying what it does and the default marked: what to start from, which
+model — one to fill in, a model file you already have, or none for now — and
+whether to make the environment.</p>
+</section>
+<section id="declare-your-quantities">
+<h2>2. Declare your quantities<a class="headerlink" href="#declare-your-quantities" title="Link to this heading">¶</a></h2>
+<p>Open <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> and declare each measured quantity with its unit and its
+digits:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[property.og]</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">".3f"</span><span class="p">,</span><span class="w"> </span><span class="s2">".4f"</span><span class="p">]</span><span class="w">      </span><span class="c1"># the value's digits, then the uncertainty's</span>
+
+<span class="k">[property.volume]</span>
+<span class="n">unit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"L"</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".1f"</span>
+</pre></div>
+</div>
+<p>Do this before writing any sample. A name <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> declares is written
+as a quantity, with its unit, and so is one a project's model declares, once
+it has one (<a class="reference internal" href="first-model.html"><span class="std std-doc">A first model</span></a>). A name nothing declares is
+written as an <strong>attribute</strong> — text with no unit — and <code class="docutils literal notranslate"><span class="pre">new</span></code> and <code class="docutils literal notranslate"><span class="pre">set</span></code> warn
+you when that name is given a number. <code class="docutils literal notranslate"><span class="pre">brewer</span></code>, which is not a quantity,
+needs no declaration.</p>
+</section>
+<section id="write-the-samples">
+<h2>3. Write the samples<a class="headerlink" href="#write-the-samples" title="Link to this heading">¶</a></h2>
+<p>One sample, from the command line:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>samplekit<span class="w"> </span>new<span class="w"> </span>B-01<span class="w"> </span><span class="nv">brewer</span><span class="o">=</span>ana<span class="w"> </span><span class="nv">og</span><span class="o">=</span><span class="m">1</span>.052<span class="w"> </span>og.u<span class="o">=</span><span class="m">0</span>.001<span class="w"> </span><span class="nv">volume</span><span class="o">=</span><span class="m">20</span>.5<span class="w"> </span>--into<span class="w"> </span>samples<span class="w"> </span>--write
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">og.u</span></code> is the uncertainty of <code class="docutils literal notranslate"><span class="pre">og</span></code>. Repeated measurements are its readings:
+<code class="docutils literal notranslate"><span class="pre">og.readings=1.052,1.053,1.052</span></code>. Write decimals with a point, never a comma.</p>
+<p><strong>From a CSV file.</strong> A shell loop gives each row to <code class="docutils literal notranslate"><span class="pre">new</span></code>. With
+<code class="docutils literal notranslate"><span class="pre">brews.csv</span></code> holding <code class="docutils literal notranslate"><span class="pre">name,brewer,og,og_u,volume</span></code> and a row per brew:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>tail<span class="w"> </span>-n<span class="w"> </span>+2<span class="w"> </span>brews.csv<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span>,<span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>name<span class="w"> </span>brewer<span class="w"> </span>og<span class="w"> </span>og_u<span class="w"> </span>volume<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>samplekit<span class="w"> </span>new<span class="w"> </span><span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span><span class="w"> </span><span class="nv">brewer</span><span class="o">=</span><span class="s2">"</span><span class="nv">$brewer</span><span class="s2">"</span><span class="w"> </span><span class="nv">og</span><span class="o">=</span><span class="s2">"</span><span class="nv">$og</span><span class="s2">"</span><span class="w"> </span>og.u<span class="o">=</span><span class="s2">"</span><span class="nv">$og_u</span><span class="s2">"</span><span class="w"> </span><span class="nv">volume</span><span class="o">=</span><span class="s2">"</span><span class="nv">$volume</span><span class="s2">"</span><span class="w"> </span>--into<span class="w"> </span>samples<span class="w"> </span>--write
+<span class="k">done</span>
+</pre></div>
+</div>
+<p>From a spreadsheet, save the sheet as CSV first. A field that holds a comma
+needs a CSV reader: use Python's <code class="docutils literal notranslate"><span class="pre">csv</span></code> module, as below.</p>
+<p><strong>Series of measurements</strong> — a table per sample — are simpler from Python.
+With <code class="docutils literal notranslate"><span class="pre">logs/B-01.csv</span></code> holding <code class="docutils literal notranslate"><span class="pre">day,gravity</span></code> for each brew:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
+
+<span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"logs"</span><span class="p">)</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*.csv"</span><span class="p">)):</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">stem</span><span class="si">}</span><span class="s2">.md"</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">newline</span><span class="o">=</span><span class="s2">""</span><span class="p">)</span> <span class="k">as</span> <span class="n">log</span><span class="p">:</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"day"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"day"</span><span class="p">]),</span> <span class="s2">"gravity"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"gravity"</span><span class="p">])}</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">log</span><span class="p">)]</span>
+    <span class="n">sample</span><span class="o">.</span><span class="n">fermentation</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Table</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">"day"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"d"</span><span class="p">),</span> <span class="s2">"gravity"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Column</span><span class="p">()},</span>
+        <span class="s2">"day"</span><span class="p">,</span>
+        <span class="n">rows</span><span class="o">=</span><span class="n">rows</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sample</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Run it with a Python where SampleKit's package is installed.</p>
+<p><strong>By hand.</strong> Write one file in a text editor, then shape the next ones on it:
+<code class="docutils literal notranslate"><span class="pre">new</span> <span class="pre">--like</span></code> copies its attributes and leaves its measured values empty.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>samplekit<span class="w"> </span>new<span class="w"> </span>B-04<span class="w"> </span>--like<span class="w"> </span>samples/B-01.md<span class="w"> </span>--write
+<span class="gp">$ </span>samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </span>samples/B-04.md<span class="w"> </span><span class="nv">og</span><span class="o">=</span><span class="m">1</span>.047<span class="w"> </span>og.u<span class="o">=</span><span class="m">0</span>.001<span class="w"> </span><span class="nv">volume</span><span class="o">=</span><span class="m">21</span>.0<span class="w"> </span><span class="nv">brewer</span><span class="o">=</span>tom<span class="w"> </span>--write
+</pre></div>
+</div>
+</section>
+<section id="check">
+<h2>4. Check<a class="headerlink" href="#check" title="Link to this heading">¶</a></h2>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>samplekit<span class="w"> </span>samples<span class="w"> </span>-c<span class="w"> </span>name,brewer,og,volume
+<span class="gp">$ </span>samplekit<span class="w"> </span>list<span class="w"> </span>fields<span class="w"> </span>samples
+<span class="gp">$ </span>samplekit<span class="w"> </span>validate<span class="w"> </span>samples
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">list</span> <span class="pre">fields</span></code> shows each name under <em>properties</em> or <em>attributes</em>: a quantity
+listed as an attribute was not declared in step 2. <code class="docutils literal notranslate"><span class="pre">validate</span></code> reports what is
+wrong — a file it cannot read, two units in one column — and changes nothing.
+Compare a few files with your original data by eye before trusting the rest.</p>
+<p>The same steps, tried on the demo's step 2:</p>
+<!-- run: 02-measuring -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>samplekit<span class="w"> </span>new<span class="w"> </span>pilsner<span class="w"> </span><span class="nv">og</span><span class="o">=</span><span class="m">1</span>.048<span class="w"> </span>og.u<span class="o">=</span><span class="m">0</span>.001<span class="w"> </span><span class="nv">volume</span><span class="o">=</span><span class="m">20</span><span class="w"> </span>--into<span class="w"> </span>brews<span class="w"> </span>--write
+<span class="gp">$ </span>samplekit<span class="w"> </span>new<span class="w"> </span>bitter<span class="w"> </span>--like<span class="w"> </span>brews/oatmeal-stout.md<span class="w"> </span>--write
+<span class="gp">$ </span>samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </span>brews/bitter.md<span class="w"> </span><span class="nv">og</span><span class="o">=</span><span class="m">1</span>.040<span class="w"> </span>og.u<span class="o">=</span><span class="m">0</span>.001<span class="w"> </span><span class="nv">grain_mass</span><span class="o">=</span><span class="m">3</span>.9<span class="w"> </span>--write
+<span class="gp">$ </span>samplekit<span class="w"> </span>brews<span class="w"> </span>-c<span class="w"> </span>name,og,volume,grain_mass
+<span class="gp">$ </span>samplekit<span class="w"> </span>validate<span class="w"> </span>brews
+</pre></div>
+</div>
+</section>
+<section id="several-collections-one-common-root">
+<h2>5. Several collections, one common root<a class="headerlink" href="#several-collections-one-common-root" title="Link to this heading">¶</a></h2>
+<p>When your data comes as several collections — one per season, per style or
+per person — each with a model of its own but the same quantities, declare
+what they share once, at their common root, and let each collection import
+it:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>notebook/
+  .samplekitrc          [property.og], [property.volume], shared profiles
+  ales/.samplekitrc     import = "..", its [model], what only ales have
+  lagers/.samplekitrc   import = "..", its [model], what only lagers have
+</pre></div>
+</div>
+<p>In <code class="docutils literal notranslate"><span class="pre">ales/.samplekitrc</span></code>:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">schema_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="n">import</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".."</span><span class="w">                 </span><span class="c1"># the root's .samplekitrc</span>
+
+<span class="k">[model]</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ales.py"</span>
+
+<span class="k">[property.og]</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".4f"</span><span class="w">             </span><span class="c1"># finer here; the rest comes from the root</span>
+</pre></div>
+</div>
+<p>A key the collection writes replaces the root's; the rest is the root's. A
+path the root declares reads from the root, and <code class="docutils literal notranslate"><span class="pre">{collection}</span></code> names each
+collection's folder, so that one declaration serves all of them:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># notebook/.samplekitrc</span>
+<span class="k">[collection]</span>
+<span class="n">files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"{collection}/photos/{name}*"</span><span class="p">]</span>
+
+<span class="k">[export.overview]</span>
+<span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"overview"</span>
+<span class="n">format</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"csv"</span>
+<span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"exports/{collection}/overview.csv"</span>
+</pre></div>
+</div>
+<p>Then check what each collection is given, and what it repeats:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>samplekit<span class="w"> </span>--show-rc<span class="w"> </span>ales
+<span class="gp">$ </span>samplekit<span class="w"> </span>list<span class="w"> </span>profiles<span class="w"> </span>ales
+<span class="gp">$ </span>samplekit<span class="w"> </span>validate
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--show-rc</span></code> names the file imported; <code class="docutils literal notranslate"><span class="pre">list</span> <span class="pre">profiles</span></code> marks each profile
+<code class="docutils literal notranslate"><span class="pre">local</span></code>, <code class="docutils literal notranslate"><span class="pre">../.samplekitrc</span></code> or <code class="docutils literal notranslate"><span class="pre">local</span> <span class="pre">over</span></code> it; <code class="docutils literal notranslate"><span class="pre">validate</span></code> notes a
+declaration that is a copy of the root's, which you can remove.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../explanations/projects.html"><span class="std std-doc">Projects</span></a>: which configuration a sample
+follows, and what an import brings.</p></li>
+<li><p><a class="reference internal" href="../reference/sample-files.html"><span class="std std-doc">What a sample file can hold</span></a>, to write files
+by hand.</p></li>
+<li><p><a class="reference internal" href="../reference/cli.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">init</span></code>, <code class="docutils literal notranslate"><span class="pre">new</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code></span></a>.</p></li>
+<li><p><a class="reference internal" href="../explanations/samples-and-files.html"><span class="std std-doc">A sample and its file</span></a>.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="first-model.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">A first model</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">How-to guides</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Move existing data in</a><ul>
+<li><a class="reference internal" href="#make-the-project">1. Make the project</a></li>
+<li><a class="reference internal" href="#declare-your-quantities">2. Declare your quantities</a></li>
+<li><a class="reference internal" href="#write-the-samples">3. Write the samples</a></li>
+<li><a class="reference internal" href="#check">4. Check</a></li>
+<li><a class="reference internal" href="#several-collections-one-common-root">5. Several collections, one common root</a></li>
+<li><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>
