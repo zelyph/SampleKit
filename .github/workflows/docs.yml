@@ -1,0 +1,94 @@
+# The documentation of each version, published on GitHub Pages.
+#
+# Inert until it is turned on: it runs only once the repository variable
+# PUBLISH_DOCS is set to `true`, and Settings → Pages → Source says *GitHub
+# Actions*.
+#
+# On a tag v1.0.0 or v1.0.0-rc.1, the site of that version is built into its
+# folder of the `gh-pages` branch — where every version is kept, and which
+# Pages does not serve itself — beside the versions already there, by
+# tools/build-docs-version.sh, which also rewrites the list the version
+# selector reads. `latest/` follows the rule of --auto-latest: the newest
+# release that is not a release candidate, or the newest release candidate
+# while there is none. Release candidates stay listed. The whole branch is
+# then deployed to Pages.
+name: docs
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.server_url == 'https://github.com' && vars.PUBLISH_DOCS == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The version, from the tag and from Cargo.toml
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cargo_version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          if [[ "$version" != "$cargo_version" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME, but Cargo.toml says $cargo_version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # The Python reference is read from the extension itself.
+      - name: The extension, and Sphinx
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install maturin -r docs/requirements.txt
+          .venv/bin/maturin develop --release
+
+      - name: The published site, as it stands
+        run: |
+          if git fetch --depth 1 origin gh-pages; then
+            git worktree add site FETCH_HEAD
+            git -C site switch -c gh-pages
+          else
+            git worktree add --orphan -b gh-pages site
+          fi
+
+      - name: Build this version into it
+        run: tools/build-docs-version.sh "${{ steps.version.outputs.version }}" --auto-latest --into site
+
+      - name: Keep it in gh-pages
+        run: |
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          if git diff --cached --quiet; then
+            echo "nothing new to keep"
+          else
+            git commit -m "Documentation of ${{ steps.version.outputs.version }}"
+            git push origin gh-pages
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

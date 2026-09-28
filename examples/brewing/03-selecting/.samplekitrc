@@ -1,0 +1,98 @@
+# A home brewer's notebook: each file in brews/ is one brew. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The brews are in brews/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no brew.
+[collection]
+recursive = true
+exclude = ["README.md"]
+
+# ----------------------------------------------------------------- units
+# The key is the unit as the files write it; `plain` is how a table shows it.
+
+[unit."degC"]
+plain = "°C"
+
+# ------------------------------------------------------------ quantities
+# Each quantity: its unit, which `samplekit set` and `samplekit new` write for
+# you; its precision (the value's, then the uncertainty's); and its symbol,
+# which labels a figure's axis.
+
+[property.og]
+symbol = "OG"
+precision = [".3f", ".4f"]
+
+[property.fg]
+symbol = "FG"
+precision = [".3f", ".4f"]
+
+[property.volume]
+unit = "L"
+symbol = "V"
+precision = ".1f"
+
+[property.grain_mass]
+unit = "kg"
+symbol = "m_grain"
+precision = ".2f"
+
+[property.mash_temperature]
+unit = "degC"
+symbol = "T_mash"
+precision = ".0f"
+
+# --------------------------------------------------------------- queries
+# samplekit brews/ --query ipas
+
+[query.ipas]
+filter = 'style == ipa'
+
+[query.strong]
+filter = 'og > 1.060'
+
+[query.medals]
+filter = 'tags has medal'
+
+[query.ana]
+filter = 'brewer == ana'
+
+[query.still_fermenting]
+filter = 'fg is missing'
+
+# -------------------------------------------------------------- profiles
+# samplekit brews/ --profile overview
+
+[profile.overview]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "style", label = "Style" },
+  { field = "yeast", label = "Yeast" },
+  { field = "og", label = "Original gravity" },
+  { field = "fg", label = "Final gravity" },
+  { field = "volume", label = "Volume" },
+]
+sort = ["style", "-og"]
+
+[profile.mash]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "grain_mass", label = "Grain" },
+  { field = "mash_temperature", label = "Mash" },
+  { field = "brewed", label = "Brewed" },
+]
+sort = ["brewed"]
+
+# --------------------------------------------------------------- exports
+# samplekit export overview brews/ --write
+
+[export.overview]
+profile = "overview"
+format = "csv"
+output = "out/overview.csv"
+
+[export.mash]
+profile = "mash"
+format = "json"
+output = "out/mash.json"

@@ -1,0 +1,5 @@
+# What builds the documentation site: sphinx-build -E -W --keep-going docs target/site
+# (tools/check.sh). The versions it was last built with.
+sphinx==9.1.0
+myst-parser==5.1.0
+furo==2025.12.19

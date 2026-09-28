@@ -1,0 +1,11 @@
+# ------------------------------------------------------------------ the model
+#
+# The Python that says what a sample has and how what is derived is derived.
+# Nothing runs it until you allow it: the first computation shows you the
+# files and asks, and remembers your answer for this version of the model.
+
+[model]
+path = "model/main.py"
+class = "Model"
+
+

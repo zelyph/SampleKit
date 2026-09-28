@@ -1,0 +1,186 @@
+# .samplekitrc — what this project is, and how its values are shown.
+#
+# Every section is optional: a bare directory of sample files is already a
+# collection. This file only says what the files need not repeat.
+#
+# The example is a home brewer's notebook, as in SampleKit's demo: each sample
+# is one brew. Order here is the order you will edit it in: what the project
+# *is* first, then what you ask it for, and last the presentation of each
+# quantity — the long part, which you will come back to rarely.
+
+schema_version = 1
+
+
+# ------------------------------------------------------------------ the model
+#
+# The Python that says what a brew has and how what is derived is derived. It
+# runs in the Python of the nearest .venv/ above the samples.
+
+[model]
+path = "model/brew.py"
+class = "Brew"
+
+
+# ------------------------------------------------------------- the collection
+#
+# Which files here are samples.
+#
+#   recursive = true   also read sub-directories (the default is this directory
+#                      only). A sub-directory with its own .samplekitrc is a
+#                      project of its own, and is left to it.
+#   include  = ["*.md"]         which files to read, if not every *.md
+#   exclude  = ["draft-*"]      which to leave alone — they stay on disk and
+#                               SampleKit never reads or writes them
+
+[collection]
+recursive = true
+
+
+# ----------------------------------------------------------------- selections
+#
+# A named filter: samplekit samples/ --query strong
+# The expression is the one `-f` takes.
+
+[query.strong]
+filter = "abv > 5"
+
+
+# --------------------------------------------------------------------- shapes
+#
+# A named set of columns: samplekit samples/ --profile overview
+# `sort` orders the rows; a leading `-` reverses that key.
+
+[profile.overview]
+columns = [
+  { field = "style", label = "Style" },
+  { field = "abv", label = "Alcohol" },
+  { field = "attenuation", label = "Attenuation" },
+  { field = "efficiency", label = "Efficiency" },
+]
+sort = ["style", "-abv"]
+
+
+# ---------------------------------------------------------------------- a sample
+#
+# One sample at a time, whole — its values, then its tables unfolded:
+# samplekit view samples/EXAMPLE.md, and --note adds its note. Nothing to
+# declare.
+
+
+# -------------------------------------------------------------------- exports
+#
+# A dataset you regenerate: samplekit export overview samples/
+# It writes the file named here; `-o -` sends it to stdout instead.
+
+[export.overview]
+profile = "overview"
+format = "csv"
+output = "out/overview.csv"
+
+
+# =============================================================================
+# Presentation — the part a file need not repeat.
+#
+# Below: how each unit is spelled in each style, then what each quantity is
+# called and to how many digits it is written. A file may still override any of
+# it, quantity by quantity; it rarely needs to.
+# =============================================================================
+
+
+# ---------------------------------------------------------------------- units
+#
+# The key is the spelling your files use. `plain` is what a terminal shows,
+# `math` what --style math writes, for LaTeX.
+
+[unit."L"]
+math = '\mathrm{L}'
+
+[unit."kg"]
+math = '\mathrm{kg}'
+
+[unit."%"]
+math = '\%'
+
+[unit."degC"]
+plain = "°C"
+math = '^\circ\mathrm{C}'
+
+[unit."d"]
+math = '\mathrm{d}'
+
+[unit."pt/d"]
+plain = "pt/day"
+math = '\mathrm{pt\,d^{-1}}'
+
+
+# ----------------------------------------------------------------- quantities
+#
+# unit         written for you by `samplekit set` and `samplekit new`
+# symbol       what a table header calls it
+# symbol_math  the same, for --style math
+# precision    how it is written: ".3f" for three decimals, ".3e" for
+#              exponential, ".3g" for three significant digits. A pair,
+#              [".3f", ".4f"], writes the value and its uncertainty differently.
+
+[property.og]
+symbol = "OG"
+precision = [".3f", ".4f"]
+
+[property.fg]
+symbol = "FG"
+precision = [".3f", ".4f"]
+
+[property.volume]
+unit = "L"
+symbol = "V"
+precision = [".1f", ".1f"]
+
+[property.grain_mass]
+unit = "kg"
+symbol = "m_grain"
+symbol_math = 'm_\mathrm{grain}'
+precision = ".2f"
+
+[property.abv]
+symbol = "ABV"
+precision = [".1f", ".1f"]
+
+[property.attenuation]
+symbol = "AA"
+precision = ".0f"
+
+[property.efficiency]
+symbol = "eff"
+symbol_math = '\eta'
+precision = ".0f"
+
+[property.alcohol]
+symbol = "m_alc"
+symbol_math = 'm_\mathrm{alc}'
+precision = [".0f", ".0f"]
+
+[property.drop]
+symbol = "r"
+precision = [".1f", ".1f"]
+
+# A table's column is named table.column.
+
+[property."fermentation.day"]
+symbol = "t"
+precision = ".0f"
+
+[property."fermentation.gravity"]
+symbol = "SG"
+precision = ".3f"
+
+[property."fermentation.temperature"]
+symbol = "T"
+precision = ".1f"
+
+[property."fermentation.apparent"]
+symbol = "AA_t"
+precision = ".0f"
+
+[property."fermentation.rate"]
+symbol = "r_t"
+precision = ".1f"

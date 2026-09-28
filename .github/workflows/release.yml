@@ -1,0 +1,198 @@
+# A release: the command line for each system, the Python package's wheels,
+# a GitHub release holding them, and the package on PyPI and crates.io.
+#
+# Inert until it is turned on: it runs only once the repository variable
+# PUBLISH_RELEASE is set to `true`. Before the first release:
+#
+# - PyPI: on the project `samplekit`, add a trusted publisher — owner
+#   `zelyph`, repository `SampleKit`, workflow `release.yml`, environment
+#   `pypi` — and create that environment in the repository's settings.
+# - crates.io: a token with the publish-new and publish-update scopes, as the
+#   repository secret CARGO_REGISTRY_TOKEN, and the environment `crates-io`.
+#
+# A tag v1.0.0 or v1.0.0-rc.1 starts it; the tag must be the version of
+# Cargo.toml. A release candidate is marked a pre-release on GitHub, and PyPI
+# reads `1.0.0rc1` as one. The documentation of the version is docs.yml's.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    if: github.server_url == 'https://github.com' && vars.PUBLISH_RELEASE == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag is Cargo.toml's version
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cargo_version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          if [[ "$version" != "$cargo_version" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME, but Cargo.toml says $cargo_version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$version" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # What a commit must pass, once more on the commit released.
+  check:
+    needs: version
+    uses: ./.github/workflows/tests.yml
+
+  # The command line: one file, archived with the licences it carries.
+  binaries:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+          - target: aarch64-apple-darwin
+            os: macos-15
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }} --bin samplekit
+      - name: Archive
+        shell: bash
+        run: |
+          dir="target/${{ matrix.target }}/release"
+          name="samplekit-${{ matrix.target }}"
+          cp LICENSE THIRD-PARTY-LICENSES.md "$dir/"
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            (cd "$dir" && 7z a "$GITHUB_WORKSPACE/$name.zip" samplekit.exe LICENSE THIRD-PARTY-LICENSES.md)
+          else
+            tar -czf "$name.tar.gz" -C "$dir" samplekit LICENSE THIRD-PARTY-LICENSES.md
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: samplekit-${{ matrix.target }}.*
+
+  # The Python package: a wheel per system and Python, and the sdist.
+  wheels:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64
+            manylinux: "2_28"
+          - os: ubuntu-22.04-arm
+            target: aarch64
+            manylinux: "2_28"
+          - os: macos-15-intel
+            target: x86_64
+          - os: macos-15
+            target: aarch64
+          - os: windows-latest
+            target: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.11
+            3.12
+            3.13
+            3.14
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux || 'auto' }}
+          args: --release --locked --out dist --find-interpreter
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.target }}
+          path: dist
+
+  sdist:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+  github-release:
+    needs: [version, binaries, wheels, sdist]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: This version's part of the changelog
+        run: |
+          python3 - "${{ needs.version.outputs.version }}" > notes.md <<'EOF'
+          import re, sys
+          text = open("CHANGELOG.md").read()
+          found = re.search(r"^## \[" + re.escape(sys.argv[1]) + r"\].*?\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
+          print(found.group(1).strip() if found else "")
+          EOF
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: SampleKit ${{ needs.version.outputs.version }}
+          body_path: notes.md
+          prerelease: ${{ needs.version.outputs.prerelease }}
+          files: artifacts/*
+
+  pypi:
+    needs: github-release
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "{wheels-*,sdist}"
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  crates-io:
+    needs: github-release
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

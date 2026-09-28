@@ -1,0 +1,9 @@
+# .samplekitrc — what this project is, and how its values are shown.
+#
+# Every section is optional: a directory of sample files is already a
+# collection. This file only says what the files need not repeat. The
+# TUI edits it section by section (P), keeping these comments.
+
+schema_version = 1
+
+

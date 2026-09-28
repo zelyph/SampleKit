@@ -1,0 +1,10 @@
+{#- The version selector: filled by _static/versions.js from the versions.json
+    beside the version folders (tools/build-docs-version.sh). A site built
+    alone, with no versions.json above it, keeps it hidden. -#}
+<div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">{{ _("Version") }}</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    {{ _("An older version.") }} <a href="{{ pathto(master_doc) }}">{{ _("The latest") }}</a>
+  </p>
+</div>

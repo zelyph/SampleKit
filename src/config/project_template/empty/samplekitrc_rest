@@ -1,0 +1,28 @@
+# ------------------------------------------------------------- the collection
+#
+# Which files here are samples: every *.md under samples/, sub-directories
+# included. A sub-directory with a .samplekitrc of its own is a project of its
+# own, and is left to it.
+#
+#   include = ["*.md"]         which files to read, if not every *.md
+#   exclude = ["draft-*"]      which to leave alone, on disk and unread
+#   files   = ["images"]       where a sample's own files are, named after it
+
+[collection]
+recursive = true
+
+
+# ----------------------------------------------------- what else it may say
+#
+# Each of these is a section of its own; `samplekit init --example` in an
+# empty directory writes an example project with one of each, to copy from.
+#
+#   [query.NAME]      filter = "abv > 6"              a selection, by name
+#   [profile.NAME]    columns = [...], sort, group    a table: columns, order, groups
+#   [export.NAME]     profile = "...", format = "csv", output = "out/x.csv"
+#   [figure.NAME]     x = "...", y = "...", kind = "scatter"
+#   [unit."degC"]    plain = "°C", math = '^\circ\mathrm{C}'
+#   [property.og]     symbol = "OG", precision = ".3f"
+#   [render]          style, precision, table, identify
+#   [matplotlib]      what every figure's matplotlib is given
+#   [tui.colors]      a colour for each role the TUI shows

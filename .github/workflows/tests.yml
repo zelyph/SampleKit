@@ -1,0 +1,65 @@
+# What a commit must pass, on every push and pull request of the public
+# repository, and as the first job of a release (release.yml calls it).
+# tools/check.sh runs the same on a machine; the documentation's own checks
+# are docs.yml's, at a release.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    if: github.server_url == 'https://github.com'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    # A test that waits for a person never ends on its own: stop it.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Format and lints
+        if: runner.os == 'Linux'
+        run: |
+          cargo fmt --check
+          cargo clippy --locked --all-targets --features python -- -D warnings
+      # The Python tests, and the Rust tests that run a model, use the
+      # extension installed in .venv, as tools/check.sh does.
+      - name: The extension, in .venv
+        shell: bash
+        run: |
+          python -m venv .venv
+          if [[ "$RUNNER_OS" == "Windows" ]]; then bin=.venv/Scripts; else bin=.venv/bin; fi
+          "$bin/python" -m pip install maturin pytest mypy
+          "$bin/maturin" develop --release
+      - name: cargo test
+        run: cargo test --locked --no-fail-fast
+      - name: pytest
+        # Run even when cargo test failed, so that one run shows everything.
+        if: success() || failure()
+        shell: bash
+        # Figures drawn to files, never in a window a test would wait on.
+        env:
+          MPLBACKEND: Agg
+          # SampleKit writes UTF-8; Windows' Python otherwise reads cp1252.
+          PYTHONUTF8: "1"
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then bin=.venv/Scripts; else bin=.venv/bin; fi
+          "$bin/python" -m pytest -q
+      - name: The third-party licences are current
+        if: runner.os == 'Linux'
+        run: tools/generate-third-party-licenses.py --check

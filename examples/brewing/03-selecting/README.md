@@ -1,0 +1,133 @@
+# Step 3 · Selecting
+
+In this step you have twelve brews, a season's worth, and you choose among
+them: a filter keeps some, columns show what you ask, a sort orders them. Then
+you give the filters and tables you use often a name in `.samplekitrc`, and
+write a table to a file.
+
+The smoked porter is still fermenting: it has no final gravity yet.
+
+Run every command from this folder, `03-selecting`.
+
+## Filters, columns, sorting
+
+```console
+$ samplekit brews -f 'style == ipa'
+$ samplekit brews -f 'style == stout || og > 1.060' -c name,style,og
+$ samplekit brews -f 'fg is missing'
+$ samplekit brews -c style,og -s -og
+$ samplekit brews -c name,og,fg --group style
+$ samplekit brews -c og,fg --summary
+```
+
+- `-f` keeps the brews that match. `==`, `!=`, `<`, `>`, `has` for tags and
+  lists, `contains` for text, `is missing` and `is present`, combined with
+  `&&` (and), `||` (or), `!` (not) and parentheses. Several `-f` must all
+  hold.
+- `-c` names the columns. A column can also say its digits and its title:
+  `-c 'style,og:.4f=Original gravity'`.
+- `-s` sorts; a `-` before a field sorts from high to low.
+- `--group` prints one table per value of a field.
+- `--summary` counts, averages and spreads each column instead of listing the
+  brews.
+
+The summary counts `11/12` final gravities, because one brew has none:
+
+```text
+     n       mean (1/u²)       s     sem   median     min     max
+─────────────────────────────────────────────────────────────────
+og   12/12         1.055   0.010   0.003    1.053   1.042   1.078
+fg   11/12         1.011   0.004   0.001    1.011   1.003   1.017
+```
+
+Every value has an uncertainty here, so the mean is weighted by 1/u²: a
+precise value counts more, and the header says so.
+
+## A mistake is said, never guessed
+
+A filter that cannot be read, or that names something no brew has, stops with
+an error that says where and suggests the nearest name. It never returns an
+empty table that looks like an answer:
+
+```text
+$ samplekit brews -f 'tags has medals'
+error: no sample carries the tag 'medals'
+  did you mean: 'medal'?
+  run 'samplekit list tags' to see the tags in use
+```
+
+A comparison on a field a brew does not have is never true, even under `!`:
+`og > 1.060` and `!(og > 1.060)` both leave out a brew without `og`. Ask for
+those with `og is missing`.
+
+## Queries, profiles and exports
+
+What you ask often gets a name in `.samplekitrc`:
+
+```toml
+[query.ipas]                 # which brews
+filter = 'style == ipa'
+
+[profile.overview]           # which columns, in which order
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "style", label = "Style" },
+  { field = "yeast", label = "Yeast" },
+  { field = "og", label = "Original gravity" },
+  { field = "fg", label = "Final gravity" },
+  { field = "volume", label = "Volume" },
+]
+sort = ["style", "-og"]
+
+[export.overview]            # a profile written to a file
+profile = "overview"
+format = "csv"
+output = "out/overview.csv"
+```
+
+```console
+$ samplekit brews --query ipas
+$ samplekit brews --profile overview
+$ samplekit brews --profile overview --query strong
+$ samplekit brews --profile mash --csv
+$ samplekit export overview brews             # a preview
+$ samplekit export overview brews --write     # writes out/overview.csv
+$ samplekit list queries brews
+```
+
+The profile gives its columns their titles, and the unit moves to the header:
+
+```text
+Brew               Style      Yeast          Original gravity    Final gravity   Volume [L]
+───────────────────────────────────────────────────────────────────────────────────────────
+double-ipa         ipa        US-05            1.078 ± 0.0010   1.014 ± 0.0010         19.0
+citra-ipa          ipa        US-05            1.064 ± 0.0010   1.011 ± 0.0010         20.5
+session-ipa        ipa        US-05            1.042 ± 0.0010   1.009 ± 0.0010         20.0
+hazy-pale          pale_ale   Verdant          1.054 ± 0.0010   1.012 ± 0.0010         20.0
+…
+```
+
+In a CSV file, a property is two columns, its value and its uncertainty, with
+the unit in the header. Numbers are written with the digits you saw on
+screen. An option given beside `--profile` replaces that part of it: `-c` the
+columns, `-s` the order.
+
+`export` previews first — how many rows, where the file goes, and which values
+are not current — and writes with `--write`. The export is recorded in the
+project's history, so that `samplekit explain out/overview.csv` can later say
+where it came from.
+
+## Why
+
+A table in a paper should be made by a command you can run again, not by
+copying cells. A named query, profile or export is that command, kept beside
+the data it reads.
+
+- To understand: [values, units and uncertainty](https://zelyph.github.io/SampleKit/latest/explanations/values-and-uncertainty.html),
+  for the digits and the weighted mean.
+- To look up: [the filter language, the options of every command](https://zelyph.github.io/SampleKit/latest/reference/cli.html),
+  [queries, profiles and exports in `.samplekitrc`](https://zelyph.github.io/SampleKit/latest/reference/configuration.html).
+- To do: [an export for a paper](https://zelyph.github.io/SampleKit/latest/how-to/export-for-a-paper.html).
+
+Next: [Step 4 · Computing](../04-computing/README.md), where some values are
+computed from others.

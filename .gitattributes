@@ -1,0 +1,3 @@
+# Text files keep LF on every system: the tests compare committed files byte
+# for byte, and the demo is embedded as it is written.
+* text=auto eol=lf

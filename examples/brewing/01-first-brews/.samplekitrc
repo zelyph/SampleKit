@@ -1,0 +1,10 @@
+# A home brewer's notebook: each file in brews/ is one brew. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The brews are in brews/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no brew.
+[collection]
+recursive = true
+exclude = ["README.md"]

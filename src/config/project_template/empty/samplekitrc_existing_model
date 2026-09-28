@@ -1,0 +1,12 @@
+# ------------------------------------------------------------------ the model
+#
+# Your model: the Python that says what a sample has and how what is derived
+# is derived, named where it is. Nothing runs it until you allow it: the first
+# computation shows you the files and asks, and remembers your answer for this
+# version of the model. Where the file defines more than one subclass of
+# sk.Sample, name the one to use:  class = "Model"
+
+[model]
+path = {path}
+
+

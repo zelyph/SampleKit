@@ -1,0 +1,7 @@
+# What running the demo's steps leaves beside them, never part of the demo
+# : build.rs does not embed it, and tools/check-docs.py does not
+# compare it.
+.samplekit/
+__pycache__/
+.venv
+out/

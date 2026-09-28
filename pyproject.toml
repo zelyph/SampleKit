@@ -1,32 +1,38 @@
+[build-system]
+requires = ["maturin>=1.14,<2.0"]
+build-backend = "maturin"
+
 [project]
 name = "samplekit"
-version = "0.2.0"
-description = "Lightweight Python framework for documenting scientific samples with bidirectional Markdown I/O"
-authors = [{ name = "zelyph", email = "github@zelyph.fr" }]
+description = "Sample data in plain Markdown: computed, current, tracked"
+requires-python = ">=3.11"
+dynamic = ["version"]
+dependencies = ["matplotlib>=3.8"]
+license = "MIT"
+license-files = ["LICENSE", "THIRD-PARTY-LICENSES.md"]
 readme = "README.md"
-license = { text = "MIT" }
-dependencies = ["pyyaml>=5.0", "pandas>=1.0"]
-requires-python = ">=3.10"
-keywords = ["science", "measurement", "markdown", "yaml", "sample", "property"]
+authors = [{ name = "zelyph" }]
+keywords = ["samples", "notebook", "markdown", "uncertainty"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Rust",
     "Topic :: Scientific/Engineering",
 ]
 
-[build-system]
-requires = ["setuptools>=68.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["samplekit*"]
-
 [project.urls]
-Homepage = "https://github.com/zelyph/SampleKit-dev"
-Repository = "https://github.com/zelyph/SampleKit-dev"
+Homepage = "https://github.com/zelyph/SampleKit"
+Documentation = "https://zelyph.github.io/SampleKit/latest/"
+Changelog = "https://github.com/zelyph/SampleKit/blob/main/CHANGELOG.md"
+Issues = "https://github.com/zelyph/SampleKit/issues"
+
+[tool.maturin]
+python-source = "python"
+module-name = "samplekit._native"
+features = ["python"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]

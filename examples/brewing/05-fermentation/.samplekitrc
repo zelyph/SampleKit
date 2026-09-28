@@ -1,0 +1,215 @@
+# A home brewer's notebook: each file in brews/ is one brew. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The brews are in brews/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no brew.
+[collection]
+recursive = true
+exclude = ["README.md"]
+
+# ---------------------------------------------------------------- model
+# What derives from what: alcohol, attenuation and efficiency, computed from
+# the gravities read with a hydrometer.
+
+[model]
+path = "model/brew.py"
+class = "Brew"
+
+# ----------------------------------------------------------------- units
+# The key is the unit as the files write it; `plain` is how a table shows it.
+
+[unit."degC"]
+plain = "°C"
+
+[unit."%"]
+math = '\%'
+figure = '$\%$'
+
+[unit."d"]
+figure = 'd'
+
+[unit."pt/d"]
+plain = "pt/day"
+math = '\mathrm{pt\,d^{-1}}'
+figure = 'points per day'
+
+# ------------------------------------------------------------ quantities
+# Each quantity: its unit, which `samplekit set` and `samplekit new` write for
+# you; its precision (the value's, then the uncertainty's); and its symbol,
+# which labels a figure's axis.
+
+[property.og]
+symbol = "OG"
+precision = [".3f", ".4f"]
+
+[property.fg]
+symbol = "FG"
+precision = [".3f", ".4f"]
+
+[property.volume]
+unit = "L"
+symbol = "V"
+precision = ".1f"
+
+[property.grain_mass]
+unit = "kg"
+symbol = "m_grain"
+precision = ".2f"
+
+[property.mash_temperature]
+unit = "degC"
+symbol = "T_mash"
+precision = ".0f"
+
+[property.abv]
+symbol = "ABV"
+precision = ".1f"
+
+[property.attenuation]
+symbol = "AA"
+precision = ".0f"
+
+[property.efficiency]
+symbol = "eff"
+precision = ".0f"
+
+[property."fermentation.day"]
+symbol = "t"
+
+[property."fermentation.gravity"]
+symbol = "SG"
+precision = ".3f"
+
+[property."fermentation.temperature"]
+symbol = "T"
+precision = ".1f"
+
+[property."fermentation.rate"]
+symbol = "r_t"
+precision = ".1f"
+
+[property."fermentation.apparent"]
+symbol = "AA_t"
+precision = ".0f"
+
+[property.drop]
+symbol = "r"
+precision = [".1f", ".1f"]
+
+[property.score]
+symbol = "S"
+precision = [".1f", ".1f"]
+
+# --------------------------------------------------------------- queries
+# samplekit brews/ --query ipas
+
+[query.ipas]
+filter = 'style == ipa'
+
+[query.strong]
+filter = 'og > 1.060'
+
+[query.medals]
+filter = 'tags has medal'
+
+[query.ana]
+filter = 'brewer == ana'
+
+[query.still_fermenting]
+filter = 'fg is missing'
+
+[query.never_computed]
+filter = 'abv is missing'
+
+[query.dry]
+filter = 'attenuation > 80'
+
+[query.best]
+filter = 'score > 42'
+
+[query.slow]
+filter = 'drop < 5'
+
+# -------------------------------------------------------------- profiles
+# samplekit brews/ --profile overview
+
+[profile.overview]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "style", label = "Style" },
+  { field = "yeast", label = "Yeast" },
+  { field = "og", label = "Original gravity" },
+  { field = "fg", label = "Final gravity" },
+  { field = "volume", label = "Volume" },
+]
+sort = ["style", "-og"]
+
+[profile.mash]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "grain_mass", label = "Grain" },
+  { field = "mash_temperature", label = "Mash" },
+  { field = "brewed", label = "Brewed" },
+]
+sort = ["brewed"]
+
+[profile.alcohol]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "style", label = "Style" },
+  { field = "og", label = "Original gravity" },
+  { field = "fg", label = "Final gravity" },
+  { field = "abv", label = "Alcohol" },
+  { field = "attenuation", label = "Attenuation" },
+]
+sort = ["-abv"]
+
+[profile.readings]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "og", label = "Original gravity" },
+  { field = "og.stats.count", label = "n" },
+  { field = "og.stats.sample_stdev", label = "s", precision = ".4f" },
+]
+
+[profile.fermentation]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "yeast", label = "Yeast" },
+  { field = "og", label = "Original gravity" },
+  { field = "fermentation.gravity[1]", label = "Day 1", header = "SG_1" },
+  { field = "fermentation.gravity[3]", label = "Day 3", header = "SG_3" },
+  { field = "fermentation.apparent[3]", label = "Attenuation, day 3", header = "AA_3" },
+  { field = "drop", label = "Drop" },
+]
+sort = ["-drop"]
+
+[profile.tasting]
+columns = [
+  { field = "name", label = "Brew" },
+  { field = "style", label = "Style" },
+  { field = "score", label = "Score" },
+  { field = "tasting.score[Lea]", label = "Lea", header = "Lea" },
+  { field = "abv", label = "Alcohol" },
+]
+sort = ["-score"]
+
+# --------------------------------------------------------------- exports
+# samplekit export overview brews/ --write
+
+[export.overview]
+profile = "overview"
+format = "csv"
+output = "out/overview.csv"
+
+[export.mash]
+profile = "mash"
+format = "json"
+output = "out/mash.json"
+
+[export.tasting]
+profile = "tasting"
+format = "csv"
+output = "out/tasting.csv"

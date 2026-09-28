@@ -1,0 +1,11 @@
+# ------------------------------------------------------------------ the model
+#
+# None yet: every value here is typed in the samples. A model is the Python
+# that says what a sample has and derives values from others; to add one,
+# write it and name it here:
+#
+#   [model]
+#   path = "model/main.py"
+#   class = "Model"
+
+

@@ -1,20 +1,25 @@
+# Rust
+/target
+
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.env
-.venv/
+.pytest_cache/
+*.py[cod]
+*.so
 *.egg-info/
 dist/
 build/
-.pytest_cache/
+.venv/
+venv/
+.python-version
 
-# IDE
-.vscode/
+# Coverage and logs
+.coverage
+coverage.xml
+htmlcov/
+*.log
+
+# Editors and OS
 .idea/
-*.swp
-*.swo
-
-# OS
-Thumbs.db
+.vscode/
 .DS_Store
