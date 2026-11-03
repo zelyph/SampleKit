@@ -3,34 +3,47 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Exit codes" href="exit-codes.html"><link rel="prev" title="Configuration" href="configuration.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Written files" href="written-files.html"><link rel="prev" title="Filters" href="filters.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Sample files - SampleKit 1.0.0-rc.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+        <title>Sample files - SampleKit 1.0.0-rc.2</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f2f2f2;
-  --color-code-foreground: #1e1e1e;
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
       }
     }
@@ -162,7 +175,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -183,7 +196,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -198,43 +211,47 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../guides/index.html">Guides</a><input aria-label="Toggle navigation of Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../guides/install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/upgrade.html">Upgrade from an older SampleKit</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/samples-and-files.html">Samples and their files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/readings-and-statistics.html">Readings and statistics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/models-and-formulas.html">Models and formulas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/current-and-outdated.html">Current and outdated values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/history.html">History</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/projects.html">Projects</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/move-existing-data.html">Move existing data in</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/first-model.html">A first model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/export-for-a-paper.html">An export for a paper</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/continuous-integration.html">Check a project in continuous integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/share-a-project.html">Share a project</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="cli.html">The command line</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python.html">The Python API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tui.html">The TUI's keys</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html">Filters</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fingerprints.html">Fingerprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
@@ -274,36 +291,41 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="sample-files">
+          <section class="tex2jax_ignore mathjax_ignore" id="sample-files">
 <h1>Sample files<a class="headerlink" href="#sample-files" title="Link to this heading">¶</a></h1>
 <p>The format of a sample file, key by key.</p>
 <section id="the-file">
 <h2>The file<a class="headerlink" href="#the-file" title="Link to this heading">¶</a></h2>
 <p>A sample is one Markdown file, <code class="docutils literal notranslate"><span class="pre">.md</span></code>, <code class="docutils literal notranslate"><span class="pre">.MD</span></code> or <code class="docutils literal notranslate"><span class="pre">.markdown</span></code>:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>---
-schema_version: 1
-name: citra-ipa
-tags: [dry_hopped]
-style: ipa
-hops: [Citra, Mosaic]
-brewed: 2026-01-24
-properties:
-  og: {v: 1.064, u: 0.001}
-  volume: {v: 20.5, unit: L}
-tables:
-  fermentation:
-    index: day
-    columns:
-      day: {unit: d}
-      gravity: {}
-    rows:
-      - {day: 1, gravity: 1.041}
-      - {day: 2, gravity: 1.029}
----
-# Citra IPA
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">samples/steel-01.md</span><a class="headerlink" href="#id1" title="Link to this code">¶</a></div>
+<div class="highlight-sample notranslate"><div class="highlight"><pre><span></span><span class="p">---</span>
+<span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">steel-01</span>
+<span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">reference</span><span class="p p-Indicator">]</span>
+<span class="nt">material</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">steel</span>
+<span class="nt">operators</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ana</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tom</span><span class="p p-Indicator">]</span>
+<span class="nt">tested</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-03-04</span>
+<span class="nt">properties</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">12.513</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">0.01</span><span class="p p-Indicator">,</span><span class="nt"> unit</span><span class="p">:</span><span class="w"> </span><span class="nv">mm</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">2.0</span><span class="p p-Indicator">,</span><span class="nt"> unit</span><span class="p">:</span><span class="w"> </span><span class="nv">mm</span><span class="p p-Indicator">}</span>
+<span class="nt">tables</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">curve</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">strain</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">strain</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="s">"%"</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="nv">kN</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">rows</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">strain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">        </span><span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">strain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+<span class="w">        </span><span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9.516</span>
+<span class="p">---</span>
+<span class="gh"># steel-01</span>
 
 The note: free Markdown.
 </pre></div>
+</div>
 </div>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
@@ -317,7 +339,7 @@ The note: free Markdown.
 <td><p>The YAML between the first two <code class="docutils literal notranslate"><span class="pre">---</span></code> lines: the sample's data</p></td>
 </tr>
 <tr class="row-odd"><td><p>note</p></td>
-<td><p>Everything after the second <code class="docutils literal notranslate"><span class="pre">---</span></code>. Never read as data, never changed</p></td>
+<td><p>Everything after the second <code class="docutils literal notranslate"><span class="pre">---</span></code>. Never read as data; changed only when replaced, <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">note=…</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -335,7 +357,7 @@ The note: free Markdown.
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">schema_version</span></code></p></td>
-<td><p>The format's version: <code class="docutils literal notranslate"><span class="pre">1</span></code>. A file without it is read as version 1</p></td>
+<td><p>The format's version: <code class="docutils literal notranslate"><span class="pre">1</span></code>. A Markdown file without it is no sample: it is left out, as a README is, and <code class="docutils literal notranslate"><span class="pre">validate</span></code> says how many were</p></td>
 <td><p>Always</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
@@ -351,7 +373,7 @@ The note: free Markdown.
 <td><p>When set</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">properties</span></code></p></td>
-<td><p>The quantities, by name</p></td>
+<td><p>The properties, by name</p></td>
 <td><p>When not empty</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tables</span></code></p></td>
@@ -368,16 +390,19 @@ unknown key inside a property, a table or a column is refused.</p>
 </section>
 <section id="names">
 <h2>Names<a class="headerlink" href="#names" title="Link to this heading">¶</a></h2>
-<p>A name — of a property, a table, a column, an attribute or a tag — starts with
-a letter or <code class="docutils literal notranslate"><span class="pre">_</span></code> and continues with letters, digits and <code class="docutils literal notranslate"><span class="pre">_</span></code>. Letters of every
-alphabet count: <code class="docutils literal notranslate"><span class="pre">température</span></code>, <code class="docutils literal notranslate"><span class="pre">bière</span></code>. A hyphen, a dot or a space is not
+<p>A name, of a property, a table, a column, an attribute or a tag, starts with
+a letter (or <code class="docutils literal notranslate"><span class="pre">_</span></code>, for a tag alone) and continues with letters, digits and <code class="docutils literal notranslate"><span class="pre">_</span></code>. Letters of every
+alphabet count: <code class="docutils literal notranslate"><span class="pre">température</span></code>, <code class="docutils literal notranslate"><span class="pre">épaisseur</span></code>. A hyphen, a dot or a space is not
 allowed, nor a digit first.</p>
 <ul class="simple">
 <li><p>A property, a table and an attribute share one set of names: one name is
 one of them.</p></li>
-<li><p>A property, table or attribute name cannot begin with <code class="docutils literal notranslate"><span class="pre">_</span></code>.</p></li>
+<li><p>A property, table, column or attribute name cannot begin with <code class="docutils literal notranslate"><span class="pre">_</span></code>: a
+leading <code class="docutils literal notranslate"><span class="pre">_</span></code> is kept for Python's private state.</p></li>
 <li><p>Reserved, and refused as a property, table or attribute name: <code class="docutils literal notranslate"><span class="pre">name</span></code>,
-<code class="docutils literal notranslate"><span class="pre">tags</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code>, <code class="docutils literal notranslate"><span class="pre">readings</span></code>, <code class="docutils literal notranslate"><span class="pre">project</span></code>, <code class="docutils literal notranslate"><span class="pre">state</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">tags</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code>, <code class="docutils literal notranslate"><span class="pre">readings</span></code>, <code class="docutils literal notranslate"><span class="pre">project</span></code>, <code class="docutils literal notranslate"><span class="pre">state</span></code>, <code class="docutils literal notranslate"><span class="pre">note</span></code> (the
+text below the frontmatter: <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">note=</span></code> and Python's <code class="docutils literal notranslate"><span class="pre">sample.note</span></code> write
+it).</p></li>
 </ul>
 </section>
 <section id="scalars">
@@ -419,28 +444,83 @@ one of them.</p></li>
 text or booleans; integers and decimals mix, as do dates and date-times). It
 has no unit, uncertainty or readings. A mapping is not an attribute: a
 top-level key holding one is refused.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ipa</span>
-<span class="nt">brewed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-01-24</span>
-<span class="nt">hops</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Citra</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Mosaic</span><span class="p p-Indicator">]</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">material</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">steel</span>
+<span class="nt">tested</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-03-04</span>
+<span class="nt">operators</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ana</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tom</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
+</section>
+<section id="links">
+<h2>Links<a class="headerlink" href="#links" title="Link to this heading">¶</a></h2>
+<p>A text attribute may lead elsewhere: to another sample, to a file, or to a
+web page. Two forms are read, the one Obsidian writes and the one Markdown
+does:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">reference</span><span class="p">:</span><span class="w"> </span><span class="s">"[[aluminium-01]]"</span>
+<span class="nt">twin</span><span class="p">:</span><span class="w"> </span><span class="s">"[[copper-01|the</span><span class="nv"> </span><span class="s">copper]]"</span>
+<span class="nt">cut_from</span><span class="p">:</span><span class="w"> </span><span class="s">"[plate</span><span class="nv"> </span><span class="s">P3](../plates/P3.md)"</span>
+<span class="nt">certificate</span><span class="p">:</span><span class="w"> </span><span class="s">"[certificate](../certificates/S355-0425.pdf)"</span>
+<span class="nt">datasheet</span><span class="p">:</span><span class="w"> </span><span class="s">"[datasheet](https://example.org/s355)"</span>
+<span class="nt">standard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.org/iso-6892</span>
+<span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"[[aluminium-01]]"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"[[copper-01]]"</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">[[NAME]]</span></code></strong> names a sample of the project: the one whose file is
+<code class="docutils literal notranslate"><span class="pre">NAME.md</span></code>, or, where no file is named so, the one whose <code class="docutils literal notranslate"><span class="pre">name</span></code> is NAME.
+After <code class="docutils literal notranslate"><span class="pre">|</span></code> comes what Obsidian shows in its place, and a heading after <code class="docutils literal notranslate"><span class="pre">#</span></code>
+is ignored.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">[text](path)</span></code></strong> names a file by its path from the sample's own folder,
+as Markdown reads a link: a sample, of this project or another, or any
+file, a certificate, a raw data file, a folder. A space in the path is
+written <code class="docutils literal notranslate"><span class="pre">%20</span></code>, or the path between <code class="docutils literal notranslate"><span class="pre">&lt;</span></code> and <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">https://…</span></code></strong>, alone or as <code class="docutils literal notranslate"><span class="pre">[text](https://…)</span></code>, names a web page.</p></li>
+<li><p><strong>A list of links</strong> names several: the samples a specimen was made from.</p></li>
+</ul>
+<p><strong>The quotes are needed</strong>: unquoted, a link reads as a list, and the file is
+refused at that line, with the quoted form to write. <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">reference=[[aluminium-01]]</span></code> writes them, and <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">parents=[[aluminium-01]],[[copper-01]]</span></code> writes a list of two; after <code class="docutils literal notranslate"><span class="pre">[[</span></code>, Tab
+offers the project's samples.</p>
+<p>A link is text a filter and an export read as written. <strong>It is shown as
+Markdown shows one</strong>, in the terminal interface and in a table drawn in a
+terminal: its text alone, <code class="docutils literal notranslate"><span class="pre">the</span> <span class="pre">copper</span></code> for <code class="docutils literal notranslate"><span class="pre">[[copper-01|the</span> <span class="pre">copper]]</span></code>,
+underlined in the <code class="docutils literal notranslate"><span class="pre">link</span></code> colour; so does <code class="docutils literal notranslate"><span class="pre">view</span></code> in a terminal. A web page is
+marked <code class="docutils literal notranslate"><span class="pre">↗</span></code>; a link leading nowhere is marked <code class="docutils literal notranslate"><span class="pre">✗</span></code>, in the error colour. Typed, a link is the text as
+written; a table written to a file or a pipe keeps it so.</p>
+<p>In the terminal interface, <code class="docutils literal notranslate"><span class="pre">Enter</span></code> or <code class="docutils literal notranslate"><span class="pre">o</span></code> on a link opens where it leads: a
+sample on its screen, even one the filter leaves out or of another project,
+a file in its application, a page in the browser; on a list, <code class="docutils literal notranslate"><span class="pre">Enter</span></code> opens
+its items, and <code class="docutils literal notranslate"><span class="pre">Enter</span></code> or <code class="docutils literal notranslate"><span class="pre">o</span></code> follows the one under the cursor. A sample's
+screen ends with the samples linking to it, <em>linked from</em>, each followed by
+<code class="docutils literal notranslate"><span class="pre">Enter</span></code>. On the command line, the filter <code class="docutils literal notranslate"><span class="pre">links</span> <span class="pre">to</span> <span class="pre">NAME</span></code> selects the samples
+whose links write NAME (<a class="reference internal" href="filters.html"><span class="std std-doc">filters</span></a>). From
+Python, <code class="docutils literal notranslate"><span class="pre">sample.linked(&quot;reference&quot;)</span></code> reads the sample, a file that is no
+sample gives its path, a <code class="docutils literal notranslate"><span class="pre">pathlib.Path</span></code>, and a list of links gives a list.
+<code class="docutils literal notranslate"><span class="pre">validate</span></code> reports a link that leads to no sample or to several, and a path
+where nothing is; a web page is not checked.</p>
+<p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FILE</span> <span class="pre">rename</span> <span class="pre">NEW</span></code> renames a sample and keeps its links: the file,
+its own files under <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> (a folder named after it too), its
+<code class="docutils literal notranslate"><span class="pre">name</span></code> where it was the file's name, and every link of the project leading to
+it, <code class="docutils literal notranslate"><span class="pre">[[old]]</span></code> and <code class="docutils literal notranslate"><span class="pre">[text](old.md)</span></code> alike.</p>
+<p>Obsidian makes only <code class="docutils literal notranslate"><span class="pre">[[…]]</span></code> clickable among a note's properties: there, a
+Markdown link stays text. <a class="reference internal" href="../guides/link-samples.html"><span class="std std-doc">Link samples</span></a> walks
+through them on the tensile example.</p>
 </section>
 <section id="tags">
 <h2>Tags<a class="headerlink" href="#tags" title="Link to this heading">¶</a></h2>
 <p>A list of names, in the order written.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">medal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">dry_hopped</span><span class="p p-Indicator">]</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">reference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">to_redo</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
 </section>
 <section id="properties">
 <h2>Properties<a class="headerlink" href="#properties" title="Link to this heading">¶</a></h2>
-<p>A property is a quantity. With a value alone it is a bare scalar; otherwise
+<p>A property holds a value, and its uncertainty, unit and readings where it has
+them. With a value alone it is a bare scalar; otherwise
 a mapping:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">properties</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
-<span class="w">  </span><span class="nt">og</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">1.064</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">0.001</span><span class="p p-Indicator">}</span>
-<span class="w">  </span><span class="nt">volume</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">20.5</span><span class="p p-Indicator">,</span><span class="nt"> unit</span><span class="p">:</span><span class="w"> </span><span class="nv">L</span><span class="p p-Indicator">}</span>
-<span class="w">  </span><span class="nt">fg</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">n/a</span>
+<span class="w">  </span><span class="nt">specimens_cut</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">  </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">12.513</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">0.010</span><span class="p p-Indicator">,</span><span class="nt"> unit</span><span class="p">:</span><span class="w"> </span><span class="nv">mm</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">2.0</span><span class="p p-Indicator">,</span><span class="nt"> unit</span><span class="p">:</span><span class="w"> </span><span class="nv">mm</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">gauge_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">n/a</span>
 </pre></div>
 </div>
 <div class="table-wrapper colwidths-auto docutils container">
@@ -455,7 +535,7 @@ a mapping:</p>
 <td><p>The value: a scalar</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">readings</span></code></p></td>
-<td><p>Repeated measurements of the quantity: a list of numbers</p></td>
+<td><p>Repeated measurements of the property: a list of numbers</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
 <td><p>The standard uncertainty, in the value's unit: a number</p></td>
@@ -482,9 +562,9 @@ a mapping:</p>
 <li><p>Keys are written in this order.</p></li>
 <li><p>A file holds no precision: <code class="docutils literal notranslate"><span class="pre">precision</span></code> is refused, and declared in
 <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>'s <code class="docutils literal notranslate"><span class="pre">[property.*]</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">v</span></code> and <code class="docutils literal notranslate"><span class="pre">u</span></code> are the only spellings. <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">uncertainty</span></code> — in a
-property, a cell, <code class="docutils literal notranslate"><span class="pre">statistics</span></code> or <code class="docutils literal notranslate"><span class="pre">computed</span></code> — are refused, the file not
-read: <code class="docutils literal notranslate"><span class="pre">'value'</span> <span class="pre">is</span> <span class="pre">written</span> <span class="pre">'v'</span> <span class="pre">since</span> <span class="pre">schema</span> <span class="pre">1:</span> <span class="pre">rename</span> <span class="pre">it</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">v</span></code> and <code class="docutils literal notranslate"><span class="pre">u</span></code> are the only spellings. <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">uncertainty</span></code>, in a
+property, a cell, <code class="docutils literal notranslate"><span class="pre">statistics</span></code> or <code class="docutils literal notranslate"><span class="pre">computed</span></code>, are refused, the file not
+read: <code class="docutils literal notranslate"><span class="pre">validate</span></code> names the key, and the keys expected in its place.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">n/a</span></code> has no uncertainty.</p></li>
 <li><p>Readings with neither <code class="docutils literal notranslate"><span class="pre">v</span></code> nor a statistic have no value.</p></li>
 <li><p>A <code class="docutils literal notranslate"><span class="pre">v</span></code> beside readings is the value. With a <code class="docutils literal notranslate"><span class="pre">computed</span></code> record naming
@@ -492,13 +572,14 @@ read: <code class="docutils literal notranslate"><span class="pre">'value'</span
 </ul>
 <section id="statistics">
 <h3><code class="docutils literal notranslate"><span class="pre">statistics</span></code><a class="headerlink" href="#statistics" title="Link to this heading">¶</a></h3>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">og</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0636666666666668</span>
-<span class="w">  </span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.063</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.065</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.063</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6.666666666666673e-4</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">thickness</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.0023333333333335</span>
+<span class="w">  </span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.995</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2.004</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2.008</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.003844187531556873</span>
+<span class="w">  </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm</span>
 <span class="w">  </span><span class="nt">statistics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">mean</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">standard_error</span><span class="p p-Indicator">}</span>
-<span class="w">  </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="nv">688071fe6cd4</span><span class="p p-Indicator">}</span>
-<span class="w">  </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8cfd5936bf29</span>
+<span class="w">  </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="nv">3160016f6c6e</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1d88e7bb89d3</span>
 </pre></div>
 </div>
 <div class="table-wrapper colwidths-auto docutils container">
@@ -531,28 +612,28 @@ fingerprint at the time.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{og:</span> <span class="pre">72fc715330d5,</span> <span class="pre">fg:</span> <span class="pre">78d6a47f1b63}</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{thickness:</span> <span class="pre">2b1079ab857e,</span> <span class="pre">width:</span> <span class="pre">25920047999d}</span></code></p></td>
 <td><p>Computed, value and uncertainty, from these inputs</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{}</span></code></p></td>
 <td><p>Computed from no input</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{v:</span> <span class="pre">{og:</span> <span class="pre">72fc…}}</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{v:</span> <span class="pre">{width:</span> <span class="pre">2592…}}</span></code></p></td>
 <td><p>Only the value computed, from these inputs</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{u:</span> <span class="pre">{}}</span></code></p></td>
 <td><p>Only the uncertainty computed, from no input</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{src:</span> <span class="pre">1bfc…,</span> <span class="pre">u:</span> <span class="pre">{p:</span> <span class="pre">9d6a…}}</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{width:</span> <span class="pre">2592…,</span> <span class="pre">u:</span> <span class="pre">{area:</span> <span class="pre">17b7…}}</span></code></p></td>
 <td><p>Inputs every formula read, then one channel's own</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{readings:</span> <span class="pre">688071fe6cd4}</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{readings:</span> <span class="pre">3160016f6c6e}</span></code></p></td>
 <td><p>The statistic of the property's own readings</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{style:</span> <span class="pre">ipa}</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{material:</span> <span class="pre">steel}</span></code></p></td>
 <td><p>An attribute input, recorded as its value</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{og:</span> <span class="pre">{edited:</span> <span class="pre">72fc715330d5}}</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{area:</span> <span class="pre">{edited:</span> <span class="pre">17b7fdf04105}}</span></code></p></td>
 <td><p>An input whose value was written by hand over its formula</p></td>
 </tr>
 </tbody>
@@ -567,13 +648,13 @@ fingerprint at the time.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">og</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">width</span></code></p></td>
 <td><p>A property, or an attribute</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fermentation.gravity</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">curve.force</span></code></p></td>
 <td><p>A whole column of a table</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">row.gravity</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">row.force</span></code></p></td>
 <td><p>In a table cell: the same row's cell of that column</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">readings</span></code></p></td>
@@ -588,26 +669,29 @@ fingerprint at the time.</p>
 <p>Twelve hexadecimal digits, a digest of the property's value, uncertainty and
 readings, not its unit. Written on a property that is computed or that
 something is computed from. <code class="docutils literal notranslate"><span class="pre">fingerprint:</span> <span class="pre">{edited:</span> <span class="pre">…}</span></code> marks a value written
-by hand over its formula.</p>
+by hand over its formula, and <code class="docutils literal notranslate"><span class="pre">fingerprint:</span> <span class="pre">{failed:</span> <span class="pre">ValueError}</span></code> a value whose
+formula raised that error when last run, the number kept the last it gave.
+<a class="reference internal" href="fingerprints.html"><span class="std std-doc">Fingerprints</span></a> gives the recipe, to compute one again by
+hand.</p>
 </section>
 </section>
 <section id="tables">
 <h2>Tables<a class="headerlink" href="#tables" title="Link to this heading">¶</a></h2>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">tables</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">fermentation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">"Gravity</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">temperature,</span><span class="nv"> </span><span class="s">day</span><span class="nv"> </span><span class="s">by</span><span class="nv"> </span><span class="s">day"</span>
-<span class="w">    </span><span class="nt">index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">day</span>
+<span class="w">  </span><span class="nt">curve</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">"The</span><span class="nv"> </span><span class="s">force</span><span class="nv"> </span><span class="s">read</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">each</span><span class="nv"> </span><span class="s">strain"</span>
+<span class="w">    </span><span class="nt">index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">strain</span>
 <span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">day</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="nv">d</span><span class="p p-Indicator">}</span>
-<span class="w">      </span><span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">statistics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">mean</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">standard_error</span><span class="p p-Indicator">}}</span>
-<span class="w">      </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="nv">degC</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">strain</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="s">"%"</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="nv">kN</span><span class="p p-Indicator">,</span><span class="nt"> statistics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">mean</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">standard_error</span><span class="p p-Indicator">}}</span>
+<span class="w">      </span><span class="nt">grips</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
 <span class="w">    </span><span class="nt">rows</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">day</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">        </span><span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.041</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.042</span><span class="p p-Indicator">]}</span>
-<span class="w">        </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.7</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">day</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">        </span><span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.029</span>
-<span class="w">        </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.7</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">strain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">        </span><span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span>
+<span class="w">        </span><span class="nt">grips</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wedge</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">strain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+<span class="w">        </span><span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">9.51</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">9.52</span><span class="p p-Indicator">]}</span>
+<span class="w">        </span><span class="nt">grips</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wedge</span>
 </pre></div>
 </div>
 <div class="table-wrapper colwidths-auto docutils container">
@@ -622,7 +706,7 @@ by hand over its formula.</p>
 <td><p>A title, as text</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">index</span></code></p></td>
-<td><p>The column that tells rows apart, or a list of columns: <code class="docutils literal notranslate"><span class="pre">index:</span> <span class="pre">[day,</span> <span class="pre">temperature]</span></code></p></td>
+<td><p>The column that tells rows apart, or a list of columns: <code class="docutils literal notranslate"><span class="pre">index:</span> <span class="pre">[strain,</span> <span class="pre">temperature]</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">columns</span></code></p></td>
 <td><p>Each column, in order: <code class="docutils literal notranslate"><span class="pre">unit</span></code>, <code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">statistics</span></code>, all optional; <code class="docutils literal notranslate"><span class="pre">{}</span></code> for none</p></td>
@@ -634,8 +718,12 @@ by hand over its formula.</p>
 </table>
 </div>
 <ul class="simple">
-<li><p>A cell has the form of a property, without <code class="docutils literal notranslate"><span class="pre">statistics</span></code>: its column
-declares that once.</p></li>
+<li><p>A cell has the form of a property: a number, with optionally an
+uncertainty, readings and a unit; or a text, a date, <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>, as an
+attribute is: <code class="docutils literal notranslate"><span class="pre">grips:</span> <span class="pre">wedge</span></code>. One table may hold both, a column of text
+beside a column of forces. Its column declares <code class="docutils literal notranslate"><span class="pre">statistics</span></code> once
+for every cell; a cell may write its own, which it keeps, and which wins
+over its column's.</p></li>
 <li><p>Rows are written with their cells in column order, one line per cell.</p></li>
 <li><p>A table whose index repeats a value is set aside, reported by <code class="docutils literal notranslate"><span class="pre">validate</span></code>,
 and the sample is not written until it is repaired.</p></li>
@@ -652,52 +740,61 @@ and the sample is not written until it is repaired.</p></li>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">og</span></code></p></td>
-<td><p>The value of the property <code class="docutils literal notranslate"><span class="pre">og</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">width</span></code></p></td>
+<td><p>The value of the property <code class="docutils literal notranslate"><span class="pre">width</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">og.v</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">width.v</span></code></p></td>
 <td><p>The same</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">og.u</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">width.u</span></code></p></td>
 <td><p>Its uncertainty</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">og.unit</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">width.unit</span></code></p></td>
 <td><p>Its unit</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">og.stats.mean</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">width.stats.mean</span></code></p></td>
 <td><p>A statistic of its readings: <code class="docutils literal notranslate"><span class="pre">count</span></code>, <code class="docutils literal notranslate"><span class="pre">mean</span></code>, <code class="docutils literal notranslate"><span class="pre">median</span></code>, <code class="docutils literal notranslate"><span class="pre">minimum</span></code>, <code class="docutils literal notranslate"><span class="pre">maximum</span></code>, <code class="docutils literal notranslate"><span class="pre">first_quartile</span></code>, <code class="docutils literal notranslate"><span class="pre">third_quartile</span></code>, <code class="docutils literal notranslate"><span class="pre">sample_stdev</span></code>, <code class="docutils literal notranslate"><span class="pre">population_stdev</span></code>, <code class="docutils literal notranslate"><span class="pre">standard_error</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">style</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">material</span></code></p></td>
 <td><p>An attribute</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hops[#0]</span></code></p></td>
-<td><p>The first item of a list attribute; <code class="docutils literal notranslate"><span class="pre">#-1</span></code> the last</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operators[#0]</span></code></p></td>
+<td><p>The first item of a list attribute, <code class="docutils literal notranslate"><span class="pre">#1</span></code> the second</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fermentation.gravity[3]</span></code></p></td>
-<td><p>The cell of column <code class="docutils literal notranslate"><span class="pre">gravity</span></code> at index <code class="docutils literal notranslate"><span class="pre">3</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">curve.force[0.2]</span></code></p></td>
+<td><p>The cell of column <code class="docutils literal notranslate"><span class="pre">force</span></code> at index <code class="docutils literal notranslate"><span class="pre">0.2</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fermentation.gravity[3].u</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">curve.force[0.2].u</span></code></p></td>
 <td><p>That cell's uncertainty</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">process.duration[&quot;stage</span> <span class="pre">2&quot;]</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">heat.duration[&quot;stage</span> <span class="pre">2&quot;]</span></code></p></td>
 <td><p>A cell at an index holding a space</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mash.gravity[2,</span> <span class="pre">65]</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">creep.strain[100,</span> <span class="pre">600]</span></code></p></td>
 <td><p>A cell of a table indexed by two columns</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fermentation.gravity[#3]</span></code></p></td>
-<td><p>The fourth row, by position</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">curve.force</span> <span class="pre">has</span> <span class="pre">9.516</span></code></p></td>
+<td><p>In a filter: a cell of the column, in any row, holds it</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">tags</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">curve</span> <span class="pre">has</span> <span class="pre">9.516</span></code></p></td>
+<td><p>In a filter: any cell of the table holds it</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">curve</span> <span class="pre">where</span> <span class="pre">(strain</span> <span class="pre">&gt;</span> <span class="pre">1</span> <span class="pre">&amp;&amp;</span> <span class="pre">stress</span> <span class="pre">&lt;</span> <span class="pre">300)</span></code></p></td>
+<td><p>In a filter: one row meets the condition, each name its cell in that row</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">curve.force[#3]</span></code></p></td>
+<td><p>The fourth row, by position; <code class="docutils literal notranslate"><span class="pre">#-1</span></code> the last</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">tags</span></code></p></td>
 <td><p>The sample's name and tags</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code></p></td>
 <td><p>Where the sample is stored</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">project</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">project</span></code></p></td>
 <td><p>The name of the folder of the sample's project</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">state</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">state</span></code></p></td>
 <td><p>How the sample stands: <code class="docutils literal notranslate"><span class="pre">failed</span></code>, <code class="docutils literal notranslate"><span class="pre">outdated</span></code>, <code class="docutils literal notranslate"><span class="pre">edited</span></code>, <code class="docutils literal notranslate"><span class="pre">waiting</span></code>, <code class="docutils literal notranslate"><span class="pre">never_computed</span></code>, <code class="docutils literal notranslate"><span class="pre">not_current</span></code>, <code class="docutils literal notranslate"><span class="pre">defective</span></code>, <code class="docutils literal notranslate"><span class="pre">current</span></code></p></td>
 </tr>
 </tbody>
@@ -706,14 +803,20 @@ and the sample is not written until it is repaired.</p></li>
 </section>
 <section id="writing">
 <h2>Writing<a class="headerlink" href="#writing" title="Link to this heading">¶</a></h2>
-<p>SampleKit writes a file only when asked: a command with <code class="docutils literal notranslate"><span class="pre">--write</span></code>, a change
-confirmed in the TUI, <code class="docutils literal notranslate"><span class="pre">save()</span></code> in Python.</p>
+<p>SampleKit writes a file only when asked: a command's change answered <code class="docutils literal notranslate"><span class="pre">y</span></code>, or
+written with <code class="docutils literal notranslate"><span class="pre">--write</span></code>; a change confirmed in the TUI; <code class="docutils literal notranslate"><span class="pre">save()</span></code> in Python.</p>
 <ul class="simple">
 <li><p>The frontmatter is written in one fixed form: the key order above, numbers
-in one spelling, short mappings on one line, a mapping longer than 100
-characters on several.</p></li>
+in one spelling, a property carrying a <code class="docutils literal notranslate"><span class="pre">computed</span></code> record on several lines,
+one key a line, and any other property, as every cell of a table, on one
+line however long.</p></li>
 <li><p>Comments in the frontmatter are not kept.</p></li>
-<li><p>The note is kept byte for byte.</p></li>
+<li><p>What SampleKit reads otherwise than it is written is changed by the next
+write: a key whose value is <code class="docutils literal notranslate"><span class="pre">null</span></code> is removed, a YAML tag (<code class="docutils literal notranslate"><span class="pre">!!python/…</span></code>)
+dropped, an uncertainty beside <code class="docutils literal notranslate"><span class="pre">n/a</span></code> dropped, and a date no calendar has
+(<code class="docutils literal notranslate"><span class="pre">2026-02-30</span></code>) kept as the text it was read as. <code class="docutils literal notranslate"><span class="pre">validate</span></code> notes each, and
+a command's preview says which this write changes.</p></li>
+<li><p>The note is kept byte for byte, unless you replace it, <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">note=…</span></code>.</p></li>
 <li><p>A file is written to a temporary file, then put in place. A file changed
 since it was read, or read-only, is not written. A write that changes
 nothing is not made.</p></li>
@@ -727,23 +830,23 @@ nothing is not made.</p></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="exit-codes.html">
+          <a class="next-page" href="written-files.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Exit codes</div>
+                <div class="title">Written files</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="configuration.html">
+          <a class="prev-page" href="filters.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Configuration</div>
+                <div class="title">Filters</div>
                 
               </div>
             </a>
@@ -783,6 +886,7 @@ nothing is not made.</p></li>
 <li><a class="reference internal" href="#names">Names</a></li>
 <li><a class="reference internal" href="#scalars">Scalars</a></li>
 <li><a class="reference internal" href="#attributes">Attributes</a></li>
+<li><a class="reference internal" href="#links">Links</a></li>
 <li><a class="reference internal" href="#tags">Tags</a></li>
 <li><a class="reference internal" href="#properties">Properties</a><ul>
 <li><a class="reference internal" href="#statistics"><code class="docutils literal notranslate"><span class="pre">statistics</span></code></a></li>
@@ -804,7 +908,7 @@ nothing is not made.</p></li>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

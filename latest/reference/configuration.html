@@ -3,34 +3,47 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Sample files" href="sample-files.html"><link rel="prev" title="The TUI&#39;s keys" href="tui.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Filters" href="filters.html"><link rel="prev" title="The TUI&#39;s keys" href="tui.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Configuration - SampleKit 1.0.0-rc.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+        <title>Configuration - SampleKit 1.0.0-rc.2</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f2f2f2;
-  --color-code-foreground: #1e1e1e;
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
       }
     }
@@ -162,7 +175,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -183,7 +196,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -198,43 +211,47 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../guides/index.html">Guides</a><input aria-label="Toggle navigation of Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../guides/install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/upgrade.html">Upgrade from an older SampleKit</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/samples-and-files.html">Samples and their files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/readings-and-statistics.html">Readings and statistics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/models-and-formulas.html">Models and formulas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/current-and-outdated.html">Current and outdated values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/history.html">History</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/projects.html">Projects</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/move-existing-data.html">Move existing data in</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/first-model.html">A first model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/export-for-a-paper.html">An export for a paper</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/continuous-integration.html">Check a project in continuous integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/share-a-project.html">Share a project</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="cli.html">The command line</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python.html">The Python API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tui.html">The TUI's keys</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html">Filters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fingerprints.html">Fingerprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
@@ -274,7 +291,7 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="configuration">
+          <section class="tex2jax_ignore mathjax_ignore" id="configuration">
 <h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> is a project's configuration, in TOML. It is optional: a
 folder of samples without one is read with the defaults below.</p>
@@ -313,15 +330,15 @@ error is set aside and said; the samples it covers are read without it.</p></li>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">schema_version</span></code></p></td>
 <td><p>integer</p></td>
-<td><p>required</p></td>
-<td><p>The version of the configuration's format: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>required, in every file</p></td>
+<td><p>The version of the configuration's format: <code class="docutils literal notranslate"><span class="pre">1</span></code>. A file importing another writes its own</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">schema_version</span> <span class="pre">=</span> <span class="pre">1</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">import</span></code></p></td>
-<td><p>folder</p></td>
+<td><p>folder or file, or a list</p></td>
 <td><p>none</p></td>
-<td><p>The folder whose <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> this one takes, merged beneath it: relative to this file, absolute, or starting with <code class="docutils literal notranslate"><span class="pre">~</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">=</span> <span class="pre">&quot;..&quot;</span></code></p></td>
+<td><p>What this file takes, merged beneath it: a folder's <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, or a file of any name; relative to this file, absolute, or starting with <code class="docutils literal notranslate"><span class="pre">~</span></code>. A list is merged in order, a later one over an earlier one</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">=</span> <span class="pre">[&quot;..&quot;,</span> <span class="pre">&quot;figures.samplekitrc&quot;]</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -335,18 +352,24 @@ each file's own. <code class="docutils literal notranslate"><span class="pre">[m
 <li><p><strong>The merge rule</strong>: key by key, this file winning. A table (a section, a
 <code class="docutils literal notranslate"><span class="pre">[property.NAME]</span></code>, a profile) merges key by key, recursively; any other value
 (a number, a text, a list) replaces the imported one whole.</p></li>
+<li><p><strong>A list</strong>: each is merged in order, a later one over an earlier one, and
+this file over all. A file listed twice is merged once.</p></li>
 <li><p><strong>Chains</strong>: the imported file may import another. A file importing itself,
 directly or through others, is an error naming the files.</p></li>
-<li><p><strong>Errors</strong>: a folder without a <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, a path naming a file, or a
-folder that does not exist is an error naming the importing file. The
-imported file must be valid on its own.</p></li>
-<li><p><strong>Paths</strong>: a relative <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code>, <code class="docutils literal notranslate"><span class="pre">[export.*]</span> <span class="pre">output</span></code>, <code class="docutils literal notranslate"><span class="pre">[query.*]</span> <span class="pre">directory</span></code> or <code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">python</span></code> reads from the file declaring it.
+<li><p><strong>Errors</strong>: a folder without a <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, or a path naming nothing, is
+an error naming the importing file. The imported file must be valid on its
+own, its <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> written.</p></li>
+<li><p><strong>Paths</strong>: a relative <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code>, <code class="docutils literal notranslate"><span class="pre">[export.*]</span> <span class="pre">output</span></code>, <code class="docutils literal notranslate"><span class="pre">[query.*]</span> <span class="pre">directory</span></code>, <code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">python</span></code>, or <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code> style file or font reads
+from the file declaring it.
 <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">include</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude</span></code> are patterns on the collection's own
-files and apply as written.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">{collection}</span></code></strong>, in <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> and <code class="docutils literal notranslate"><span class="pre">[export.*]</span> <span class="pre">output</span></code>, is the
-folder of the collection a sample follows, written from the file declaring
-it (<code class="docutils literal notranslate"><span class="pre">data/ana</span></code> from the root; <code class="docutils literal notranslate"><span class="pre">.</span></code> in the collection's own file):
-<code class="docutils literal notranslate"><span class="pre">files</span> <span class="pre">=</span> <span class="pre">[&quot;{collection}/photos/{name}*&quot;]</span></code>, <code class="docutils literal notranslate"><span class="pre">output</span> <span class="pre">=</span> <span class="pre">&quot;exports/{collection}/overview.csv&quot;</span></code>.</p></li>
+files and apply as written. Each project's own decide which files are its
+samples, whichever folder a command names: the patterns of a folder above
+never reach into a project inside it.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">{project}</span></code></strong>, in <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> and <code class="docutils literal notranslate"><span class="pre">[export.*]</span> <span class="pre">output</span></code>, is the
+folder of the project a sample follows, written from the file declaring
+it (<code class="docutils literal notranslate"><span class="pre">data/ana</span></code> from the root; <code class="docutils literal notranslate"><span class="pre">.</span></code> in the project's own file):
+<code class="docutils literal notranslate"><span class="pre">files</span> <span class="pre">=</span> <span class="pre">[&quot;{project}/photos/{name}*&quot;]</span></code>, <code class="docutils literal notranslate"><span class="pre">output</span> <span class="pre">=</span> <span class="pre">&quot;exports/{project}/overview.csv&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">{project}.tsv</span></code> in the project's
+own file writes <code class="docutils literal notranslate"><span class="pre">..tsv</span></code>, which <code class="docutils literal notranslate"><span class="pre">validate</span></code> notes.</p></li>
 <li><p><strong>Where each comes from</strong>: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">list</span> <span class="pre">queries</span></code> (profiles, exports,
 figures) marks each name <code class="docutils literal notranslate"><span class="pre">local</span></code>, with the imported file, or <code class="docutils literal notranslate"><span class="pre">local</span> <span class="pre">over</span></code>
 it; <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code> names the files imported; <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">validate</span></code> notes a
@@ -370,21 +393,21 @@ declaration identical to the imported one.</p></li>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
 <td><p>path</p></td>
-<td><p>required</p></td>
-<td><p>The model's file</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">=</span> <span class="pre">&quot;model/brew.py&quot;</span></code></p></td>
+<td><p>none</p></td>
+<td><p>The model's file; without it, <code class="docutils literal notranslate"><span class="pre">[model]</span></code> names only the Python that draws the figures</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">=</span> <span class="pre">&quot;model/specimen.py&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">class</span></code></p></td>
 <td><p>text</p></td>
 <td><p>the file's one class</p></td>
 <td><p>The class to use, when the file defines several</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">=</span> <span class="pre">&quot;Brew&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">=</span> <span class="pre">&quot;Specimen&quot;</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">python</span></code></p></td>
 <td><p>path</p></td>
-<td><p>the nearest <code class="docutils literal notranslate"><span class="pre">.venv/</span></code> above the project</p></td>
-<td><p>The Python interpreter that runs the model</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">=</span> <span class="pre">&quot;../env/bin/python&quot;</span></code></p></td>
+<td><p>required to compute or draw</p></td>
+<td><p>The Python that runs the model and draws the figures: an environment folder, whose <code class="docutils literal notranslate"><span class="pre">bin/python</span></code> (<code class="docutils literal notranslate"><span class="pre">Scripts\python.exe</span></code> on Windows) runs, or an interpreter. Declared without <code class="docutils literal notranslate"><span class="pre">path</span></code> too, for the figures of a project without a model. Nothing is searched for</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">=</span> <span class="pre">&quot;.venv&quot;</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -419,13 +442,13 @@ declaration identical to the imported one.</p></li>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">table</span></code></p></td>
 <td><p>text</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;plain&quot;</span></code></p></td>
-<td><p>How a terminal table is drawn: <code class="docutils literal notranslate"><span class="pre">plain</span></code> or <code class="docutils literal notranslate"><span class="pre">boxed</span></code>. <code class="docutils literal notranslate"><span class="pre">--table-style</span></code> overrides it</p></td>
+<td><p>How a terminal table is drawn: <code class="docutils literal notranslate"><span class="pre">plain</span></code> or <code class="docutils literal notranslate"><span class="pre">boxed</span></code>, any other name an error. <code class="docutils literal notranslate"><span class="pre">--table-style</span></code> overrides it</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">table</span> <span class="pre">=</span> <span class="pre">&quot;boxed&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">identify</span></code></p></td>
 <td><p>text</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;name&quot;</span></code></p></td>
-<td><p>The first column of a terminal table: <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code> or <code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
+<td><p>The column added first to a table shown in a terminal, unless the columns name it: <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code> or <code class="docutils literal notranslate"><span class="pre">none</span></code>; a table piped or written to a file has only the columns asked for</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">identify</span> <span class="pre">=</span> <span class="pre">&quot;filename&quot;</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">figure_style</span></code></p></td>
@@ -437,9 +460,11 @@ declaration identical to the imported one.</p></li>
 </tbody>
 </table>
 </div>
-<p>A <strong>precision</strong> is a format specifier, <code class="docutils literal notranslate"><span class="pre">&quot;.3f&quot;</span></code> (three decimals) or <code class="docutils literal notranslate"><span class="pre">&quot;.2e&quot;</span></code>
-(scientific notation), or a list of two, <code class="docutils literal notranslate"><span class="pre">[&quot;.3f&quot;,</span> <span class="pre">&quot;.4f&quot;]</span></code>: the value's, then
-the uncertainty's.</p>
+<p>A <strong>precision</strong> is a format specifier, written as in Python: <code class="docutils literal notranslate"><span class="pre">&quot;.3f&quot;</span></code> (three
+decimals), <code class="docutils literal notranslate"><span class="pre">&quot;.2e&quot;</span></code> (scientific notation), <code class="docutils literal notranslate"><span class="pre">&quot;.4g&quot;</span></code> (four significant digits),
+or a list of two, <code class="docutils literal notranslate"><span class="pre">[&quot;.3f&quot;,</span> <span class="pre">&quot;.4f&quot;]</span></code>: the value's, then the uncertainty's.
+<code class="docutils literal notranslate"><span class="pre">&quot;.17g&quot;</span></code> writes every digit a value carries, and an uncertainty's too:
+<code class="docutils literal notranslate"><span class="pre">0.8787328442349305</span></code> is written as it is.</p>
 </section>
 <section id="collection">
 <h2><code class="docutils literal notranslate"><span class="pre">[collection]</span></code><a class="headerlink" href="#collection" title="Link to this heading">¶</a></h2>
@@ -457,9 +482,9 @@ the uncertainty's.</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recursive</span></code></p></td>
 <td><p>boolean</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
-<td><p>Read the subfolders of the folder named too</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">recursive</span> <span class="pre">=</span> <span class="pre">true</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code> in a project</p></td>
+<td><p>Read the folders below the folder named too. A folder outside any project is read alone</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">recursive</span> <span class="pre">=</span> <span class="pre">false</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">include</span></code></p></td>
 <td><p>list of patterns</p></td>
@@ -476,7 +501,7 @@ the uncertainty's.</p>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">files</span></code></p></td>
 <td><p>list of folders or patterns</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[]</span></code></p></td>
-<td><p>Where a sample's own files are: a folder, searched for files whose name starts with the sample's; or a pattern holding <code class="docutils literal notranslate"><span class="pre">{name}</span></code>, the sample's file name without <code class="docutils literal notranslate"><span class="pre">.md</span></code>; <code class="docutils literal notranslate"><span class="pre">{collection}</span></code> is its collection's folder (see <code class="docutils literal notranslate"><span class="pre">import</span></code>)</p></td>
+<td><p>Where a sample's own files are: a folder, searched for files whose name starts with the sample's; or a pattern holding <code class="docutils literal notranslate"><span class="pre">{name}</span></code>, the sample's file name without <code class="docutils literal notranslate"><span class="pre">.md</span></code>; <code class="docutils literal notranslate"><span class="pre">{project}</span></code> is its project's folder (see <code class="docutils literal notranslate"><span class="pre">import</span></code>)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">files</span> <span class="pre">=</span> <span class="pre">[&quot;photos&quot;,</span> <span class="pre">&quot;raw/{name}/**&quot;]</span></code></p></td>
 </tr>
 </tbody>
@@ -518,13 +543,18 @@ as written.</p>
 </tbody>
 </table>
 </div>
-<p>The units the sections name are the project's vocabulary: <code class="docutils literal notranslate"><span class="pre">validate</span></code> reports
-a spelling outside it.</p>
+<p>A spelling no section names is shown as written: the sections are display
+forms, never a closed list of units. What <code class="docutils literal notranslate"><span class="pre">validate</span></code> reports is a file whose
+unit contradicts the one <code class="docutils literal notranslate"><span class="pre">[property.*]</span></code> declares.</p>
 </section>
 <section id="style-name">
 <h2><code class="docutils literal notranslate"><span class="pre">[style.NAME]</span></code><a class="headerlink" href="#style-name" title="Link to this heading">¶</a></h2>
-<p>A style, named for <code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">style</span></code>, <code class="docutils literal notranslate"><span class="pre">--style</span></code>, a figure's <code class="docutils literal notranslate"><span class="pre">style</span></code> and the
-variants of <code class="docutils literal notranslate"><span class="pre">[unit.*]</span></code> and <code class="docutils literal notranslate"><span class="pre">[property.*]</span></code>. <code class="docutils literal notranslate"><span class="pre">plain</span></code> is built in.</p>
+<p>A style says how a kind of document writes: named by <code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">style</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--style</span></code>, an export's and a figure's <code class="docutils literal notranslate"><span class="pre">style</span></code>, and the variants of
+<code class="docutils literal notranslate"><span class="pre">[unit.*]</span></code> and <code class="docutils literal notranslate"><span class="pre">[property.*]</span></code>, <code class="docutils literal notranslate"><span class="pre">[unit.g]</span> <span class="pre">latex</span> <span class="pre">=</span> <span class="pre">'\gram'</span></code>. <code class="docutils literal notranslate"><span class="pre">plain</span></code> is built
+in; <code class="docutils literal notranslate"><span class="pre">latex</span></code>, <code class="docutils literal notranslate"><span class="pre">markdown</span></code> and <code class="docutils literal notranslate"><span class="pre">html</span></code> are given, and a <code class="docutils literal notranslate"><span class="pre">[style.latex]</span></code> changes
+the given one key by key. A style of units and symbols alone may be declared
+empty, <code class="docutils literal notranslate"><span class="pre">[style.figure]</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -536,20 +566,126 @@ variants of <code class="docutils literal notranslate"><span class="pre">[unit.*
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">separator</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">property</span></code></p></td>
+<td><p>text or <code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;{value}</span> <span class="pre">±</span> <span class="pre">{uncertainty}</span> <span class="pre">{unit}&quot;</span></code></p></td>
+<td><p>How a property is written, with <code class="docutils literal notranslate"><span class="pre">{value}</span></code>, <code class="docutils literal notranslate"><span class="pre">{uncertainty}</span></code>, <code class="docutils literal notranslate"><span class="pre">{unit}</span></code> and <code class="docutils literal notranslate"><span class="pre">{symbol}</span></code> in the style's forms; in a document, <code class="docutils literal notranslate"><span class="pre">false</span></code> writes its two columns. A unit placed inside it, <code class="docutils literal notranslate"><span class="pre">\SI{…}{{unit}}</span></code>, is written in each cell and not in the column's header</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">property</span> <span class="pre">=</span> <span class="pre">'\SI{{value}</span> <span class="pre">\pm</span> <span class="pre">{uncertainty}}{{unit}}'</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">uncertainty</span></code></p></td>
 <td><p>text</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&quot;±&quot;</span></code></p></td>
-<td><p>What stands between a value and its uncertainty</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">separator</span> <span class="pre">=</span> <span class="pre">'\pm'</span></code></p></td>
+<td><p>the number</p></td>
+<td><p>The piece <code class="docutils literal notranslate"><span class="pre">{uncertainty}</span></code> stands for in <code class="docutils literal notranslate"><span class="pre">property</span></code> and <code class="docutils literal notranslate"><span class="pre">unitless</span></code>, with <code class="docutils literal notranslate"><span class="pre">{uncertainty}</span></code> the number in it; written only where a value has an uncertainty</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">uncertainty</span> <span class="pre">=</span> <span class="pre">'</span> <span class="pre">\pm</span> <span class="pre">{uncertainty}'</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">unitless</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">property</span></code>, its unit empty</p></td>
+<td><p>How a property with no unit is written, instead of <code class="docutils literal notranslate"><span class="pre">property</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unitless</span> <span class="pre">=</span> <span class="pre">'\num{{value}{uncertainty}}'</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">missing</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> in a document</p></td>
+<td><p>An absent value</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">missing</span> <span class="pre">=</span> <span class="pre">&quot;--&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">escape</span></code></p></td>
+<td><p>text, table or <code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code>; the given styles' own</p></td>
+<td><p>What text is escaped for: <code class="docutils literal notranslate"><span class="pre">latex</span></code>, <code class="docutils literal notranslate"><span class="pre">html</span></code>, <code class="docutils literal notranslate"><span class="pre">markdown</span></code>, or a table of replacements, <code class="docutils literal notranslate"><span class="pre">escape</span> <span class="pre">=</span> <span class="pre">{</span> <span class="pre">&quot;&lt;&quot;</span> <span class="pre">=</span> <span class="pre">&quot;&amp;lt;&quot;</span> <span class="pre">}</span></code>. A template and the style's own lines and forms are written as they are</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">escape</span> <span class="pre">=</span> <span class="pre">&quot;latex&quot;</span></code></p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>A style may be declared empty, <code class="docutils literal notranslate"><span class="pre">[style.figure]</span></code>, to name its variants.</p>
+<p><strong>A style writing documents</strong> writes a table as a document holds it: <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">table.tex</span></code>, <code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">latex</span> <span class="pre">-o</span> <span class="pre">-</span></code> to the standard output, an export naming it
+as its <code class="docutils literal notranslate"><span class="pre">style</span></code>, and Python's <code class="docutils literal notranslate"><span class="pre">to_text(&quot;latex&quot;)</span></code>. The given three write
+documents; a style of your own does once it declares one of these keys:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">extension</span></code></p></td>
+<td><p>text</p></td>
+<td><p>the name; <code class="docutils literal notranslate"><span class="pre">tex</span></code>, <code class="docutils literal notranslate"><span class="pre">md</span></code>, <code class="docutils literal notranslate"><span class="pre">html</span></code></p></td>
+<td><p>The file's extension, which <code class="docutils literal notranslate"><span class="pre">-o</span></code> recognises for the given three</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">extension</span> <span class="pre">=</span> <span class="pre">&quot;txt&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">before</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code></p></td>
+<td><p>The lines before the table; <code class="docutils literal notranslate"><span class="pre">{align}</span></code> is the columns' alignment</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">before</span> <span class="pre">=</span> <span class="pre">'\begin{tabular}{{align}}'</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">after</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code></p></td>
+<td><p>The lines after it</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">after</span> <span class="pre">=</span> <span class="pre">'\end{tabular}'</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">header</span></code></p></td>
+<td><p>text or <code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;{cells}&quot;</span></code></p></td>
+<td><p>The header line, <code class="docutils literal notranslate"><span class="pre">{cells}</span></code> its cells joined; <code class="docutils literal notranslate"><span class="pre">false</span></code> writes none</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">header</span> <span class="pre">=</span> <span class="pre">'{cells}</span> <span class="pre">\\'</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">header_cells</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cells</span></code></p></td>
+<td><p>Between two cells of the header line</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">header_cells</span> <span class="pre">=</span> <span class="pre">&quot;&lt;/th&gt;&lt;th&gt;&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">rule</span></code></p></td>
+<td><p>text</p></td>
+<td><p>none</p></td>
+<td><p>A line of this cell under each column, after the header, as Markdown's <code class="docutils literal notranslate"><span class="pre">---</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">rule</span> <span class="pre">=</span> <span class="pre">&quot;---&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">row</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;{cells}&quot;</span></code></p></td>
+<td><p>Each row's line</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">row</span> <span class="pre">=</span> <span class="pre">'{cells}</span> <span class="pre">\\'</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cells</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;</span> <span class="pre">&quot;</span></code></p></td>
+<td><p>Between two cells</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cells</span> <span class="pre">=</span> <span class="pre">&quot;</span> <span class="pre">&amp;</span> <span class="pre">&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">between_groups</span></code></p></td>
+<td><p>text</p></td>
+<td><p>none; LaTeX's <code class="docutils literal notranslate"><span class="pre">\midrule</span></code>, Markdown's <code class="docutils literal notranslate"><span class="pre">|</span> <span class="pre">**{group}**</span> <span class="pre">|</span></code>, HTML's <code class="docutils literal notranslate"><span class="pre">&lt;/tbody&gt;&lt;tbody&gt;</span></code></p></td>
+<td><p>A line where a column the profile groups by changes value. Holding <code class="docutils literal notranslate"><span class="pre">{group}</span></code>, it heads each group, the first included: <code class="docutils literal notranslate"><span class="pre">{group}</span></code> is its values, <code class="docutils literal notranslate"><span class="pre">{columns}</span></code> the number of columns</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">between_groups</span> <span class="pre">=</span> <span class="pre">'\midrule</span> <span class="pre">\multicolumn{{columns}}{l}{{group}}</span> <span class="pre">\\'</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">header_unit</span></code></p></td>
+<td><p>text or <code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;</span> <span class="pre">({unit})&quot;</span></code></p></td>
+<td><p>Written after a header cell holding a unit; <code class="docutils literal notranslate"><span class="pre">false</span></code> writes none</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">header_unit</span> <span class="pre">=</span> <span class="pre">&quot;</span> <span class="pre">[{unit}]&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">align_text</span></code>, <code class="docutils literal notranslate"><span class="pre">align_number</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;l&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;r&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{align}</span></code>'s letter for a column of text, and of numbers</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">align_number</span> <span class="pre">=</span> <span class="pre">&quot;S&quot;</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
 <section id="property-name">
 <h2><code class="docutils literal notranslate"><span class="pre">[property.NAME]</span></code><a class="headerlink" href="#property-name" title="Link to this heading">¶</a></h2>
-<p>What a quantity's files need not repeat. The name is the property's; a
+<p>What a property's files need not repeat. The name is the property's; a
 table's column is <code class="docutils literal notranslate"><span class="pre">[property.&quot;table.column&quot;]</span></code>, quoted.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
@@ -566,25 +702,31 @@ table's column is <code class="docutils literal notranslate"><span class="pre">[
 <td><p>text</p></td>
 <td><p>none</p></td>
 <td><p>The unit, for files that give none</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">unit</span> <span class="pre">=</span> <span class="pre">&quot;L&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unit</span> <span class="pre">=</span> <span class="pre">&quot;mm&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code></p></td>
 <td><p>text</p></td>
 <td><p>none</p></td>
 <td><p>The symbol, which labels a figure's axis</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">symbol</span> <span class="pre">=</span> <span class="pre">&quot;OG&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">symbol</span> <span class="pre">=</span> <span class="pre">&quot;Rm&quot;</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">symbol_STYLE</span></code></p></td>
 <td><p>text</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code></p></td>
 <td><p>The symbol in a style</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">symbol_math</span> <span class="pre">=</span> <span class="pre">'\mathrm{OG}'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">symbol_math</span> <span class="pre">=</span> <span class="pre">'R_\mathrm{m}'</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">precision</span></code></p></td>
 <td><p>precision</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">precision</span></code></p></td>
 <td><p>How the number is written. Files hold none</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">precision</span> <span class="pre">=</span> <span class="pre">[&quot;.3f&quot;,</span> <span class="pre">&quot;.4f&quot;]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">range</span></code></p></td>
+<td><p>two numbers</p></td>
+<td><p>none</p></td>
+<td><p>The values it may take, in its declared unit, <code class="docutils literal notranslate"><span class="pre">inf</span></code> leaving a side open: <code class="docutils literal notranslate"><span class="pre">validate</span></code> reports one outside as a defect, and <code class="docutils literal notranslate"><span class="pre">set</span></code> and <code class="docutils literal notranslate"><span class="pre">compute</span></code> write it and warn</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">range</span> <span class="pre">=</span> <span class="pre">[0,</span> <span class="pre">50]</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -610,13 +752,13 @@ table's column is <code class="docutils literal notranslate"><span class="pre">[
 <td><p>text</p></td>
 <td><p>required</p></td>
 <td><p>The filter, in the language of <code class="docutils literal notranslate"><span class="pre">-f</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">filter</span> <span class="pre">=</span> <span class="pre">'style</span> <span class="pre">==</span> <span class="pre">ipa'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">filter</span> <span class="pre">=</span> <span class="pre">'material</span> <span class="pre">==</span> <span class="pre">steel'</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">directory</span></code></p></td>
 <td><p>path</p></td>
 <td><p>none</p></td>
 <td><p>The folder it applies to when a command names no target</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">directory</span> <span class="pre">=</span> <span class="pre">&quot;brews&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">directory</span> <span class="pre">=</span> <span class="pre">&quot;samples&quot;</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -640,19 +782,19 @@ table's column is <code class="docutils literal notranslate"><span class="pre">[
 <td><p>list of columns</p></td>
 <td><p>required, not empty</p></td>
 <td><p>The columns, in order</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">columns</span> <span class="pre">=</span> <span class="pre">[{</span> <span class="pre">field</span> <span class="pre">=</span> <span class="pre">&quot;og&quot;</span> <span class="pre">}]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">columns</span> <span class="pre">=</span> <span class="pre">[{</span> <span class="pre">field</span> <span class="pre">=</span> <span class="pre">&quot;width&quot;</span> <span class="pre">}]</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sort</span></code></p></td>
 <td><p>list of fields</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[]</span></code></p></td>
 <td><p>The order; a <code class="docutils literal notranslate"><span class="pre">-</span></code> before a field sorts it from high to low</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">sort</span> <span class="pre">=</span> <span class="pre">[&quot;style&quot;,</span> <span class="pre">&quot;-og&quot;]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sort</span> <span class="pre">=</span> <span class="pre">[&quot;material&quot;,</span> <span class="pre">&quot;-width&quot;]</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">group</span></code></p></td>
 <td><p>list of fields</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[]</span></code></p></td>
 <td><p>A table per group of samples sharing these fields' values, as <code class="docutils literal notranslate"><span class="pre">--group</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">group</span> <span class="pre">=</span> <span class="pre">[&quot;style&quot;]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">group</span> <span class="pre">=</span> <span class="pre">[&quot;material&quot;]</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -673,19 +815,19 @@ table's column is <code class="docutils literal notranslate"><span class="pre">[
 <td><p>field</p></td>
 <td><p>required</p></td>
 <td><p>What the column shows, as <code class="docutils literal notranslate"><span class="pre">-c</span></code> names it</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">=</span> <span class="pre">&quot;og.u&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">=</span> <span class="pre">&quot;width.u&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">label</span></code></p></td>
 <td><p>text</p></td>
 <td><p>the field</p></td>
-<td><p>The column's title in a terminal</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">label</span> <span class="pre">=</span> <span class="pre">&quot;Original</span> <span class="pre">gravity&quot;</span></code></p></td>
+<td><p>The column's title on the terminal and in a document (<code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">latex</span></code>, an export's <code class="docutils literal notranslate"><span class="pre">style</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">label</span> <span class="pre">=</span> <span class="pre">&quot;Tensile</span> <span class="pre">strength&quot;</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">header</span></code></p></td>
 <td><p>text</p></td>
 <td><p>the field</p></td>
-<td><p>The column's name in a CSV, TSV or JSON file</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">header</span> <span class="pre">=</span> <span class="pre">&quot;og_sg&quot;</span></code></p></td>
+<td><p>The column's name in a CSV, TSV or JSON file: a property's two columns are <code class="docutils literal notranslate"><span class="pre">Rm_value</span> <span class="pre">[MPa]</span></code> and <code class="docutils literal notranslate"><span class="pre">Rm_uncertainty</span> <span class="pre">[MPa]</span></code>, the suffixes and the unit saying what each holds</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">header</span> <span class="pre">=</span> <span class="pre">&quot;Rm&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">precision</span></code></p></td>
 <td><p>precision</p></td>
@@ -696,7 +838,7 @@ table's column is <code class="docutils literal notranslate"><span class="pre">[
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">template</span></code></p></td>
 <td><p>text</p></td>
 <td><p>none</p></td>
-<td><p>The cell as text, with <code class="docutils literal notranslate"><span class="pre">{value}</span></code>, <code class="docutils literal notranslate"><span class="pre">{uncertainty}</span></code>, <code class="docutils literal notranslate"><span class="pre">{unit}</span></code> and <code class="docutils literal notranslate"><span class="pre">{symbol}</span></code> filled in; <code class="docutils literal notranslate"><span class="pre">{value:.3f}</span></code> takes a precision</p></td>
+<td><p>The cell as text, with <code class="docutils literal notranslate"><span class="pre">{value}</span></code>, <code class="docutils literal notranslate"><span class="pre">{uncertainty}</span></code>, <code class="docutils literal notranslate"><span class="pre">{unit}</span></code> and <code class="docutils literal notranslate"><span class="pre">{symbol}</span></code> filled in; <code class="docutils literal notranslate"><span class="pre">{value:.3f}</span></code> takes a precision. A CSV or TSV writes the text, in one column named by <code class="docutils literal notranslate"><span class="pre">header</span></code>, its unit and symbol spelled in <code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">style</span></code>; JSON writes the numbers</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">template</span> <span class="pre">=</span> <span class="pre">'\num{{value:.3f}}'</span></code></p></td>
 </tr>
 </tbody>
@@ -707,7 +849,8 @@ table's column is <code class="docutils literal notranslate"><span class="pre">[
 </section>
 <section id="export-name">
 <h2><code class="docutils literal notranslate"><span class="pre">[export.NAME]</span></code><a class="headerlink" href="#export-name" title="Link to this heading">¶</a></h2>
-<p>A named file, written by <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">export</span> <span class="pre">NAME</span> <span class="pre">--write</span></code>.</p>
+<p>A named file, written by <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">export</span> <span class="pre">NAME</span> <span class="pre">--write</span></code>: a table, from a
+profile, or a figure, drawn as <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">plot</span></code> draws it.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -721,43 +864,58 @@ table's column is <code class="docutils literal notranslate"><span class="pre">[
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">profile</span></code></p></td>
 <td><p>text</p></td>
-<td><p>required</p></td>
-<td><p>The profile giving the columns</p></td>
+<td><p>one of the two</p></td>
+<td><p>The profile giving the columns of a table</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">profile</span> <span class="pre">=</span> <span class="pre">&quot;overview&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">format</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">figure</span></code></p></td>
 <td><p>text</p></td>
-<td><p>required</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">csv</span></code>, <code class="docutils literal notranslate"><span class="pre">tsv</span></code> or <code class="docutils literal notranslate"><span class="pre">json</span></code></p></td>
+<td><p>one of the two</p></td>
+<td><p>The figure drawn, declared in <code class="docutils literal notranslate"><span class="pre">[figure.*]</span></code> or by the model; its file's format is its <code class="docutils literal notranslate"><span class="pre">output</span></code>'s extension</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">figure</span> <span class="pre">=</span> <span class="pre">&quot;curves&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">format</span></code></p></td>
+<td><p>text</p></td>
+<td><p>none</p></td>
+<td><p>A table's: <code class="docutils literal notranslate"><span class="pre">csv</span></code>, <code class="docutils literal notranslate"><span class="pre">tsv</span></code> or <code class="docutils literal notranslate"><span class="pre">json</span></code>; without it, <code class="docutils literal notranslate"><span class="pre">style</span></code> names a style writing documents</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">format</span> <span class="pre">=</span> <span class="pre">&quot;csv&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">output</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">output</span></code></p></td>
 <td><p>path</p></td>
 <td><p>required</p></td>
-<td><p>The file written; its folder is created if needed; <code class="docutils literal notranslate"><span class="pre">{collection}</span></code> names the collection's folder, so that collections importing it write apart</p></td>
+<td><p>The file written; its folder is created if needed; <code class="docutils literal notranslate"><span class="pre">{project}</span></code> names the project's folder, so that projects importing it write apart; for a figure of one sample, <code class="docutils literal notranslate"><span class="pre">{name}</span></code> writes a file per sample</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">output</span> <span class="pre">=</span> <span class="pre">&quot;out/overview.csv&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">query</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">query</span></code></p></td>
 <td><p>text</p></td>
 <td><p>none</p></td>
 <td><p>The query selecting the samples</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">query</span> <span class="pre">=</span> <span class="pre">&quot;ipas&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">query</span> <span class="pre">=</span> <span class="pre">&quot;ductile&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">filename</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">filename</span></code></p></td>
 <td><p>boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
-<td><p>Add a column holding each sample's file name</p></td>
+<td><p>A table's: add a column holding each sample's file name</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">filename</span> <span class="pre">=</span> <span class="pre">true</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
 <td><p>boolean</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
-<td><p>Add a column holding each sample's path</p></td>
+<td><p>A table's: add a column holding each sample's path, from its project's folder</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">path</span> <span class="pre">=</span> <span class="pre">true</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">style</span></code></p></td>
+<td><p>text</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">files</span></code>; a figure's, <code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">figure_style</span></code></p></td>
+<td><p>How units are spelled in a data file: <code class="docutils literal notranslate"><span class="pre">files</span></code>, as the samples write them (<code class="docutils literal notranslate"><span class="pre">degC</span></code>); <code class="docutils literal notranslate"><span class="pre">plain</span></code>, the forms <code class="docutils literal notranslate"><span class="pre">[unit.*]</span></code> declares for the screen (<code class="docutils literal notranslate"><span class="pre">°C</span></code>); or a style. With no <code class="docutils literal notranslate"><span class="pre">format</span></code>, the style writing the document. For a figure, the style its labels use</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">style</span> <span class="pre">=</span> <span class="pre">&quot;latex&quot;</span></code></p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>An export names a <code class="docutils literal notranslate"><span class="pre">profile</span></code> or a <code class="docutils literal notranslate"><span class="pre">figure</span></code>, never both. <code class="docutils literal notranslate"><span class="pre">format</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code>
+and <code class="docutils literal notranslate"><span class="pre">path</span></code> are a table's, and refused beside a figure; <code class="docutils literal notranslate"><span class="pre">--precision</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--status</span></code> likewise, on the command line.</p>
 </section>
 <section id="figure-name">
 <h2><code class="docutils literal notranslate"><span class="pre">[figure.NAME]</span></code><a class="headerlink" href="#figure-name" title="Link to this heading">¶</a></h2>
@@ -784,37 +942,37 @@ the project.</p>
 <td><p>field</p></td>
 <td><p>required</p></td>
 <td><p>The horizontal axis</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">&quot;fermentation.day&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">&quot;curve.strain&quot;</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">y</span></code></p></td>
 <td><p>field</p></td>
 <td><p>required</p></td>
 <td><p>The vertical axis</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">=</span> <span class="pre">&quot;fermentation.gravity&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">=</span> <span class="pre">&quot;curve.stress&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">group</span></code></p></td>
 <td><p>field</p></td>
 <td><p>none</p></td>
 <td><p>One series per value of this field</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">group</span> <span class="pre">=</span> <span class="pre">&quot;yeast&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">group</span> <span class="pre">=</span> <span class="pre">&quot;material&quot;</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">query</span></code></p></td>
 <td><p>text</p></td>
 <td><p>none</p></td>
 <td><p>The query selecting the samples</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">query</span> <span class="pre">=</span> <span class="pre">&quot;ipas&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">query</span> <span class="pre">=</span> <span class="pre">&quot;ductile&quot;</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">title</span></code></p></td>
 <td><p>text</p></td>
-<td><p>the figure's name</p></td>
-<td><p>The title</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">title</span> <span class="pre">=</span> <span class="pre">&quot;Fermentation&quot;</span></code></p></td>
+<td><p>none</p></td>
+<td><p>The title drawn above the axes; none by default, a caption in the document saying what the figure shows</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">title</span> <span class="pre">=</span> <span class="pre">&quot;Stress</span> <span class="pre">against</span> <span class="pre">strain&quot;</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">x_label</span></code>, <code class="docutils literal notranslate"><span class="pre">y_label</span></code></p></td>
 <td><p>text</p></td>
 <td><p>the field's symbol and unit</p></td>
 <td><p>An axis's label</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">y_label</span> <span class="pre">=</span> <span class="pre">'$V$</span> <span class="pre">[L]'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">y_label</span> <span class="pre">=</span> <span class="pre">'$\sigma$</span> <span class="pre">[MPa]'</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">style</span></code></p></td>
 <td><p>text</p></td>
@@ -852,6 +1010,12 @@ the project.</p>
 <td><p>Width and height, in centimetres</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">figsize</span> <span class="pre">=</span> <span class="pre">[18,</span> <span class="pre">12]</span></code></p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">matplotlib</span></code></p></td>
+<td><p>table</p></td>
+<td><p>none</p></td>
+<td><p>matplotlib's settings for this figure alone, over <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code>; <code class="docutils literal notranslate"><span class="pre">style</span></code> and <code class="docutils literal notranslate"><span class="pre">fonts</span></code> are the project's</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">matplotlib</span> <span class="pre">=</span> <span class="pre">{</span> <span class="pre">&quot;lines.marker&quot;</span> <span class="pre">=</span> <span class="pre">&quot;s&quot;</span> <span class="pre">}</span></code></p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -885,17 +1049,60 @@ project. Quote a dotted name.</p>
 <td><p>A figure's size, in centimetres</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;figure.figsize&quot;</span> <span class="pre">=</span> <span class="pre">[15,</span> <span class="pre">10]</span></code></p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">style</span></code></p></td>
+<td><p>text or list</p></td>
+<td><p>none</p></td>
+<td><p>matplotlib's style sheets, by name or as <code class="docutils literal notranslate"><span class="pre">.mplstyle</span></code> files, applied in order before the section's own settings, which win</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">style</span> <span class="pre">=</span> <span class="pre">[&quot;seaborn-v0_8-paper&quot;,</span> <span class="pre">&quot;figures.mplstyle&quot;]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fonts</span></code></p></td>
+<td><p>text or list</p></td>
+<td><p>none</p></td>
+<td><p>Font files, or patterns of them, that matplotlib learns before it draws: a font that travels with the project</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fonts</span> <span class="pre">=</span> <span class="pre">[&quot;fonts/*.otf&quot;]</span></code></p></td>
+</tr>
 </tbody>
 </table>
 </div>
 <p>Other sizes keep matplotlib's units: points for fonts and lines. A name
 matplotlib does not know, a value it refuses and a date are errors;
-<code class="docutils literal notranslate"><span class="pre">backend</span></code> and <code class="docutils literal notranslate"><span class="pre">interactive</span></code> are refused. <code class="docutils literal notranslate"><span class="pre">plot</span> <span class="pre">--no-project-style</span></code> ignores
-the section.</p>
+<code class="docutils literal notranslate"><span class="pre">backend</span></code> and <code class="docutils literal notranslate"><span class="pre">interactive</span></code> are refused. A style sheet matplotlib does not
+have, a file that is not there and a pattern that finds none are errors too.
+A <code class="docutils literal notranslate"><span class="pre">.mplstyle</span></code> file and a font are read from the file declaring them.</p>
+<p>SampleKit makes a few choices of its own, and gives way where the project
+declares the setting, in this section or in a style sheet:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>SampleKit's choice</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lines.marker</span></code>, or <code class="docutils literal notranslate"><span class="pre">marker</span></code> in <code class="docutils literal notranslate"><span class="pre">axes.prop_cycle</span></code></p></td>
+<td><p>a round marker on each point of a <code class="docutils literal notranslate"><span class="pre">scatter</span></code> and a <code class="docutils literal notranslate"><span class="pre">line</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lines.markersize</span></code></p></td>
+<td><p>the points of a <code class="docutils literal notranslate"><span class="pre">box</span></code> drawn at size 3</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">errorbar.capsize</span></code></p></td>
+<td><p>caps of 3 points on the error bars</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">legend.fontsize</span></code></p></td>
+<td><p>a small legend, where it is placed outside</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">scatter</span></code> draws no line between its points, whatever <code class="docutils literal notranslate"><span class="pre">lines.linestyle</span></code> says.
+<code class="docutils literal notranslate"><span class="pre">plot</span> <span class="pre">--no-project-style</span></code> ignores the section, and a figure's own
+<code class="docutils literal notranslate"><span class="pre">matplotlib</span></code>.</p>
 </section>
-<section id="tui-colors">
-<h2><code class="docutils literal notranslate"><span class="pre">[tui.colors]</span></code><a class="headerlink" href="#tui-colors" title="Link to this heading">¶</a></h2>
-<p>The TUI's colours, by role. A colour is <code class="docutils literal notranslate"><span class="pre">default</span></code> (the terminal's own), one
+<section id="colors">
+<h2><code class="docutils literal notranslate"><span class="pre">[colors]</span></code><a class="headerlink" href="#colors" title="Link to this heading">¶</a></h2>
+<p>The colours of the TUI and of the command line, by role. The command line
+wears them only on a terminal, and never with <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">NO_COLOR</span></code> or
+<code class="docutils literal notranslate"><span class="pre">TERM=dumb</span></code>; a file it writes, and a pipe, carry none. A colour is <code class="docutils literal notranslate"><span class="pre">default</span></code> (the terminal's own), one
 of the terminal's sixteen by name (<code class="docutils literal notranslate"><span class="pre">black</span></code>, <code class="docutils literal notranslate"><span class="pre">red</span></code>, <code class="docutils literal notranslate"><span class="pre">green</span></code>, <code class="docutils literal notranslate"><span class="pre">yellow</span></code>, <code class="docutils literal notranslate"><span class="pre">blue</span></code>,
 <code class="docutils literal notranslate"><span class="pre">magenta</span></code>, <code class="docutils literal notranslate"><span class="pre">cyan</span></code>, <code class="docutils literal notranslate"><span class="pre">grey</span></code>, <code class="docutils literal notranslate"><span class="pre">dark-grey</span></code>, <code class="docutils literal notranslate"><span class="pre">light-red</span></code>, <code class="docutils literal notranslate"><span class="pre">light-green</span></code>,
 <code class="docutils literal notranslate"><span class="pre">light-yellow</span></code>, <code class="docutils literal notranslate"><span class="pre">light-blue</span></code>, <code class="docutils literal notranslate"><span class="pre">light-magenta</span></code>, <code class="docutils literal notranslate"><span class="pre">light-cyan</span></code>, <code class="docutils literal notranslate"><span class="pre">white</span></code>; <code class="docutils literal notranslate"><span class="pre">gray</span></code>
@@ -944,46 +1151,64 @@ and <code class="docutils literal notranslate"><span class="pre">dark-gray</span
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">attribute</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">blue</span></code></p></td>
-<td><p>Attributes</p></td>
+<td><p>Attributes, and an attribute's value</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">attribute</span> <span class="pre">=</span> <span class="pre">&quot;light-blue&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">table</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">link</span></code></p></td>
+<td><p>colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">blue</span></code></p></td>
+<td><p>A link, underlined; one leading nowhere takes <code class="docutils literal notranslate"><span class="pre">error</span></code>'s colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">link</span> <span class="pre">=</span> <span class="pre">&quot;light-blue&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">value</span></code></p></td>
+<td><p>colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">default</span></code></p></td>
+<td><p>A value and its uncertainty, drawn bold</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">value</span> <span class="pre">=</span> <span class="pre">&quot;white&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">unit</span></code></p></td>
+<td><p>colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
+<td><p>A unit, after a number and in a header</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unit</span> <span class="pre">=</span> <span class="pre">&quot;grey&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">table</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">magenta</span></code></p></td>
 <td><p>Tables</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">table</span> <span class="pre">=</span> <span class="pre">&quot;magenta&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">index</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">index</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>A table's index column</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">index</span> <span class="pre">=</span> <span class="pre">&quot;cyan&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">key</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">key</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>Keys, in the help and at the foot</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">key</span> <span class="pre">=</span> <span class="pre">&quot;yellow&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">muted</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">muted</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">dark-grey</span></code></p></td>
 <td><p>Secondary text</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">muted</span> <span class="pre">=</span> <span class="pre">&quot;grey&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">yellow</span></code></p></td>
 <td><p>Messages</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">message</span> <span class="pre">=</span> <span class="pre">&quot;default&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">red</span></code></p></td>
 <td><p>Errors</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">error</span> <span class="pre">=</span> <span class="pre">&quot;light-red&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">accent</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">accent</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>The name in the title bar, a computation in progress</p></td>
@@ -992,16 +1217,42 @@ and <code class="docutils literal notranslate"><span class="pre">dark-gray</span
 </tbody>
 </table>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">stale</span></code> is read as <code class="docutils literal notranslate"><span class="pre">outdated</span></code>, and <code class="docutils literal notranslate"><span class="pre">[workbench.colors]</span></code> as <code class="docutils literal notranslate"><span class="pre">[tui.colors]</span></code>:
-the names these had before. Where both are written, the current name wins.</p>
+</section>
+<section id="history">
+<h2><code class="docutils literal notranslate"><span class="pre">[history]</span></code><a class="headerlink" href="#history" title="Link to this heading">¶</a></h2>
+<p>The project's <a class="reference internal" href="../concepts/history.html"><span class="std std-doc">history</span></a>, kept in
+<code class="docutils literal notranslate"><span class="pre">.samplekit/history/</span></code>.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">shared</span></code></p></td>
+<td><p>boolean</p></td>
+<td><p>not set</p></td>
+<td><p>Whether git carries the history with the samples: <code class="docutils literal notranslate"><span class="pre">true</span></code> lets git see what must travel and keeps out what each computer makes for itself; <code class="docutils literal notranslate"><span class="pre">false</span></code> hides the history from git. Not set, a new history is hidden, and one shared by hand is left as it is.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">shared</span> <span class="pre">=</span> <span class="pre">true</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Imported as any key: a root declaring it shares the history of every project
+importing it. See <a class="reference internal" href="../guides/share-a-project.html"><span class="std std-doc">Share a project</span></a>.</p>
 </section>
 <section id="a-complete-example">
 <h2>A complete example<a class="headerlink" href="#a-complete-example" title="Link to this heading">¶</a></h2>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">schema_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 
 <span class="k">[model]</span>
-<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"model/brew.py"</span>
-<span class="n">class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Brew"</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"model/specimen.py"</span>
+<span class="n">class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Specimen"</span>
+<span class="n">python</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".venv"</span>
 
 <span class="k">[render]</span>
 <span class="n">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"boxed"</span>
@@ -1010,7 +1261,7 @@ the names these had before. Where both are written, the current name wins.</p>
 <span class="k">[collection]</span>
 <span class="n">recursive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 <span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"draft-*"</span><span class="p">]</span>
-<span class="n">files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"photos"</span><span class="p">,</span><span class="w"> </span><span class="s2">"labels/{name}*.png"</span><span class="p">]</span>
+<span class="n">files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"photos"</span><span class="p">,</span><span class="w"> </span><span class="s2">"machine/{name}/*"</span><span class="p">]</span>
 
 <span class="k">[unit.</span><span class="s2">"degC"</span><span class="k">]</span>
 <span class="n">plain</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"°C"</span>
@@ -1018,40 +1269,42 @@ the names these had before. Where both are written, the current name wins.</p>
 <span class="n">figure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"°C"</span>
 
 <span class="k">[style.math]</span>
-<span class="n">separator</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'\pm'</span>
+<span class="n">property</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'${value} \pm {uncertainty}$ {unit}'</span>
 
 <span class="k">[style.figure]</span>
 
-<span class="k">[property.og]</span>
-<span class="n">symbol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"OG"</span>
-<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">".3f"</span><span class="p">,</span><span class="w"> </span><span class="s2">".4f"</span><span class="p">]</span>
+<span class="k">[property.tensile_strength]</span>
+<span class="n">symbol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Rm"</span>
+<span class="n">symbol_math</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'R_\mathrm{m}'</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".0f"</span>
 
-<span class="k">[query.ipas]</span>
-<span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'style == ipa'</span>
+<span class="k">[query.steels]</span>
+<span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'material == steel'</span>
 
 <span class="k">[profile.overview]</span>
 <span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Brew"</span><span class="w"> </span><span class="p">},</span>
-<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"style"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Style"</span><span class="w"> </span><span class="p">},</span>
-<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"og"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Original gravity"</span><span class="p">,</span><span class="w"> </span><span class="n">header</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"og"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Specimen"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"material"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Material"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"tensile_strength"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Tensile strength"</span><span class="p">,</span><span class="w"> </span><span class="n">header</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Rm"</span><span class="w"> </span><span class="p">},</span>
 <span class="p">]</span>
-<span class="n">sort</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"style"</span><span class="p">,</span><span class="w"> </span><span class="s2">"-og"</span><span class="p">]</span>
+<span class="n">sort</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"material"</span><span class="p">,</span><span class="w"> </span><span class="s2">"-tensile_strength"</span><span class="p">]</span>
 
 <span class="k">[export.overview]</span>
 <span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"overview"</span>
 <span class="n">format</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"csv"</span>
 <span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"out/overview.csv"</span>
 
-<span class="k">[figure.score]</span>
-<span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"abv"</span>
-<span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"score"</span>
-<span class="n">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"style"</span>
+<span class="k">[figure.curves]</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"line"</span>
+<span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"curve.strain"</span>
+<span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"curve.stress"</span>
+<span class="n">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"material"</span>
 <span class="n">legend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"outside"</span>
 
 <span class="k">[matplotlib]</span>
 <span class="s2">"axes.grid"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 
-<span class="k">[tui.colors]</span>
+<span class="k">[colors]</span>
 <span class="n">outdated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ff8800"</span>
 </pre></div>
 </div>
@@ -1063,12 +1316,12 @@ the names these had before. Where both are written, the current name wins.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="sample-files.html">
+          <a class="next-page" href="filters.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Sample files</div>
+                <div class="title">Filters</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -1130,7 +1383,8 @@ the names these had before. Where both are written, the current name wins.</p>
 <li><a class="reference internal" href="#export-name"><code class="docutils literal notranslate"><span class="pre">[export.NAME]</span></code></a></li>
 <li><a class="reference internal" href="#figure-name"><code class="docutils literal notranslate"><span class="pre">[figure.NAME]</span></code></a></li>
 <li><a class="reference internal" href="#matplotlib"><code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code></a></li>
-<li><a class="reference internal" href="#tui-colors"><code class="docutils literal notranslate"><span class="pre">[tui.colors]</span></code></a></li>
+<li><a class="reference internal" href="#colors"><code class="docutils literal notranslate"><span class="pre">[colors]</span></code></a></li>
+<li><a class="reference internal" href="#history"><code class="docutils literal notranslate"><span class="pre">[history]</span></code></a></li>
 <li><a class="reference internal" href="#a-complete-example">A complete example</a></li>
 </ul>
 </li>
@@ -1143,7 +1397,7 @@ the names these had before. Where both are written, the current name wins.</p>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

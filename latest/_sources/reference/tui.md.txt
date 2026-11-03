@@ -6,11 +6,11 @@
 
 Every key of the TUI, screen by screen, as `?` lists them there. The foot of each screen shows the keys used most.
 
-In a list to choose from, `Space` ticks and `Enter` accepts what is ticked, and `/` narrows the list to what holds the letters typed. Every line typed has a cursor that `←` `→` `Home` `End` move.
+In a list to choose from, `Space` ticks and `Enter` accepts what is ticked, and `/` narrows the list to what holds the letters typed. Every line typed has a cursor that `←` `→` `Home` `End` move; a sample's value opens selected, so that what is typed replaces it, and an arrow or `End` keeps it to edit.
 
 ## Typing
 
-In every line typed — the filter, a prompt, a value's window, a list's `/`, the start page's name and narrowing — and in the note. A window's `Enter`, `Esc` and `Tab` stay the window's.
+In every line typed (the filter, a prompt, a value's window, a list's `/`, the start page's name and narrowing) and in the note. A window's `Enter`, `Esc` and `Tab` stay the window's.
 
 | Keys | What they do |
 | --- | --- |
@@ -19,13 +19,13 @@ In every line typed — the filter, a prompt, a value's window, a list's `/`, th
 | `Backspace` `Delete` | take a character out, or what is selected; what is typed replaces it |
 | `Ctrl+Backspace` `Ctrl+Delete` | take a word out |
 | `Ctrl+Z` | undo |
-| `Ctrl+Shift+Z` | redo |
+| `Ctrl+Shift+Z` `Alt+Z` | redo; Alt+Z where the terminal sends Ctrl+Shift+Z as Ctrl+Z |
 | `Ctrl+X` `Ctrl+V` | cut, paste |
-| `Ctrl+C` | copy what is selected; with nothing selected, close SampleKit |
+| `Ctrl+C` | copy what is selected; with nothing selected, close SampleKit, asked first over a line typed and not saved |
 | `Ctrl+D` | empty the line; in the note, the line doubled |
 | `click` | place the cursor; a drag selects, a double click a word |
 
-**In the note**, besides — `N` on a sample:
+**In the note** (`N` on a sample), besides:
 
 | Keys | What they do |
 | --- | --- |
@@ -50,9 +50,9 @@ In every line typed — the filter, a prompt, a value's window, a list's `/`, th
 
 | Keys | What they do |
 | --- | --- |
-| `Enter` | open the project marked: the one SampleKit was started in comes first |
+| `Enter` | open the project marked: the one SampleKit was started in comes first; started in a folder holding projects, those come first, then setting one up there |
 | `1…9` | open that recent project |
-| `x` | forget the recent project marked: its state removed, the folder kept |
+| `x` | forget the recent project marked, asked first: its state removed, the folder kept |
 | `j` `k` `↑` `↓` | move; Home End to the first and the last |
 | `n` | New project: a folder moved to, or one + makes, then set up by a few questions; Esc on the first question comes back here, the folder + made removed if still empty |
 | `o` | Open a folder: Enter on a project opens it, on any other goes in |
@@ -78,15 +78,15 @@ In every line typed — the filter, a prompt, a value's window, a list's `/`, th
 
 | Keys | What they do |
 | --- | --- |
-| `1…8` | open that step; quitting it comes back to the demo's page |
-| `Enter` | the step marked; the tutorial, the steps' own pages, in the browser; or Reset the demo, asked first |
+| `1…5` | open that step; quitting it comes back to the demo's page |
+| `Enter` | the step marked; the home page, which walks through the steps, in the browser; the demo's folder, in the file manager, to edit its files and try the command line there; or Reset the demo, asked first |
 | `Esc` `q` | back to the start page |
 
 A project opened from here comes back here when it is quit.
 
 ## The collection
 
-What a project opens on: its samples, one per line.
+What a project opens on: its samples, one per line. The basket, the samples `Space` puts in it, is kept from one session to the next, with the filter, the sort and the columns: `C`, `p`, `t` and `D` act on it alone while it holds any, and say so; `x` empties it.
 
 **Moving**
 
@@ -111,7 +111,6 @@ What a project opens on: its samples, one per line.
 | `/` | filter, Tab completes |
 | `Esc` | clear the filter |
 | `s` | sort by a column |
-| `r` | reverse the sort |
 | `c` | choose the columns |
 | `b` | the basket only, or everything |
 | `S` | the columns summarised, or the samples again |
@@ -120,8 +119,8 @@ What a project opens on: its samples, one per line.
 
 | Keys | What they do |
 | --- | --- |
-| `Space` | put in or take out of the basket |
-| `t` | tag the basket |
+| `Space` | put in or take out of the basket, then the next row |
+| `t` | tag the basket, take a tag off it, or rename a tag: old=new, over every sample shown where the basket is empty |
 | `a` | put every sample shown in the basket |
 | `x` | empty the basket |
 
@@ -129,15 +128,16 @@ What a project opens on: its samples, one per line.
 
 | Keys | What they do |
 | --- | --- |
-| `N` | a new sample, shaped like this one |
+| `N` | a new sample beside this one: its name, then field=value …, and keep:field,… from the one under the cursor |
 | `u` | undo the last change written |
 | `D` | remove the sample, or the basket's: its file, asked first, u gives it back |
+| `R` | rename the sample, its own files and the links leading to it, asked first |
 
 **Computing and checking**
 
 | Keys | What they do |
 | --- | --- |
-| `C` | compute the selected values, or what is not current: the basket, or the sample |
+| `C` | compute the selected values, or what is not current: the basket, or every sample shown |
 | `v` | the collection's state: what is not current, what is defective |
 | `H` | the project's history: each change kept, and what it changed |
 
@@ -145,7 +145,7 @@ What a project opens on: its samples, one per line.
 
 | Keys | What they do |
 | --- | --- |
-| `p` | draw a figure, or write an export: of the basket, or of what is shown |
+| `p` | run a script, draw a figure, or write an export: of the basket, or of what is shown; w on a figure writes it to a file |
 
 **The project**
 
@@ -202,8 +202,10 @@ One sample, value by value, and its tables.
 | Keys | What they do |
 | --- | --- |
 | `D` | remove this sample: its file, asked first, u gives it back |
+| `R` | rename this sample, its own files and the links leading to it, asked first |
 | `e` | change the value, previewed |
 | `N` | edit the note |
+| `A` | add an attribute: its name, then its value |
 | `u` | undo the last change written |
 
 **Computing and checking**
@@ -211,15 +213,21 @@ One sample, value by value, and its tables.
 | Keys | What they do |
 | --- | --- |
 | `H` | this sample's history: each change kept, and what it changed |
-| `Enter` | where the value came from |
+| `Enter` | open the value in its window (value, uncertainty, readings), or an attribute's items; a link, its sample or its address |
 | `c` | compute the selected values, or this one, even if current or edited |
 | `C` | compute what is not current in the sample |
+
+**Figures and exports**
+
+| Keys | What they do |
+| --- | --- |
+| `p` | run a script, draw a figure, or write an export: of the basket, or of the sample |
 
 **The project**
 
 | Keys | What they do |
 | --- | --- |
-| `o` | the sample's own files |
+| `o` | the sample's own files, or where the link under the cursor leads |
 | `E` | the sample in $EDITOR |
 
 **The TUI**
@@ -257,8 +265,7 @@ One table of a sample, row by row.
 
 | Keys | What they do |
 | --- | --- |
-| `e` | change the cell, previewed |
-| `+` | add a row, column=value, … |
+| `e` | change the index or a text cell; on the empty row, add one; a value is changed in its window, Enter |
 | `u` | undo the last change written |
 
 **Computing and checking**
@@ -266,7 +273,7 @@ One table of a sample, row by row.
 | Keys | What they do |
 | --- | --- |
 | `H` | the sample's history: each change kept, and what it changed |
-| `Enter` | where the cell came from |
+| `Enter` | open the cell: its value, its uncertainty, where it came from; e there changes them |
 | `c` | compute the selected columns, or this one, even if current or edited |
 | `C` | compute what is not current in the sample |
 
@@ -282,6 +289,79 @@ One table of a sample, row by row.
 | --- | --- |
 | `o` | the sample's own files |
 | `E` | the sample in $EDITOR |
+
+**The TUI**
+
+| Keys | What they do |
+| --- | --- |
+| `?` | this help |
+
+## A value's window
+
+`Enter` on a value of a sample: its value, its uncertainty and its readings, a column each.
+
+**Moving**
+
+| Keys | What they do |
+| --- | --- |
+| `l` `→` | next column |
+| `h` `←` | previous column; from the first, back to the sample |
+| `Esc` `q` | back to the sample |
+
+**Changing**
+
+| Keys | What they do |
+| --- | --- |
+| `e` | change the cell, previewed; on readings, their list |
+| `u` | undo the last change written |
+
+**Computing and checking**
+
+| Keys | What they do |
+| --- | --- |
+| `c` | compute the property, even if current or edited |
+| `Enter` | where the value came from |
+
+**The TUI**
+
+| Keys | What they do |
+| --- | --- |
+| `?` | this help |
+
+## A list's window
+
+A value's readings, or an attribute's items, one per row.
+
+**Moving**
+
+| Keys | What they do |
+| --- | --- |
+| `j` `↓` | next item |
+| `k` `↑` | previous item |
+| `Esc` `q` `←` `h` | back |
+
+**Changing**
+
+| Keys | What they do |
+| --- | --- |
+| `e` | change the item, previewed; on the empty row, add one |
+| `d` | take the item out, previewed |
+| `J` | move the item down, previewed |
+| `K` | move the item up, previewed |
+| `L` | an attribute: a list of one to its single value, or back |
+| `u` | undo the last change written |
+
+**Computing and checking**
+
+| Keys | What they do |
+| --- | --- |
+| `Enter` | where the item leads, where it is a link |
+
+**The project**
+
+| Keys | What they do |
+| --- | --- |
+| `o` | where the item leads, where it is a link: its sample, its file or its address |
 
 **The TUI**
 
@@ -342,6 +422,13 @@ One table of a sample, row by row.
 | `K` | scroll what it changed up |
 | `Esc` `q` `←` `h` | back |
 
+**The history**
+
+| Keys | What they do |
+| --- | --- |
+| `r` | take the files back to this snapshot, previewed: restore --at |
+| `d` | what this snapshot changed, and it marked; d on another compares the two: diff --from --to |
+
 **The TUI**
 
 | Keys | What they do |
@@ -398,6 +485,31 @@ A folder with no project: a few questions.
 | --- | --- |
 | `?` | this help |
 
+## Questions and lists
+
+**A question before a write** shows what would change, as the command line's preview does:
+
+| Keys | What they do |
+| --- | --- |
+| `y` | write it |
+| `n` `Esc` | leave it: nothing is written |
+| `j` `k` `↓` `↑` | read a long question to its end |
+
+**A list to choose from**, as `s`, `c`, `g` or `p` open one:
+
+| Keys | What they do |
+| --- | --- |
+| `j` `k` `↓` `↑` | move |
+| `Home` `End` `PgUp` `PgDn` | first, last, a page |
+| `Space` | in the sort, the columns and the groups, tick or untick |
+| `Shift+↑` `Shift+↓` `K` `J` | in the sort, the columns and the groups, the item under the cursor up or down: its order |
+| `r` | in the sort, the field under the cursor descending, or back, and ticked |
+| `/` | narrow the list to what holds the letters typed |
+| `Tab` | in `p`, the next group: scripts, figures, exports |
+| `w` | in `p`, a figure to a file |
+| `Enter` | accept |
+| `Esc` | clear the narrowing, then leave the list |
+
 ## Marks
 
 The marks beside a sample or a value, on the collection, a sample, a table and the collection's state.
@@ -405,7 +517,7 @@ The marks beside a sample or a value, on the collection, a sample, a table and t
 | Mark | What it says |
 | --- | --- |
 | ● | in the basket |
-| ⚠ | outdated: an input changed, or its record cannot be checked — C computes it |
+| ⚠ | outdated: an input changed, or its record cannot be checked; C computes it |
 | ✎ | edited: a value typed over its formula, or its record missing |
 | ✗ | failed: its formula raised an error when last run |
 | ∅ | never computed, or waits for an input: what the model owes |

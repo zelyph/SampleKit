@@ -3,34 +3,47 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Changelog" href="../changelog.html"><link rel="prev" title="Sample files" href="sample-files.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Glossary" href="glossary.html"><link rel="prev" title="Fingerprints" href="fingerprints.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Exit codes - SampleKit 1.0.0-rc.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+        <title>Exit codes - SampleKit 1.0.0-rc.2</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f2f2f2;
-  --color-code-foreground: #1e1e1e;
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
       }
     }
@@ -162,7 +175,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -183,7 +196,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -198,43 +211,47 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../guides/index.html">Guides</a><input aria-label="Toggle navigation of Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../guides/install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/upgrade.html">Upgrade from an older SampleKit</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/samples-and-files.html">Samples and their files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/readings-and-statistics.html">Readings and statistics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/models-and-formulas.html">Models and formulas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/current-and-outdated.html">Current and outdated values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/history.html">History</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/projects.html">Projects</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/move-existing-data.html">Move existing data in</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/first-model.html">A first model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/export-for-a-paper.html">An export for a paper</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/continuous-integration.html">Check a project in continuous integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/share-a-project.html">Share a project</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="cli.html">The command line</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python.html">The Python API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tui.html">The TUI's keys</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html">Filters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fingerprints.html">Fingerprints</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
@@ -274,7 +291,7 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="exit-codes">
+          <section class="tex2jax_ignore mathjax_ignore" id="exit-codes">
 <h1>Exit codes<a class="headerlink" href="#exit-codes" title="Link to this heading">¶</a></h1>
 <p>Every <code class="docutils literal notranslate"><span class="pre">samplekit</span></code> command ends with one of these codes. Messages go to the
 error stream (stderr); the data a command was asked for goes alone to the
@@ -297,7 +314,7 @@ output stream (stdout).</p>
 <td><p>A data error: something in the data is wrong</p></td>
 </tr>
 <tr class="row-odd"><td><p>3</p></td>
-<td><p>The system refused to read or write a file</p></td>
+<td><p>The system refused to read or write a file, or the machine cannot run the model</p></td>
 </tr>
 <tr class="row-even"><td><p>130</p></td>
 <td><p>Interrupted with Ctrl-C</p></td>
@@ -310,11 +327,15 @@ output stream (stdout).</p>
 <ul class="simple">
 <li><p>A selection that matches nothing.</p></li>
 <li><p>An export of an empty selection: its header is written.</p></li>
-<li><p>A command with nothing to do, which says <em>unchanged</em>: removing a tag no
-sample carries, renaming a tag to itself, a <code class="docutils literal notranslate"><span class="pre">restore</span></code> with nothing to take
-back.</p></li>
-<li><p>A command that printed warnings, such as a file in the folder that is not a
-sample.</p></li>
+<li><p>A command with nothing to do, which says <code class="docutils literal notranslate"><span class="pre">nothing</span> <span class="pre">to</span> <span class="pre">change</span></code> and why:
+removing a tag no sample carries, renaming a tag to itself, a <code class="docutils literal notranslate"><span class="pre">restore</span></code> with
+nothing to take back, a <code class="docutils literal notranslate"><span class="pre">compute</span></code> with nothing to compute, a <code class="docutils literal notranslate"><span class="pre">set</span></code>, <code class="docutils literal notranslate"><span class="pre">tag</span></code> or
+<code class="docutils literal notranslate"><span class="pre">remove</span></code> whose filter selects no sample.</p></li>
+<li><p>A command that printed warnings, such as, with <code class="docutils literal notranslate"><span class="pre">-v</span></code>, a file in the folder
+that is not a sample (a Markdown file without frontmatter).</p></li>
+<li><p>A question answered no (<code class="docutils literal notranslate"><span class="pre">n</span></code>, an empty line, the end of the input), which
+says <code class="docutils literal notranslate"><span class="pre">nothing</span> <span class="pre">written</span></code>: nothing failed. A script that must stop there writes
+with <code class="docutils literal notranslate"><span class="pre">--write</span></code>, or reads what the command printed.</p></li>
 </ul>
 </section>
 <section id="usage-error">
@@ -326,6 +347,10 @@ message suggests the nearest name.</p></li>
 <li><p>A name <code class="docutils literal notranslate"><span class="pre">new</span></code> cannot give a sample, or an existing sample <code class="docutils literal notranslate"><span class="pre">new</span></code> would
 overwrite.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">--script</span></code> on a snapshot that no script made.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">waiting</span></code>: a value waiting for an input fails nothing, so there is
+nothing to accept.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">remove</span></code> given a folder alone, or nothing: it deletes the files named, or
+those a filter selects.</p></li>
 </ul>
 </section>
 <section id="data-error">
@@ -334,7 +359,12 @@ overwrite.</p></li>
 <li><p>A file named on the command line is not a sample SampleKit can read. Over a
 folder, the samples that could be read are still shown, the others are
 named, and the code is 2.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> that applies has an error (an unknown key, a misspelled
+section): it is set aside, said in a warning, the samples are read without
+it, and the code is 2.</p></li>
 <li><p>A formula raised an error during <code class="docutils literal notranslate"><span class="pre">compute</span></code>.</p></li>
+<li><p>A script of the model, run by <code class="docutils literal notranslate"><span class="pre">run</span></code>, raised an error, or asked with
+<code class="docutils literal notranslate"><span class="pre">input()</span></code> where nothing could answer. Nothing is written.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">validate</span></code> found a defect.</p></li>
 <li><p>A figure has nothing to draw, such as no sample holding both axes.</p></li>
 <li><p>A file changed on disk between the moment SampleKit read it and the moment
@@ -342,20 +372,33 @@ it was about to write it: a sample, an export, the <code class="docutils literal
 <code class="docutils literal notranslate"><span class="pre">init</span></code> writes. Nothing is written.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">--exit-code</span></code> found a value that is not current. A value waiting for
 an input nobody entered does not count; with <code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">edited</span></code>, neither does
-a value edited by hand.</p></li>
+a value typed over its formula, and with <code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">edited:area,young_modulus</span></code> those values
+alone.</p></li>
+<li><p>A file was written from values that are not current, by <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">--write</span></code>,
+a table's <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">FILE</span> <span class="pre">--write</span></code> or <code class="docutils literal notranslate"><span class="pre">plot</span> <span class="pre">-o</span> <span class="pre">FILE</span> <span class="pre">--write</span></code>: the file is written,
+and the code is 2 so that a script stops there. <code class="docutils literal notranslate"><span class="pre">--accept</span></code> followed by their
+states makes it 0: <code class="docutils literal notranslate"><span class="pre">outdated</span></code>, <code class="docutils literal notranslate"><span class="pre">edited</span></code>, <code class="docutils literal notranslate"><span class="pre">edited:NAME,…</span></code>, <code class="docutils literal notranslate"><span class="pre">failed</span></code>,
+<code class="docutils literal notranslate"><span class="pre">never_computed</span></code>, a comma between.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">--write</span></code> over a selection where a sample could not be read: nothing
+is written, since its rows would be missing, and the file there is kept.</p></li>
 </ul>
 </section>
 <section id="the-system-refused">
 <h2>3 · The system refused<a class="headerlink" href="#the-system-refused" title="Link to this heading">¶</a></h2>
 <p>The operating system refused a file or a folder: it does not exist, the
-permission to read or write it is missing, or a link cannot be followed. The
+permission to read or write it is missing, or a symbolic link cannot be followed. The
 message names the file. A file that exists but is not a valid sample is a
 data error, 2.</p>
+<p>The machine cannot run the model when its environment lacks what it needs:
+no Python where <code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">python</span></code> says (nothing else is searched for), the <code class="docutils literal notranslate"><span class="pre">samplekit</span></code> package
+missing from it, or another version of it than the command line's: the
+message names both versions. That is the machine's to mend, as a file refused
+is, not the data's.</p>
 </section>
 <section id="interrupted">
 <h2>130 · Interrupted<a class="headerlink" href="#interrupted" title="Link to this heading">¶</a></h2>
-<p>Ctrl-C stops the command. What a computation finished before is kept; the
-value in progress is not written.</p>
+<p>Ctrl-C stops the command, at its question too. What a computation finished
+before is kept; the value in progress is not written.</p>
 </section>
 </section>
 
@@ -364,23 +407,23 @@ value in progress is not written.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../changelog.html">
+          <a class="next-page" href="glossary.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Changelog</div>
+                <div class="title">Glossary</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="sample-files.html">
+          <a class="prev-page" href="fingerprints.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Sample files</div>
+                <div class="title">Fingerprints</div>
                 
               </div>
             </a>
@@ -431,7 +474,7 @@ value in progress is not written.</p>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

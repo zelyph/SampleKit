@@ -1,0 +1,159 @@
+/* SampleKit's look over Furo: the TUI's cyan as the brand colour, code
+   blocks set apart, and the home page's first lines as its banner. */
+
+:root {
+  --sk-radius: 8px;
+}
+
+/* Code blocks: rounded, framed, a little air. */
+.highlight,
+div[class*="highlight-"] pre {
+  border-radius: var(--sk-radius);
+}
+div[class*="highlight-"] {
+  border: 1px solid var(--color-background-border);
+  border-radius: var(--sk-radius);
+  overflow: hidden;
+  margin: 1rem 0 1.25rem;
+}
+div[class*="highlight-"] pre {
+  padding: 0.85rem 1rem;
+  line-height: 1.45;
+}
+/* Inline code: the brand's tint rather than grey. */
+code.literal {
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+/* Headings: a thin line under each section of a page. */
+article h2 {
+  margin-top: 2.5rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--color-background-border);
+}
+
+/* The home page: its title and the bold line under it as a banner. */
+.sk-home h1 {
+  font-size: 2.6rem;
+  margin-bottom: 0.4rem;
+}
+.sk-home h1 + p {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: var(--color-foreground-secondary);
+  margin-bottom: 1.5rem;
+}
+
+/* A figure: centred, its caption smaller. */
+figure img {
+  border-radius: var(--sk-radius);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+}
+figcaption {
+  font-size: 0.85rem;
+  color: var(--color-foreground-secondary);
+}
+
+/* SampleKit's output in the colours the command line gives it by default,
+   role by role (`[colors]`): a value bold, its unit cyan, an attribute's value
+   blue, a header bold, a state in its colour, what went well green, what says
+   nothing happened grey. tools/check-docs.py holds the lexer's roles to what a
+   terminal draws; these are the shades a terminal's default theme would. */
+:root {
+  --sk-unit: #0e7490;
+  --sk-attribute: #1d4ed8;
+  --sk-outdated: #a16207;
+  --sk-failed: #b91c1c;
+  --sk-edited: #a21caf;
+  --sk-current: #15803d;
+  --sk-muted: #6b7280;
+}
+body[data-theme="dark"] {
+  --sk-unit: #22d3ee;
+  --sk-attribute: #60a5fa;
+  --sk-outdated: #facc15;
+  --sk-failed: #f87171;
+  --sk-edited: #e879f9;
+  --sk-current: #4ade80;
+  --sk-muted: #9ca3af;
+}
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --sk-unit: #22d3ee;
+    --sk-attribute: #60a5fa;
+    --sk-outdated: #facc15;
+    --sk-failed: #f87171;
+    --sk-edited: #e879f9;
+    --sk-current: #4ade80;
+    --sk-muted: #9ca3af;
+  }
+}
+.highlight .-SampleKit-Value,
+.highlight .-SampleKit-Header,
+.highlight .-SampleKit-Advice {
+  font-weight: 700;
+  color: inherit;
+}
+.highlight .-SampleKit-Unit { color: var(--sk-unit); }
+.highlight .-SampleKit-Attribute { color: var(--sk-attribute); }
+.highlight .-SampleKit-Outdated { color: var(--sk-outdated); }
+.highlight .-SampleKit-Failed { color: var(--sk-failed); }
+.highlight .-SampleKit-Edited { color: var(--sk-edited); }
+.highlight .-SampleKit-Current { color: var(--sk-current); }
+.highlight .-SampleKit-Muted { color: var(--sk-muted); }
+/* The column a terminal table adds to say whose each row is: drawn faint. */
+.highlight .-SampleKit-Identity { color: var(--sk-muted); }
+
+/* A code block's caption — the file it is, or the folder a session runs
+   in — as a tab on top of the block. */
+div.code-block-caption {
+  display: inline-block;
+  margin: 1rem 0 0;
+  padding: 0.3rem 0.8rem;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.78rem;
+  color: var(--color-foreground-secondary);
+  background: var(--color-code-background);
+  border: 1px solid var(--color-background-border);
+  border-bottom: none;
+  border-radius: var(--sk-radius) var(--sk-radius) 0 0;
+}
+div.code-block-caption + div[class*="highlight-"] {
+  margin-top: 0;
+  border-top-left-radius: 0;
+}
+div.code-block-caption .headerlink {
+  display: none;
+}
+div.literal-block-wrapper {
+  margin: 1rem 0 1.25rem;
+}
+div.literal-block-wrapper div[class*="highlight-"] {
+  margin: 0;
+  border-top-left-radius: 0;
+}
+
+/* Lines added to a file shown before: a bar in the margin and a faint tint,
+   as an editor marks a change, rather than a yellow highlight. */
+:root {
+  --sk-added: #16a34a;
+  --sk-added-bg: rgba(22, 163, 74, 0.08);
+}
+body[data-theme="dark"] {
+  --sk-added: #4ade80;
+  --sk-added-bg: rgba(74, 222, 128, 0.1);
+}
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --sk-added: #4ade80;
+    --sk-added-bg: rgba(74, 222, 128, 0.1);
+  }
+}
+article div[class*="highlight-"] .highlight .hll {
+  margin: 0 -1rem;
+  padding: 0 1rem;
+  background-color: var(--sk-added-bg);
+  box-shadow: inset 3px 0 0 var(--sk-added);
+}
+

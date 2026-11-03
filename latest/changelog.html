@@ -3,34 +3,47 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="prev" title="Exit codes" href="reference/exit-codes.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="prev" title="Glossary" href="reference/glossary.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Changelog - SampleKit 1.0.0-rc.1</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+        <title>Changelog - SampleKit 1.0.0-rc.2</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="_static/samplekit.css?v=f3154f72" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f2f2f2;
-  --color-code-foreground: #1e1e1e;
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
       }
     }
@@ -162,7 +175,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+      <a href="index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -183,7 +196,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -198,43 +211,47 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/01-first-brews.html">Step 1 · First brews</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/02-measuring.html">Step 2 · Measuring</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/03-selecting.html">Step 3 · Selecting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/04-computing.html">Step 4 · Computing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/06-figures.html">Step 6 · Figures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial/08-python.html">Step 8 · Python</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="guides/index.html">Guides</a><input aria-label="Toggle navigation of Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="guides/install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/upgrade.html">Upgrade from an older SampleKit</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="explanations/samples-and-files.html">Samples and their files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
-<li class="toctree-l2"><a class="reference internal" href="explanations/readings-and-statistics.html">Readings and statistics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="explanations/models-and-formulas.html">Models and formulas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="explanations/current-and-outdated.html">Current and outdated values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="explanations/history.html">History</a></li>
-<li class="toctree-l2"><a class="reference internal" href="explanations/projects.html">Projects</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/projects.html">Projects</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="how-to/move-existing-data.html">Move existing data in</a></li>
-<li class="toctree-l2"><a class="reference internal" href="how-to/first-model.html">A first model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="how-to/export-for-a-paper.html">An export for a paper</a></li>
-<li class="toctree-l2"><a class="reference internal" href="how-to/continuous-integration.html">Check a project in continuous integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="how-to/share-a-project.html">Share a project</a></li>
-<li class="toctree-l2"><a class="reference internal" href="how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/cli.html">The command line</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/python.html">The Python API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/tui.html">The TUI's keys</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/filters.html">Filters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/fingerprints.html">Fingerprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/glossary.html">Glossary</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Changelog</a></li>
@@ -274,13 +291,300 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="changelog">
+          <section class="tex2jax_ignore mathjax_ignore" id="changelog">
 <h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">¶</a></h1>
 <p>What changed in SampleKit from one version to the next, newest first. Each
 version says what was added, changed, removed and fixed, for someone who uses
 SampleKit rather than works on it.</p>
 <p>A version ending in <code class="docutils literal notranslate"><span class="pre">-rc.N</span></code> is a release candidate: tried before the version
 of that number is published, and replaced by it.</p>
+<section id="rc-2-2026-11-04">
+<h2>[1.0.0-rc.2] — 2026-11-04<a class="headerlink" href="#rc-2-2026-11-04" title="Link to this heading">¶</a></h2>
+<p>The second release candidate of SampleKit 1.0 (<code class="docutils literal notranslate"><span class="pre">1.0.0rc2</span></code> for Python).</p>
+<section id="upgrading-from-1-0-0-rc-1">
+<h3>Upgrading from 1.0.0-rc.1<a class="headerlink" href="#upgrading-from-1-0-0-rc-1" title="Link to this heading">¶</a></h3>
+<p>Sample files are unchanged. <strong><code class="docutils literal notranslate"><span class="pre">samplekit-migrate.pyz</span></code></strong>, attached to this
+release, makes the renames below in a copy of a project, its samples copied as
+they are. It reads projects of 0.1.0 to 0.2.0 too: their samples, and their
+model's declarations written again, its formulas copied to check by hand. It
+works on a copy and guarantees nothing: back your project up first. <a class="reference external" href="https://zelyph.github.io/SampleKit/latest/guides/upgrade.html">Upgrade from an older
+SampleKit</a> says
+how to run it, and each step to do by hand; in short:</p>
+<ul class="simple">
+<li><p><strong>Before upgrading, bring every value up to date with rc.1</strong>: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">DIR</span> <span class="pre">status</span></code>, then <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">DIR</span> <span class="pre">compute</span> <span class="pre">--write</span></code>. This version does not
+read rc.1's record of which formula computed each value: at its first write
+in a project, it takes the values the files hold as computed by the model
+as it is then, and says how many.</p></li>
+<li><p><strong>Install the command line and the Python package together</strong>, at the same
+version, on every computer that shares a project.</p></li>
+<li><p><strong>Add <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">=</span> <span class="pre">&quot;.venv&quot;</span></code> under <code class="docutils literal notranslate"><span class="pre">[model]</span></code></strong> in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, or the path of
+another environment or interpreter: the model runs only in the Python named
+there.</p></li>
+<li><p><strong>Rename what changed name</strong>: <code class="docutils literal notranslate"><span class="pre">[workbench.colors]</span></code> is <code class="docutils literal notranslate"><span class="pre">[colors]</span></code>, the
+colour role <code class="docutils literal notranslate"><span class="pre">stale</span></code> is <code class="docutils literal notranslate"><span class="pre">outdated</span></code>, a style's <code class="docutils literal notranslate"><span class="pre">separator</span></code> is written as its
+<code class="docutils literal notranslate"><span class="pre">property</span></code>, <code class="docutils literal notranslate"><span class="pre">{collection}</span></code> in a path is <code class="docutils literal notranslate"><span class="pre">{project}</span></code>; in Python, <code class="docutils literal notranslate"><span class="pre">stale()</span></code> and <code class="docutils literal notranslate"><span class="pre">is_stale</span></code> are <code class="docutils literal notranslate"><span class="pre">outdated()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">is_outdated</span></code>. Each old name is refused, naming the new one.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span> <span class="pre">--like</span> <span class="pre">SAMPLE</span></code> is <code class="docutils literal notranslate"><span class="pre">new</span> <span class="pre">NAME</span> <span class="pre">--keep</span> <span class="pre">SAMPLE</span> <span class="pre">FIELDS</span></code>.</p></li>
+<li><p><strong>Rename a property's formulas, in this order</strong>: <code class="docutils literal notranslate"><span class="pre">compute=</span></code> becomes
+<code class="docutils literal notranslate"><span class="pre">compute_value=</span></code>, then <code class="docutils literal notranslate"><span class="pre">compute_quantity=</span></code> becomes <code class="docutils literal notranslate"><span class="pre">compute=</span></code>. No value is
+outdated by it. A value formula left as <code class="docutils literal notranslate"><span class="pre">compute=</span></code> still runs, but then owns
+the whole property: an uncertainty typed beside it is no longer kept.</p></li>
+</ul>
+</section>
+<section id="cleaning-up-after-rc-1">
+<h3>Cleaning up after rc.1<a class="headerlink" href="#cleaning-up-after-rc-1" title="Link to this heading">¶</a></h3>
+<p>Nothing breaks if you leave these, but they are no longer used:</p>
+<ul class="simple">
+<li><p><strong>In the state folder</strong> (<code class="docutils literal notranslate"><span class="pre">~/.local/state/samplekit</span></code> on Linux,
+<code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/samplekit</span></code> on macOS,
+<code class="docutils literal notranslate"><span class="pre">%LOCALAPPDATA%\samplekit</span></code> on Windows): <code class="docutils literal notranslate"><span class="pre">computed.json</span></code>, <code class="docutils literal notranslate"><span class="pre">computed</span></code>, <code class="docutils literal notranslate"><span class="pre">consent</span></code>, <code class="docutils literal notranslate"><span class="pre">accepted/</span></code>, and the run logs named <code class="docutils literal notranslate"><span class="pre">logs/compute-YYYY-MM-DDT…Z-PID.log</span></code> can be deleted.
+<code class="docutils literal notranslate"><span class="pre">samplekit-migrate.pyz</span> <span class="pre">--clean-state</span></code> lists them, and removes them with
+<code class="docutils literal notranslate"><span class="pre">--write</span></code>.</p></li>
+<li><p><strong>A history shared through git under rc.1</strong> committed files that each
+computer keeps for itself. Remove them from the repository once, then add
+<code class="docutils literal notranslate"><span class="pre">[history]</span> <span class="pre">shared</span> <span class="pre">=</span> <span class="pre">true</span></code> (below): <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">rm</span> <span class="pre">-r</span> <span class="pre">--cached</span> <span class="pre">.samplekit/history/HEAD</span> <span class="pre">.samplekit/history/config</span> <span class="pre">.samplekit/history/description</span> <span class="pre">.samplekit/history/hooks</span> <span class="pre">.samplekit/model.json</span></code>, then <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span> <span class="pre">-A</span></code>.</p></li>
+<li><p><strong>A value restored from a snapshot rc.1 took</strong> has no record of the formula
+that computed it, and is taken as current: if that formula changed since,
+compute it again, <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">DIR</span> <span class="pre">compute</span> <span class="pre">-p</span> <span class="pre">NAME</span> <span class="pre">--rerun</span> <span class="pre">--write</span></code>.</p></li>
+</ul>
+</section>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>A migration tool</strong>, <code class="docutils literal notranslate"><span class="pre">samplekit-migrate.pyz</span></code>, attached to each release: a
+project of 0.1.0, 0.1.1, 0.1.2, 0.2.0 or 1.0.0-rc.1, carried into a new
+folder this version reads, and a report of what was carried, left and to
+check by hand. Run with the Python of an environment where this version's
+package is installed; it installs nothing and never writes in the folder it
+reads.</p></li>
+<li><p><strong>An export writes a figure</strong>: <code class="docutils literal notranslate"><span class="pre">[export.curves]</span></code> with <code class="docutils literal notranslate"><span class="pre">figure</span> <span class="pre">=</span> <span class="pre">&quot;curves&quot;</span></code>
+and <code class="docutils literal notranslate"><span class="pre">output</span> <span class="pre">=</span> <span class="pre">&quot;paper/curves.pdf&quot;</span></code>, where a table's names its <code class="docutils literal notranslate"><span class="pre">profile</span></code>.
+<code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">export</span> <span class="pre">curves</span> <span class="pre">--write</span></code> then draws it to its file, as a table for
+a paper is written again; Python's <code class="docutils literal notranslate"><span class="pre">export(&quot;curves&quot;)</span></code> and the TUI's <code class="docutils literal notranslate"><span class="pre">p</span></code>
+menu do the same.</p></li>
+<li><p><strong>A project's look decides more of its figures</strong>: what <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code>
+declares wins over SampleKit's own choices, so <code class="docutils literal notranslate"><span class="pre">&quot;lines.marker&quot;</span> <span class="pre">=</span> <span class="pre">&quot;None&quot;</span></code>
+draws a <code class="docutils literal notranslate"><span class="pre">line</span></code> figure without markers, and <code class="docutils literal notranslate"><span class="pre">errorbar.capsize</span></code> sets the
+error bars' caps. <code class="docutils literal notranslate"><span class="pre">style</span></code> applies matplotlib's style sheets, by name or as
+<code class="docutils literal notranslate"><span class="pre">.mplstyle</span></code> files, and <code class="docutils literal notranslate"><span class="pre">fonts</span></code> makes font files kept in the project known
+to matplotlib. A figure takes settings of its own: <code class="docutils literal notranslate"><span class="pre">matplotlib</span> <span class="pre">=</span> <span class="pre">{</span> <span class="pre">…</span> <span class="pre">}</span></code> in
+<code class="docutils literal notranslate"><span class="pre">[figure.NAME]</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;sk.figure(matplotlib={…})</span></code> in a model.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">import</span></code> takes a file, and a list</strong>: <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">=</span> <span class="pre">[&quot;..&quot;,</span> <span class="pre">&quot;figures.samplekitrc&quot;]</span></code> merges the folder above's <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> and a file
+of any name, a later one over an earlier one, so that a project's settings
+can be kept in files of their own. <a class="reference external" href="https://zelyph.github.io/SampleKit/latest/guides/organise-settings.html">Organise a project's
+settings</a>
+shows how.</p></li>
+<li><p><strong>An environment made by uv works</strong>: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">init</span></code> installs the package
+into a <code class="docutils literal notranslate"><span class="pre">.venv/</span></code> without pip with <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">pip</span> <span class="pre">install</span></code>, when uv is on the
+<code class="docutils literal notranslate"><span class="pre">PATH</span></code>, and otherwise says the command to type.</p></li>
+<li><p><strong>Write a command in any order</strong>: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">samples</span> <span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">status</span> <span class="pre">samples</span></code> and <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">-f</span> <span class="pre">'mass</span> <span class="pre">&gt;</span> <span class="pre">10'</span> <span class="pre">status</span> <span class="pre">samples</span></code> are the same,
+and a list of files piped in works, <code class="docutils literal notranslate"><span class="pre">…</span> <span class="pre">|</span> <span class="pre">xargs</span> <span class="pre">samplekit</span> <span class="pre">status</span></code>. Where a
+folder has a command's name, the command wins; write the folder <code class="docutils literal notranslate"><span class="pre">status/</span></code>.</p></li>
+<li><p><strong>Select samples on every command</strong>: <code class="docutils literal notranslate"><span class="pre">-f</span></code> (a filter) and <code class="docutils literal notranslate"><span class="pre">--query</span></code> (a
+filter saved in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>) now work with <code class="docutils literal notranslate"><span class="pre">set</span></code>, <code class="docutils literal notranslate"><span class="pre">log</span></code>, <code class="docutils literal notranslate"><span class="pre">diff</span></code>,
+<code class="docutils literal notranslate"><span class="pre">restore</span></code>, <code class="docutils literal notranslate"><span class="pre">validate</span></code>, <code class="docutils literal notranslate"><span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">explain</span></code> and <code class="docutils literal notranslate"><span class="pre">open</span></code> too. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">samples</span> <span class="pre">set</span> <span class="pre">-f</span> <span class="pre">'material</span> <span class="pre">==</span> <span class="pre">steel'</span> <span class="pre">supplier=acme</span></code> previews each sample it changes,
+asks once, and writes them together.</p></li>
+<li><p><strong>Every change is previewed, then asked</strong>: <code class="docutils literal notranslate"><span class="pre">set</span></code>, <code class="docutils literal notranslate"><span class="pre">new</span></code>, <code class="docutils literal notranslate"><span class="pre">tag</span></code>, <code class="docutils literal notranslate"><span class="pre">export</span></code>,
+<code class="docutils literal notranslate"><span class="pre">restore</span></code> and <code class="docutils literal notranslate"><span class="pre">compute</span></code> show what they would change and end on <code class="docutils literal notranslate"><span class="pre">apply</span> <span class="pre">these</span> <span class="pre">changes?</span> <span class="pre">[y/N]</span></code>. <code class="docutils literal notranslate"><span class="pre">--write</span></code> answers yes beforehand, for scripts.</p></li>
+<li><p><strong>Documents in LaTeX, Markdown or HTML</strong>: a style, <code class="docutils literal notranslate"><span class="pre">[style.NAME]</span></code> in
+<code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, says how values, units and tables are written for a kind of
+document. <code class="docutils literal notranslate"><span class="pre">latex</span></code>, <code class="docutils literal notranslate"><span class="pre">markdown</span></code> and <code class="docutils literal notranslate"><span class="pre">html</span></code> are given: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">samples</span> <span class="pre">--style</span> <span class="pre">latex</span> <span class="pre">-c</span> <span class="pre">name,density</span> <span class="pre">-o</span> <span class="pre">table.tex</span></code> writes a LaTeX table ready to include.</p></li>
+<li><p><strong>Filters reach into tables</strong>: <code class="docutils literal notranslate"><span class="pre">results</span> <span class="pre">has</span> <span class="pre">42</span></code>, a sample with 42 in any cell
+of its <code class="docutils literal notranslate"><span class="pre">results</span></code> table; <code class="docutils literal notranslate"><span class="pre">results.status</span> <span class="pre">has</span> <span class="pre">failed</span></code>, in one column; and
+<code class="docutils literal notranslate"><span class="pre">results</span> <span class="pre">where</span> <span class="pre">(temperature</span> <span class="pre">&gt;</span> <span class="pre">100</span> <span class="pre">&amp;&amp;</span> <span class="pre">status</span> <span class="pre">==</span> <span class="pre">failed)</span></code>, one row meeting
+both. A filter also compares two fields of a sample: <code class="docutils literal notranslate"><span class="pre">measured</span> <span class="pre">&gt;</span> <span class="pre">expected</span></code>.</p></li>
+<li><p><strong>Scripts in the model</strong>: a method of the model marked <code class="docutils literal notranslate"><span class="pre">&#64;sk.script</span></code> is an
+action on a sample or on a selection, with options; <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">run</span> <span class="pre">NAME</span></code>
+runs it, or <code class="docutils literal notranslate"><span class="pre">p</span></code> in the TUI, and what it changes is previewed before it is
+written.</p></li>
+<li><p><strong>Share the history through git with one line</strong>: <code class="docutils literal notranslate"><span class="pre">[history]</span> <span class="pre">shared</span> <span class="pre">=</span> <span class="pre">true</span></code>
+in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, and <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span> <span class="pre">-A</span></code> takes the history with the samples;
+SampleKit keeps out what each computer makes for itself.</p></li>
+<li><p><strong>A folder made a project keeps its history</strong>: when a subfolder gets its own
+<code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, the snapshots the project above it took of its files are
+copied into its own history, and this is said.</p></li>
+<li><p><strong>In the TUI</strong>: a value, a table or a list opens in a window where each cell
+is edited, readings and list items included; <code class="docutils literal notranslate"><span class="pre">A</span></code> adds an attribute to a
+sample, its name then its value; <code class="docutils literal notranslate"><span class="pre">p</span></code> runs a script, draws a figure or writes
+an export from one menu, for the basket, the sample open or the samples
+shown.</p></li>
+<li><p><strong>Save what a table shows</strong>: <code class="docutils literal notranslate"><span class="pre">--save</span> <span class="pre">query=NAME</span></code>, <code class="docutils literal notranslate"><span class="pre">profile=NAME</span></code> or
+<code class="docutils literal notranslate"><span class="pre">export=NAME</span></code> on a table declares its filter, its columns, sort and groups,
+or both and an export, in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, previewed first; the TUI's <code class="docutils literal notranslate"><span class="pre">W</span></code>
+does the same.</p></li>
+<li><p><strong>Remove a sample</strong>: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FILE</span> <span class="pre">remove</span></code> deletes sample files, previewed
+first; the history keeps them, and <code class="docutils literal notranslate"><span class="pre">restore</span></code> gives them back. A folder alone
+is refused. In Python, <code class="docutils literal notranslate"><span class="pre">sample.remove()</span></code>.</p></li>
+<li><p><strong>The note from the command line</strong>: <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">note=…</span></code> replaces the text below
+the frontmatter, and <code class="docutils literal notranslate"><span class="pre">note=</span></code> empties it.</p></li>
+<li><p><strong>Links</strong>: an attribute written <code class="docutils literal notranslate"><span class="pre">&quot;[[steel-02]]&quot;</span></code>, as Obsidian writes a
+link, names another sample of the project; one written as Markdown does,
+<code class="docutils literal notranslate"><span class="pre">&quot;[certificate](../certificates/c.pdf)&quot;</span></code>, a file by its path, a sample of
+any project or any other file; one written <code class="docutils literal notranslate"><span class="pre">https://…</span></code> a web page. A list
+of links names several. The TUI opens each with <code class="docutils literal notranslate"><span class="pre">Enter</span></code> or <code class="docutils literal notranslate"><span class="pre">o</span></code>, a sample
+even where the filter leaves it out, its title bar saying the way taken
+and <code class="docutils literal notranslate"><span class="pre">Esc</span></code> going back along it; Python reads the samples with
+<code class="docutils literal notranslate"><span class="pre">sample.linked(&quot;reference&quot;)</span></code>, a file that is no sample as its path; and
+<code class="docutils literal notranslate"><span class="pre">validate</span></code> reports a link that leads nowhere. A link is shown as Markdown
+shows it, its text alone, underlined in the colour role <code class="docutils literal notranslate"><span class="pre">link</span></code>, <code class="docutils literal notranslate"><span class="pre">↗</span></code> after a
+web page and <code class="docutils literal notranslate"><span class="pre">✗</span></code> after one leading nowhere, in the TUI, and in a table and
+<code class="docutils literal notranslate"><span class="pre">view</span></code> drawn in a terminal; typed, written to a file or a pipe, it is the
+text written. Unquoted, a link is refused at its line, saying to quote it.
+A sample's screen lists the samples linking to it, and the filter <code class="docutils literal notranslate"><span class="pre">links</span> <span class="pre">to</span> <span class="pre">NAME</span></code> selects the samples whose links name it; <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">parents=[[a]],[[b]]</span></code> writes a list of links, and
+Tab after <code class="docutils literal notranslate"><span class="pre">[[</span></code> completes a sample's name, on <code class="docutils literal notranslate"><span class="pre">set</span></code> and in the TUI.</p></li>
+<li><p><strong>Rename a sample</strong>: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FILE</span> <span class="pre">rename</span> <span class="pre">NEW</span></code> renames its file, its own
+files and its <code class="docutils literal notranslate"><span class="pre">name</span></code>, and writes every link of the project leading to it
+again, a link to one of its own files too, previewed first; in the TUI, <code class="docutils literal notranslate"><span class="pre">R</span></code>;
+in Python, <code class="docutils literal notranslate"><span class="pre">sample.rename(new)</span></code>. <code class="docutils literal notranslate"><span class="pre">remove</span></code> lists the links it leaves leading
+nowhere.</p></li>
+<li><p><strong>A sample's own table written to a file</strong>: <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FILE</span> <span class="pre">view</span> <span class="pre">curve</span></code>
+shows the table <code class="docutils literal notranslate"><span class="pre">curve</span></code> alone, and <code class="docutils literal notranslate"><span class="pre">--csv</span></code>, <code class="docutils literal notranslate"><span class="pre">--tsv</span></code>, <code class="docutils literal notranslate"><span class="pre">--json</span></code> or <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">curve.csv</span></code> write its rows, previewed and kept in the history as a table of
+samples is; over several samples, a column <code class="docutils literal notranslate"><span class="pre">name</span></code> first. In Python,
+<code class="docutils literal notranslate"><span class="pre">sample.curve.to_csv()</span></code>.</p></li>
+<li><p><strong>A script may ask with <code class="docutils literal notranslate"><span class="pre">input()</span></code></strong>: on the command line in the terminal,
+in the TUI in the script's window, which shows what it prints as it prints
+it. The preview lists the answers, and the history keeps them with the
+command.</p></li>
+<li><p><strong>The TUI does what the command line does</strong>: <code class="docutils literal notranslate"><span class="pre">C</span></code> previews what it would
+compute, as <code class="docutils literal notranslate"><span class="pre">compute</span></code> does; in <code class="docutils literal notranslate"><span class="pre">H</span></code>, <code class="docutils literal notranslate"><span class="pre">r</span></code> puts files back as a change left
+them, <code class="docutils literal notranslate"><span class="pre">d</span></code> shows what a change changed and, on another, compares the two; <code class="docutils literal notranslate"><span class="pre">t</span></code> renames a tag, <code class="docutils literal notranslate"><span class="pre">old=new</span></code>; <code class="docutils literal notranslate"><span class="pre">N</span></code> takes a
+new sample's values, <code class="docutils literal notranslate"><span class="pre">field=value</span></code>, and fields kept from another,
+<code class="docutils literal notranslate"><span class="pre">keep:FIELD,…</span></code>; <code class="docutils literal notranslate"><span class="pre">D</span></code> removes a sample.</p></li>
+<li><p><strong>An editor of its own window leaves the TUI drawn</strong>: with Notepad or
+<code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">--wait</span></code>, <code class="docutils literal notranslate"><span class="pre">E</span></code> and <code class="docutils literal notranslate"><span class="pre">M</span></code> say what they wait for over the TUI; an editor
+in the terminal takes it as before.</p></li>
+<li><p><strong>Windows</strong>: tab completion in PowerShell completes the word after the
+cursor, where each Tab wrote the word before it again; <code class="docutils literal notranslate"><span class="pre">E</span></code> and <code class="docutils literal notranslate"><span class="pre">M</span></code> open
+the file in Notepad where no editor is named, rather than in the
+application Windows gives it (Python, for a model); a sample's folder is
+shown in Explorer, its file selected; a lock or a journal a killed command
+left is taken back; paths are said with <code class="docutils literal notranslate"><span class="pre">\</span></code>, never with both separators in
+one message.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span> <span class="pre">NAME</span> <span class="pre">--keep</span> <span class="pre">SAMPLE</span> <span class="pre">FIELDS</span></code> copies the fields named from another
+sample, and nothing else; <code class="docutils literal notranslate"><span class="pre">[property.NAME]</span> <span class="pre">range</span> <span class="pre">=</span> <span class="pre">[MIN,</span> <span class="pre">MAX]</span></code> makes a value
+outside the range a defect for <code class="docutils literal notranslate"><span class="pre">validate</span></code>; <code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--timeout</span> <span class="pre">SECONDS</span></code>
+stops a formula that runs too long and computes the others.</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>The demo is a tensile test</strong>: three metal specimens in five steps, from
+their sizes written by hand to their curves, results, a paper's tables and
+figures, and two projects read together; in its results, two specimens
+link to the one they are compared with. The start page writes it, and
+<em>Reset the demo</em> writes it again as it came.</p></li>
+<li><p><strong>The documentation is in three parts</strong>: guides, a task each; concepts, how
+SampleKit works and why; and the reference. The home page walks through the
+demo, and a page at an address of rc.1 sends its reader on. New guides
+install SampleKit, start a project, edit, find and link samples, work in
+the terminal interface and from Python, organise settings, read several
+projects together, and say what to do when something goes wrong.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">note</span></code> is a reserved name</strong>: a file holding an attribute <code class="docutils literal notranslate"><span class="pre">note:</span></code> is
+refused, saying to rename it <code class="docutils literal notranslate"><span class="pre">remarks:</span></code> or <code class="docutils literal notranslate"><span class="pre">comment:</span></code>; <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">note=</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sample.note</span></code> are the text below the frontmatter.</p></li>
+<li><p><strong>A number typed is previewed as the table shows it</strong>: <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">area=25.0</span></code>
+beside an uncertainty of <code class="docutils literal notranslate"><span class="pre">0.028</span></code> previews <code class="docutils literal notranslate"><span class="pre">25.000</span></code>, and <code class="docutils literal notranslate"><span class="pre">25.0123</span></code> keeps
+every digit typed.</p></li>
+<li><p><strong>A new row makes what reads its column outdated</strong>: after <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">--add-row</span></code>,
+a value reading a computed column is <em>outdated</em>, as are the values reading
+it, where it was said to wait for the new cell.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">compute</span></code> counts unchanged values by cells</strong>, as it counts what it
+computed: <code class="docutils literal notranslate"><span class="pre">computed</span> <span class="pre">61</span> <span class="pre">values</span> <span class="pre">in</span> <span class="pre">3</span> <span class="pre">samples,</span> <span class="pre">all</span> <span class="pre">unchanged</span></code>.</p></li>
+<li><p><strong>An uncertainty is rounded up, never understated</strong>: at <code class="docutils literal notranslate"><span class="pre">.3f</span></code>, an
+uncertainty of 0.00006 is written <code class="docutils literal notranslate"><span class="pre">0.001</span></code>, and 0.121 at <code class="docutils literal notranslate"><span class="pre">.2f</span></code> is <code class="docutils literal notranslate"><span class="pre">0.13</span></code>,
+where rc.1 wrote <code class="docutils literal notranslate"><span class="pre">0.000</span></code> and <code class="docutils literal notranslate"><span class="pre">0.12</span></code>. A value is still rounded to the
+nearest. The screen, Python and every file write the same digits, and a
+standard error in a summary is rounded up too. An uncertainty is never
+written as zero, so <code class="docutils literal notranslate"><span class="pre">validate</span></code> and an export no longer warn of one.</p></li>
+<li><p><strong>A property's formulas are <code class="docutils literal notranslate"><span class="pre">compute</span></code>, <code class="docutils literal notranslate"><span class="pre">compute_value</span></code> and
+<code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code></strong>: <code class="docutils literal notranslate"><span class="pre">compute=f</span></code> gives the whole property, <code class="docutils literal notranslate"><span class="pre">f()</span></code>
+returning a number or <code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">uncertainty)</span></code>; <code class="docutils literal notranslate"><span class="pre">compute_value=</span></code> the value
+alone, beside an uncertainty given apart. They were <code class="docutils literal notranslate"><span class="pre">compute_quantity</span></code>,
+<code class="docutils literal notranslate"><span class="pre">compute</span></code> and <code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code>.</p></li>
+<li><p><strong>A table's columns are declared with <code class="docutils literal notranslate"><span class="pre">sk.Property</span></code></strong>, its formula with
+them: <code class="docutils literal notranslate"><span class="pre">sk.Property(unit=&quot;MPa&quot;,</span> <span class="pre">compute=self._stress,</span> <span class="pre">depends_on=[&quot;row.force&quot;,</span> <span class="pre">&quot;area&quot;])</span></code>, the function given each row and
+returning its cell, or <code class="docutils literal notranslate"><span class="pre">compute_column=f</span></code>, given the columns it reads and
+returning one cell per row; <code class="docutils literal notranslate"><span class="pre">compute_value</span></code> and <code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code> give
+one number of each cell, the other entered. <code class="docutils literal notranslate"><span class="pre">sk.Column</span></code> is gone. A formula filling several
+columns at once is a <code class="docutils literal notranslate"><span class="pre">sk.ComputedColumns</span></code>, in the table's <code class="docutils literal notranslate"><span class="pre">computed=</span></code>;
+<code class="docutils literal notranslate"><span class="pre">compute_rows</span></code> and <code class="docutils literal notranslate"><span class="pre">compute_columns</span></code> are gone. A cell a formula gives is a
+number or <code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">uncertainty)</span></code>, as a property's is, where the pair was
+refused.</p></li>
+<li><p><strong>A project reads its subfolders by default</strong>: <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">recursive</span></code> is
+<code class="docutils literal notranslate"><span class="pre">true</span></code> unless <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> says <code class="docutils literal notranslate"><span class="pre">false</span></code>, so that <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">.</span></code> at a
+project's root reads <code class="docutils literal notranslate"><span class="pre">samples/</span></code>. A folder outside any project is read alone,
+as before. A folder reading no sample says so, naming the folders below that
+hold some.</p></li>
+<li><p><strong>A table names its index</strong>: <code class="docutils literal notranslate"><span class="pre">sk.Table(columns,</span> <span class="pre">index=&quot;day&quot;)</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">index=[&quot;day&quot;,</span> <span class="pre">&quot;hour&quot;]</span></code>; the index given by position is refused.</p></li>
+<li><p><strong>The command line is in colour on a terminal</strong>, with the TUI's colours: a
+value bold, an attribute and a unit each in its colour, a header bold, a
+state as the TUI shows it, <code class="docutils literal notranslate"><span class="pre">✓</span></code> and <code class="docutils literal notranslate"><span class="pre">written:</span></code> in green. One palette,
+<code class="docutils literal notranslate"><span class="pre">[colors]</span></code>, sets both; a file and a pipe get none.</p></li>
+<li><p><strong>Numbers in a column line up</strong>: a column of numbers is written to the
+decimals of its most precise, <code class="docutils literal notranslate"><span class="pre">2.00</span></code> beside <code class="docutils literal notranslate"><span class="pre">1.99</span></code>; a column of values with
+uncertainties to one number of decimals where every uncertainty can keep one
+or two significant digits (two when the first is a 1), <code class="docutils literal notranslate"><span class="pre">12.503</span> <span class="pre">±</span> <span class="pre">0.004</span></code>
+above <code class="docutils literal notranslate"><span class="pre">12.513</span> <span class="pre">±</span> <span class="pre">0.010</span></code>. A summary's median, minimum and maximum follow
+their column, and <code class="docutils literal notranslate"><span class="pre">set</span></code> says the mean of new readings to the place of their
+uncertainty. A declared precision still wins.</p></li>
+<li><p><strong>The record of which formula computed each value travels with the
+project</strong>, in its history, no longer on your computer: a formula edited on
+one computer is seen changed on every other, and a colleague's
+recomputed values are current on yours.</p></li>
+<li><p><strong>Reading computes nothing, in Python too</strong>: a value computed from readings,
+the mean of several measurements, say, has no value until it is
+computed, and says <em>never computed</em>, rather than computing behind your back.</p></li>
+<li><p><strong>A file written from values that are not current says so and exits 2</strong>: an
+export or a table written with <code class="docutils literal notranslate"><span class="pre">-o</span></code> names the values that are outdated,
+failed or never computed. In a CSV, a column <code class="docutils literal notranslate"><span class="pre">NAME_state</span></code> beside the
+quantity says which.</p></li>
+<li><p><strong>Exports write units as the sample files spell them</strong>, <code class="docutils literal notranslate"><span class="pre">degC</span></code> rather than
+the screen's <code class="docutils literal notranslate"><span class="pre">°C</span></code>; <code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">plain</span></code> gives the screen's forms.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">restore</span></code> without <code class="docutils literal notranslate"><span class="pre">--at</span></code> takes back your last change only</strong>, value by
+value, and keeps what was edited by hand or pulled from a colleague since.</p></li>
+<li><p><strong>A sample file must declare <code class="docutils literal notranslate"><span class="pre">schema_version:</span> <span class="pre">1</span></code></strong>; a file without it is not
+a sample, as a README is not. A key written twice in a sample is refused
+rather than silently taking the last.</p></li>
+<li><p><strong>In the TUI</strong>: a value opens selected, so that what you type replaces it
+(an arrow or <code class="docutils literal notranslate"><span class="pre">End</span></code> keeps it to edit); the basket is kept from one session
+to the next; a file changed in another editor is read again by itself.</p></li>
+<li><p><strong>Values not current are counted by cells</strong>, on every surface: a table's
+column outdated in its 13 rows counts 13, and a value and its uncertainty
+given by two formulas count two.</p></li>
+<li><p><strong>What reads a waiting value waits too</strong>, said <em>waits for area, which
+waits</em>, rather than outdated or failed. A value the model no longer
+computes is listed apart, to keep or remove.</p></li>
+<li><p><strong>One wording for nothing done</strong>: a command with nothing to change says
+<code class="docutils literal notranslate"><span class="pre">nothing</span> <span class="pre">to</span> <span class="pre">change</span> <span class="pre">—</span> <span class="pre">WHY</span></code>, and a question answered no says <code class="docutils literal notranslate"><span class="pre">nothing</span> <span class="pre">written</span></code>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">validate</span></code> reads each sample with the model</strong>, and says where the model
+cannot read one.</p></li>
+<li><p><strong>A file written from values not current says so on the standard output</strong>,
+so that <code class="docutils literal notranslate"><span class="pre">-q</span></code> or a redirected error stream does not hide it; <code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">waiting</span></code> is refused, since a waiting value fails nothing.</p></li>
+<li><p><strong>Over several projects, a snapshot's number is one project's</strong>: <code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">diff</span> <span class="pre">--from</span></code> and <code class="docutils literal notranslate"><span class="pre">--to</span></code> from a folder above several projects are
+refused, naming the project to choose.</p></li>
+<li><p><strong>The migration tool keeps every sample's note</strong>, 0.x's included.</p></li>
+</ul>
+</section>
+<section id="removed">
+<h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Reading what earlier versions wrote</strong>: sample files, configuration keys,
+command-line words and Python names of SampleKit 0.2 and rc.1 are refused
+like any unknown one, naming the nearest valid name. The upgrade guide says
+how to carry each over.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span> <span class="pre">--like</span></code>, <code class="docutils literal notranslate"><span class="pre">compute</span> <span class="pre">--try</span></code>, and the folder after <code class="docutils literal notranslate"><span class="pre">explain</span> <span class="pre">FILE</span></code>: a file
+SampleKit wrote is now found in the projects around it.</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<p>Many defects found by testing rc.1, among them values reported as current
+that were not, edits lost when two changes met, and a colleague's work pulled
+through git that the history took for your own.</p>
+</section>
+</section>
 <section id="rc-1-2026-09-28">
 <h2>[1.0.0-rc.1] — 2026-09-28<a class="headerlink" href="#rc-1-2026-09-28" title="Link to this heading">¶</a></h2>
 <p>The first release candidate of SampleKit 1.0, and a new SampleKit. Version
@@ -291,8 +595,8 @@ Rust, with a Python package beside them for your formulas and your scripts.
 Both come from one source and carry one version (<code class="docutils literal notranslate"><span class="pre">1.0.0rc1</span></code> for Python).</p>
 <p>It does not read the files 0.2.0 wrote, and no command converts them: see
 <a class="reference internal" href="#upgrading-from-0-2-0">Upgrading from 0.2.0</a> below.</p>
-<section id="added">
-<h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
+<section id="id1">
+<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <p><strong>The command line</strong>, <code class="docutils literal notranslate"><span class="pre">samplekit</span></code>, a program with no Python inside. Reading,
 selecting, showing, checking and exporting samples never start Python.</p>
 <ul class="simple">
@@ -455,8 +759,8 @@ explanations, a page per notion; how-to guides for a task you have in mind;
 and a reference — every command and option, the Python API, the TUI's keys,
 every key of <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, the sample file format, the exit codes.</p>
 </section>
-<section id="changed">
-<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h3>Changed<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <p><strong>The note below the data is yours.</strong> 0.2.0 wrote the body of a file from the
 model's <code class="docutils literal notranslate"><span class="pre">template()</span></code> at every save. SampleKit now never writes, reformats or
 reads the note: not a character, not a line ending. Tables for a reader are
@@ -587,8 +891,8 @@ afterwards that it is still current; beside a formula that takes seconds, it
 does not show. <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">new</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code> and the TUI start no Python while the
 model's description is current.</p>
 </section>
-<section id="removed">
-<h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">¶</a></h3>
+<section id="id3">
+<h3>Removed<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Reading 0.2.0 files.</strong> Every command names such a file, says why, reads
 the rest and exits with code 2.</p></li>
@@ -598,9 +902,9 @@ not read, and every command names the key and what it is written now —
 <code class="docutils literal notranslate"><span class="pre">'value'</span> <span class="pre">is</span> <span class="pre">written</span> <span class="pre">'v'</span> <span class="pre">since</span> <span class="pre">schema</span> <span class="pre">1:</span> <span class="pre">rename</span> <span class="pre">it</span></code>.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">template()</span></code> and the <code class="docutils literal notranslate"><span class="pre">report</span></code> module</strong>: the note is no longer generated.
 Tables for a paper are profiles and exports; figures are drawn with <code class="docutils literal notranslate"><span class="pre">plot</span></code>.</p></li>
-<li><p><strong>pandas</strong>: <code class="docutils literal notranslate"><span class="pre">to_dataframe()</span></code>, <code class="docutils literal notranslate"><span class="pre">stats()</span></code> on a list and the <code class="docutils literal notranslate"><span class="pre">converters</span></code>
-module. <code class="docutils literal notranslate"><span class="pre">to_csv()</span></code> or <code class="docutils literal notranslate"><span class="pre">to_dict()</span></code> give data pandas reads, and <code class="docutils literal notranslate"><span class="pre">--summary</span></code>,
-<code class="docutils literal notranslate"><span class="pre">Summary</span></code> and <code class="docutils literal notranslate"><span class="pre">sk.stats</span></code> summarise.</p></li>
+<li><p><strong>pandas</strong>: <code class="docutils literal notranslate"><span class="pre">to_dataframe()</span></code> and the <code class="docutils literal notranslate"><span class="pre">converters</span></code> module; <code class="docutils literal notranslate"><span class="pre">stats()</span></code> on a
+list gives a <code class="docutils literal notranslate"><span class="pre">Summary</span></code> rather than a DataFrame. <code class="docutils literal notranslate"><span class="pre">to_csv()</span></code> or <code class="docutils literal notranslate"><span class="pre">to_dict()</span></code>
+give data pandas reads, and <code class="docutils literal notranslate"><span class="pre">--summary</span></code>, <code class="docutils literal notranslate"><span class="pre">Summary</span></code> and <code class="docutils literal notranslate"><span class="pre">sk.stats</span></code> summarise.</p></li>
 <li><p><strong>Computing on read</strong>, and the cache a changed input cleared.</p></li>
 <li><p><strong>The automatic mean and standard deviation of a list</strong>: a statistic is
 declared.</p></li>
@@ -610,14 +914,14 @@ declared.</p></li>
 <h3>Upgrading from 0.2.0<a class="headerlink" href="#upgrading-from-0-2-0" title="Link to this heading">¶</a></h3>
 <p>No command converts a 0.2.0 sample: the model has to be rewritten by hand
 anyway, and a tool that did half the work would take all the risk of writing
-to your files. <a class="reference internal" href="how-to/upgrade.html"><span class="std std-doc">Upgrade from an older SampleKit</span></a>
+to your files. <a class="reference internal" href="guides/upgrade.html"><span class="std std-doc">Upgrade from an older SampleKit</span></a>
 shows how to carry each sample across — its values, uncertainties, readings,
 tables and text — with both versions installed side by side, into a new
 folder, and how to check the result.</p>
 </section>
 </section>
-<section id="id1">
-<h2>[0.2.0]<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<section id="id4">
+<h2>[0.2.0]<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
 <p>The previous SampleKit, a Python package published on the Python Package
 Index. Its changes are not recorded here.</p>
 </section>
@@ -629,14 +933,14 @@ Index. Its changes are not recorded here.</p>
         
         <div class="related-pages">
           
-          <a class="prev-page" href="reference/exit-codes.html">
+          <a class="prev-page" href="reference/glossary.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Exit codes</div>
+                <div class="title">Glossary</div>
                 
               </div>
             </a>
@@ -671,14 +975,23 @@ Index. Its changes are not recorded here.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Changelog</a><ul>
-<li><a class="reference internal" href="#rc-1-2026-09-28">[1.0.0-rc.1] — 2026-09-28</a><ul>
+<li><a class="reference internal" href="#rc-2-2026-11-04">[1.0.0-rc.2] — 2026-11-04</a><ul>
+<li><a class="reference internal" href="#upgrading-from-1-0-0-rc-1">Upgrading from 1.0.0-rc.1</a></li>
+<li><a class="reference internal" href="#cleaning-up-after-rc-1">Cleaning up after rc.1</a></li>
 <li><a class="reference internal" href="#added">Added</a></li>
 <li><a class="reference internal" href="#changed">Changed</a></li>
 <li><a class="reference internal" href="#removed">Removed</a></li>
+<li><a class="reference internal" href="#fixed">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#rc-1-2026-09-28">[1.0.0-rc.1] — 2026-09-28</a><ul>
+<li><a class="reference internal" href="#id1">Added</a></li>
+<li><a class="reference internal" href="#id2">Changed</a></li>
+<li><a class="reference internal" href="#id3">Removed</a></li>
 <li><a class="reference internal" href="#upgrading-from-0-2-0">Upgrading from 0.2.0</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id1">[0.2.0]</a></li>
+<li><a class="reference internal" href="#id4">[0.2.0]</a></li>
 </ul>
 </li>
 </ul>
@@ -690,7 +1003,7 @@ Index. Its changes are not recorded here.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=4b0c7688"></script>
+</div><script src="_static/documentation_options.js?v=7cf4fce2"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>

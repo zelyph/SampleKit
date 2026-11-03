@@ -1,0 +1,591 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Several projects" href="several-projects.html"><link rel="prev" title="Run a script of the model" href="run-a-script.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Tables and figures for a paper - SampleKit 1.0.0-rc.2</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Guides</a><input aria-label="Toggle navigation of Guides" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/filters.html">Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/fingerprints.html">Fingerprints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/glossary.html">Glossary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/guides/export-for-a-paper.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section class="tex2jax_ignore mathjax_ignore" id="tables-and-figures-for-a-paper">
+<h1>Tables and figures for a paper<a class="headerlink" href="#tables-and-figures-for-a-paper" title="Link to this heading">¶</a></h1>
+<p>This guide is for the tables and figures of a paper or a report: with the
+labels and digits the paper wants, written by a command you run again at each
+draft, and made again as they were when a reviewer asks, months later.</p>
+<p>The commands run in the last step of the <a class="reference internal" href="../index.html"><span class="std std-doc">home page's</span></a> tensile
+example, which shows the same steps more briefly: <a class="reference internal" href="../index.html#tables-written-to-files"><span class="std std-ref">tables written to
+files</span></a> and <a class="reference internal" href="../index.html#figures"><span class="std std-ref">figures</span></a>.
+A table written once, for a spreadsheet or a script, needs no more than <code class="docutils literal notranslate"><span class="pre">-o</span></code>
+(<a class="reference internal" href="find-and-select.html#write-the-table-to-a-file"><span class="std std-ref">write the table to a file</span></a>).</p>
+<section id="the-table-as-a-profile">
+<h2>1. The table, as a profile<a class="headerlink" href="#the-table-as-a-profile" title="Link to this heading">¶</a></h2>
+<p>A <strong>profile</strong> says which columns, with which titles and digits, in which
+order, and in which groups. The tensile example's:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[profile.overview]</span>
+<span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"name"</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"material"</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"young_modulus"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"E"</span><span class="p">,</span><span class="w"> </span><span class="n">precision</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">".1f"</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"yield_strength"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Rp0.2"</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"tensile_strength"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"Rm"</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"elongation"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"A"</span><span class="p">},</span>
+<span class="p">]</span>
+<span class="n">sort</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"material"</span><span class="p">,</span><span class="w"> </span><span class="s2">"name"</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Each column takes these keys, besides its <code class="docutils literal notranslate"><span class="pre">field</span></code> (<a class="reference internal" href="../reference/configuration.html#profile-name"><span class="std std-ref">every
+key</span></a>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">label</span></code> titles the column in a terminal and in a document; <code class="docutils literal notranslate"><span class="pre">header</span></code> names
+it in a CSV or JSON file, where a short name suits the program that reads
+it. A property is two columns in a CSV, <code class="docutils literal notranslate"><span class="pre">E_value</span> <span class="pre">[GPa]</span></code> and
+<code class="docutils literal notranslate"><span class="pre">E_uncertainty</span> <span class="pre">[GPa]</span></code>, the suffixes and the unit saying what each holds.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">precision</span></code> sets the digits of the column, over the property's own. A file
+is written at the precision declared, as a table shows it; <code class="docutils literal notranslate"><span class="pre">.17g</span></code> writes
+every digit a number carries. Two, <code class="docutils literal notranslate"><span class="pre">[&quot;.1f&quot;,</span> <span class="pre">&quot;.2g&quot;]</span></code>, give the uncertainty
+digits of its own: an uncertainty is rounded up, never understated, so at
+<code class="docutils literal notranslate"><span class="pre">.1f</span></code> one of 0.012 would be written <code class="docutils literal notranslate"><span class="pre">0.1</span></code>, eight times its size.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template</span></code> writes the cell as text, <code class="docutils literal notranslate"><span class="pre">'\num{{value:.1f}}'</span></code>: a CSV holds that
+text, for a LaTeX package that reads CSV, and JSON keeps the numbers.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">group</span> <span class="pre">=</span> <span class="pre">[&quot;material&quot;]</span></code> gives a table per material in a terminal; in a file it
+stays one table, each group's rows together.</p>
+<p>Look at it before writing anything, with <code class="docutils literal notranslate"><span class="pre">--status</span></code>, which adds a <code class="docutils literal notranslate"><span class="pre">state</span></code>
+column: a table for a paper should hold only current values.</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">--profile</span><span class="w"> </span>overview<span class="w"> </span><span class="na">--status</span><span class="w"> </span><span class="na">--csv</span>
+<span class=" -SampleKit -SampleKit-Muted">note: yield_strength_uncertainty is left out: it is empty for every sample</span>
+<span class=" -SampleKit -SampleKit-Muted">note: tensile_strength_uncertainty is left out: it is empty for every sample</span>
+<span class=" -SampleKit -SampleKit-Muted">note: elongation_uncertainty is left out: it is empty for every sample</span>
+name,material,young_modulus_value [GPa],young_modulus_uncertainty [GPa],yield_strength_value [MPa],tensile_strength_value [MPa],elongation_value [%],state
+aluminium-01,aluminium,69.2,0.3,285,318,12.0,current
+copper-01,copper,117.2,0.9,76,221,44.0,current
+steel-01,steel,206.3,1.1,387,518,24.0,current
+</pre></div>
+</div>
+</section>
+<section id="the-table-as-a-document">
+<h2>2. The table, as a document<a class="headerlink" href="#the-table-as-a-document" title="Link to this heading">¶</a></h2>
+<p>A <strong>style</strong> writes the table as a document holds it: <code class="docutils literal notranslate"><span class="pre">latex</span></code>, a <code class="docutils literal notranslate"><span class="pre">booktabs</span></code>
+table with its units in the headers, <code class="docutils literal notranslate"><span class="pre">markdown</span></code> and <code class="docutils literal notranslate"><span class="pre">html</span></code> are given. <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">-</span></code>
+prints it, <code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">table.tex</span> <span class="pre">--write</span></code> writes it, the extension naming the style:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">--profile</span><span class="w"> </span>overview<span class="w"> </span><span class="na">--style</span><span class="w"> </span>markdown<span class="w"> </span><span class="na">-o</span><span class="w"> </span>-
+| name | material | E (GPa) | Rp0.2 (MPa) | Rm (MPa) | A (%) |
+| --- | --- | --- | --- | --- | --- |
+| aluminium-01 | aluminium | 69.2 ± 0.3 | 285 | 318 | 12.0 |
+| copper-01 | copper | 117.2 ± 0.9 | 76 | 221 | 44.0 |
+| steel-01 | steel | 206.3 ± 1.1 | 387 | 518 | 24.0 |
+</pre></div>
+</div>
+<p>To change how a style writes, declare it again under the same name, with only
+what changes; the rest is kept (<a class="reference internal" href="../reference/configuration.html#style-name"><span class="std std-ref">every key of a
+style</span></a>). A LaTeX table written with
+<code class="docutils literal notranslate"><span class="pre">siunitx</span></code>, each value <code class="docutils literal notranslate"><span class="pre">\SI{…}{…}</span></code> with its unit in the cell:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[style.latex]</span>
+<span class="n">property</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'\SI{{value}{uncertainty}}{{unit}}'</span>
+<span class="n">uncertainty</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">' \pm {uncertainty}'</span>
+<span class="n">unitless</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'\num{{value}{uncertainty}}'</span>
+<span class="n">header_unit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+
+<span class="k">[unit.</span><span class="s2">"%"</span><span class="k">]</span>
+<span class="n">latex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'\percent'</span>
+</pre></div>
+</div>
+<p>A unit given no spelling in the style is written as its text, escaped:
+<code class="docutils literal notranslate"><span class="pre">\SI{24.0}{\%}</span></code>. Where <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> already has a section, add the key to it
+rather than write the section again: a section written twice makes the file
+unreadable, <em>duplicate key</em>.</p>
+</section>
+<section id="the-figures">
+<h2>3. The figures<a class="headerlink" href="#the-figures" title="Link to this heading">¶</a></h2>
+<p>A figure for a paper is declared once, its axes, kind and group, and its look
+is the project's: <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code> for the font and the size, <code class="docutils literal notranslate"><span class="pre">symbol_figure</span></code>
+for mathematics in the labels (<a class="reference internal" href="../index.html#one-style-for-the-whole-project"><span class="std std-ref">one style for the whole
+project</span></a>). Sizes are in
+centimetres: <code class="docutils literal notranslate"><span class="pre">&quot;figure.figsize&quot;</span> <span class="pre">=</span> <span class="pre">[8.5,</span> <span class="pre">6]</span></code> fits one column of most journals.
+A figure the model draws for one sample writes a file per sample where its
+path holds <code class="docutils literal notranslate"><span class="pre">{name}</span></code>.</p>
+</section>
+<section id="written-again-by-one-command">
+<h2>4. Written again by one command<a class="headerlink" href="#written-again-by-one-command" title="Link to this heading">¶</a></h2>
+<p>An <strong>export</strong> names what a file holds and where it goes: a profile with a
+style, or a figure. One command then writes it again at each draft, with no
+<code class="docutils literal notranslate"><span class="pre">-o</span></code> to remember:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[export.paper]</span>
+<span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"overview"</span>
+<span class="n">style</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"latex"</span>
+<span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"paper/results.tex"</span>
+
+<span class="k">[export.curves]</span>
+<span class="n">figure</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"curves"</span>
+<span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"paper/curves.pdf"</span>
+</pre></div>
+</div>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="k">list</span><span class="w"> </span>exports
+paper    paper/results.tex · profile overview
+curves   paper/curves.pdf · figure curves
+<span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="k">export</span><span class="w"> </span>paper<span class="w"> </span><span class="na">--write</span>
+export paper · paper/results.tex · 3 rows
+<span class=" -SampleKit -SampleKit-Current">written:</span> paper/results.tex, 3 rows
+<span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="k">export</span><span class="w"> </span>curves<span class="w"> </span><span class="na">--write</span>
+export curves · figure curves · paper/curves.pdf · 3 samples
+<span class=" -SampleKit -SampleKit-Current">written:</span> paper/curves.pdf
+</pre></div>
+</div>
+<p>A data file, <code class="docutils literal notranslate"><span class="pre">format</span> <span class="pre">=</span> <span class="pre">&quot;csv&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">tsv</span></code> or <code class="docutils literal notranslate"><span class="pre">json</span></code>, is exported the same way
+(<a class="reference internal" href="../reference/configuration.html#export-name"><span class="std std-ref">every key of an export</span></a>). A table
+shown with <code class="docutils literal notranslate"><span class="pre">-c</span></code> or <code class="docutils literal notranslate"><span class="pre">--profile</span></code> declares one from what it shows, <code class="docutils literal notranslate"><span class="pre">--save</span> <span class="pre">export=NAME</span></code>, previewed before it writes <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> (<a class="reference internal" href="find-and-select.html#saved-shapes"><span class="std std-ref">saved
+shapes</span></a>).</p>
+<p><strong>Written from values that are not current</strong>, outdated, edited, failed or
+never computed, an export writes its file all the same, says which values, and
+exits with code 2, so that a script writing the paper stops there; a table
+written with <code class="docutils literal notranslate"><span class="pre">-o</span></code> and a figure do the same. Compute them, or name their states
+after <code class="docutils literal notranslate"><span class="pre">--accept</span></code>, <code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">outdated,failed</span></code>, if the file is meant as it
+stands: the words are <code class="docutils literal notranslate"><span class="pre">outdated</span></code>, <code class="docutils literal notranslate"><span class="pre">edited</span></code> (or <code class="docutils literal notranslate"><span class="pre">edited:NAME,…</span></code> for those
+values alone), <code class="docutils literal notranslate"><span class="pre">failed</span></code> and <code class="docutils literal notranslate"><span class="pre">never_computed</span></code>. A failed value is written as its
+last number, its state saying not to trust it. A data file gives each such column its states,
+<code class="docutils literal notranslate"><span class="pre">elongation_state</span></code> (<a class="reference internal" href="../index.html#values-out-of-date"><span class="std std-ref">values out of date</span></a>).
+Where a sample could not be read, nothing is written: its rows would be
+missing.</p>
+<p>In the terminal interface, <code class="docutils literal notranslate"><span class="pre">p</span></code> offers the exports, previewed before <code class="docutils literal notranslate"><span class="pre">y</span></code>
+writes them; its first line, <em>what is shown</em>, writes the screen's table once
+to a file you name, and <code class="docutils literal notranslate"><span class="pre">W</span></code> declares what is shown as an export (<a class="reference internal" href="terminal-interface.html"><span class="std std-doc">work in the
+terminal interface</span></a>).</p>
+</section>
+<section id="from-python">
+<h2>5. From Python<a class="headerlink" href="#from-python" title="Link to this heading">¶</a></h2>
+<p>From Python, <code class="docutils literal notranslate"><span class="pre">to_text</span></code> writes a table in a style, as <code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">NAME</span> <span class="pre">-o</span> <span class="pre">-</span></code>
+does, its <code class="docutils literal notranslate"><span class="pre">profile=</span></code> naming the columns; <code class="docutils literal notranslate"><span class="pre">export</span></code> writes a declared export, a
+table or a figure, and returns the path written; <code class="docutils literal notranslate"><span class="pre">sk.plot(samples,</span> <span class="pre">&quot;curves&quot;,</span> <span class="pre">output=&quot;curves.pdf&quot;)</span></code> draws a figure that no export declares. Each is
+recorded in the history, as the command's is. Unlike <code class="docutils literal notranslate"><span class="pre">--write</span></code>, <code class="docutils literal notranslate"><span class="pre">export</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sk.plot</span></code> never replace a file that exists: they raise <code class="docutils literal notranslate"><span class="pre">FileExistsError</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">overwrite=True</span></code>, <code class="docutils literal notranslate"><span class="pre">export(&quot;paper&quot;,</span> <span class="pre">overwrite=True)</span></code>, replaces the file, as
+the script below does, so that it runs again at each draft:</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">scripts/paper.py</span><a class="headerlink" href="#id1" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">"""The paper's table and figure, from Python."""</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
+
+<span class="n">specimens</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">to_text</span><span class="p">(</span><span class="s2">"markdown"</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="s2">"overview"</span><span class="p">))</span>
+<span class="c1"># Written again at each draft: a file there already is replaced.</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">"paper"</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">"curves"</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">python</span><span class="w"> </span>scripts/paper.py
+| name | material | E (GPa) | Rp0.2 (MPa) | Rm (MPa) | A (%) |
+| --- | --- | --- | --- | --- | --- |
+| aluminium-01 | aluminium | 69.2 ± 0.3 | 285 | 318 | 12.0 |
+| copper-01 | copper | 117.2 ± 0.9 | 76 | 221 | 44.0 |
+| steel-01 | steel | 206.3 ± 1.1 | 387 | 518 | 24.0 |
+
+results.tex
+curves.pdf
+</pre></div>
+</div>
+</section>
+<section id="made-again-as-they-were">
+<h2>6. Made again as they were<a class="headerlink" href="#made-again-as-they-were" title="Link to this heading">¶</a></h2>
+<p>Every export and figure written is recorded in the project's history.
+<code class="docutils literal notranslate"><span class="pre">explain</span></code> finds a file again, even copied into the paper's folder, says
+whether what it was made from has changed since, and gives the command that
+makes it again exactly as it was:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span>paper/results.tex<span class="w"> </span><span class="k">explain</span>
+paper/results.tex
+  made      2026-10-06 19:16, by samplekit export paper --write
+  written   paper/results.tex
+  from      snapshot #1, 3 samples
+
+nothing it was made from has changed since: it is up to date
+made again as it was, from the project's folder: <span class=" -SampleKit -SampleKit-Muted">samplekit export paper --write -o paper/results.tex --at 246d92a</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--at</span></code> reads the project as the history kept it then, its samples, its
+configuration and its model, and writes where <code class="docutils literal notranslate"><span class="pre">-o</span></code> says; the project is not
+changed. A table made again this way is the same file, byte for byte; a
+figure is drawn from the same data and settings, and a newer matplotlib may
+draw it slightly differently.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../reference/configuration.html"><span class="std std-doc">Profiles, exports, figures and styles in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code></span></a>.</p></li>
+<li><p><a class="reference internal" href="../reference/cli.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">export</span></code>, <code class="docutils literal notranslate"><span class="pre">plot</span></code>, <code class="docutils literal notranslate"><span class="pre">explain</span></code>, <code class="docutils literal notranslate"><span class="pre">--at</span></code></span></a>.</p></li>
+<li><p><a class="reference internal" href="../concepts/history.html"><span class="std std-doc">The history</span></a>.</p></li>
+<li><p><a class="reference internal" href="../reference/written-files.html"><span class="std std-doc">Written files</span></a>: the columns and cells of a
+data file.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="several-projects.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Several projects</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="run-a-script.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Run a script of the model</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Tables and figures for a paper</a><ul>
+<li><a class="reference internal" href="#the-table-as-a-profile">1. The table, as a profile</a></li>
+<li><a class="reference internal" href="#the-table-as-a-document">2. The table, as a document</a></li>
+<li><a class="reference internal" href="#the-figures">3. The figures</a></li>
+<li><a class="reference internal" href="#written-again-by-one-command">4. Written again by one command</a></li>
+<li><a class="reference internal" href="#from-python">5. From Python</a></li>
+<li><a class="reference internal" href="#made-again-as-they-were">6. Made again as they were</a></li>
+<li><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

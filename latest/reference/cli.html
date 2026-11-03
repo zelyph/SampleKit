@@ -6,31 +6,44 @@
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="The Python API" href="python.html"><link rel="prev" title="Reference" href="index.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>The command line - SampleKit 1.0.0-rc.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+        <title>The command line - SampleKit 1.0.0-rc.2</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f2f2f2;
-  --color-code-foreground: #1e1e1e;
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
       }
     }
@@ -162,7 +175,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -183,7 +196,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -198,43 +211,47 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../guides/index.html">Guides</a><input aria-label="Toggle navigation of Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../guides/install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/upgrade.html">Upgrade from an older SampleKit</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/samples-and-files.html">Samples and their files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/readings-and-statistics.html">Readings and statistics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/models-and-formulas.html">Models and formulas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/current-and-outdated.html">Current and outdated values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/history.html">History</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/projects.html">Projects</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/move-existing-data.html">Move existing data in</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/first-model.html">A first model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/export-for-a-paper.html">An export for a paper</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/continuous-integration.html">Check a project in continuous integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/share-a-project.html">Share a project</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">The command line</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python.html">The Python API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tui.html">The TUI's keys</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html">Filters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fingerprints.html">Fingerprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
@@ -276,7 +293,7 @@
         <article role="main" id="furo-main-content">
           <!-- Generated by tools/generate-cli-reference.py from `samplekit --help`:
      do not edit; change the help in the code and run the script again. -->
-<section id="the-command-line">
+<section class="tex2jax_ignore mathjax_ignore" id="the-command-line">
 <h1>The command line<a class="headerlink" href="#the-command-line" title="Link to this heading">¶</a></h1>
 <p>Every command of <code class="docutils literal notranslate"><span class="pre">samplekit</span></code>, as its <code class="docutils literal notranslate"><span class="pre">--help</span></code> gives it. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">COMMAND</span> <span class="pre">-h</span></code> prints a shorter summary in the terminal.</p>
 <section id="general-options">
@@ -299,8 +316,9 @@
 <h2>samplekit<a class="headerlink" href="#samplekit" title="Link to this heading">¶</a></h2>
 <p>Sample data in plain Markdown: computed, current, tracked</p>
 <p>Find, show, check, compute, export and plot the samples of a project. Given files or a folder and no table options, samplekit prints the path of each sample selected; -c or --profile shows a table instead. Alone at a terminal, samplekit opens the TUI; elsewhere it prints this help.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [OPTIONS] [TARGETS]...
-samplekit &lt;COMMAND&gt;
+<p>Paths and options may come before the command or after it: samplekit samples status and samplekit status samples read the same. The first word naming a command is the command, even where a file or a folder has its name: write that one status/ or ./status, or after the command.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] [OPTIONS]
+samplekit [TARGET] &lt;COMMAND&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Commands:</p>
@@ -309,19 +327,23 @@ samplekit &lt;COMMAND&gt;
 <li><p><a class="reference internal" href="#samplekit-status"><code class="docutils literal notranslate"><span class="pre">status</span></code></a>: Show which computed values are not current, and why</p></li>
 <li><p><a class="reference internal" href="#samplekit-compute"><code class="docutils literal notranslate"><span class="pre">compute</span></code></a>: Compute the values the project's model gives</p></li>
 <li><p><a class="reference internal" href="#samplekit-explain"><code class="docutils literal notranslate"><span class="pre">explain</span></code></a>: Explain where one value came from</p></li>
-<li><p><a class="reference internal" href="#samplekit-open"><code class="docutils literal notranslate"><span class="pre">open</span></code></a>: Open a sample's own files — images, reports — or the folder holding them</p></li>
+<li><p><a class="reference internal" href="#samplekit-open"><code class="docutils literal notranslate"><span class="pre">open</span></code></a>: Open a sample's own files (images, reports) or the folder holding them</p></li>
 <li><p><a class="reference internal" href="#samplekit-view"><code class="docutils literal notranslate"><span class="pre">view</span></code></a>: Show each selected sample whole: its values, then its tables; --note adds the note</p></li>
-<li><p><a class="reference internal" href="#samplekit-export"><code class="docutils literal notranslate"><span class="pre">export</span></code></a>: Preview an export declared in .samplekitrc; --write writes it</p></li>
+<li><p><a class="reference internal" href="#samplekit-export"><code class="docutils literal notranslate"><span class="pre">export</span></code></a>: Preview an export declared in .samplekitrc, a table or a figure; --write writes it</p></li>
 <li><p><a class="reference internal" href="#samplekit-plot"><code class="docutils literal notranslate"><span class="pre">plot</span></code></a>: Draw a figure with matplotlib, in a window or to a file</p></li>
+<li><p><a class="reference internal" href="#samplekit-run"><code class="docutils literal notranslate"><span class="pre">run</span></code></a>: Run a script the model declares on each sample, or the selection; what it changes is shown and asked</p></li>
 <li><p><a class="reference internal" href="#samplekit-validate"><code class="docutils literal notranslate"><span class="pre">validate</span></code></a>: Report the defects of sample files; nothing is changed</p></li>
 <li><p><a class="reference internal" href="#samplekit-tag"><code class="docutils literal notranslate"><span class="pre">tag</span></code></a>: Add, remove or rename tags</p></li>
 <li><p><a class="reference internal" href="#samplekit-log"><code class="docutils literal notranslate"><span class="pre">log</span></code></a>: List the snapshots of the project's history</p></li>
 <li><p><a class="reference internal" href="#samplekit-diff"><code class="docutils literal notranslate"><span class="pre">diff</span></code></a>: Compare two states of the project, value by value</p></li>
 <li><p><a class="reference internal" href="#samplekit-restore"><code class="docutils literal notranslate"><span class="pre">restore</span></code></a>: Put files back as the history kept them: the last change taken back, or a state named</p></li>
+<li><p><a class="reference internal" href="#samplekit-remove"><code class="docutils literal notranslate"><span class="pre">remove</span></code></a>: Delete sample files; the history keeps them, and restore gives them back</p></li>
+<li><p><a class="reference internal" href="#samplekit-rename"><code class="docutils literal notranslate"><span class="pre">rename</span></code></a>: Rename a sample, its own files with it, and the links leading to it</p></li>
 <li><p><a class="reference internal" href="#samplekit-init"><code class="docutils literal notranslate"><span class="pre">init</span></code></a>: Set up a project, or complete one that exists</p></li>
 <li><p><a class="reference internal" href="#samplekit-new"><code class="docutils literal notranslate"><span class="pre">new</span></code></a>: Create a sample from what the project already knows</p></li>
 <li><p><a class="reference internal" href="#samplekit-set"><code class="docutils literal notranslate"><span class="pre">set</span></code></a>: Change values of a sample</p></li>
 <li><p><a class="reference internal" href="#samplekit-tui"><code class="docutils literal notranslate"><span class="pre">tui</span></code></a>: Open the TUI, the full-screen interface, on a folder; <code class="docutils literal notranslate"><span class="pre">samplekit</span></code> alone opens its start page</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">help</span></code>: Print this message or the help of the given subcommand(s)</p></li>
 </ul>
 <p>Arguments:</p>
 <ul class="simple">
@@ -330,22 +352,22 @@ samplekit &lt;COMMAND&gt;
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
 </ul>
 <p>Shape:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">-c,</span> <span class="pre">--columns</span> <span class="pre">&lt;COLUMNS&gt;</span></code>: Columns as FIELD[:PRECISION][=LABEL]; repeat or comma-separate</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-c,</span> <span class="pre">--columns</span> <span class="pre">&lt;COLUMNS&gt;</span></code>: Columns as FIELD[:PRECISION][=NAME]; repeat or comma-separate. NAME titles the column on the terminal and in a document, and names its columns in a CSV, TSV or JSON file: young_modulus=E writes E_value and E_uncertainty. A NAME holding a comma is quoted: young_modulus='Modulus, E'</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--profile</span> <span class="pre">&lt;NAME&gt;</span></code>: Show the table a profile declared in .samplekitrc gives. It sets the columns, the order, the groups and the precision, and each option written beside it overrides its part: -c the columns, -s the order, --group the groups, --precision the digits</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--summary</span></code>: Summarise each column instead of listing the samples</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--group</span> <span class="pre">&lt;FIELDS&gt;</span></code>: One table per value of these fields, comma-separated, or per combination of values; with --summary, a summary per group</p></li>
 </ul>
 <p>Presentation:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Render in this style, declared in .samplekitrc, instead of [render] style: its unit spellings, symbols and separator together</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Render in this style, declared in .samplekitrc, instead of [render] style: its unit spellings, its symbols and how it writes a property</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--precision</span> <span class="pre">&lt;SPEC&gt;</span></code>: Precision of every numeric column, such as .3f; a column's own FIELD:PRECISION wins</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--table-style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Draw a plain or boxed table</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--width</span> <span class="pre">&lt;WIDTH&gt;</span></code>: Assume this terminal width</p></li>
@@ -357,22 +379,24 @@ samplekit &lt;COMMAND&gt;
 <li><p><code class="docutils literal notranslate"><span class="pre">--json</span></code>: Print JSON instead of a table</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--status</span></code>: Add a state column: what in each row is not current</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">&lt;PATH&gt;</span></code>: Write to this file instead of printing; '-' prints</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the --output file, replacing it; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--save</span> <span class="pre">&lt;KIND=NAME&gt;</span></code>: Save what the table shows in the project's .samplekitrc, under NAME: query=NAME the filter, profile=NAME the columns, the sort and the groups, export=NAME both and an export written to out/NAME.csv (--tsv or --json for another format). Nothing is printed but the lines added; a name already declared is refused</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the --output file, or what --save adds; without it, a preview, then the question apply these changes? [y/N]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">&lt;STATES&gt;</span></code>: States a write from values not current may hold and exit 0: outdated, edited[:NAME,…], failed, never_computed</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>, <code class="docutils literal notranslate"><span class="pre">-V,</span> <span class="pre">--version</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Print the path of every sample a filter selects</span>
-samplekit<span class="w"> </span>brews/<span class="w"> </span>-f<span class="w"> </span><span class="s1">'tags has medal'</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>-f<span class="w"> </span><span class="s1">'elongation &gt; 20'</span>
 <span class="c1"># A table of chosen fields, sorted</span>
-samplekit<span class="w"> </span>brews/<span class="w"> </span>-c<span class="w"> </span>name,og,abv<span class="w"> </span>-s<span class="w"> </span>abv
-<span class="c1"># A table per style, each headed by it</span>
-samplekit<span class="w"> </span>brews/<span class="w"> </span>-c<span class="w"> </span>name,og,abv<span class="w"> </span>--group<span class="w"> </span>style
+samplekit<span class="w"> </span>samples/<span class="w"> </span>-c<span class="w"> </span>material,tensile_strength<span class="w"> </span>-s<span class="w"> </span>-tensile_strength
+<span class="c1"># A table per material, each headed by it</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>-c<span class="w"> </span>width,thickness<span class="w"> </span>--group<span class="w"> </span>material
 <span class="c1"># A table declared in .samplekitrc</span>
-samplekit<span class="w"> </span>brews/<span class="w"> </span>--profile<span class="w"> </span>overview
+samplekit<span class="w"> </span>samples/<span class="w"> </span>--profile<span class="w"> </span>overview
 <span class="c1"># Computed values that are not current, and why</span>
-samplekit<span class="w"> </span>status<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>status
 <span class="c1"># Compute what is not current, and write it</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute<span class="w"> </span>--write
 <span class="c1"># A command's own page, with its examples</span>
 samplekit<span class="w"> </span><span class="nb">help</span><span class="w"> </span>compute
 </pre></div>
@@ -381,31 +405,38 @@ samplekit<span class="w"> </span><span class="nb">help</span><span class="w"> </
 <section id="samplekit-list">
 <h2>samplekit list<a class="headerlink" href="#samplekit-list" title="Link to this heading">¶</a></h2>
 <p>List fields, tags and what .samplekitrc declares</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit list [OPTIONS] [KIND_OR_TARGET] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] list [KIND] [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">[KIND_OR_TARGET]</span></code>: Category to enumerate — fields, tags, queries, profiles, exports, figures, files or skipped — or a target when used alone</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[KIND_OR_TARGET]</span></code>: Category to enumerate (fields, tags, queries, profiles, exports, figures, scripts, files or skipped), or a target when used alone</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[TARGETS]...</span></code>: Sample files or folders, after a category; the current folder by default</p></li>
+</ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># What the collection holds and declares</span>
-samplekit<span class="w"> </span>list<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>list
 <span class="c1"># Every field a filter, a column or a sort can name</span>
-samplekit<span class="w"> </span>list<span class="w"> </span>fields<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>list<span class="w"> </span>fields
 <span class="c1"># Every tag in use</span>
-samplekit<span class="w"> </span>list<span class="w"> </span>tags<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>list<span class="w"> </span>tags
 <span class="c1"># The files the scan skipped, and why</span>
-samplekit<span class="w"> </span>list<span class="w"> </span>skipped<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>list<span class="w"> </span>skipped
 </pre></div>
 </div>
 </section>
 <section id="samplekit-status">
 <h2>samplekit status<a class="headerlink" href="#samplekit-status" title="Link to this heading">¶</a></h2>
 <p>Show which computed values are not current, and why</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit status [OPTIONS] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] status [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -415,11 +446,12 @@ samplekit<span class="w"> </span>list<span class="w"> </span>skipped<span class=
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--timeout</span> <span class="pre">&lt;SECONDS&gt;</span></code>: Stop the model's loading past this, in seconds; 60 by default</p></li>
 </ul>
 <p>Presentation:</p>
 <ul class="simple">
@@ -427,28 +459,26 @@ samplekit<span class="w"> </span>list<span class="w"> </span>skipped<span class=
 <li><p><code class="docutils literal notranslate"><span class="pre">--width</span> <span class="pre">&lt;WIDTH&gt;</span></code>: Assume this terminal width</p></li>
 </ul>
 <p>Output:</p>
-<ul>
+<ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--exit-code</span></code>: Exit 2 when any value is not current, as git diff --exit-code does: a check for continuous integration. A value waiting for an input nobody entered does not fail it. Without --exit-code, status exits 0 whatever it lists</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">&lt;STATES&gt;</span></code>: With --exit-code, states that do not fail the check: edited; waiting never does</p>
-<p>[possible values: edited, waiting]</p>
-</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">&lt;STATES&gt;</span></code>: With --exit-code, states that do not fail the check: edited, or edited:NAME,… for those values alone; waiting never does</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--json</span></code>: Print JSON: one object per value not current</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Values outdated, failed, edited or never computed, and why</span>
-samplekit<span class="w"> </span>status<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>status
 <span class="c1"># Only in the samples a filter selects</span>
-samplekit<span class="w"> </span>status<span class="w"> </span>brews/<span class="w"> </span>-f<span class="w"> </span><span class="s1">'brewer == ana'</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>status<span class="w"> </span>-f<span class="w"> </span><span class="s1">'material == steel'</span>
 <span class="c1"># Exit 2 when anything is not current: a check for a script</span>
-samplekit<span class="w"> </span>status<span class="w"> </span>brews/<span class="w"> </span>--exit-code
+samplekit<span class="w"> </span>samples/<span class="w"> </span>status<span class="w"> </span>--exit-code
 </pre></div>
 </div>
 </section>
 <section id="samplekit-compute">
 <h2>samplekit compute<a class="headerlink" href="#samplekit-compute" title="Link to this heading">¶</a></h2>
 <p>Compute the values the project's model gives</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit compute [OPTIONS] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] compute [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -458,14 +488,15 @@ samplekit<span class="w"> </span>status<span class="w"> </span>brews/<span class
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--properties</span> <span class="pre">&lt;VALUES&gt;</span></code>: Compute only these values — properties, or table columns as table.column — and the inputs they need. The values computed from them are left outdated, for a compute without -p. Repeat or comma-separate</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--properties</span> <span class="pre">&lt;VALUES&gt;</span></code>: Compute only these values (properties, or table columns as table.column) and the inputs they need. The values computed from them are left outdated, for a compute without -p. Repeat or comma-separate</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--rerun</span></code>: Also run values that are current: after a formula changed, or when one reads data outside the samples</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code>: Also run edited values, giving them back to their formula</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--timeout</span> <span class="pre">&lt;SECONDS&gt;</span></code>: Stop a formula that runs longer than this, in seconds: its value is failed, and the others run</p></li>
 </ul>
 <p>Presentation:</p>
 <ul class="simple">
@@ -474,107 +505,116 @@ samplekit<span class="w"> </span>status<span class="w"> </span>brews/<span class
 </ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--try</span></code>: Compute and show before and after, writing nothing; at a terminal, offer to write</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Compute and write the files, showing before and after</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Compute and write the files, showing before and after, asking nothing</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--show-output</span></code>: Show what the model prints as it prints it; it is always kept in the run's log</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># List what would run, and why; nothing runs</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/
-<span class="c1"># Compute and show before and after; write nothing</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>--try
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># List what would run, and why; asked, compute it, then asked, write it</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute
 <span class="c1"># Compute what is outdated or never computed, and write it</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute<span class="w"> </span>--write
 <span class="c1"># Only these values, with the inputs they need</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>-p<span class="w"> </span>abv,fermentation.rate<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute<span class="w"> </span>-p<span class="w"> </span>area,curve.stress<span class="w"> </span>--write
 <span class="c1"># Also the values that are current: after a formula changed</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>--rerun<span class="w"> </span>--write
-<span class="c1"># Also the values edited by hand, given back to their formula</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>--force<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute<span class="w"> </span>--rerun<span class="w"> </span>--write
+<span class="c1"># Also the values typed over their formula, given back to it</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute<span class="w"> </span>--force<span class="w"> </span>--write
 <span class="c1"># Every formula of the selected samples</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>--rerun<span class="w"> </span>--force<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute<span class="w"> </span>--rerun<span class="w"> </span>--force<span class="w"> </span>--write
 <span class="c1"># Also show what the model prints, as it prints it</span>
-samplekit<span class="w"> </span>compute<span class="w"> </span>brews/<span class="w"> </span>--write<span class="w"> </span>--show-output
+samplekit<span class="w"> </span>samples/<span class="w"> </span>compute<span class="w"> </span>--write<span class="w"> </span>--show-output
 </pre></div>
 </div>
 </section>
 <section id="samplekit-explain">
 <h2>samplekit explain<a class="headerlink" href="#samplekit-explain" title="Link to this heading">¶</a></h2>
 <p>Explain where one value came from</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit explain [OPTIONS] &lt;FILE&gt; [FIELD]
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] explain &lt;FIELD&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;FILE&gt;</span></code>: Sample file, or a file SampleKit wrote: an export, a figure</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">[FIELD]</span></code>: The field to explain; for a file SampleKit wrote, the project to look in, where the file lies outside it</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[TARGET|FIELD]...</span></code>: Sample files or folders, or files SampleKit wrote, and the field to explain: the one word naming no file</p></li>
+</ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
 </ul>
 <p>Presentation:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Render in this style, declared in .samplekitrc, instead of [render] style: its unit spellings, symbols and separator together</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Render in this style, declared in .samplekitrc, instead of [render] style: its unit spellings, its symbols and how it writes a property</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--precision</span> <span class="pre">&lt;SPEC&gt;</span></code>: Precision of every numeric column, such as .3f; a column's own FIELD:PRECISION wins</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Where a value came from: its inputs and their states</span>
-samplekit<span class="w"> </span>explain<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>abv
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>explain<span class="w"> </span>area
 <span class="c1"># The same for one table cell</span>
-samplekit<span class="w"> </span>explain<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span><span class="s1">'fermentation.rate[3]'</span>
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>explain<span class="w"> </span><span class="s1">'curve.stress[0.2]'</span>
 </pre></div>
 </div>
 </section>
 <section id="samplekit-open">
 <h2>samplekit open<a class="headerlink" href="#samplekit-open" title="Link to this heading">¶</a></h2>
-<p>Open a sample's own files — images, reports — or the folder holding them</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit open [OPTIONS] &lt;SAMPLE&gt; [PATTERN]
+<p>Open a sample's own files (images, reports) or the folder holding them</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] open [PATTERN] [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;SAMPLE&gt;</span></code>: Sample file</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">[PATTERN]</span></code>: A glob naming its files to open, such as '*.jpg'; more than five ask first</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[TARGET|PATTERN]...</span></code>: Sample files or folders, and a glob naming their files to open, such as '*.jpg': the one word naming no file; more than five ask first</p></li>
 </ul>
 <p>Options:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--navigate</span></code>: Open the folder holding them in the file manager instead</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--edit</span></code>: Open the sample's own file in $VISUAL or $EDITOR</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--edit</span></code>: Open the sample's own file, with the application the system gives its kind</p></li>
+</ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Where [collection] files is declared: the sample's file whose name matches, in the system's viewer</span>
-samplekit<span class="w"> </span>open<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span><span class="s1">'*.jpg'</span>
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>open<span class="w"> </span><span class="s1">'*.jpg'</span>
 <span class="c1"># Where [collection] files is declared: the folder holding its files, in the file manager</span>
-samplekit<span class="w"> </span>open<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>--navigate
-<span class="c1"># The sample's own file, in $VISUAL or $EDITOR</span>
-samplekit<span class="w"> </span>open<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>--edit
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>open<span class="w"> </span>--navigate
+<span class="c1"># The sample's own file, with the system's application for it</span>
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>open<span class="w"> </span>--edit
 <span class="c1"># Where [collection] files is declared: every sample's files, and those belonging to none</span>
-samplekit<span class="w"> </span>list<span class="w"> </span>files<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>list<span class="w"> </span>files
 </pre></div>
 </div>
 </section>
 <section id="samplekit-view">
 <h2>samplekit view<a class="headerlink" href="#samplekit-view" title="Link to this heading">¶</a></h2>
 <p>Show each selected sample whole: its values, then its tables; --note adds the note</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit view [OPTIONS] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] view [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">[TARGETS]...</span></code>: Sample files or folders; the current folder by default</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[TARGETS]...</span></code>: Sample files or folders, the current folder by default. A word that is no file and names a table of the samples selected shows that table alone: samplekit samples/steel-01.md view curve</p></li>
 </ul>
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
 </ul>
 <p>Presentation:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Render in this style, declared in .samplekitrc, instead of [render] style: its unit spellings, symbols and separator together</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Render in this style, declared in .samplekitrc, instead of [render] style: its unit spellings, its symbols and how it writes a property</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--precision</span> <span class="pre">&lt;SPEC&gt;</span></code>: Precision of every numeric column, such as .3f; a column's own FIELD:PRECISION wins</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--table-style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Draw a plain or boxed table</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--width</span> <span class="pre">&lt;WIDTH&gt;</span></code>: Assume this terminal width</p></li>
@@ -582,20 +622,28 @@ samplekit<span class="w"> </span>list<span class="w"> </span>files<span class="w
 <p>Output:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--note</span></code>: Print each sample's note after its values and tables</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--csv</span></code>: Print a table named as CSV</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tsv</span></code>: Print a table named as TSV</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--json</span></code>: Print a table named as JSON</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">&lt;PATH&gt;</span></code>: Write a table named to this file, its extension naming the format; '-' prints</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the --output file; without it, a preview, then the question apply these changes? [y/N]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">&lt;STATES&gt;</span></code>: States a write from values not current may hold and exit 0: outdated, edited[:NAME,…], failed, never_computed</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># The sample whole: its values, then its tables unfolded</span>
-samplekit<span class="w"> </span>view<span class="w"> </span>brews/citra-ipa.md
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>view
 <span class="c1"># Each sample a saved query selects, with its note</span>
-samplekit<span class="w"> </span>view<span class="w"> </span>brews/<span class="w"> </span>--query<span class="w"> </span>medals<span class="w"> </span>--note
+samplekit<span class="w"> </span>samples/<span class="w"> </span>view<span class="w"> </span>--query<span class="w"> </span>ductile<span class="w"> </span>--note
+<span class="c1"># One table alone, its rows written to a file</span>
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>view<span class="w"> </span>curve<span class="w"> </span>-o<span class="w"> </span>curve.csv<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-export">
 <h2>samplekit export<a class="headerlink" href="#samplekit-export" title="Link to this heading">¶</a></h2>
-<p>Preview an export declared in .samplekitrc; --write writes it</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit export [OPTIONS] &lt;EXPORT&gt; [TARGETS]...
+<p>Preview an export declared in .samplekitrc, a table or a figure; --write writes it</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] export &lt;EXPORT&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -606,37 +654,40 @@ samplekit<span class="w"> </span>view<span class="w"> </span>brews/<span class="
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
 </ul>
 <p>Presentation:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--precision</span> <span class="pre">&lt;SPEC&gt;</span></code>: Precision of every numeric column, such as .3f, instead of what the profile and the project declare: an export is written at the declared precision, and this asks for another one, or for more digits: --precision .6e</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: Spell the units in this style instead of as the sample files write them: plain for the forms [unit.*] declares for the screen, a spreadsheet's headers in Unicode, or a style declared in .samplekitrc</p></li>
 </ul>
 <p>Output:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--status</span></code>: Add a state column: what in each row is not current</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">&lt;STATES&gt;</span></code>: States a write from values not current may hold and exit 0: outdated, edited[:NAME,…], failed, never_computed</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">&lt;PATH&gt;</span></code>: Write to this file instead of the declared one; '-' prints</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the file, replacing it; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the file, replacing it; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># What a declared export would write, and where; --write writes it</span>
-samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> </span>overview<span class="w"> </span>brews/
+samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> </span>paper
 <span class="c1"># Print it instead</span>
-samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> </span>overview<span class="w"> </span>brews/<span class="w"> </span>-o<span class="w"> </span>-
+samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> </span>paper<span class="w"> </span>-o<span class="w"> </span>-
 <span class="c1"># Write it elsewhere, replacing that file</span>
-samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> </span>overview<span class="w"> </span>brews/<span class="w"> </span>-o<span class="w"> </span>result.csv<span class="w"> </span>--write
+samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> </span>paper<span class="w"> </span>-o<span class="w"> </span>results.tex<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-plot">
 <h2>samplekit plot<a class="headerlink" href="#samplekit-plot" title="Link to this heading">¶</a></h2>
 <p>Draw a figure with matplotlib, in a window or to a file</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit plot [OPTIONS] [FIGURE] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] plot &lt;FIGURE&gt; [OPTIONS]
+samplekit [TARGET] plot -x &lt;FIELD&gt; -y &lt;FIELD&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -647,10 +698,10 @@ samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> 
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
 </ul>
 <p>Shape:</p>
@@ -688,30 +739,85 @@ samplekit<span class="w"> </span><span class="nb">export</span><span class="w"> 
 <p>Output:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">&lt;PATH&gt;</span></code>: Write the figure to this file, in the format its extension names; without it, a window opens</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the --output file, replacing it; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the --output file, replacing it; without it, a preview, then the question apply these changes? [y/N]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--accept</span> <span class="pre">&lt;STATES&gt;</span></code>: States a write from values not current may hold and exit 0: outdated, edited[:NAME,…], failed, never_computed</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Open a declared figure, or the model's, in a matplotlib window</span>
-samplekit<span class="w"> </span>plot<span class="w"> </span>fermentation<span class="w"> </span>brews/
-<span class="c1"># Draw two fields against each other, one series per style</span>
-samplekit<span class="w"> </span>plot<span class="w"> </span>-x<span class="w"> </span>og<span class="w"> </span>-y<span class="w"> </span>abv<span class="w"> </span>--group<span class="w"> </span>style<span class="w"> </span>brews/
-<span class="c1"># A declared figure of the samples a saved query selects, one series per brewer</span>
-samplekit<span class="w"> </span>plot<span class="w"> </span>fermentation<span class="w"> </span>brews/<span class="w"> </span>--query<span class="w"> </span>ipas<span class="w"> </span>--group<span class="w"> </span>brewer
+samplekit<span class="w"> </span>samples/<span class="w"> </span>plot<span class="w"> </span>curves
+<span class="c1"># Draw two fields against each other, one series per material</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>plot<span class="w"> </span>-x<span class="w"> </span>yield_strength<span class="w"> </span>-y<span class="w"> </span>tensile_strength<span class="w"> </span>--group<span class="w"> </span>material
+<span class="c1"># A declared figure of the samples a saved query selects, one series per sample</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>plot<span class="w"> </span>curves<span class="w"> </span>--query<span class="w"> </span>ductile<span class="w"> </span>--group<span class="w"> </span>name
 <span class="c1"># Write it to a file instead, as over SSH</span>
-samplekit<span class="w"> </span>plot<span class="w"> </span>fermentation<span class="w"> </span>brews/<span class="w"> </span>-o<span class="w"> </span>fermentation.pdf<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>plot<span class="w"> </span>curves<span class="w"> </span>-o<span class="w"> </span>curves.pdf<span class="w"> </span>--write
+</pre></div>
+</div>
+</section>
+<section id="samplekit-run">
+<h2>samplekit run<a class="headerlink" href="#samplekit-run" title="Link to this heading">¶</a></h2>
+<p>Run a script the model declares on each sample, or the selection; what it changes is shown and asked</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] run &lt;SCRIPT&gt; [OPTIONS]
+</pre></div>
+</div>
+<p>Arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">[SCRIPT]</span></code>: A script the model declares: samplekit list scripts names them</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[TARGETS]...</span></code>: Sample files or folders; the current folder by default</p></li>
+</ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--timeout</span> <span class="pre">&lt;SECONDS&gt;</span></code>: Stop the script if it runs longer than this, in seconds: nothing is written</p></li>
+</ul>
+<p>Shape:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--set</span> <span class="pre">&lt;NAME=VALUE&gt;</span></code>: One of the script's options, NAME=VALUE, read as the script's signature types it: --set factor=0.8. Repeatable; samplekit list scripts names each script's options</p></li>
+</ul>
+<p>Presentation:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">&lt;STYLE&gt;</span></code>: The style what the script returns is written in; [render] style's otherwise</p></li>
+</ul>
+<p>Output:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write what the script changes, asking nothing</p></li>
+</ul>
+<p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
+<p>Examples:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># The model's scripts, what each acts on, and its options</span>
+samplekit<span class="w"> </span>list<span class="w"> </span>scripts
+<span class="c1"># Run a script on each sample, an option set; what it changes is shown, then asked</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>run<span class="w"> </span>classify<span class="w"> </span>--set<span class="w"> </span><span class="nv">limit</span><span class="o">=</span><span class="m">15</span>
+<span class="c1"># Write what it changes without asking</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>run<span class="w"> </span>classify<span class="w"> </span>--write
+<span class="c1"># A script of the selection, run once: what it prints is shown</span>
+samplekit<span class="w"> </span>run<span class="w"> </span>ranking
 </pre></div>
 </div>
 </section>
 <section id="samplekit-validate">
 <h2>samplekit validate<a class="headerlink" href="#samplekit-validate" title="Link to this heading">¶</a></h2>
 <p>Report the defects of sample files; nothing is changed</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit validate [OPTIONS] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] validate [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">[TARGETS]...</span></code>: Sample files or folders; the current folder by default</p></li>
+</ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--timeout</span> <span class="pre">&lt;SECONDS&gt;</span></code>: Stop the model's loading past this, in seconds; 60 by default</p></li>
 </ul>
 <p>Output:</p>
 <ul class="simple">
@@ -720,16 +826,18 @@ samplekit<span class="w"> </span>plot<span class="w"> </span>fermentation<span c
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--at</span></code>, <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># The defects and notes of every sample; nothing is changed</span>
-samplekit<span class="w"> </span>validate<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>validate
 <span class="c1"># The same for one sample</span>
-samplekit<span class="w"> </span>validate<span class="w"> </span>brews/citra-ipa.md
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>validate
 </pre></div>
 </div>
 </section>
 <section id="samplekit-tag">
 <h2>samplekit tag<a class="headerlink" href="#samplekit-tag" title="Link to this heading">¶</a></h2>
 <p>Add, remove or rename tags</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit tag [OPTIONS] &lt;COMMAND&gt;
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] tag add &lt;TAG&gt; [OPTIONS]
+samplekit [TARGET] tag remove &lt;TAG&gt; [OPTIONS]
+samplekit [TARGET] tag rename &lt;OLD&gt; &lt;NEW&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Commands:</p>
@@ -737,21 +845,22 @@ samplekit<span class="w"> </span>validate<span class="w"> </span>brews/citra-ipa
 <li><p><a class="reference internal" href="#samplekit-tag-add"><code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">add</span></code></a>: Add a tag to the samples selected</p></li>
 <li><p><a class="reference internal" href="#samplekit-tag-remove"><code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">remove</span></code></a>: Remove a tag from the samples selected</p></li>
 <li><p><a class="reference internal" href="#samplekit-tag-rename"><code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">rename</span></code></a>: Rename a tag in the samples selected</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">help</span></code>: Print this message or the help of the given subcommand(s)</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Show which samples would gain the tag; nothing is written</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>add<span class="w"> </span>medal<span class="w"> </span>brews/<span class="w"> </span>-f<span class="w"> </span><span class="s1">'abv &gt; 6'</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tag<span class="w"> </span>add<span class="w"> </span>reference<span class="w"> </span>-f<span class="w"> </span><span class="s1">'material == steel'</span>
 <span class="c1"># Remove a tag from one sample</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>remove<span class="w"> </span>medal<span class="w"> </span>brews/oatmeal-stout.md<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>tag<span class="w"> </span>remove<span class="w"> </span>reference<span class="w"> </span>--write
 <span class="c1"># Rename a tag across the collection</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>rename<span class="w"> </span>old_name<span class="w"> </span>new_name<span class="w"> </span>brews/<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tag<span class="w"> </span>rename<span class="w"> </span>old_name<span class="w"> </span>new_name<span class="w"> </span>--write
 </pre></div>
 </div>
 <section id="samplekit-tag-add">
 <h3>samplekit tag add<a class="headerlink" href="#samplekit-tag-add" title="Link to this heading">¶</a></h3>
 <p>Add a tag to the samples selected</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit tag add [OPTIONS] &lt;NAME&gt; [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] tag add &lt;TAG&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -762,29 +871,29 @@ samplekit<span class="w"> </span>tag<span class="w"> </span>rename<span class="w
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
 </ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Show which samples would gain the tag; nothing is written</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>add<span class="w"> </span>medal<span class="w"> </span>brews/<span class="w"> </span>-f<span class="w"> </span><span class="s1">'abv &gt; 6'</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tag<span class="w"> </span>add<span class="w"> </span>reference<span class="w"> </span>-f<span class="w"> </span><span class="s1">'material == steel'</span>
 <span class="c1"># Add it</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>add<span class="w"> </span>medal<span class="w"> </span>brews/<span class="w"> </span>-f<span class="w"> </span><span class="s1">'abv &gt; 6'</span><span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tag<span class="w"> </span>add<span class="w"> </span>reference<span class="w"> </span>-f<span class="w"> </span><span class="s1">'material == steel'</span><span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-tag-remove">
 <h3>samplekit tag remove<a class="headerlink" href="#samplekit-tag-remove" title="Link to this heading">¶</a></h3>
 <p>Remove a tag from the samples selected</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit tag remove [OPTIONS] &lt;NAME&gt; [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] tag remove &lt;TAG&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -795,29 +904,29 @@ samplekit<span class="w"> </span>tag<span class="w"> </span>add<span class="w"> 
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
 </ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Show which samples would lose the tag; nothing is written</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>remove<span class="w"> </span>medal<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tag<span class="w"> </span>remove<span class="w"> </span>reference
 <span class="c1"># Remove it from one sample</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>remove<span class="w"> </span>medal<span class="w"> </span>brews/oatmeal-stout.md<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>tag<span class="w"> </span>remove<span class="w"> </span>reference<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-tag-rename">
 <h3>samplekit tag rename<a class="headerlink" href="#samplekit-tag-rename" title="Link to this heading">¶</a></h3>
 <p>Rename a tag in the samples selected</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit tag rename [OPTIONS] &lt;OLD&gt; &lt;NEW&gt; [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] tag rename &lt;OLD&gt; &lt;NEW&gt; [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -829,22 +938,22 @@ samplekit<span class="w"> </span>tag<span class="w"> </span>remove<span class="w
 <p>Selection:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
-<p>A comparison: og &gt; 1.050, style == ipa, name != &quot;blonde saison&quot;. Operators: == != &lt; &lt;= &gt; &gt;=; contains and starts_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &amp;&amp;, || and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column[index]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
 </ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Show where the tag would be renamed; nothing is written</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>rename<span class="w"> </span>old_name<span class="w"> </span>new_name<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tag<span class="w"> </span>rename<span class="w"> </span>old_name<span class="w"> </span>new_name
 <span class="c1"># Rename it across the collection</span>
-samplekit<span class="w"> </span>tag<span class="w"> </span>rename<span class="w"> </span>old_name<span class="w"> </span>new_name<span class="w"> </span>brews/<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tag<span class="w"> </span>rename<span class="w"> </span>old_name<span class="w"> </span>new_name<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
@@ -852,7 +961,7 @@ samplekit<span class="w"> </span>tag<span class="w"> </span>rename<span class="w
 <section id="samplekit-log">
 <h2>samplekit log<a class="headerlink" href="#samplekit-log" title="Link to this heading">¶</a></h2>
 <p>List the snapshots of the project's history</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit log [OPTIONS] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] log [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -865,13 +974,20 @@ samplekit<span class="w"> </span>tag<span class="w"> </span>rename<span class="w
 <p>WHEN names the snapshot as --at does: a number from <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">log</span></code>, the beginning of its id, or a date.</p>
 </li>
 </ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
+</ul>
 <p>Output:</p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">--export</span></code>: Write an account of the history in Markdown, to share beside the files</p>
 <p>Each snapshot with when, what made it, every file it changed and the script kept beside it. Printed, or written to -o FILE with --write.</p>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">&lt;PATH&gt;</span></code>: Write the account to this file; '-' prints</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the --output file, replacing it; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the --output file, replacing it; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>General:</p>
@@ -884,7 +1000,7 @@ samplekit<span class="w"> </span>tag<span class="w"> </span>rename<span class="w
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Every snapshot of the project's history, newest first</span>
 samplekit<span class="w"> </span>log
 <span class="c1"># Those that changed one sample</span>
-samplekit<span class="w"> </span>log<span class="w"> </span>brews/citra-ipa.md
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>log
 <span class="c1"># An account of the history in Markdown, to share beside the files</span>
 samplekit<span class="w"> </span>log<span class="w"> </span>--export<span class="w"> </span>-o<span class="w"> </span>HISTORY.md<span class="w"> </span>--write
 <span class="c1"># The Python script that made snapshot #2 of the list, as it ran</span>
@@ -895,7 +1011,7 @@ samplekit<span class="w"> </span>log<span class="w"> </span>--script<span class=
 <section id="samplekit-diff">
 <h2>samplekit diff<a class="headerlink" href="#samplekit-diff" title="Link to this heading">¶</a></h2>
 <p>Compare two states of the project, value by value</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit diff [OPTIONS] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] diff [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -911,12 +1027,19 @@ samplekit<span class="w"> </span>log<span class="w"> </span>--script<span class=
 <p>WHEN is named as --from is.</p>
 </li>
 </ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
+</ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># The last change SampleKit kept, value by value</span>
 samplekit<span class="w"> </span>diff
 <span class="c1"># The last change kept of one sample</span>
-samplekit<span class="w"> </span>diff<span class="w"> </span>brews/citra-ipa.md
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>diff
 <span class="c1"># What changed since, outside SampleKit</span>
 samplekit<span class="w"> </span>diff<span class="w"> </span>--from<span class="w"> </span><span class="m">1</span>
 <span class="c1"># Between two dates, value by value</span>
@@ -927,7 +1050,7 @@ samplekit<span class="w"> </span>diff<span class="w"> </span>--from<span class="
 <section id="samplekit-restore">
 <h2>samplekit restore<a class="headerlink" href="#samplekit-restore" title="Link to this heading">¶</a></h2>
 <p>Put files back as the history kept them: the last change taken back, or a state named</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit restore [OPTIONS] [TARGETS]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] restore [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -936,29 +1059,92 @@ samplekit<span class="w"> </span>diff<span class="w"> </span>--from<span class="
 </ul>
 <p>Options:</p>
 <ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">--at</span> <span class="pre">&lt;WHEN&gt;</span></code>: The state to put them back to; by default before the last change kept, or as last kept if deleted or changed outside SampleKit since</p>
+<li><p><code class="docutils literal notranslate"><span class="pre">--at</span> <span class="pre">&lt;WHEN&gt;</span></code>: The state to put them back to; by default, the last change SampleKit wrote on this computer is taken back, keeping what was changed since, or a file deleted or changed outside SampleKit comes back as last kept</p>
 <p>WHEN is a number from <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">log</span></code>, the beginning of a snapshot's id, or a date such as 2026-09-12 or '2026-09-12 14:30'.</p>
 </li>
 </ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
+</ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the files; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the files; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># What taking back the last change kept would do; nothing is written</span>
 samplekit<span class="w"> </span>restore
 <span class="c1"># Take back the last change kept of one sample</span>
-samplekit<span class="w"> </span>restore<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>--write
-<span class="c1"># Put the brews back as snapshot #3 of samplekit log kept them</span>
-samplekit<span class="w"> </span>restore<span class="w"> </span>brews/<span class="w"> </span>--at<span class="w"> </span><span class="m">3</span><span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>restore<span class="w"> </span>--write
+<span class="c1"># Put the samples back as snapshot #3 of samplekit log kept them</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>restore<span class="w"> </span>--at<span class="w"> </span><span class="m">3</span><span class="w"> </span>--write
+</pre></div>
+</div>
+</section>
+<section id="samplekit-remove">
+<h2>samplekit remove<a class="headerlink" href="#samplekit-remove" title="Link to this heading">¶</a></h2>
+<p>Delete sample files; the history keeps them, and restore gives them back</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] remove [OPTIONS]
+</pre></div>
+</div>
+<p>Arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">[TARGETS]...</span></code>: Sample files or folders; the current folder by default</p></li>
+</ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--sort</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile_strength</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-r,</span> <span class="pre">--reverse</span></code>: Reverse the sort</p></li>
+</ul>
+<p>Output:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, a preview, then the question apply these changes? [y/N]</p></li>
+</ul>
+<p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
+<p>Examples:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># What deleting one sample would do; nothing is written</span>
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>remove
+<span class="c1"># Delete the samples a filter selects; samplekit restore gives them back</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>remove<span class="w"> </span>-f<span class="w"> </span><span class="s1">'tags has scrapped'</span><span class="w"> </span>--write
+</pre></div>
+</div>
+</section>
+<section id="samplekit-rename">
+<h2>samplekit rename<a class="headerlink" href="#samplekit-rename" title="Link to this heading">¶</a></h2>
+<p>Rename a sample, its own files with it, and the links leading to it</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit FILE rename &lt;NEW&gt; [OPTIONS]
+</pre></div>
+</div>
+<p>Arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;NEW&gt;</span></code>: The sample's new name: its file's, without the folder or <code class="docutils literal notranslate"><span class="pre">.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[TARGETS]...</span></code>: The sample file to rename</p></li>
+</ul>
+<p>Output:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, a preview, then the question apply these changes? [y/N]</p></li>
+</ul>
+<p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
+<p>Examples:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># What renaming one sample would do, its links with it; nothing is written</span>
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>rename<span class="w"> </span>steel-04
+<span class="c1"># Rename it, its own files and every link leading to it</span>
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span>rename<span class="w"> </span>steel-04<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-init">
 <h2>samplekit init<a class="headerlink" href="#samplekit-init" title="Link to this heading">¶</a></h2>
 <p>Set up a project, or complete one that exists</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit init [OPTIONS] [DIRECTORY]
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [DIRECTORY] init [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -974,7 +1160,7 @@ samplekit<span class="w"> </span>restore<span class="w"> </span>brews/<span clas
 </ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the files; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the files; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
@@ -983,14 +1169,14 @@ samplekit<span class="w"> </span>init
 <span class="c1"># An empty project, its model to fill in, and an environment</span>
 samplekit<span class="w"> </span>init<span class="w"> </span>--write
 <span class="c1"># The example project, one formula of each kind, in another folder</span>
-samplekit<span class="w"> </span>init<span class="w"> </span>--example<span class="w"> </span>example/<span class="w"> </span>--write
+samplekit<span class="w"> </span>example/<span class="w"> </span>init<span class="w"> </span>--example<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-new">
 <h2>samplekit new<a class="headerlink" href="#samplekit-new" title="Link to this heading">¶</a></h2>
 <p>Create a sample from what the project already knows</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit new [OPTIONS] &lt;NAME&gt; [FIELD=VALUE]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [FOLDER] new &lt;NAME&gt; [FIELD=VALUE]... [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -1000,65 +1186,68 @@ samplekit<span class="w"> </span>init<span class="w"> </span>--example<span clas
 </ul>
 <p>Options:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--like</span> <span class="pre">&lt;SAMPLE&gt;</span></code>: Shape it like this sample — its properties and their units — with none of its values</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--keep</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Also copy these values from that sample, with their readings; every other value is left empty for you to fill in</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--into</span> <span class="pre">&lt;DIRECTORY&gt;</span></code>: The folder to write it in, or the path of the file itself; by default beside the sample it is shaped like, or in the current folder</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--keep</span> <span class="pre">&lt;SAMPLE&gt;</span> <span class="pre">&lt;FIELDS&gt;</span></code>: Take these fields from another sample, as they are, and nothing else: <code class="docutils literal notranslate"><span class="pre">--keep</span> <span class="pre">samples/steel-01.md</span> <span class="pre">width,grade</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--into</span> <span class="pre">&lt;DIRECTORY&gt;</span></code>: The folder to write it in, or the path of the file itself; by default beside the sample --keep names, in samples/ where there is one, or in the current folder</p></li>
 </ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the file; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the file; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># What the file would hold: what you give here, named by its file</span>
-samplekit<span class="w"> </span>new<span class="w"> </span>pilsner
-<span class="c1"># Write it in another sample's shape, its measured values empty</span>
-samplekit<span class="w"> </span>new<span class="w"> </span>pilsner<span class="w"> </span>--like<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>--write
+samplekit<span class="w"> </span>new<span class="w"> </span>steel-02
 <span class="c1"># Write it with values already filled in</span>
-samplekit<span class="w"> </span>new<span class="w"> </span>pilsner<span class="w"> </span><span class="nv">og</span><span class="o">=</span><span class="m">1</span>.048<span class="w"> </span><span class="nv">volume</span><span class="o">=</span><span class="m">20</span><span class="w"> </span>--write
-<span class="c1"># Keep a value it measured, and its readings; never a computed one</span>
-samplekit<span class="w"> </span>new<span class="w"> </span>pilsner<span class="w"> </span>--like<span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>--keep<span class="w"> </span>volume<span class="w"> </span>--write
+samplekit<span class="w"> </span>new<span class="w"> </span>steel-02<span class="w"> </span><span class="nv">material</span><span class="o">=</span>steel<span class="w"> </span><span class="nv">width</span><span class="o">=</span><span class="m">12</span>.5<span class="w"> </span>--write
+<span class="c1"># Take a value another specimen measured, with its readings, and an attribute; nothing else</span>
+samplekit<span class="w"> </span>samples/<span class="w"> </span>new<span class="w"> </span>steel-02<span class="w"> </span>--keep<span class="w"> </span>samples/steel-01.md<span class="w"> </span>width,grade<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-set">
 <h2>samplekit set<a class="headerlink" href="#samplekit-set" title="Link to this heading">¶</a></h2>
 <p>Change values of a sample</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit set [OPTIONS] &lt;FILE&gt; [FIELD=VALUE]...
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [TARGET] set [FIELD=VALUE]... [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;FILE&gt;</span></code>: The sample file</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">[FIELD=VALUE]...</span></code>: What to change, as field=value; repeatable. An uncertainty is og.u, readings og.readings=1.011,1.010, a table cell fermentation.gravity[4], and the name the file shows, name=…</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[TARGET|FIELD=VALUE]...</span></code>: Sample files or folders, and what to change, as field=value: a word holding = is a change. An uncertainty is width.u, readings width.readings=12.51,12.52, a table cell curve.force[0.2], the name the file shows, name=…, and the note below the frontmatter, note=…</p></li>
 </ul>
 <p>Options:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--add-row</span> <span class="pre">&lt;TABLE&gt;</span></code>: Add a row to this table instead, the assignments naming its columns</p></li>
 </ul>
+<p>Selection:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--filter</span> <span class="pre">&lt;EXPR&gt;</span></code>: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.</p>
+<p>elongation &gt; 20, material == steel, material == &quot;cast iron&quot;, tensile_strength &gt; yield_strength, material in (steel, copper), tags has reference, curve where (strain &gt; 1 &amp;&amp; stress &lt; 300), elongation is missing. Combine with &amp;&amp;, || and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">&lt;NAME&gt;</span></code>: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold</p></li>
+</ul>
 <p>Output:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, only a preview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--write</span></code>: Write the change; without it, a preview, then the question apply these changes? [y/N]</p></li>
 </ul>
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code>, <code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--quiet</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># What the change would make outdated; nothing is written</span>
-samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </span>brews/citra-ipa.md<span class="w"> </span><span class="nv">fg</span><span class="o">=</span><span class="m">1</span>.010
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span><span class="nb">set</span><span class="w"> </span>thickness.readings<span class="o">=</span><span class="m">1</span>.991,1.994,1.989
 <span class="c1"># Write it</span>
-samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </span>brews/citra-ipa.md<span class="w"> </span><span class="nv">fg</span><span class="o">=</span><span class="m">1</span>.010<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span><span class="nb">set</span><span class="w"> </span>thickness.readings<span class="o">=</span><span class="m">1</span>.991,1.994,1.989<span class="w"> </span>--write
 <span class="c1"># Several fields at once, written together or not at all</span>
-samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>og.u<span class="o">=</span><span class="m">0</span>.001<span class="w"> </span><span class="nv">yeast</span><span class="o">=</span>US-05<span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="nv">grade</span><span class="o">=</span>S275<span class="w"> </span><span class="nv">direction</span><span class="o">=</span>T<span class="w"> </span>--write
 <span class="c1"># One cell of a table, addressed by its index</span>
-samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </span>brews/citra-ipa.md<span class="w"> </span><span class="s1">'fermentation.gravity[3]=1.020'</span><span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s1">'curve.force[0.2]=9.52'</span><span class="w"> </span>--write
 <span class="c1"># A new measurement: one row, the model computes its other columns</span>
-samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </span>brews/citra-ipa.md<span class="w"> </span>--add-row<span class="w"> </span>fermentation<span class="w"> </span><span class="nv">day</span><span class="o">=</span><span class="m">8</span><span class="w"> </span><span class="nv">gravity</span><span class="o">=</span><span class="m">1</span>.012<span class="w"> </span><span class="nv">temperature</span><span class="o">=</span><span class="m">19</span><span class="w"> </span>--write
+samplekit<span class="w"> </span>samples/steel-01.md<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--add-row<span class="w"> </span>curve<span class="w"> </span><span class="nv">strain</span><span class="o">=</span><span class="m">0</span>.1<span class="w"> </span><span class="nv">force</span><span class="o">=</span><span class="m">5</span>.13<span class="w"> </span>--write
 </pre></div>
 </div>
 </section>
 <section id="samplekit-tui">
 <h2>samplekit tui<a class="headerlink" href="#samplekit-tui" title="Link to this heading">¶</a></h2>
 <p>Open the TUI, the full-screen interface, on a folder; <code class="docutils literal notranslate"><span class="pre">samplekit</span></code> alone opens its start page</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit tui [OPTIONS] [DIRECTORY]
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>samplekit [DIRECTORY] tui [OPTIONS]
 </pre></div>
 </div>
 <p>Arguments:</p>
@@ -1068,7 +1257,7 @@ samplekit<span class="w"> </span><span class="nb">set</span><span class="w"> </s
 <p>General options (<a class="reference internal" href="#general-options">described once</a>): <code class="docutils literal notranslate"><span class="pre">--no-color</span></code>, <code class="docutils literal notranslate"><span class="pre">--rc</span></code>, <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code>, <code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--help</span></code>.</p>
 <p>Examples:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># The TUI on a folder: its samples, their values and states</span>
-samplekit<span class="w"> </span>tui<span class="w"> </span>brews/
+samplekit<span class="w"> </span>samples/<span class="w"> </span>tui
 <span class="c1"># At a terminal, the start page: the project here, the recent ones, a new one</span>
 samplekit
 </pre></div>
@@ -1142,6 +1331,7 @@ samplekit
 <li><a class="reference internal" href="#samplekit-view">samplekit view</a></li>
 <li><a class="reference internal" href="#samplekit-export">samplekit export</a></li>
 <li><a class="reference internal" href="#samplekit-plot">samplekit plot</a></li>
+<li><a class="reference internal" href="#samplekit-run">samplekit run</a></li>
 <li><a class="reference internal" href="#samplekit-validate">samplekit validate</a></li>
 <li><a class="reference internal" href="#samplekit-tag">samplekit tag</a><ul>
 <li><a class="reference internal" href="#samplekit-tag-add">samplekit tag add</a></li>
@@ -1152,6 +1342,8 @@ samplekit
 <li><a class="reference internal" href="#samplekit-log">samplekit log</a></li>
 <li><a class="reference internal" href="#samplekit-diff">samplekit diff</a></li>
 <li><a class="reference internal" href="#samplekit-restore">samplekit restore</a></li>
+<li><a class="reference internal" href="#samplekit-remove">samplekit remove</a></li>
+<li><a class="reference internal" href="#samplekit-rename">samplekit rename</a></li>
 <li><a class="reference internal" href="#samplekit-init">samplekit init</a></li>
 <li><a class="reference internal" href="#samplekit-new">samplekit new</a></li>
 <li><a class="reference internal" href="#samplekit-set">samplekit set</a></li>
@@ -1167,7 +1359,7 @@ samplekit
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

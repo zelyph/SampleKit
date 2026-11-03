@@ -26,9 +26,11 @@ Sample data in plain Markdown: computed, current, tracked
 
 Find, show, check, compute, export and plot the samples of a project. Given files or a folder and no table options, samplekit prints the path of each sample selected; -c or --profile shows a table instead. Alone at a terminal, samplekit opens the TUI; elsewhere it prints this help.
 
+Paths and options may come before the command or after it: samplekit samples status and samplekit status samples read the same. The first word naming a command is the command, even where a file or a folder has its name: write that one status/ or ./status, or after the command.
+
 ```text
-samplekit [OPTIONS] [TARGETS]...
-samplekit <COMMAND>
+samplekit [TARGET] [OPTIONS]
+samplekit [TARGET] <COMMAND> [OPTIONS]
 ```
 
 Commands:
@@ -37,19 +39,23 @@ Commands:
 - [`status`](#samplekit-status): Show which computed values are not current, and why
 - [`compute`](#samplekit-compute): Compute the values the project's model gives
 - [`explain`](#samplekit-explain): Explain where one value came from
-- [`open`](#samplekit-open): Open a sample's own files — images, reports — or the folder holding them
+- [`open`](#samplekit-open): Open a sample's own files (images, reports) or the folder holding them
 - [`view`](#samplekit-view): Show each selected sample whole: its values, then its tables; --note adds the note
-- [`export`](#samplekit-export): Preview an export declared in .samplekitrc; --write writes it
+- [`export`](#samplekit-export): Preview an export declared in .samplekitrc, a table or a figure; --write writes it
 - [`plot`](#samplekit-plot): Draw a figure with matplotlib, in a window or to a file
+- [`run`](#samplekit-run): Run a script the model declares on each sample, or the selection; what it changes is shown and asked
 - [`validate`](#samplekit-validate): Report the defects of sample files; nothing is changed
 - [`tag`](#samplekit-tag): Add, remove or rename tags
 - [`log`](#samplekit-log): List the snapshots of the project's history
 - [`diff`](#samplekit-diff): Compare two states of the project, value by value
 - [`restore`](#samplekit-restore): Put files back as the history kept them: the last change taken back, or a state named
+- [`remove`](#samplekit-remove): Delete sample files; the history keeps them, and restore gives them back
+- [`rename`](#samplekit-rename): Rename a sample, its own files with it, and the links leading to it
 - [`init`](#samplekit-init): Set up a project, or complete one that exists
 - [`new`](#samplekit-new): Create a sample from what the project already knows
 - [`set`](#samplekit-set): Change values of a sample
 - [`tui`](#samplekit-tui): Open the TUI, the full-screen interface, on a folder; `samplekit` alone opens its start page
+- `help`: Print this message or the help of the given subcommand(s)
 
 Arguments:
 
@@ -59,21 +65,21 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
 
 Shape:
 
-- `-c, --columns <COLUMNS>`: Columns as FIELD\[:PRECISION\]\[=LABEL\]; repeat or comma-separate
+- `-c, --columns <COLUMNS>`: Columns as FIELD\[:PRECISION\]\[=NAME\]; repeat or comma-separate. NAME titles the column on the terminal and in a document, and names its columns in a CSV, TSV or JSON file: young\_modulus=E writes E\_value and E\_uncertainty. A NAME holding a comma is quoted: young\_modulus='Modulus, E'
 - `--profile <NAME>`: Show the table a profile declared in .samplekitrc gives. It sets the columns, the order, the groups and the precision, and each option written beside it overrides its part: -c the columns, -s the order, --group the groups, --precision the digits
 - `--summary`: Summarise each column instead of listing the samples
 - `--group <FIELDS>`: One table per value of these fields, comma-separated, or per combination of values; with --summary, a summary per group
 
 Presentation:
 
-- `--style <STYLE>`: Render in this style, declared in .samplekitrc, instead of \[render\] style: its unit spellings, symbols and separator together
+- `--style <STYLE>`: Render in this style, declared in .samplekitrc, instead of \[render\] style: its unit spellings, its symbols and how it writes a property
 - `--precision <SPEC>`: Precision of every numeric column, such as .3f; a column's own FIELD:PRECISION wins
 - `--table-style <STYLE>`: Draw a plain or boxed table
 - `--width <WIDTH>`: Assume this terminal width
@@ -85,7 +91,9 @@ Output:
 - `--json`: Print JSON instead of a table
 - `--status`: Add a state column: what in each row is not current
 - `-o, --output <PATH>`: Write to this file instead of printing; '-' prints
-- `--write`: Write the --output file, replacing it; without it, only a preview
+- `--save <KIND=NAME>`: Save what the table shows in the project's .samplekitrc, under NAME: query=NAME the filter, profile=NAME the columns, the sort and the groups, export=NAME both and an export written to out/NAME.csv (--tsv or --json for another format). Nothing is printed but the lines added; a name already declared is refused
+- `--write`: Write the --output file, or what --save adds; without it, a preview, then the question apply these changes? \[y/N\]
+- `--accept <STATES>`: States a write from values not current may hold and exit 0: outdated, edited\[:NAME,…\], failed, never\_computed
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--at`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`, `-V, --version`.
 
@@ -93,17 +101,17 @@ Examples:
 
 ```sh
 # Print the path of every sample a filter selects
-samplekit brews/ -f 'tags has medal'
+samplekit samples/ -f 'elongation > 20'
 # A table of chosen fields, sorted
-samplekit brews/ -c name,og,abv -s abv
-# A table per style, each headed by it
-samplekit brews/ -c name,og,abv --group style
+samplekit samples/ -c material,tensile_strength -s -tensile_strength
+# A table per material, each headed by it
+samplekit samples/ -c width,thickness --group material
 # A table declared in .samplekitrc
-samplekit brews/ --profile overview
+samplekit samples/ --profile overview
 # Computed values that are not current, and why
-samplekit status brews/
+samplekit samples/ status
 # Compute what is not current, and write it
-samplekit compute brews/ --write
+samplekit samples/ compute --write
 # A command's own page, with its examples
 samplekit help compute
 ```
@@ -113,13 +121,20 @@ samplekit help compute
 List fields, tags and what .samplekitrc declares
 
 ```text
-samplekit list [OPTIONS] [KIND_OR_TARGET] [TARGETS]...
+samplekit [TARGET] list [KIND] [OPTIONS]
 ```
 
 Arguments:
 
-- `[KIND_OR_TARGET]`: Category to enumerate — fields, tags, queries, profiles, exports, figures, files or skipped — or a target when used alone
+- `[KIND_OR_TARGET]`: Category to enumerate (fields, tags, queries, profiles, exports, figures, scripts, files or skipped), or a target when used alone
 - `[TARGETS]...`: Sample files or folders, after a category; the current folder by default
+
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
 
 General options ([described once](#general-options)): `--at`, `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -127,13 +142,13 @@ Examples:
 
 ```sh
 # What the collection holds and declares
-samplekit list brews/
+samplekit samples/ list
 # Every field a filter, a column or a sort can name
-samplekit list fields brews/
+samplekit samples/ list fields
 # Every tag in use
-samplekit list tags brews/
+samplekit samples/ list tags
 # The files the scan skipped, and why
-samplekit list skipped brews/
+samplekit samples/ list skipped
 ```
 
 ## samplekit status
@@ -141,7 +156,7 @@ samplekit list skipped brews/
 Show which computed values are not current, and why
 
 ```text
-samplekit status [OPTIONS] [TARGETS]...
+samplekit [TARGET] status [OPTIONS]
 ```
 
 Arguments:
@@ -152,10 +167,11 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
+- `--timeout <SECONDS>`: Stop the model's loading past this, in seconds; 60 by default
 
 Presentation:
 
@@ -165,9 +181,7 @@ Presentation:
 Output:
 
 - `--exit-code`: Exit 2 when any value is not current, as git diff --exit-code does: a check for continuous integration. A value waiting for an input nobody entered does not fail it. Without --exit-code, status exits 0 whatever it lists
-- `--accept <STATES>`: With --exit-code, states that do not fail the check: edited; waiting never does
-
-  \[possible values: edited, waiting\]
+- `--accept <STATES>`: With --exit-code, states that do not fail the check: edited, or edited:NAME,… for those values alone; waiting never does
 - `--json`: Print JSON: one object per value not current
 
 General options ([described once](#general-options)): `--at`, `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
@@ -176,11 +190,11 @@ Examples:
 
 ```sh
 # Values outdated, failed, edited or never computed, and why
-samplekit status brews/
+samplekit samples/ status
 # Only in the samples a filter selects
-samplekit status brews/ -f 'brewer == ana'
+samplekit samples/ status -f 'material == steel'
 # Exit 2 when anything is not current: a check for a script
-samplekit status brews/ --exit-code
+samplekit samples/ status --exit-code
 ```
 
 ## samplekit compute
@@ -188,7 +202,7 @@ samplekit status brews/ --exit-code
 Compute the values the project's model gives
 
 ```text
-samplekit compute [OPTIONS] [TARGETS]...
+samplekit [TARGET] compute [OPTIONS]
 ```
 
 Arguments:
@@ -199,13 +213,14 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
-- `-p, --properties <VALUES>`: Compute only these values — properties, or table columns as table.column — and the inputs they need. The values computed from them are left outdated, for a compute without -p. Repeat or comma-separate
+- `-p, --properties <VALUES>`: Compute only these values (properties, or table columns as table.column) and the inputs they need. The values computed from them are left outdated, for a compute without -p. Repeat or comma-separate
 - `--rerun`: Also run values that are current: after a formula changed, or when one reads data outside the samples
 - `--force`: Also run edited values, giving them back to their formula
+- `--timeout <SECONDS>`: Stop a formula that runs longer than this, in seconds: its value is failed, and the others run
 
 Presentation:
 
@@ -214,8 +229,7 @@ Presentation:
 
 Output:
 
-- `--try`: Compute and show before and after, writing nothing; at a terminal, offer to write
-- `--write`: Compute and write the files, showing before and after
+- `--write`: Compute and write the files, showing before and after, asking nothing
 - `--show-output`: Show what the model prints as it prints it; it is always kept in the run's log
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
@@ -223,22 +237,20 @@ General options ([described once](#general-options)): `-v, --verbose`, `-q, --qu
 Examples:
 
 ```sh
-# List what would run, and why; nothing runs
-samplekit compute brews/
-# Compute and show before and after; write nothing
-samplekit compute brews/ --try
+# List what would run, and why; asked, compute it, then asked, write it
+samplekit samples/ compute
 # Compute what is outdated or never computed, and write it
-samplekit compute brews/ --write
+samplekit samples/ compute --write
 # Only these values, with the inputs they need
-samplekit compute brews/ -p abv,fermentation.rate --write
+samplekit samples/ compute -p area,curve.stress --write
 # Also the values that are current: after a formula changed
-samplekit compute brews/ --rerun --write
-# Also the values edited by hand, given back to their formula
-samplekit compute brews/ --force --write
+samplekit samples/ compute --rerun --write
+# Also the values typed over their formula, given back to it
+samplekit samples/ compute --force --write
 # Every formula of the selected samples
-samplekit compute brews/ --rerun --force --write
+samplekit samples/ compute --rerun --force --write
 # Also show what the model prints, as it prints it
-samplekit compute brews/ --write --show-output
+samplekit samples/ compute --write --show-output
 ```
 
 ## samplekit explain
@@ -246,17 +258,23 @@ samplekit compute brews/ --write --show-output
 Explain where one value came from
 
 ```text
-samplekit explain [OPTIONS] <FILE> [FIELD]
+samplekit [TARGET] explain <FIELD> [OPTIONS]
 ```
 
 Arguments:
 
-- `<FILE>`: Sample file, or a file SampleKit wrote: an export, a figure
-- `[FIELD]`: The field to explain; for a file SampleKit wrote, the project to look in, where the file lies outside it
+- `[TARGET|FIELD]...`: Sample files or folders, or files SampleKit wrote, and the field to explain: the one word naming no file
+
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
 
 Presentation:
 
-- `--style <STYLE>`: Render in this style, declared in .samplekitrc, instead of \[render\] style: its unit spellings, symbols and separator together
+- `--style <STYLE>`: Render in this style, declared in .samplekitrc, instead of \[render\] style: its unit spellings, its symbols and how it writes a property
 - `--precision <SPEC>`: Precision of every numeric column, such as .3f; a column's own FIELD:PRECISION wins
 
 General options ([described once](#general-options)): `--at`, `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
@@ -265,28 +283,34 @@ Examples:
 
 ```sh
 # Where a value came from: its inputs and their states
-samplekit explain brews/citra-ipa.md abv
+samplekit samples/steel-01.md explain area
 # The same for one table cell
-samplekit explain brews/citra-ipa.md 'fermentation.rate[3]'
+samplekit samples/steel-01.md explain 'curve.stress[0.2]'
 ```
 
 ## samplekit open
 
-Open a sample's own files — images, reports — or the folder holding them
+Open a sample's own files (images, reports) or the folder holding them
 
 ```text
-samplekit open [OPTIONS] <SAMPLE> [PATTERN]
+samplekit [TARGET] open [PATTERN] [OPTIONS]
 ```
 
 Arguments:
 
-- `<SAMPLE>`: Sample file
-- `[PATTERN]`: A glob naming its files to open, such as '\*.jpg'; more than five ask first
+- `[TARGET|PATTERN]...`: Sample files or folders, and a glob naming their files to open, such as '\*.jpg': the one word naming no file; more than five ask first
 
 Options:
 
 - `--navigate`: Open the folder holding them in the file manager instead
-- `--edit`: Open the sample's own file in $VISUAL or $EDITOR
+- `--edit`: Open the sample's own file, with the application the system gives its kind
+
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -294,13 +318,13 @@ Examples:
 
 ```sh
 # Where [collection] files is declared: the sample's file whose name matches, in the system's viewer
-samplekit open brews/citra-ipa.md '*.jpg'
+samplekit samples/steel-01.md open '*.jpg'
 # Where [collection] files is declared: the folder holding its files, in the file manager
-samplekit open brews/citra-ipa.md --navigate
-# The sample's own file, in $VISUAL or $EDITOR
-samplekit open brews/citra-ipa.md --edit
+samplekit samples/steel-01.md open --navigate
+# The sample's own file, with the system's application for it
+samplekit samples/steel-01.md open --edit
 # Where [collection] files is declared: every sample's files, and those belonging to none
-samplekit list files brews/
+samplekit samples/ list files
 ```
 
 ## samplekit view
@@ -308,25 +332,25 @@ samplekit list files brews/
 Show each selected sample whole: its values, then its tables; --note adds the note
 
 ```text
-samplekit view [OPTIONS] [TARGETS]...
+samplekit [TARGET] view [OPTIONS]
 ```
 
 Arguments:
 
-- `[TARGETS]...`: Sample files or folders; the current folder by default
+- `[TARGETS]...`: Sample files or folders, the current folder by default. A word that is no file and names a table of the samples selected shows that table alone: samplekit samples/steel-01.md view curve
 
 Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
 
 Presentation:
 
-- `--style <STYLE>`: Render in this style, declared in .samplekitrc, instead of \[render\] style: its unit spellings, symbols and separator together
+- `--style <STYLE>`: Render in this style, declared in .samplekitrc, instead of \[render\] style: its unit spellings, its symbols and how it writes a property
 - `--precision <SPEC>`: Precision of every numeric column, such as .3f; a column's own FIELD:PRECISION wins
 - `--table-style <STYLE>`: Draw a plain or boxed table
 - `--width <WIDTH>`: Assume this terminal width
@@ -334,6 +358,12 @@ Presentation:
 Output:
 
 - `--note`: Print each sample's note after its values and tables
+- `--csv`: Print a table named as CSV
+- `--tsv`: Print a table named as TSV
+- `--json`: Print a table named as JSON
+- `-o, --output <PATH>`: Write a table named to this file, its extension naming the format; '-' prints
+- `--write`: Write the --output file; without it, a preview, then the question apply these changes? \[y/N\]
+- `--accept <STATES>`: States a write from values not current may hold and exit 0: outdated, edited\[:NAME,…\], failed, never\_computed
 
 General options ([described once](#general-options)): `--at`, `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -341,17 +371,19 @@ Examples:
 
 ```sh
 # The sample whole: its values, then its tables unfolded
-samplekit view brews/citra-ipa.md
+samplekit samples/steel-01.md view
 # Each sample a saved query selects, with its note
-samplekit view brews/ --query medals --note
+samplekit samples/ view --query ductile --note
+# One table alone, its rows written to a file
+samplekit samples/steel-01.md view curve -o curve.csv --write
 ```
 
 ## samplekit export
 
-Preview an export declared in .samplekitrc; --write writes it
+Preview an export declared in .samplekitrc, a table or a figure; --write writes it
 
 ```text
-samplekit export [OPTIONS] <EXPORT> [TARGETS]...
+samplekit [TARGET] export <EXPORT> [OPTIONS]
 ```
 
 Arguments:
@@ -363,20 +395,22 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
 
 Presentation:
 
 - `--precision <SPEC>`: Precision of every numeric column, such as .3f, instead of what the profile and the project declare: an export is written at the declared precision, and this asks for another one, or for more digits: --precision .6e
+- `--style <STYLE>`: Spell the units in this style instead of as the sample files write them: plain for the forms \[unit.\*\] declares for the screen, a spreadsheet's headers in Unicode, or a style declared in .samplekitrc
 
 Output:
 
 - `--status`: Add a state column: what in each row is not current
+- `--accept <STATES>`: States a write from values not current may hold and exit 0: outdated, edited\[:NAME,…\], failed, never\_computed
 - `-o, --output <PATH>`: Write to this file instead of the declared one; '-' prints
-- `--write`: Write the file, replacing it; without it, only a preview
+- `--write`: Write the file, replacing it; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `--at`, `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -384,11 +418,11 @@ Examples:
 
 ```sh
 # What a declared export would write, and where; --write writes it
-samplekit export overview brews/
+samplekit export paper
 # Print it instead
-samplekit export overview brews/ -o -
+samplekit export paper -o -
 # Write it elsewhere, replacing that file
-samplekit export overview brews/ -o result.csv --write
+samplekit export paper -o results.tex --write
 ```
 
 ## samplekit plot
@@ -396,7 +430,8 @@ samplekit export overview brews/ -o result.csv --write
 Draw a figure with matplotlib, in a window or to a file
 
 ```text
-samplekit plot [OPTIONS] [FIGURE] [TARGETS]...
+samplekit [TARGET] plot <FIGURE> [OPTIONS]
+samplekit [TARGET] plot -x <FIELD> -y <FIELD> [OPTIONS]
 ```
 
 Arguments:
@@ -408,9 +443,9 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
 
 Shape:
@@ -448,7 +483,8 @@ Presentation:
 Output:
 
 - `-o, --output <PATH>`: Write the figure to this file, in the format its extension names; without it, a window opens
-- `--write`: Write the --output file, replacing it; without it, only a preview
+- `--write`: Write the --output file, replacing it; without it, a preview, then the question apply these changes? \[y/N\]
+- `--accept <STATES>`: States a write from values not current may hold and exit 0: outdated, edited\[:NAME,…\], failed, never\_computed
 
 General options ([described once](#general-options)): `--at`, `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -456,13 +492,63 @@ Examples:
 
 ```sh
 # Open a declared figure, or the model's, in a matplotlib window
-samplekit plot fermentation brews/
-# Draw two fields against each other, one series per style
-samplekit plot -x og -y abv --group style brews/
-# A declared figure of the samples a saved query selects, one series per brewer
-samplekit plot fermentation brews/ --query ipas --group brewer
+samplekit samples/ plot curves
+# Draw two fields against each other, one series per material
+samplekit samples/ plot -x yield_strength -y tensile_strength --group material
+# A declared figure of the samples a saved query selects, one series per sample
+samplekit samples/ plot curves --query ductile --group name
 # Write it to a file instead, as over SSH
-samplekit plot fermentation brews/ -o fermentation.pdf --write
+samplekit samples/ plot curves -o curves.pdf --write
+```
+
+## samplekit run
+
+Run a script the model declares on each sample, or the selection; what it changes is shown and asked
+
+```text
+samplekit [TARGET] run <SCRIPT> [OPTIONS]
+```
+
+Arguments:
+
+- `[SCRIPT]`: A script the model declares: samplekit list scripts names them
+- `[TARGETS]...`: Sample files or folders; the current folder by default
+
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
+- `-r, --reverse`: Reverse the sort
+- `--timeout <SECONDS>`: Stop the script if it runs longer than this, in seconds: nothing is written
+
+Shape:
+
+- `--set <NAME=VALUE>`: One of the script's options, NAME=VALUE, read as the script's signature types it: --set factor=0.8. Repeatable; samplekit list scripts names each script's options
+
+Presentation:
+
+- `--style <STYLE>`: The style what the script returns is written in; \[render\] style's otherwise
+
+Output:
+
+- `--write`: Write what the script changes, asking nothing
+
+General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
+
+Examples:
+
+```sh
+# The model's scripts, what each acts on, and its options
+samplekit list scripts
+# Run a script on each sample, an option set; what it changes is shown, then asked
+samplekit samples/ run classify --set limit=15
+# Write what it changes without asking
+samplekit samples/ run classify --write
+# A script of the selection, run once: what it prints is shown
+samplekit run ranking
 ```
 
 ## samplekit validate
@@ -470,12 +556,20 @@ samplekit plot fermentation brews/ -o fermentation.pdf --write
 Report the defects of sample files; nothing is changed
 
 ```text
-samplekit validate [OPTIONS] [TARGETS]...
+samplekit [TARGET] validate [OPTIONS]
 ```
 
 Arguments:
 
 - `[TARGETS]...`: Sample files or folders; the current folder by default
+
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
+- `--timeout <SECONDS>`: Stop the model's loading past this, in seconds; 60 by default
 
 Output:
 
@@ -487,9 +581,9 @@ Examples:
 
 ```sh
 # The defects and notes of every sample; nothing is changed
-samplekit validate brews/
+samplekit samples/ validate
 # The same for one sample
-samplekit validate brews/citra-ipa.md
+samplekit samples/steel-01.md validate
 ```
 
 ## samplekit tag
@@ -497,7 +591,9 @@ samplekit validate brews/citra-ipa.md
 Add, remove or rename tags
 
 ```text
-samplekit tag [OPTIONS] <COMMAND>
+samplekit [TARGET] tag add <TAG> [OPTIONS]
+samplekit [TARGET] tag remove <TAG> [OPTIONS]
+samplekit [TARGET] tag rename <OLD> <NEW> [OPTIONS]
 ```
 
 Commands:
@@ -505,6 +601,7 @@ Commands:
 - [`tag add`](#samplekit-tag-add): Add a tag to the samples selected
 - [`tag remove`](#samplekit-tag-remove): Remove a tag from the samples selected
 - [`tag rename`](#samplekit-tag-rename): Rename a tag in the samples selected
+- `tag help`: Print this message or the help of the given subcommand(s)
 
 General options ([described once](#general-options)): `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -512,11 +609,11 @@ Examples:
 
 ```sh
 # Show which samples would gain the tag; nothing is written
-samplekit tag add medal brews/ -f 'abv > 6'
+samplekit samples/ tag add reference -f 'material == steel'
 # Remove a tag from one sample
-samplekit tag remove medal brews/oatmeal-stout.md --write
+samplekit samples/steel-01.md tag remove reference --write
 # Rename a tag across the collection
-samplekit tag rename old_name new_name brews/ --write
+samplekit samples/ tag rename old_name new_name --write
 ```
 
 ### samplekit tag add
@@ -524,7 +621,7 @@ samplekit tag rename old_name new_name brews/ --write
 Add a tag to the samples selected
 
 ```text
-samplekit tag add [OPTIONS] <NAME> [TARGETS]...
+samplekit [TARGET] tag add <TAG> [OPTIONS]
 ```
 
 Arguments:
@@ -536,14 +633,14 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
 
 Output:
 
-- `--write`: Write the change; without it, only a preview
+- `--write`: Write the change; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -551,9 +648,9 @@ Examples:
 
 ```sh
 # Show which samples would gain the tag; nothing is written
-samplekit tag add medal brews/ -f 'abv > 6'
+samplekit samples/ tag add reference -f 'material == steel'
 # Add it
-samplekit tag add medal brews/ -f 'abv > 6' --write
+samplekit samples/ tag add reference -f 'material == steel' --write
 ```
 
 ### samplekit tag remove
@@ -561,7 +658,7 @@ samplekit tag add medal brews/ -f 'abv > 6' --write
 Remove a tag from the samples selected
 
 ```text
-samplekit tag remove [OPTIONS] <NAME> [TARGETS]...
+samplekit [TARGET] tag remove <TAG> [OPTIONS]
 ```
 
 Arguments:
@@ -573,14 +670,14 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
 
 Output:
 
-- `--write`: Write the change; without it, only a preview
+- `--write`: Write the change; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -588,9 +685,9 @@ Examples:
 
 ```sh
 # Show which samples would lose the tag; nothing is written
-samplekit tag remove medal brews/
+samplekit samples/ tag remove reference
 # Remove it from one sample
-samplekit tag remove medal brews/oatmeal-stout.md --write
+samplekit samples/steel-01.md tag remove reference --write
 ```
 
 ### samplekit tag rename
@@ -598,7 +695,7 @@ samplekit tag remove medal brews/oatmeal-stout.md --write
 Rename a tag in the samples selected
 
 ```text
-samplekit tag rename [OPTIONS] <OLD> <NEW> [TARGETS]...
+samplekit [TARGET] tag rename <OLD> <NEW> [OPTIONS]
 ```
 
 Arguments:
@@ -611,14 +708,14 @@ Selection:
 
 - `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
 
-  A comparison: og \> 1.050, style == ipa, name != "blonde saison". Operators: == != \< \<= \> \>=; contains and starts\_with on text; tags has x, and a list has x; a field is missing or is present; a field in (a, b). Combine with &&, \|\| and ! and parentheses; and, or and not are ordinary names, so a field may be called one. Quote text holding spaces or symbols; a table cell is table.column\[index\]. A comparison on a missing field selects nothing, even under !: field is missing asks for it.
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
 - `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
-- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s style,-abv
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
 - `-r, --reverse`: Reverse the sort
 
 Output:
 
-- `--write`: Write the change; without it, only a preview
+- `--write`: Write the change; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -626,9 +723,9 @@ Examples:
 
 ```sh
 # Show where the tag would be renamed; nothing is written
-samplekit tag rename old_name new_name brews/
+samplekit samples/ tag rename old_name new_name
 # Rename it across the collection
-samplekit tag rename old_name new_name brews/ --write
+samplekit samples/ tag rename old_name new_name --write
 ```
 
 ## samplekit log
@@ -636,7 +733,7 @@ samplekit tag rename old_name new_name brews/ --write
 List the snapshots of the project's history
 
 ```text
-samplekit log [OPTIONS] [TARGETS]...
+samplekit [TARGET] log [OPTIONS]
 ```
 
 Arguments:
@@ -649,13 +746,20 @@ Options:
 
   WHEN names the snapshot as --at does: a number from `samplekit log`, the beginning of its id, or a date.
 
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
+
 Output:
 
 - `--export`: Write an account of the history in Markdown, to share beside the files
 
   Each snapshot with when, what made it, every file it changed and the script kept beside it. Printed, or written to -o FILE with --write.
 - `-o, --output <PATH>`: Write the account to this file; '-' prints
-- `--write`: Write the --output file, replacing it; without it, only a preview
+- `--write`: Write the --output file, replacing it; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -671,7 +775,7 @@ Examples:
 # Every snapshot of the project's history, newest first
 samplekit log
 # Those that changed one sample
-samplekit log brews/citra-ipa.md
+samplekit samples/steel-01.md log
 # An account of the history in Markdown, to share beside the files
 samplekit log --export -o HISTORY.md --write
 # The Python script that made snapshot #2 of the list, as it ran
@@ -683,7 +787,7 @@ samplekit log --script 2
 Compare two states of the project, value by value
 
 ```text
-samplekit diff [OPTIONS] [TARGETS]...
+samplekit [TARGET] diff [OPTIONS]
 ```
 
 Arguments:
@@ -699,6 +803,13 @@ Options:
 
   WHEN is named as --from is.
 
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
+
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
 Examples:
@@ -707,7 +818,7 @@ Examples:
 # The last change SampleKit kept, value by value
 samplekit diff
 # The last change kept of one sample
-samplekit diff brews/citra-ipa.md
+samplekit samples/steel-01.md diff
 # What changed since, outside SampleKit
 samplekit diff --from 1
 # Between two dates, value by value
@@ -719,7 +830,7 @@ samplekit diff --from 2026-09-01 --to 2026-09-12
 Put files back as the history kept them: the last change taken back, or a state named
 
 ```text
-samplekit restore [OPTIONS] [TARGETS]...
+samplekit [TARGET] restore [OPTIONS]
 ```
 
 Arguments:
@@ -728,13 +839,20 @@ Arguments:
 
 Options:
 
-- `--at <WHEN>`: The state to put them back to; by default before the last change kept, or as last kept if deleted or changed outside SampleKit since
+- `--at <WHEN>`: The state to put them back to; by default, the last change SampleKit wrote on this computer is taken back, keeping what was changed since, or a file deleted or changed outside SampleKit comes back as last kept
 
   WHEN is a number from `samplekit log`, the beginning of a snapshot's id, or a date such as 2026-09-12 or '2026-09-12 14:30'.
 
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
+
 Output:
 
-- `--write`: Write the files; without it, only a preview
+- `--write`: Write the files; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -744,9 +862,73 @@ Examples:
 # What taking back the last change kept would do; nothing is written
 samplekit restore
 # Take back the last change kept of one sample
-samplekit restore brews/citra-ipa.md --write
-# Put the brews back as snapshot #3 of samplekit log kept them
-samplekit restore brews/ --at 3 --write
+samplekit samples/steel-01.md restore --write
+# Put the samples back as snapshot #3 of samplekit log kept them
+samplekit samples/ restore --at 3 --write
+```
+
+## samplekit remove
+
+Delete sample files; the history keeps them, and restore gives them back
+
+```text
+samplekit [TARGET] remove [OPTIONS]
+```
+
+Arguments:
+
+- `[TARGETS]...`: Sample files or folders; the current folder by default
+
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
+- `-s, --sort <FIELDS>`: Sort by these fields, the first deciding first; repeat or comma-separate. A leading - sorts that field in descending order: -s material,-tensile\_strength
+- `-r, --reverse`: Reverse the sort
+
+Output:
+
+- `--write`: Write the change; without it, a preview, then the question apply these changes? \[y/N\]
+
+General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
+
+Examples:
+
+```sh
+# What deleting one sample would do; nothing is written
+samplekit samples/steel-01.md remove
+# Delete the samples a filter selects; samplekit restore gives them back
+samplekit samples/ remove -f 'tags has scrapped' --write
+```
+
+## samplekit rename
+
+Rename a sample, its own files with it, and the links leading to it
+
+```text
+samplekit FILE rename <NEW> [OPTIONS]
+```
+
+Arguments:
+
+- `<NEW>`: The sample's new name: its file's, without the folder or `.md`
+- `[TARGETS]...`: The sample file to rename
+
+Output:
+
+- `--write`: Write the change; without it, a preview, then the question apply these changes? \[y/N\]
+
+General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
+
+Examples:
+
+```sh
+# What renaming one sample would do, its links with it; nothing is written
+samplekit samples/steel-01.md rename steel-04
+# Rename it, its own files and every link leading to it
+samplekit samples/steel-01.md rename steel-04 --write
 ```
 
 ## samplekit init
@@ -754,7 +936,7 @@ samplekit restore brews/ --at 3 --write
 Set up a project, or complete one that exists
 
 ```text
-samplekit init [OPTIONS] [DIRECTORY]
+samplekit [DIRECTORY] init [OPTIONS]
 ```
 
 Arguments:
@@ -770,7 +952,7 @@ Options:
 
 Output:
 
-- `--write`: Write the files; without it, only a preview
+- `--write`: Write the files; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -782,7 +964,7 @@ samplekit init
 # An empty project, its model to fill in, and an environment
 samplekit init --write
 # The example project, one formula of each kind, in another folder
-samplekit init --example example/ --write
+samplekit example/ init --example --write
 ```
 
 ## samplekit new
@@ -790,7 +972,7 @@ samplekit init --example example/ --write
 Create a sample from what the project already knows
 
 ```text
-samplekit new [OPTIONS] <NAME> [FIELD=VALUE]...
+samplekit [FOLDER] new <NAME> [FIELD=VALUE]... [OPTIONS]
 ```
 
 Arguments:
@@ -800,13 +982,12 @@ Arguments:
 
 Options:
 
-- `--like <SAMPLE>`: Shape it like this sample — its properties and their units — with none of its values
-- `--keep <FIELDS>`: Also copy these values from that sample, with their readings; every other value is left empty for you to fill in
-- `--into <DIRECTORY>`: The folder to write it in, or the path of the file itself; by default beside the sample it is shaped like, or in the current folder
+- `--keep <SAMPLE> <FIELDS>`: Take these fields from another sample, as they are, and nothing else: `--keep samples/steel-01.md width,grade`
+- `--into <DIRECTORY>`: The folder to write it in, or the path of the file itself; by default beside the sample --keep names, in samples/ where there is one, or in the current folder
 
 Output:
 
-- `--write`: Write the file; without it, only a preview
+- `--write`: Write the file; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -814,13 +995,11 @@ Examples:
 
 ```sh
 # What the file would hold: what you give here, named by its file
-samplekit new pilsner
-# Write it in another sample's shape, its measured values empty
-samplekit new pilsner --like brews/citra-ipa.md --write
+samplekit new steel-02
 # Write it with values already filled in
-samplekit new pilsner og=1.048 volume=20 --write
-# Keep a value it measured, and its readings; never a computed one
-samplekit new pilsner --like brews/citra-ipa.md --keep volume --write
+samplekit new steel-02 material=steel width=12.5 --write
+# Take a value another specimen measured, with its readings, and an attribute; nothing else
+samplekit samples/ new steel-02 --keep samples/steel-01.md width,grade --write
 ```
 
 ## samplekit set
@@ -828,21 +1007,27 @@ samplekit new pilsner --like brews/citra-ipa.md --keep volume --write
 Change values of a sample
 
 ```text
-samplekit set [OPTIONS] <FILE> [FIELD=VALUE]...
+samplekit [TARGET] set [FIELD=VALUE]... [OPTIONS]
 ```
 
 Arguments:
 
-- `<FILE>`: The sample file
-- `[FIELD=VALUE]...`: What to change, as field=value; repeatable. An uncertainty is og.u, readings og.readings=1.011,1.010, a table cell fermentation.gravity\[4\], and the name the file shows, name=…
+- `[TARGET|FIELD=VALUE]...`: Sample files or folders, and what to change, as field=value: a word holding = is a change. An uncertainty is width.u, readings width.readings=12.51,12.52, a table cell curve.force\[0.2\], the name the file shows, name=…, and the note below the frontmatter, note=…
 
 Options:
 
 - `--add-row <TABLE>`: Add a row to this table instead, the assignments naming its columns
 
+Selection:
+
+- `-f, --filter <EXPR>`: Keep the samples an expression selects. Repeatable: every --filter and every --query must hold.
+
+  elongation \> 20, material == steel, material == "cast iron", tensile\_strength \> yield\_strength, material in (steel, copper), tags has reference, curve where (strain \> 1 && stress \< 300), elongation is missing. Combine with &&, \|\| and ! and parentheses, and quote the whole expression for the shell. Every form: https://zelyph.github.io/SampleKit/latest/reference/filters.html
+- `--query <NAME>`: Keep the samples a query saved in .samplekitrc selects. Repeatable: every --filter and every --query must hold
+
 Output:
 
-- `--write`: Write the change; without it, only a preview
+- `--write`: Write the change; without it, a preview, then the question apply these changes? \[y/N\]
 
 General options ([described once](#general-options)): `-v, --verbose`, `-q, --quiet`, `--no-color`, `--rc`, `--show-rc`, `-h, --help`.
 
@@ -850,15 +1035,15 @@ Examples:
 
 ```sh
 # What the change would make outdated; nothing is written
-samplekit set brews/citra-ipa.md fg=1.010
+samplekit samples/steel-01.md set thickness.readings=1.991,1.994,1.989
 # Write it
-samplekit set brews/citra-ipa.md fg=1.010 --write
+samplekit samples/steel-01.md set thickness.readings=1.991,1.994,1.989 --write
 # Several fields at once, written together or not at all
-samplekit set brews/citra-ipa.md og.u=0.001 yeast=US-05 --write
+samplekit samples/steel-01.md set grade=S275 direction=T --write
 # One cell of a table, addressed by its index
-samplekit set brews/citra-ipa.md 'fermentation.gravity[3]=1.020' --write
+samplekit samples/steel-01.md set 'curve.force[0.2]=9.52' --write
 # A new measurement: one row, the model computes its other columns
-samplekit set brews/citra-ipa.md --add-row fermentation day=8 gravity=1.012 temperature=19 --write
+samplekit samples/steel-01.md set --add-row curve strain=0.1 force=5.13 --write
 ```
 
 ## samplekit tui
@@ -866,7 +1051,7 @@ samplekit set brews/citra-ipa.md --add-row fermentation day=8 gravity=1.012 temp
 Open the TUI, the full-screen interface, on a folder; `samplekit` alone opens its start page
 
 ```text
-samplekit tui [OPTIONS] [DIRECTORY]
+samplekit [DIRECTORY] tui [OPTIONS]
 ```
 
 Arguments:
@@ -879,7 +1064,7 @@ Examples:
 
 ```sh
 # The TUI on a folder: its samples, their values and states
-samplekit tui brews/
+samplekit samples/ tui
 # At a terminal, the start page: the project here, the recent ones, a new one
 samplekit
 ```

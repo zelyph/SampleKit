@@ -6,31 +6,44 @@
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="The TUI&#39;s keys" href="tui.html"><link rel="prev" title="The command line" href="cli.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>The Python API - SampleKit 1.0.0-rc.1</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+        <title>The Python API - SampleKit 1.0.0-rc.2</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f2f2f2;
-  --color-code-foreground: #1e1e1e;
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
   
       }
     }
@@ -162,7 +175,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.1</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -183,7 +196,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.1</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -198,43 +211,47 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorial/index.html">Tutorial</a><input aria-label="Toggle navigation of Tutorial" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/01-first-brews.html">Step 1 · First brews</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/02-measuring.html">Step 2 · Measuring</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/03-selecting.html">Step 3 · Selecting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/04-computing.html">Step 4 · Computing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/05-fermentation.html">Step 5 · Fermentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/06-figures.html">Step 6 · Figures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/07-two-brewers.html">Step 7 · Two brewers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tutorial/08-python.html">Step 8 · Python</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../guides/index.html">Guides</a><input aria-label="Toggle navigation of Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../guides/install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/upgrade.html">Upgrade from an older SampleKit</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/samples-and-files.html">Samples and their files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/values-and-uncertainty.html">Values, uncertainty and units</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/readings-and-statistics.html">Readings and statistics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/models-and-formulas.html">Models and formulas</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/current-and-outdated.html">Current and outdated values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/history.html">History</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../explanations/projects.html">Projects</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../how-to/index.html">How-to guides</a><input aria-label="Toggle navigation of How-to guides" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/move-existing-data.html">Move existing data in</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/first-model.html">A first model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/export-for-a-paper.html">An export for a paper</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/continuous-integration.html">Check a project in continuous integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/share-a-project.html">Share a project</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../how-to/upgrade.html">Upgrade from an older SampleKit</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="cli.html">The command line</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">The Python API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tui.html">The TUI's keys</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html">Filters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fingerprints.html">Fingerprints</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
@@ -274,7 +291,7 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="the-python-api">
+          <section class="tex2jax_ignore mathjax_ignore" id="the-python-api">
 <h1>The Python API<a class="headerlink" href="#the-python-api" title="Link to this heading">¶</a></h1>
 <p>Everything <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">samplekit</span></code> offers, read from the package itself: its
 docstrings are the source of this page. Examples use <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">samplekit</span> <span class="pre">as</span> <span class="pre">sk</span></code>.</p>
@@ -308,10 +325,10 @@ each sample once.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">brews</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"brews"</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"brews/citra-ipa.md"</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">abv</span>
-<span class="go">Property(value=6.825000000000035, uncertainty=0.14510233457805027, unit='%')</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">specimens</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"samples/steel-01.md"</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">area</span>
+<span class="go">Property(value=25.05586444444445, uncertainty=0.05217296159913354, unit='mm²')</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -326,8 +343,8 @@ gives one. A model is a subclass of <code class="docutils literal notranslate"><
 declares its properties and tables, and passes <code class="docutils literal notranslate"><span class="pre">path</span></code> on to
 <code class="docutils literal notranslate"><span class="pre">super().__init__</span></code>.</p>
 <p>A property, a table or an attribute is read as an attribute or an item,
-<code class="docutils literal notranslate"><span class="pre">brew.abv</span></code> or <code class="docutils literal notranslate"><span class="pre">brew[&quot;abv&quot;]</span></code>, and any other field path as an item:
-<code class="docutils literal notranslate"><span class="pre">brew[&quot;fermentation.gravity[2]&quot;]</span></code> is that cell's value. What is assigned
+<code class="docutils literal notranslate"><span class="pre">steel.area</span></code> or <code class="docutils literal notranslate"><span class="pre">steel[&quot;area&quot;]</span></code>, and any other field path as an item:
+<code class="docutils literal notranslate"><span class="pre">steel[&quot;curve.force[0.2]&quot;]</span></code> is that cell's value. What is assigned
 decides what a name becomes: a <code class="docutils literal notranslate"><span class="pre">Property</span></code> or a <code class="docutils literal notranslate"><span class="pre">Table</span></code> is one; a
 <code class="docutils literal notranslate"><span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">float</span></code>, <code class="docutils literal notranslate"><span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">datetime</span></code>, or a list
 of one of them, is an attribute; and a name with a leading <code class="docutils literal notranslate"><span class="pre">_</span></code> is
@@ -358,11 +375,11 @@ declares.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">brew</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">(</span><span class="s2">"brews/citra-ipa.md"</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">brew</span><span class="o">.</span><span class="n">style</span>
-<span class="go">'ipa'</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">brew</span><span class="p">[</span><span class="s2">"fermentation.gravity[2]"</span><span class="p">]</span>
-<span class="go">1.029</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">(</span><span class="s2">"samples/steel-01.md"</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">material</span>
+<span class="go">'steel'</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="p">[</span><span class="s2">"curve.force[0.2]"</span><span class="p">]</span>
+<span class="go">9.516</span>
 </pre></div>
 </div>
 <dl class="py method">
@@ -393,9 +410,9 @@ writes no <code class="docutils literal notranslate"><span class="pre">name:</sp
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">brew</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">"brews/red-ale.md"</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">brew</span><span class="o">.</span><span class="n">style</span> <span class="o">=</span> <span class="s2">"red_ale"</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">brew</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">specimen</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s2">"samples/steel-02.md"</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">specimen</span><span class="o">.</span><span class="n">material</span> <span class="o">=</span> <span class="s2">"steel"</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">specimen</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -417,8 +434,8 @@ other values.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">affected_by_change</span><span class="p">(</span><span class="s2">"og"</span><span class="p">)</span>
-<span class="go">['abv', 'attenuation', 'drop', 'efficiency', 'fermentation.apparent', 'fermentation.rate']</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">affected_by_change</span><span class="p">(</span><span class="s2">"thickness"</span><span class="p">)</span>
+<span class="go">['area', 'curve.stress', 'tensile_strength', 'yield_strength', 'young_modulus']</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -453,8 +470,8 @@ formula.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -475,8 +492,8 @@ formula.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">dependencies</span><span class="p">(</span><span class="s2">"abv"</span><span class="p">)</span>
-<span class="go">['fg', 'og']</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">dependencies</span><span class="p">(</span><span class="s2">"area"</span><span class="p">)</span>
+<span class="go">['thickness', 'width']</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -501,7 +518,7 @@ formula.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="samplekit.Sample.edited">
 <span class="sig-name descname"><span class="pre">edited</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Sample.edited" title="Link to this definition">¶</a></dt>
-<dd><p>The edited values: those typed over their formula.</p>
+<dd><p>The edited values — those typed over their formula.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>The names of the edited properties, and <code class="docutils literal notranslate"><span class="pre">table.column</span></code> for a column
@@ -548,6 +565,42 @@ declared.</p>
 they were declared.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Sample.linked">
+<span class="sig-name descname"><span class="pre">linked</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Sample.linked" title="Link to this definition">¶</a></dt>
+<dd><p>The sample an attribute links to, read as <code class="docutils literal notranslate"><span class="pre">sk.load</span></code> reads it, or
+the file it leads to.</p>
+<p>A link is an attribute written <code class="docutils literal notranslate"><span class="pre">&quot;[[NAME]]&quot;</span></code>, as Obsidian writes
+one: the sample of the project whose file is NAME.md, else whose
+<code class="docutils literal notranslate"><span class="pre">name</span></code> is NAME; or a Markdown link to a file,
+<code class="docutils literal notranslate"><span class="pre">&quot;[the</span> <span class="pre">second](NAME.md)&quot;</span></code>, its path read from this sample's folder.
+A sample's file gives the sample; any other file its path. A list of
+links gives a list, in order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>field</strong> -- The attribute holding the link, or the links.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The sample it names, or a <code class="docutils literal notranslate"><span class="pre">pathlib.Path</span></code> for a file that is no
+sample; for a list, a list of them, in order.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>KeyError</strong> -- The sample holds no such attribute.</p></li>
+<li><p><strong>ValueError</strong> -- The attribute is no link: text, or a web address; or
+    several samples answer to it.</p></li>
+<li><p><strong>FileNotFoundError</strong> -- No sample answers to it, or nothing is at its
+    path.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">linked</span><span class="p">(</span><span class="s2">"reference"</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+<span class="go">'aluminium-01'</span>
+</pre></div>
+</div>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Sample.name">
 <span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#samplekit.Sample.name" title="Link to this definition">¶</a></dt>
@@ -563,15 +616,15 @@ reports.</p>
 sees values that failed, were never computed, or wait for an input.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&quot;outdated&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;edited&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;failed&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;never</span> <span class="pre">computed&quot;</span></code> or
-<code class="docutils literal notranslate"><span class="pre">&quot;waits</span> <span class="pre">for</span> <span class="pre">fg&quot;</span></code>.</p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&quot;outdated&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;formula</span> <span class="pre">changed&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;edited&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;failed&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;never</span> <span class="pre">computed&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;waits</span> <span class="pre">for</span> <span class="pre">notch&quot;</span></code>.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>A dict from each name — a property, or <code class="docutils literal notranslate"><span class="pre">table.column</span></code> — to a reason</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">not_current</span><span class="p">()</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">not_current</span><span class="p">()</span>
 <span class="go">{}</span>
 </pre></div>
 </div>
@@ -580,12 +633,7 @@ sees values that failed, were never computed, or wait for an input.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Sample.note">
 <span class="sig-name descname"><span class="pre">note</span></span><a class="headerlink" href="#samplekit.Sample.note" title="Link to this definition">¶</a></dt>
-<dd><p>the Markdown text below the frontmatter, kept as written.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The note</p>
-</dd>
-</dl>
+<dd><p>The note — the Markdown text below the frontmatter, kept as written.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -608,7 +656,10 @@ instead of the files.</p></li>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>FileNotFoundError</strong> -- No file of the sample matches.</p></li>
 <li><p><strong>ValueError</strong> -- More than five would open and <code class="docutils literal notranslate"><span class="pre">many</span></code> is false.</p></li>
-<li><p><strong>RuntimeError</strong> -- There is no display to open them on.</p></li>
+<li><p><strong>RuntimeError</strong> -- Over SSH without a display — <code class="docutils literal notranslate"><span class="pre">DISPLAY</span></code> and
+    <code class="docutils literal notranslate"><span class="pre">WAYLAND_DISPLAY</span></code> unset — there is nothing to open them on.
+    Elsewhere the system's opener is started, and what it does
+    without a display is its own.</p></li>
 </ul>
 </dd>
 </dl>
@@ -617,7 +668,7 @@ instead of the files.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="samplekit.Sample.outdated">
 <span class="sig-name descname"><span class="pre">outdated</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Sample.outdated" title="Link to this definition">¶</a></dt>
-<dd><p>The outdated values: those an input changed under since they were
+<dd><p>The outdated values — those an input changed under since they were
 computed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -637,13 +688,65 @@ sample never saved. <code class="docutils literal notranslate"><span class="pre"
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Sample.project">
 <span class="sig-name descname"><span class="pre">project</span></span><a class="headerlink" href="#samplekit.Sample.project" title="Link to this definition">¶</a></dt>
-<dd><p>what its <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>
+<dd><p>The project the sample's file belongs to — what its <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>
 declares.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Sample.remove">
+<span class="sig-name descname"><span class="pre">remove</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Sample.remove" title="Link to this definition">¶</a></dt>
+<dd><p>Delete the sample's file.</p>
+<p>The project's history keeps it, and <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FILE</span> <span class="pre">restore</span> <span class="pre">--write</span></code>
+gives it back; the sample's own files, under <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code>,
+stay. The sample keeps its values: <code class="docutils literal notranslate"><span class="pre">save()</span></code> writes it again.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The project the sample's file belongs to</p>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> -- The sample has no file, or the script runs under
+    <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">run</span></code>, whose preview cannot hold a removal.</p></li>
+<li><p><strong>FileNotFoundError</strong> -- Its file was removed or moved since it was read.</p></li>
+<li><p><strong>OSError</strong> -- The file changed on disk since it was read.</p></li>
+</ul>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">(</span><span class="s2">"samples/steel-01.md"</span><span class="p">)</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Sample.rename">
+<span class="sig-name descname"><span class="pre">rename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Sample.rename" title="Link to this definition">¶</a></dt>
+<dd><p>Rename the sample: its file, its own files, and every link of its
+project leading to it.</p>
+<p>The file becomes <code class="docutils literal notranslate"><span class="pre">NEW.md</span></code> beside the old one, its own files under
+<code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> renamed with it, its <code class="docutils literal notranslate"><span class="pre">name</span></code> too where it was
+the file's name; each link of the project that led to it, <code class="docutils literal notranslate"><span class="pre">[[OLD]]</span></code>
+or <code class="docutils literal notranslate"><span class="pre">[text](OLD.md)</span></code>, is written to lead to it again. The history
+keeps the samples; renamed back, the files and the links go back too.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>new</strong> -- The new name: the file's, without its folder or <code class="docutils literal notranslate"><span class="pre">.md</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The sample's new path.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> -- The sample has no file, the name is no file's name, or
+    the script runs under <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">run</span></code>, whose preview cannot
+    hold a rename.</p></li>
+<li><p><strong>FileExistsError</strong> -- Another sample, or one of its files, has the name.</p></li>
+<li><p><strong>OSError</strong> -- The file changed on disk since it was read.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">(</span><span class="s2">"samples/steel-01.md"</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">"steel-04"</span><span class="p">)</span>
+<span class="go">PosixPath('samples/steel-04.md')</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -664,7 +767,8 @@ existing file at <code class="docutils literal notranslate"><span class="pre">pa
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>ValueError</strong> -- The sample has no file yet and no <code class="docutils literal notranslate"><span class="pre">path</span></code> is given.</p></li>
+<li><p><strong>ValueError</strong> -- The sample has no file yet and no <code class="docutils literal notranslate"><span class="pre">path</span></code> is given.
+    Also: another process is saving the same file at this moment.</p></li>
 <li><p><strong>FileExistsError</strong> -- <code class="docutils literal notranslate"><span class="pre">path</span></code> exists already.</p></li>
 <li><p><strong>FileNotFoundError</strong> -- The folder does not exist, or the sample's file was
     removed or moved since it was read.</p></li>
@@ -675,8 +779,8 @@ existing file at <code class="docutils literal notranslate"><span class="pre">pa
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">volume</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="mi">21</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">grade</span> <span class="o">=</span> <span class="s2">"S275"</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -706,22 +810,16 @@ each. <code class="docutils literal notranslate"><span class="pre">[]</span></co
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">Brew</span><span class="p">(</span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">):</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">Specimen</span><span class="p">(</span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="gp">... </span>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">abv</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"%"</span><span class="p">,</span> <span class="n">compute</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_abv</span><span class="p">)</span>
-<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">set_dependencies</span><span class="p">(</span><span class="s2">"abv"</span><span class="p">,</span> <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="s2">"og"</span><span class="p">,</span> <span class="s2">"fg"</span><span class="p">])</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"mm²"</span><span class="p">,</span> <span class="n">compute_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_area</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">set_dependencies</span><span class="p">(</span><span class="s2">"area"</span><span class="p">,</span> <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="s2">"width"</span><span class="p">,</span> <span class="s2">"thickness"</span><span class="p">])</span>
 <span class="gp">...</span>
-<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">_abv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="gp">... </span>        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">og</span><span class="o">.</span><span class="n">value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">fg</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="o">*</span> <span class="mf">131.25</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">_area</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span>
 </pre></div>
 </div>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="samplekit.Sample.stale">
-<span class="sig-name descname"><span class="pre">stale</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Sample.stale" title="Link to this definition">¶</a></dt>
-<dd><p>The same as <code class="docutils literal notranslate"><span class="pre">outdated()</span></code>, under its former name.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -731,6 +829,29 @@ each. <code class="docutils literal notranslate"><span class="pre">[]</span></co
 <p>Each tag is an identifier, and none appears twice.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Sample.to_text">
+<span class="sig-name descname"><span class="pre">to_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Sample.to_text" title="Link to this definition">¶</a></dt>
+<dd><p>The sample as <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">view</span></code> shows it — its values, then its
+tables — each value in a style's forms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>style</strong> -- A style's name: <code class="docutils literal notranslate"><span class="pre">&quot;plain&quot;</span></code>, one SampleKit gives, or one
+<code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> declares. Without it, <code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">style</span></code>'s.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The text.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> -- No style has that name.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">steel</span><span class="o">.</span><span class="n">to_text</span><span class="p">())</span>
+</pre></div>
+</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -738,7 +859,7 @@ each. <code class="docutils literal notranslate"><span class="pre">[]</span></co
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">SampleList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.SampleList" title="Link to this definition">¶</a></dt>
 <dd><p>An ordered list of samples, read like a Python list.</p>
 <p>A list is read from a folder, or built from samples already read. An item
-is a sample, by position or by name — <code class="docutils literal notranslate"><span class="pre">brews[&quot;citra-ipa&quot;]</span></code> — and a slice
+is a sample, by position or by name — <code class="docutils literal notranslate"><span class="pre">specimens[&quot;steel-01&quot;]</span></code> — and a slice
 is a list. Lists join with <code class="docutils literal notranslate"><span class="pre">+</span></code>. <code class="docutils literal notranslate"><span class="pre">filter</span></code>, <code class="docutils literal notranslate"><span class="pre">query</span></code>, <code class="docutils literal notranslate"><span class="pre">sorted</span></code> and
 <code class="docutils literal notranslate"><span class="pre">group_by</span></code> make new lists; the samples in them are the same objects.</p>
 <dl class="field-list simple">
@@ -763,11 +884,11 @@ the data alone. By default, the project's model.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">brews</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">SampleList</span><span class="p">(</span><span class="s2">"brews"</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">brews</span><span class="p">)</span>
-<span class="go">12</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">brews</span><span class="p">[</span><span class="s2">"citra-ipa"</span><span class="p">]</span><span class="o">.</span><span class="n">style</span>
-<span class="go">'ipa'</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">specimens</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">SampleList</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">specimens</span><span class="p">)</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">specimens</span><span class="p">[</span><span class="s2">"steel-01"</span><span class="p">]</span><span class="o">.</span><span class="n">material</span>
+<span class="go">'steel'</span>
 </pre></div>
 </div>
 <dl class="py method">
@@ -807,7 +928,8 @@ name, the number of samples of that name.</p>
 <span class="sig-name descname"><span class="pre">export</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">export</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.SampleList.export" title="Link to this definition">¶</a></dt>
 <dd><p>Write an export declared in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, as <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">export</span>
 <span class="pre">--write</span></code> does.</p>
-<p>The export's own query, if it declares one, narrows the list first.</p>
+<p>The export's own query, if it declares one, narrows the list first. An
+export of a figure draws it as <code class="docutils literal notranslate"><span class="pre">sk.plot</span></code> does, to its file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -817,19 +939,20 @@ name, the number of samples of that name.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The path written.</p>
+<dd class="field-even"><p>The path written, absolute.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>KeyError</strong> -- No export has that name, or its profile is not declared.</p></li>
+<li><p><strong>KeyError</strong> -- No export has that name, or its profile or figure is not
+    declared.</p></li>
 <li><p><strong>FileExistsError</strong> -- The file exists and <code class="docutils literal notranslate"><span class="pre">overwrite</span></code> is false.</p></li>
 <li><p><strong>ValueError</strong> -- <code class="docutils literal notranslate"><span class="pre">output</span></code>'s extension does not match the export's format.</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">brews</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">"overview"</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">"out/overview.csv"</span><span class="p">)</span>
-<span class="go">PosixPath('out/overview.csv')</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">specimens</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">"paper"</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">"paper/results.tex"</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+<span class="go">'results.tex'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -847,7 +970,7 @@ name, the number of samples of that name.</p>
 <dd><p>The samples an expression selects, as <code class="docutils literal notranslate"><span class="pre">-f</span></code> selects them.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>predicate</strong> -- A filter expression — <code class="docutils literal notranslate"><span class="pre">&quot;abv</span> <span class="pre">&gt;</span> <span class="pre">6</span> <span class="pre">&amp;&amp;</span> <span class="pre">style</span> <span class="pre">==</span> <span class="pre">ipa&quot;</span></code> — or a
+<dd class="field-odd"><p><strong>predicate</strong> -- A filter expression — <code class="docutils literal notranslate"><span class="pre">&quot;elongation</span> <span class="pre">&gt;</span> <span class="pre">20</span> <span class="pre">&amp;&amp;</span> <span class="pre">material</span> <span class="pre">==</span> <span class="pre">steel&quot;</span></code> — or a
 function taking a sample and returning whether to keep it.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -865,8 +988,8 @@ function taking a sample and returning whether to keep it.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">brew</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">brew</span> <span class="ow">in</span> <span class="n">brews</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">"abv &gt; 6"</span><span class="p">)]</span>
-<span class="go">['blonde-saison', 'citra-ipa', 'double-ipa', 'farmhouse-saison']</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">specimen</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">specimen</span> <span class="ow">in</span> <span class="n">specimens</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">"tensile_strength &gt; 300"</span><span class="p">)]</span>
+<span class="go">['aluminium-01', 'steel-01']</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -894,8 +1017,8 @@ values sort; for a sorted list, in the order of their first samples.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">brews</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="s2">"style"</span><span class="p">))</span>
-<span class="go">['ipa', 'pale_ale', 'porter', 'saison', 'stout', 'wheat']</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="s2">"material"</span><span class="p">))</span>
+<span class="go">['aluminium', 'copper', 'steel']</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -921,13 +1044,10 @@ values sort; for a sorted list, in the order of their first samples.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.SampleList.project">
 <span class="sig-name descname"><span class="pre">project</span></span><a class="headerlink" href="#samplekit.SampleList.project" title="Link to this definition">¶</a></dt>
-<dd><p>what their <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> declares.</p>
+<dd><p>The project of the list's samples — what their <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> declares.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>ValueError</strong> -- The samples belong to several projects.</p>
-</dd>
-<dt class="field-even">Type<span class="colon">:</span></dt>
-<dd class="field-even"><p>The project of the list's samples</p>
 </dd>
 </dl>
 </dd></dl>
@@ -952,23 +1072,27 @@ values sort; for a sorted list, in the order of their first samples.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">brews</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"ipas"</span><span class="p">))</span>
-<span class="go">3</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"ductile"</span><span class="p">))</span>
+<span class="go">2</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="samplekit.SampleList.save_all">
-<span class="sig-name descname"><span class="pre">save_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.SampleList.save_all" title="Link to this definition">¶</a></dt>
-<dd><p>Write every sample of the list into a folder.</p>
-<p>Each sample is written under its file's name, or its name. Nothing is
-written if any file is refused.</p>
+<span class="sig-name descname"><span class="pre">save_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.SampleList.save_all" title="Link to this definition">¶</a></dt>
+<dd><p>Write every sample of the list: back where each was read, or into a folder.</p>
+<p>Without a folder, each sample is written to its own file, as <code class="docutils literal notranslate"><span class="pre">save()</span></code>
+writes it: a file changed since it was read — by another object, or an
+editor — is refused rather than written over. Into a folder, each is
+written under its file's name, or its name, and nothing is written if
+any file is refused.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>directory</strong> -- The folder, which must exist.</p></li>
-<li><p><strong>overwrite</strong> -- Replace existing files.</p></li>
+<li><p><strong>directory</strong> -- The folder, which must exist; each sample's own file when
+left out.</p></li>
+<li><p><strong>overwrite</strong> -- Replace existing files in the folder.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -979,7 +1103,9 @@ written if any file is refused.</p>
 <li><p><strong>FileNotFoundError</strong> -- The folder does not exist.</p></li>
 <li><p><strong>NotADirectoryError</strong> -- It is a file.</p></li>
 <li><p><strong>FileExistsError</strong> -- A file exists and <code class="docutils literal notranslate"><span class="pre">overwrite</span></code> is false.</p></li>
-<li><p><strong>ValueError</strong> -- Two samples would be written to the same file.</p></li>
+<li><p><strong>ValueError</strong> -- Two samples would be written to the same file, or,
+    without a folder, a sample has no file of its own.</p></li>
+<li><p><strong>OSError</strong> -- Without a folder, a file changed on disk since it was read.</p></li>
 </ul>
 </dd>
 </dl>
@@ -991,7 +1117,7 @@ written if any file is refused.</p>
 <dd><p>Sort the list in place, and return <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>key</strong> -- A field — <code class="docutils literal notranslate"><span class="pre">&quot;abv&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;-abv&quot;</span></code> for descending — several in a
+<dd class="field-odd"><p><strong>key</strong> -- A field — <code class="docutils literal notranslate"><span class="pre">&quot;area&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;-area&quot;</span></code> for descending — several in a
 list or comma-separated, or a function of a sample as <code class="docutils literal notranslate"><span class="pre">sorted</span></code>
 takes one.</p>
 </dd>
@@ -1010,7 +1136,7 @@ takes one.</p>
 <dd><p>A new list in sorted order; this one is unchanged.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>key</strong> -- A field — <code class="docutils literal notranslate"><span class="pre">&quot;abv&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;-abv&quot;</span></code> for descending — several in a
+<dd class="field-odd"><p><strong>key</strong> -- A field — <code class="docutils literal notranslate"><span class="pre">&quot;area&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;-area&quot;</span></code> for descending — several in a
 list or comma-separated, or a function of a sample as <code class="docutils literal notranslate"><span class="pre">sorted</span></code>
 takes one.</p>
 </dd>
@@ -1025,8 +1151,8 @@ takes one.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">brews</span><span class="o">.</span><span class="n">sorted</span><span class="p">(</span><span class="s2">"-abv"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
-<span class="go">'double-ipa'</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">specimens</span><span class="o">.</span><span class="n">sorted</span><span class="p">(</span><span class="s2">"-tensile_strength"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+<span class="go">'steel-01'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1037,7 +1163,7 @@ takes one.</p>
 <dd><p>The statistics of one field over the list, as <code class="docutils literal notranslate"><span class="pre">--summary</span></code> gives them.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>field</strong> -- A field: <code class="docutils literal notranslate"><span class="pre">&quot;abv&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;abv.u&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;fermentation.gravity[1]&quot;</span></code>.</p>
+<dd class="field-odd"><p><strong>field</strong> -- A field: <code class="docutils literal notranslate"><span class="pre">&quot;area&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;area.u&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;curve.force[0.2]&quot;</span></code>.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">Summary</span></code>. Its mean is weighted by 1/u² where every value has an
@@ -1051,8 +1177,8 @@ uncertainty above zero.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">round</span><span class="p">(</span><span class="n">brews</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="s2">"abv"</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-<span class="go">5.67</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">round</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="s2">"tensile_strength"</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="go">352.3</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1084,7 +1210,7 @@ instead of <code class="docutils literal notranslate"><span class="pre">columns<
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">brews</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,abv"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">specimens</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,area"</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1114,9 +1240,9 @@ instead of <code class="docutils literal notranslate"><span class="pre">columns<
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">columns</span> <span class="o">=</span> <span class="n">brews</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,abv"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">columns</span> <span class="o">=</span> <span class="n">specimens</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,area"</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
-<span class="go">['name', 'abv_value', 'abv_uncertainty']</span>
+<span class="go">['name', 'area_value', 'area_uncertainty']</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1148,7 +1274,43 @@ instead of <code class="docutils literal notranslate"><span class="pre">columns<
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">brews</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,abv"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">specimens</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,area"</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.SampleList.to_text">
+<span class="sig-name descname"><span class="pre">to_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">style</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.SampleList.to_text" title="Link to this definition">¶</a></dt>
+<dd><p>The list as a document in a style: <code class="docutils literal notranslate"><span class="pre">&quot;latex&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;markdown&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;html&quot;</span></code>, or one <code class="docutils literal notranslate"><span class="pre">[style.NAME]</span></code> declares, as <code class="docutils literal notranslate"><span class="pre">--style</span> <span class="pre">NAME</span> <span class="pre">-o</span> <span class="pre">-</span></code>
+writes it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>style</strong> -- The style's name.</p></li>
+<li><p><strong>path</strong> -- The file to write. Without it, the text is returned.</p></li>
+<li><p><strong>columns</strong> -- The fields to include: a list, or comma-separated as <code class="docutils literal notranslate"><span class="pre">-c</span></code>
+writes them, each <code class="docutils literal notranslate"><span class="pre">FIELD[:PRECISION][=LABEL]</span></code>.</p></li>
+<li><p><strong>profile</strong> -- A profile's name in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, or a <code class="docutils literal notranslate"><span class="pre">Profile</span></code>,
+instead of <code class="docutils literal notranslate"><span class="pre">columns</span></code>.</p></li>
+<li><p><strong>overwrite</strong> -- Replace an existing file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The text, when no <code class="docutils literal notranslate"><span class="pre">path</span></code> is given; otherwise <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> -- No style writing documents has that name, or neither
+    <code class="docutils literal notranslate"><span class="pre">columns</span></code> nor <code class="docutils literal notranslate"><span class="pre">profile</span></code> is given, or both.</p></li>
+<li><p><strong>KeyError</strong> -- An unknown field or profile; the message names the nearest.</p></li>
+<li><p><strong>FileExistsError</strong> -- <code class="docutils literal notranslate"><span class="pre">path</span></code> exists and <code class="docutils literal notranslate"><span class="pre">overwrite</span></code> is false.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="n">specimens</span><span class="o">.</span><span class="n">to_text</span><span class="p">(</span><span class="s2">"latex"</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">"name,area"</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1180,7 +1342,7 @@ instead of <code class="docutils literal notranslate"><span class="pre">columns<
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">brews</span><span class="o">.</span><span class="n">to_tsv</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,abv"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">specimens</span><span class="o">.</span><span class="n">to_tsv</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">"name,area"</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1200,13 +1362,17 @@ history shows the script's steps apart.</p>
 given. A blank message says nothing, and several lines are kept
 on one.</p>
 </dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>TypeError</strong> -- The message is not text.</p>
+<dt class="field-even">Warns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>UserWarning</strong> -- Nothing was saved in a project since the last snapshot,
+so nothing is kept.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>TypeError</strong> -- The message is not text.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">sk</span><span class="o">.</span><span class="n">keep</span><span class="p">(</span><span class="s2">"volumes corrected"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sk</span><span class="o">.</span><span class="n">keep</span><span class="p">(</span><span class="s2">"thickness measured again"</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1214,23 +1380,27 @@ on one.</p>
 </section>
 <section id="values">
 <h2>Values<a class="headerlink" href="#values" title="Link to this heading">¶</a></h2>
-<p>A sample's quantities are <code class="docutils literal notranslate"><span class="pre">Property</span></code> objects: a value, an uncertainty, a unit,
+<p>A sample's properties are <code class="docutils literal notranslate"><span class="pre">Property</span></code> objects: a value, an uncertainty, a unit,
 readings. A value that does not apply to a sample is <code class="docutils literal notranslate"><span class="pre">NA</span></code>. An attribute that
 holds a list is a <code class="docutils literal notranslate"><span class="pre">BoundList</span></code>, which writes its changes through to the
 sample.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.Property">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Property</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_quantity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depends_on</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Property" title="Link to this definition">¶</a></dt>
-<dd><p>A quantity: a value, its uncertainty and its unit.</p>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Property</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depends_on</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Property" title="Link to this definition">¶</a></dt>
+<dd><p>A property: a value, its uncertainty and its unit.</p>
 <p>A property stands for its value in arithmetic and comparisons, so
-<code class="docutils literal notranslate"><span class="pre">ipa.abv</span> <span class="pre">*</span> <span class="pre">2</span></code> and <code class="docutils literal notranslate"><span class="pre">ipa.abv</span> <span class="pre">&gt;</span> <span class="pre">6</span></code> work on the number, and it prints as
-the whole quantity, <code class="docutils literal notranslate"><span class="pre">6.8</span> <span class="pre">±</span> <span class="pre">0.1</span> <span class="pre">%</span></code>. A model declares its properties in its
+<code class="docutils literal notranslate"><span class="pre">steel.area</span> <span class="pre">*</span> <span class="pre">2</span></code> and <code class="docutils literal notranslate"><span class="pre">steel.area</span> <span class="pre">&gt;</span> <span class="pre">25</span></code> work on the number, and it prints
+as the whole property, <code class="docutils literal notranslate"><span class="pre">25.056</span> <span class="pre">±</span> <span class="pre">0.053</span> <span class="pre">mm²</span></code>. A model declares its properties in its
 <code class="docutils literal notranslate"><span class="pre">__init__</span></code>; a property a model does not declare is made the same way and
 assigned to the sample.</p>
 <p>A property is one of four kinds, by what is given: a value entered by hand;
 readings, whose value and uncertainty a statistic gives; a value a formula
-computes (<code class="docutils literal notranslate"><span class="pre">compute</span></code>, <code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code> or <code class="docutils literal notranslate"><span class="pre">compute_quantity</span></code>); or
-nothing yet.</p>
+computes (<code class="docutils literal notranslate"><span class="pre">compute</span></code>, or <code class="docutils literal notranslate"><span class="pre">compute_value</span></code> and <code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code>);
+or nothing yet.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Table</span></code> declares its columns with it too: there a property describes
+every cell of its column, with the same keywords, and its formula is given
+the row, <code class="docutils literal notranslate"><span class="pre">f(row)</span></code>. A column takes no value nor uncertainty: each cell
+holds its own, in the file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1244,23 +1414,28 @@ a spread from <code class="docutils literal notranslate"><span class="pre">sampl
 under <code class="docutils literal notranslate"><span class="pre">[property.NAME]</span></code>.</p></li>
 <li><p><strong>precision</strong> -- Not taken here: a precision is declared in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>,
 under <code class="docutils literal notranslate"><span class="pre">[property.NAME]</span></code>.</p></li>
-<li><p><strong>compute</strong> -- A function of no argument returning the value.</p></li>
+<li><p><strong>compute</strong> -- A function of no argument returning the property: a number,
+or <code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">uncertainty)</span></code>.</p></li>
+<li><p><strong>compute_value</strong> -- A function of no argument returning the value alone,
+beside an uncertainty entered, given by readings or computed apart.</p></li>
 <li><p><strong>compute_uncertainty</strong> -- A function of no argument returning the
 uncertainty, beside a value entered or computed apart.</p></li>
-<li><p><strong>compute_quantity</strong> -- A function of no argument returning
-<code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">uncertainty)</span></code> from one run.</p></li>
-<li><p><strong>depends_on</strong> -- What the formula reads: a list of names — <code class="docutils literal notranslate"><span class="pre">[&quot;og&quot;,</span> <span class="pre">&quot;fg&quot;]</span></code>,
-<code class="docutils literal notranslate"><span class="pre">&quot;fermentation.gravity&quot;</span></code> for a column — or, where the value and
-the uncertainty have a formula each, <code class="docutils literal notranslate"><span class="pre">{&quot;v&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;u&quot;:</span> <span class="pre">[...]}</span></code>.
-<code class="docutils literal notranslate"><span class="pre">[]</span></code> says it reads nothing of the sample. It can also be declared
-later with <code class="docutils literal notranslate"><span class="pre">Sample.set_dependencies</span></code>.</p></li>
+<li><p><strong>compute_column</strong> -- For a table's column only: a function given the
+columns it reads, by name, and returning a list, one cell per row,
+each a number or <code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">uncertainty)</span></code>.</p></li>
+<li><p><strong>depends_on</strong> -- What the formula reads: a list of names — <code class="docutils literal notranslate"><span class="pre">[&quot;width&quot;,</span> <span class="pre">&quot;thickness&quot;]</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;curve.force&quot;</span></code> for a column, <code class="docutils literal notranslate"><span class="pre">&quot;row.force&quot;</span></code> for a
+cell of the same row — or, where the value and the uncertainty have
+a formula each, <code class="docutils literal notranslate"><span class="pre">{&quot;v&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;u&quot;:</span> <span class="pre">[...]}</span></code>. <code class="docutils literal notranslate"><span class="pre">[]</span></code> says it reads
+nothing of the sample. It can also be declared later with
+<code class="docutils literal notranslate"><span class="pre">Sample.set_dependencies</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
 <li><p><strong>ValueError</strong> -- Two arguments give the same thing — <code class="docutils literal notranslate"><span class="pre">value</span></code> and a
-    formula, <code class="docutils literal notranslate"><span class="pre">compute</span></code> and <code class="docutils literal notranslate"><span class="pre">compute_quantity</span></code> — or a value is not a
-    number where a unit is given.</p></li>
+    formula, <code class="docutils literal notranslate"><span class="pre">compute</span></code> and <code class="docutils literal notranslate"><span class="pre">compute_value</span></code>, <code class="docutils literal notranslate"><span class="pre">compute_column</span></code> and
+    another — or a value is not a number where a unit is given.</p></li>
 <li><p><strong>TypeError</strong> -- A formula is not callable, or a symbol or a precision is
     given.</p></li>
 </ul>
@@ -1270,7 +1445,8 @@ later with <code class="docutils literal notranslate"><span class="pre">Sample.s
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="mf">3.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"kg"</span><span class="p">)</span>
 <span class="go">Property(value=3.2, uncertainty=0.1, unit='kg')</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">og</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">uncertainty</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">standard_error</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">width</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"mm"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
+<span class="gp">... </span>                    <span class="n">uncertainty</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">standard_error</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="py method">
@@ -1310,25 +1486,16 @@ otherwise. The file is not written: <code class="docutils literal notranslate"><
 <dl class="py method">
 <dt class="sig sig-object py" id="samplekit.Property.format">
 <span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Property.format" title="Link to this definition">¶</a></dt>
-<dd><p>Format the quantity at its declared precision.</p>
+<dd><p>Format the property at its declared precision.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>unit</strong> -- Include the unit.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The quantity as text, such as <code class="docutils literal notranslate"><span class="pre">&quot;6.8</span> <span class="pre">±</span> <span class="pre">0.1</span> <span class="pre">%&quot;</span></code>. For another
-precision, use a format specifier: <code class="docutils literal notranslate"><span class="pre">f&quot;{ipa.abv:.2f}&quot;</span></code>.</p>
+<dd class="field-even"><p>The property as text, such as <code class="docutils literal notranslate"><span class="pre">&quot;25.056</span> <span class="pre">±</span> <span class="pre">0.053</span> <span class="pre">mm²&quot;</span></code>. For another
+precision, use a format specifier: <code class="docutils literal notranslate"><span class="pre">f&quot;{steel.area:.2f}&quot;</span></code>.</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="samplekit.Property.invalidate">
-<span class="sig-name descname"><span class="pre">invalidate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Property.invalidate" title="Link to this definition">¶</a></dt>
-<dd><p>Discard the computed value.</p>
-<p>The value reads <em>never computed</em> (a statistic of readings, <em>outdated</em>), and
-every value computed from it reads <em>outdated</em>, until <code class="docutils literal notranslate"><span class="pre">compute()</span></code> runs
-them again.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1340,30 +1507,14 @@ them again.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Property.is_edited">
 <span class="sig-name descname"><span class="pre">is_edited</span></span><a class="headerlink" href="#samplekit.Property.is_edited" title="Link to this definition">¶</a></dt>
-<dd><p>typed over its formula, or a computed table
+<dd><p>Whether the value is edited — typed over its formula, or a computed table
 cell whose record is missing.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Whether the value is edited</p>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Property.is_outdated">
 <span class="sig-name descname"><span class="pre">is_outdated</span></span><a class="headerlink" href="#samplekit.Property.is_outdated" title="Link to this definition">¶</a></dt>
-<dd><p>an input changed since it was computed.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Whether the value is outdated</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="samplekit.Property.is_stale">
-<span class="sig-name descname"><span class="pre">is_stale</span></span><a class="headerlink" href="#samplekit.Property.is_stale" title="Link to this definition">¶</a></dt>
-<dd><p>The same as <code class="docutils literal notranslate"><span class="pre">is_outdated</span></code>, under its former name.</p>
+<dd><p>Whether the value is outdated — an input changed since it was computed.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1379,10 +1530,13 @@ refused on a value a formula computes.</p>
 <dt class="sig sig-object py" id="samplekit.Property.state">
 <span class="sig-name descname"><span class="pre">state</span></span><a class="headerlink" href="#samplekit.Property.state" title="Link to this definition">¶</a></dt>
 <dd><p>Where the value stands, in one word.</p>
-<p>One of <code class="docutils literal notranslate"><span class="pre">&quot;entered&quot;</span></code> (typed in, no formula), <code class="docutils literal notranslate"><span class="pre">&quot;current&quot;</span></code>,
-<code class="docutils literal notranslate"><span class="pre">&quot;outdated&quot;</span></code> (an input changed since it was computed),
-<code class="docutils literal notranslate"><span class="pre">&quot;never</span> <span class="pre">computed&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;edited&quot;</span></code> (a value typed over its formula) or
-<code class="docutils literal notranslate"><span class="pre">&quot;failed&quot;</span></code> (its formula raised).</p>
+<p>One of <code class="docutils literal notranslate"><span class="pre">&quot;entered&quot;</span></code> (typed in, no formula), <code class="docutils literal notranslate"><span class="pre">&quot;absent&quot;</span></code> (no formula,
+and nothing typed in), <code class="docutils literal notranslate"><span class="pre">&quot;current&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;outdated&quot;</span></code> (an input changed since it was computed), <code class="docutils literal notranslate"><span class="pre">&quot;waiting&quot;</span></code>
+(an input it reads was emptied since: the number is the one computed
+before), <code class="docutils literal notranslate"><span class="pre">&quot;never_computed&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;edited&quot;</span></code> (a value typed over its
+formula) or <code class="docutils literal notranslate"><span class="pre">&quot;failed&quot;</span></code> (its formula raised): the words a filter's
+<code class="docutils literal notranslate"><span class="pre">state</span></code> takes.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1395,34 +1549,44 @@ readings.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Property.symbol">
 <span class="sig-name descname"><span class="pre">symbol</span></span><a class="headerlink" href="#samplekit.Property.symbol" title="Link to this definition">¶</a></dt>
-<dd><p>the one this sample's file writes, else the one
+<dd><p>The property's symbol — the one this sample's file writes, else the one
 the project declares in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> under <code class="docutils literal notranslate"><span class="pre">[property.NAME]</span></code>, else
 <code class="docutils literal notranslate"><span class="pre">None</span></code>. Read only: a symbol is the project's, declared there, never
 set by a model or a script.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The quantity's symbol</p>
-</dd>
-</dl>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="samplekit.Property.text">
-<span class="sig-name descname"><span class="pre">text</span></span><a class="headerlink" href="#samplekit.Property.text" title="Link to this definition">¶</a></dt>
-<dd><p>The quantity as a terminal shows it — value, uncertainty and unit, at the
-declared precision: what <code class="docutils literal notranslate"><span class="pre">str()</span></code> gives.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Property.to_text">
+<span class="sig-name descname"><span class="pre">to_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Property.to_text" title="Link to this definition">¶</a></dt>
+<dd><p>The property as a style writes it: its units, its symbols, its form
+of a property — <code class="docutils literal notranslate"><span class="pre">\SI{12.5</span> <span class="pre">\pm</span> <span class="pre">0.05}{\gram}</span></code> in a style declaring
+<code class="docutils literal notranslate"><span class="pre">property</span> <span class="pre">=</span> <span class="pre">'\SI{{value}</span> <span class="pre">\pm</span> <span class="pre">{uncertainty}}{{unit}}'</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>style</strong> -- A style's name: <code class="docutils literal notranslate"><span class="pre">&quot;plain&quot;</span></code>, one SampleKit gives —
+<code class="docutils literal notranslate"><span class="pre">&quot;latex&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;markdown&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;html&quot;</span></code> — or one <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>
+declares. Without it, <code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">style</span></code>'s, as <code class="docutils literal notranslate"><span class="pre">str()</span></code> gives.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The text, <code class="docutils literal notranslate"><span class="pre">n/a</span></code> where the value does not apply, and the style's
+<code class="docutils literal notranslate"><span class="pre">missing</span></code> where there is none.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> -- No style has that name.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">area</span><span class="o">.</span><span class="n">to_text</span><span class="p">(</span><span class="s2">"latex"</span><span class="p">)</span>
+<span class="go">'$25.056 \\pm 0.053$ mm²'</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Property.u">
 <span class="sig-name descname"><span class="pre">u</span></span><a class="headerlink" href="#samplekit.Property.u" title="Link to this definition">¶</a></dt>
-<dd><p>the same as <code class="docutils literal notranslate"><span class="pre">uncertainty</span></code>, spelt as a field path spells
-it (<code class="docutils literal notranslate"><span class="pre">abv.u</span></code>).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The uncertainty</p>
-</dd>
-</dl>
+<dd><p>The uncertainty — the same as <code class="docutils literal notranslate"><span class="pre">uncertainty</span></code>, spelt as a field path spells
+it (<code class="docutils literal notranslate"><span class="pre">area.u</span></code>).</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1440,29 +1604,19 @@ it (<code class="docutils literal notranslate"><span class="pre">abv.u</span></c
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Property.v">
 <span class="sig-name descname"><span class="pre">v</span></span><a class="headerlink" href="#samplekit.Property.v" title="Link to this definition">¶</a></dt>
-<dd><p>the same as <code class="docutils literal notranslate"><span class="pre">value</span></code>, spelt as a field path spells it
-(<code class="docutils literal notranslate"><span class="pre">abv.v</span></code>).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The value</p>
-</dd>
-</dl>
+<dd><p>The value — the same as <code class="docutils literal notranslate"><span class="pre">value</span></code>, spelt as a field path spells it
+(<code class="docutils literal notranslate"><span class="pre">area.v</span></code>).</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Property.value">
 <span class="sig-name descname"><span class="pre">value</span></span><a class="headerlink" href="#samplekit.Property.value" title="Link to this definition">¶</a></dt>
-<dd><p>a number, text, a boolean, a date, <code class="docutils literal notranslate"><span class="pre">samplekit.NA</span></code>, or
+<dd><p>The value — a number, text, a boolean, a date, <code class="docutils literal notranslate"><span class="pre">samplekit.NA</span></code>, or
 <code class="docutils literal notranslate"><span class="pre">None</span></code> when there is none.</p>
 <p>Assigning a value to a computed property overrides its formula: the
 property reads <em>edited</em> until <code class="docutils literal notranslate"><span class="pre">compute(force=True)</span></code> gives it back to the
 formula. Assigning a list gives the property readings. A property with a
 unit takes numbers only, and raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> otherwise.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The value</p>
-</dd>
-</dl>
 </dd></dl>
 
 </dd></dl>
@@ -1470,30 +1624,25 @@ unit takes numbers only, and raises <code class="docutils literal notranslate"><
 <dl class="py data">
 <dt class="sig sig-object py" id="samplekit.NA">
 <span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">NA</span></span><a class="headerlink" href="#samplekit.NA" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">fg:</span> <span class="pre">n/a</span></code> in its file.</p>
+<dd><p>A value that does not apply to a sample — <code class="docutils literal notranslate"><span class="pre">yield_strength:</span> <span class="pre">n/a</span></code> in its file.</p>
 <p>There is one, <code class="docutils literal notranslate"><span class="pre">samplekit.NA</span></code>. It is false in a test and prints as
 <code class="docutils literal notranslate"><span class="pre">n/a</span></code>; a property set to it is saved as <code class="docutils literal notranslate"><span class="pre">n/a</span></code>, and a formula reading
 it gives <code class="docutils literal notranslate"><span class="pre">NA</span></code> too, without running.</p>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">fg</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">NA</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">yield_strength</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">NA</span>
 </pre></div>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>A value that does not apply to a sample</p>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.NotApplicable">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">NotApplicable</span></span><a class="headerlink" href="#samplekit.NotApplicable" title="Link to this definition">¶</a></dt>
-<dd><p>A value that does not apply to a sample: <code class="docutils literal notranslate"><span class="pre">fg:</span> <span class="pre">n/a</span></code> in its file.</p>
+<dd><p>A value that does not apply to a sample — <code class="docutils literal notranslate"><span class="pre">yield_strength:</span> <span class="pre">n/a</span></code> in its file.</p>
 <p>There is one, <code class="docutils literal notranslate"><span class="pre">samplekit.NA</span></code>. It is false in a test and prints as
 <code class="docutils literal notranslate"><span class="pre">n/a</span></code>; a property set to it is saved as <code class="docutils literal notranslate"><span class="pre">n/a</span></code>, and a formula reading
 it gives <code class="docutils literal notranslate"><span class="pre">NA</span></code> too, without running.</p>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">fg</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">NA</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">yield_strength</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">NA</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1508,7 +1657,7 @@ checked and made in the sample too, and a refused item leaves both
 unchanged. <code class="docutils literal notranslate"><span class="pre">list(...)</span></code> or <code class="docutils literal notranslate"><span class="pre">.copy()</span></code> is a plain copy, bound to
 nothing, and so is a list read before the attribute was assigned again.</p>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"medal"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"reference"</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="py method">
@@ -1577,51 +1726,51 @@ ascending or descending, according to their function values.</p>
 </section>
 <section id="tables">
 <h2>Tables<a class="headerlink" href="#tables" title="Link to this heading">¶</a></h2>
-<p>A table of a sample holds rows of measurements, by column. <code class="docutils literal notranslate"><span class="pre">Column</span></code> declares
-one column of a new <code class="docutils literal notranslate"><span class="pre">Table</span></code>: its unit and the statistics of its readings;
-its symbol, like any symbol, is the project's. <code class="docutils literal notranslate"><span class="pre">ColumnView</span></code> and <code class="docutils literal notranslate"><span class="pre">RowView</span></code> read a table by column and by row.</p>
+<p>A table of a sample holds rows of measurements, by column. Each column of a
+new <code class="docutils literal notranslate"><span class="pre">Table</span></code> is declared with <code class="docutils literal notranslate"><span class="pre">Property</span></code>, as a property is: its unit, the
+statistics of its cells' readings, or the formula that computes its cells;
+its symbol, like any symbol, is the project's. <code class="docutils literal notranslate"><span class="pre">ComputedColumns</span></code> fills several
+columns with one formula. <code class="docutils literal notranslate"><span class="pre">ColumnView</span></code> and <code class="docutils literal notranslate"><span class="pre">RowView</span></code> read a table by column
+and by row.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.Table">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Table" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">positional</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">computed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Table" title="Link to this definition">¶</a></dt>
 <dd><p>A table of a sample: named columns, and rows identified by their index.</p>
 <p>The index is the column — or the columns — whose values identify a row: a
-day, a temperature, a taster. A cell is read by its index value, never by
-its position: <code class="docutils literal notranslate"><span class="pre">table.at(3,</span> <span class="pre">&quot;gravity&quot;)</span></code>.</p>
-<p>Some columns can be computed: <code class="docutils literal notranslate"><span class="pre">compute_rows</span></code> fills cells row by row, and
-<code class="docutils literal notranslate"><span class="pre">compute_columns</span></code> fills a whole column at once. Each entry is a triple
-<code class="docutils literal notranslate"><span class="pre">(outputs,</span> <span class="pre">inputs,</span> <span class="pre">function)</span></code>: the column or columns it fills, what it
-reads (<code class="docutils literal notranslate"><span class="pre">&quot;row.gravity&quot;</span></code> for a cell of the same row,
-<code class="docutils literal notranslate"><span class="pre">&quot;fermentation.gravity&quot;</span></code> for a whole column, <code class="docutils literal notranslate"><span class="pre">&quot;og&quot;</span></code> for a property of
-the sample), and the function. A row function takes a <code class="docutils literal notranslate"><span class="pre">RowView</span></code> and
-returns a cell, or a dict of cells by column; a column function takes a
-dict of <code class="docutils literal notranslate"><span class="pre">ColumnView</span></code> by name and returns a list of cells, one per row,
-or a dict of such lists.</p>
+day, a temperature, a inspector. A cell is read by its index value, never by
+its position: <code class="docutils literal notranslate"><span class="pre">table.at(0.2,</span> <span class="pre">&quot;force&quot;)</span></code>.</p>
+<p>A column is declared with <code class="docutils literal notranslate"><span class="pre">Property</span></code>: its unit, the statistics of its
+cells' readings, or the formula that computes each cell, given the row
+(<code class="docutils literal notranslate"><span class="pre">compute</span></code>, <code class="docutils literal notranslate"><span class="pre">compute_value</span></code>, <code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code>), or the whole
+column at once (<code class="docutils literal notranslate"><span class="pre">compute_column</span></code>). A formula filling several columns at
+once is a <code class="docutils literal notranslate"><span class="pre">ComputedColumns</span></code>, given in <code class="docutils literal notranslate"><span class="pre">computed</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> -- A dict of <code class="docutils literal notranslate"><span class="pre">Column</span></code> by name, in the order they are shown.</p></li>
-<li><p><strong>index</strong> -- The name of the index column, or a list of names.</p></li>
+<li><p><strong>columns</strong> -- A dict of <code class="docutils literal notranslate"><span class="pre">Property</span></code> by name, in the order they are shown.</p></li>
+<li><p><strong>index</strong> -- The name of the index column, or a list of names; always named.</p></li>
 <li><p><strong>title</strong> -- A title for the table.</p></li>
 <li><p><strong>rows</strong> -- The first rows: each a dict of cells by column name.</p></li>
-<li><p><strong>compute_rows</strong> -- The columns computed row by row.</p></li>
-<li><p><strong>compute_columns</strong> -- The columns computed whole.</p></li>
+<li><p><strong>computed</strong> -- The <code class="docutils literal notranslate"><span class="pre">ComputedColumns</span></code> of the table, each filling several
+columns.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>TypeError</strong> -- A column is not a <code class="docutils literal notranslate"><span class="pre">Column</span></code>.</p></li>
-<li><p><strong>ValueError</strong> -- The index names no column, or a row does not fit the
-    columns.</p></li>
+<li><p><strong>TypeError</strong> -- A column is not a <code class="docutils literal notranslate"><span class="pre">Property</span></code>, or is given a value; the
+    index is not named.</p></li>
+<li><p><strong>ValueError</strong> -- The index names no column, a row does not fit the columns,
+    or a column is filled by two formulas.</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tasting</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Table</span><span class="p">(</span>
-<span class="gp">... </span>    <span class="p">{</span><span class="s2">"taster"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Column</span><span class="p">(),</span> <span class="s2">"score"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Column</span><span class="p">()},</span>
-<span class="gp">... </span>    <span class="s2">"taster"</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">rows</span><span class="o">=</span><span class="p">[{</span><span class="s2">"taster"</span><span class="p">:</span> <span class="s2">"Ana"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mi">41</span><span class="p">}],</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">inspection</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Table</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">"inspector"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(),</span> <span class="s2">"score"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">()},</span>
+<span class="gp">... </span>    <span class="n">index</span><span class="o">=</span><span class="s2">"inspector"</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">rows</span><span class="o">=</span><span class="p">[{</span><span class="s2">"inspector"</span><span class="p">:</span> <span class="s2">"Ana"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">:</span> <span class="mi">41</span><span class="p">}],</span>
 <span class="gp">... </span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">tasting</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="s2">"Ana"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">inspection</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="s2">"Ana"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
 <span class="go">41</span>
 </pre></div>
 </div>
@@ -1663,8 +1812,8 @@ or a <code class="docutils literal notranslate"><span class="pre">Property</span
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">fermentation</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">"gravity"</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
-<span class="go">1.029</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">curve</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="s2">"force"</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+<span class="go">9.516</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1726,6 +1875,51 @@ several columns.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Table.to_csv">
+<span class="sig-name descname"><span class="pre">to_csv</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Table.to_csv" title="Link to this definition">¶</a></dt>
+<dd><p>The table as rows of CSV, as <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FILE</span> <span class="pre">view</span> <span class="pre">TABLE</span> <span class="pre">--csv</span></code>
+prints it: its index first, each column a value and its uncertainty
+headed with the unit, at the precision its columns declare.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The text.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> -- The table belongs to no sample yet.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">steel</span><span class="o">.</span><span class="n">curve</span><span class="o">.</span><span class="n">to_csv</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Table.to_text">
+<span class="sig-name descname"><span class="pre">to_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Table.to_text" title="Link to this definition">¶</a></dt>
+<dd><p>The table as <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">view</span></code> unfolds it: its columns headed with
+their units, its index first, each cell in a style's forms — those of
+its sample's project, or of the project the current folder is in for a
+table of no sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>style</strong> -- A style's name: <code class="docutils literal notranslate"><span class="pre">&quot;plain&quot;</span></code>, one SampleKit gives, or one
+<code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> declares. Without it, <code class="docutils literal notranslate"><span class="pre">[render]</span> <span class="pre">style</span></code>'s.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The text.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> -- No style has that name.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">steel</span><span class="o">.</span><span class="n">curve</span><span class="o">.</span><span class="n">to_text</span><span class="p">())</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="samplekit.Table.uncertainties">
 <span class="sig-name descname"><span class="pre">uncertainties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Table.uncertainties" title="Link to this definition">¶</a></dt>
 <dd><p>The uncertainties of a column, in row order.</p>
@@ -1778,8 +1972,8 @@ here is edited: kept by <code class="docutils literal notranslate"><span class="
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ipa</span><span class="o">.</span><span class="n">fermentation</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">"gravity"</span><span class="p">)[:</span><span class="mi">3</span><span class="p">]</span>
-<span class="go">[1.041, 1.029, 1.021]</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">steel</span><span class="o">.</span><span class="n">curve</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">"force"</span><span class="p">)[:</span><span class="mi">3</span><span class="p">]</span>
+<span class="go">[0.0, 1.281, 2.585]</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1787,49 +1981,48 @@ here is edited: kept by <code class="docutils literal notranslate"><span class="
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="samplekit.Column">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Column" title="Link to this definition">¶</a></dt>
-<dd><p>One column of a <code class="docutils literal notranslate"><span class="pre">Table</span></code>: its unit, and the statistics of its cells'
-readings.</p>
+<dt class="sig sig-object py" id="samplekit.ComputedColumns">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">ComputedColumns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depends_on</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.ComputedColumns" title="Link to this definition">¶</a></dt>
+<dd><p>Several columns of a table filled by one formula: given each row, or the
+columns it reads whole.</p>
+<p>A column filled alone declares its formula on its <code class="docutils literal notranslate"><span class="pre">Property</span></code>; this is for
+one computation that gives several columns at once, a fit's two parameters.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>unit</strong> -- The unit of every cell, as the file writes it.</p></li>
-<li><p><strong>symbol</strong> -- Not taken here: a symbol is declared in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>,
-under <code class="docutils literal notranslate"><span class="pre">[property.&quot;TABLE.COLUMN&quot;]</span></code>.</p></li>
-<li><p><strong>precision</strong> -- Not taken here: a precision is declared in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>,
-under <code class="docutils literal notranslate"><span class="pre">[property.TABLE.COLUMN]</span></code>.</p></li>
-<li><p><strong>value</strong> -- A statistic from <code class="docutils literal notranslate"><span class="pre">samplekit.stats</span></code> that gives each cell's value
-from the readings it holds.</p></li>
-<li><p><strong>uncertainty</strong> -- A spread from <code class="docutils literal notranslate"><span class="pre">samplekit.stats</span></code> that gives each cell's
-uncertainty from its readings.</p></li>
+<li><p><strong>columns</strong> -- The columns it fills: a name, or a list of names.</p></li>
+<li><p><strong>compute</strong> -- A function given each row, a <code class="docutils literal notranslate"><span class="pre">RowView</span></code>, and returning a dict:
+one cell for each column it fills, a number or
+<code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">uncertainty)</span></code>.</p></li>
+<li><p><strong>compute_column</strong> -- A function given the columns it reads, by name, and
+returning a dict: one list of cells for each column it fills, one
+cell per row.</p></li>
+<li><p><strong>depends_on</strong> -- What the formula reads: <code class="docutils literal notranslate"><span class="pre">&quot;row.force&quot;</span></code> for a cell of the
+same row, <code class="docutils literal notranslate"><span class="pre">&quot;curve.force&quot;</span></code> for a whole column, <code class="docutils literal notranslate"><span class="pre">&quot;area&quot;</span></code> for a
+property of the sample; <code class="docutils literal notranslate"><span class="pre">[]</span></code> for nothing.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>TypeError</strong> -- A symbol or a precision is given, or <code class="docutils literal notranslate"><span class="pre">value</span></code> or
-    <code class="docutils literal notranslate"><span class="pre">uncertainty</span></code> is not a statistic.</p></li>
-<li><p><strong>ValueError</strong> -- A spread is given as the value.</p></li>
+<li><p><strong>ValueError</strong> -- Neither formula is given, or both, or <code class="docutils literal notranslate"><span class="pre">depends_on</span></code> is not.</p></li>
+<li><p><strong>TypeError</strong> -- A formula is not callable.</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">day</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"d"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bounds</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">ComputedColumns</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="s2">"low"</span><span class="p">,</span> <span class="s2">"high"</span><span class="p">],</span> <span class="n">compute</span><span class="o">=</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="p">{</span><span class="s2">"low"</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">"high"</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+<span class="gp">... </span>    <span class="n">depends_on</span><span class="o">=</span><span class="p">[],</span>
+<span class="gp">... </span><span class="p">)</span>
 </pre></div>
 </div>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="samplekit.Column.unit">
-<span class="sig-name descname"><span class="pre">unit</span></span><a class="headerlink" href="#samplekit.Column.unit" title="Link to this definition">¶</a></dt>
-<dd><p>The unit of every cell, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.ColumnView">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">ColumnView</span></span><a class="headerlink" href="#samplekit.ColumnView" title="Link to this definition">¶</a></dt>
-<dd><p>One column of a table, as a function in <code class="docutils literal notranslate"><span class="pre">compute_columns</span></code> receives it,
-and as <code class="docutils literal notranslate"><span class="pre">table.column_name</span></code> reads it.</p>
+<dd><p>One column of a table, as a <code class="docutils literal notranslate"><span class="pre">compute_column</span></code> formula receives it, and
+as <code class="docutils literal notranslate"><span class="pre">table.column_name</span></code> reads it.</p>
 <p>Iterating gives each cell as a <code class="docutils literal notranslate"><span class="pre">Property</span></code>, in row order, and an item is
 the cell of a row, by its index value: <code class="docutils literal notranslate"><span class="pre">column[3]</span></code>.</p>
 <dl class="py attribute">
@@ -1849,9 +2042,9 @@ the cell of a row, by its index value: <code class="docutils literal notranslate
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.RowView">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">RowView</span></span><a class="headerlink" href="#samplekit.RowView" title="Link to this definition">¶</a></dt>
-<dd><p>One row of a table, as a function in <code class="docutils literal notranslate"><span class="pre">compute_rows</span></code> receives it.</p>
+<dd><p>One row of a table, as a column's formula receives it.</p>
 <p>A cell is read by its column's name, as an attribute or an item:
-<code class="docutils literal notranslate"><span class="pre">row.gravity</span></code> or <code class="docutils literal notranslate"><span class="pre">row[&quot;gravity&quot;]</span></code>, each a <code class="docutils literal notranslate"><span class="pre">Property</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">row.force</span></code> or <code class="docutils literal notranslate"><span class="pre">row[&quot;force&quot;]</span></code>, each a <code class="docutils literal notranslate"><span class="pre">Property</span></code>.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="samplekit.RowView.items">
 <span class="sig-name descname"><span class="pre">items</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.RowView.items" title="Link to this definition">¶</a></dt>
@@ -1877,7 +2070,7 @@ the cell of a row, by its index value: <code class="docutils literal notranslate
 <h2>Statistics<a class="headerlink" href="#statistics" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">stats</span></code> names the statistics a model can choose for readings: which one is
 the value, which one the uncertainty. <code class="docutils literal notranslate"><span class="pre">Summary</span></code> is the statistics of a set of
-readings.</p>
+values: a property's readings, or a field over a list of samples.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.stats">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">stats</span></span><a class="headerlink" href="#samplekit.stats" title="Link to this definition">¶</a></dt>
@@ -1886,7 +2079,8 @@ readings.</p>
 <code class="docutils literal notranslate"><span class="pre">first_quartile</span></code>, <code class="docutils literal notranslate"><span class="pre">third_quartile</span></code> — and three give an uncertainty —
 <code class="docutils literal notranslate"><span class="pre">standard_error</span></code>, <code class="docutils literal notranslate"><span class="pre">sample_stdev</span></code>, <code class="docutils literal notranslate"><span class="pre">population_stdev</span></code>.</p>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">og</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">uncertainty</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">standard_error</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">width</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"mm"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
+<span class="gp">... </span>                    <span class="n">uncertainty</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">standard_error</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1905,12 +2099,7 @@ value or the uncertainty.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Statistic.name">
 <span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#samplekit.Statistic.name" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Its name, as <code class="docutils literal notranslate"><span class="pre">Summary</span></code> spells it</p>
-</dd>
-</dl>
+<dd><p>Its name, as <code class="docutils literal notranslate"><span class="pre">Summary</span></code> spells it — <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1920,6 +2109,14 @@ value or the uncertainty.</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Summary</span></span><a class="headerlink" href="#samplekit.Summary" title="Link to this definition">¶</a></dt>
 <dd><p>The statistics of a set of values: readings, or a field over a list.</p>
 <p>Given by <code class="docutils literal notranslate"><span class="pre">Property.stats</span></code> and <code class="docutils literal notranslate"><span class="pre">SampleList.stats</span></code>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="samplekit.Summary.considered">
+<span class="sig-name descname"><span class="pre">considered</span></span><a class="headerlink" href="#samplekit.Summary.considered" title="Link to this definition">¶</a></dt>
+<dd><p>How many samples the value applies to, those holding no number
+included and those saying <em>not applicable</em> left out: the denominator of
+<code class="docutils literal notranslate"><span class="pre">count</span></code>, as <code class="docutils literal notranslate"><span class="pre">--summary</span></code> writes <code class="docutils literal notranslate"><span class="pre">3/4</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> for readings.</p>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Summary.count">
 <span class="sig-name descname"><span class="pre">count</span></span><a class="headerlink" href="#samplekit.Summary.count" title="Link to this definition">¶</a></dt>
@@ -1941,13 +2138,8 @@ value or the uncertainty.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Summary.mean">
 <span class="sig-name descname"><span class="pre">mean</span></span><a class="headerlink" href="#samplekit.Summary.mean" title="Link to this definition">¶</a></dt>
-<dd><p>weighted by 1/u² where every value has an uncertainty above zero,
+<dd><p>The mean — weighted by 1/u² where every value has an uncertainty above zero,
 the arithmetic mean otherwise. <code class="docutils literal notranslate"><span class="pre">weighted</span></code> says which.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The mean</p>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1960,6 +2152,13 @@ the arithmetic mean otherwise. <code class="docutils literal notranslate"><span 
 <dt class="sig sig-object py" id="samplekit.Summary.minimum">
 <span class="sig-name descname"><span class="pre">minimum</span></span><a class="headerlink" href="#samplekit.Summary.minimum" title="Link to this definition">¶</a></dt>
 <dd><p>The smallest value.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="samplekit.Summary.not_applicable">
+<span class="sig-name descname"><span class="pre">not_applicable</span></span><a class="headerlink" href="#samplekit.Summary.not_applicable" title="Link to this definition">¶</a></dt>
+<dd><p>How many samples say the value is not applicable, counted apart —
+neither summarised nor missing.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1977,19 +2176,32 @@ the arithmetic mean otherwise. <code class="docutils literal notranslate"><span 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Summary.standard_error">
 <span class="sig-name descname"><span class="pre">standard_error</span></span><a class="headerlink" href="#samplekit.Summary.standard_error" title="Link to this definition">¶</a></dt>
-<dd><p>the sample standard deviation over √n;
-<code class="docutils literal notranslate"><span class="pre">None</span></code> for one value.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The standard error of the mean</p>
-</dd>
-</dl>
+<dd><p>The standard error of the mean — 1/√Σw beside a weighted mean, the
+sample standard deviation over √n beside an arithmetic one; <code class="docutils literal notranslate"><span class="pre">None</span></code>
+for one value unweighted.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Summary.third_quartile">
 <span class="sig-name descname"><span class="pre">third_quartile</span></span><a class="headerlink" href="#samplekit.Summary.third_quartile" title="Link to this definition">¶</a></dt>
 <dd><p>The third quartile.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="samplekit.Summary.to_text">
+<span class="sig-name descname"><span class="pre">to_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">style</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.Summary.to_text" title="Link to this definition">¶</a></dt>
+<dd><p>The summary as <code class="docutils literal notranslate"><span class="pre">--summary</span></code> writes a row of it: the count, the
+mean, the deviation <code class="docutils literal notranslate"><span class="pre">s</span></code>, its standard error <code class="docutils literal notranslate"><span class="pre">sem</span></code>, the median and
+the extremes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>style</strong> -- Accepted for every <code class="docutils literal notranslate"><span class="pre">to_text</span></code>; a summary's numbers are
+written alike in every style.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The text.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2064,16 +2276,16 @@ not exist is made.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">figures</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">brews</span><span class="p">,</span> <span class="s2">"alcohol_by_style"</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">"out/abv.png"</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">figures</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">brews</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s2">"abv"</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s2">"score"</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="s2">"style"</span><span class="p">,</span>
-<span class="gp">... </span>                  <span class="n">output</span><span class="o">=</span><span class="s2">"out/score.png"</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">figures</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">specimens</span><span class="p">,</span> <span class="s2">"curves"</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">"paper/curves.pdf"</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">figures</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">specimens</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s2">"yield_strength"</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s2">"tensile_strength"</span><span class="p">,</span>
+<span class="gp">... </span>                  <span class="n">group</span><span class="o">=</span><span class="s2">"material"</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s2">"strengths.png"</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="samplekit.figure">
-<span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">figure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">subplots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.figure" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">figure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">subplots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matplotlib</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.figure" title="Link to this definition">¶</a></dt>
 <dd><p>Mark a method of a model as a figure.</p>
 <p>The method draws into the matplotlib axes it receives, and returns
 nothing; <code class="docutils literal notranslate"><span class="pre">samplekit.plot</span></code> and <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">plot</span></code> open it in a window or
@@ -2086,6 +2298,9 @@ write it to a file. A method draws one sample; placed above
 <li><p><strong>subplots</strong> -- <code class="docutils literal notranslate"><span class="pre">(rows,</span> <span class="pre">columns)</span></code>: the method receives the array of axes
 <code class="docutils literal notranslate"><span class="pre">plt.subplots</span></code> makes, instead of one.</p></li>
 <li><p><strong>figsize</strong> -- The figure's width and height, in centimetres.</p></li>
+<li><p><strong>matplotlib</strong> -- matplotlib's settings for this figure alone, by their
+names, over the project's <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code>:
+<code class="docutils literal notranslate"><span class="pre">{&quot;lines.marker&quot;:</span> <span class="pre">&quot;None&quot;}</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -2096,11 +2311,49 @@ write it to a file. A method draws one sample; placed above
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">Brew</span><span class="p">(</span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">):</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">Specimen</span><span class="p">(</span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="nd">@sk</span><span class="o">.</span><span class="n">figure</span>
-<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">fermentation_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">):</span>
-<span class="gp">... </span>        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fermentation</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">"day"</span><span class="p">),</span>
-<span class="gp">... </span>                <span class="bp">self</span><span class="o">.</span><span class="n">fermentation</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">"gravity"</span><span class="p">))</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">stress_strain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">curve</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">"strain"</span><span class="p">),</span>
+<span class="gp">... </span>                <span class="bp">self</span><span class="o">.</span><span class="n">curve</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">"stress"</span><span class="p">))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="scripts">
+<h2>Scripts<a class="headerlink" href="#scripts" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">script</span></code> marks a model's method as a script, which <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">…</span> <span class="pre">run</span> <span class="pre">NAME</span></code>
+and <code class="docutils literal notranslate"><span class="pre">p</span></code> in the TUI run on each sample selected, or on the selection: see
+<a class="reference internal" href="../guides/run-a-script.html"><span class="std std-doc">Run a script of the model</span></a>.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="samplekit.script">
+<span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">script</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#samplekit.script" title="Link to this definition">¶</a></dt>
+<dd><p>Mark a method of a model as a script.</p>
+<p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">run</span> <span class="pre">NAME</span></code> runs it, and <code class="docutils literal notranslate"><span class="pre">r</span></code> in the workbench: a method acts
+on one sample, each selected in turn; placed above <code class="docutils literal notranslate"><span class="pre">&#64;classmethod</span></code>, it
+receives the selection. Its keyword parameters are the command's options,
+<code class="docutils literal notranslate"><span class="pre">--set</span> <span class="pre">offset=0.002</span></code>, read as their annotation or their default says;
+its docstring is its description. What it changes in the samples is
+shown, and written once the change is accepted; what it returns is shown.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> -- The method.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The method, marked.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>TypeError</strong> -- The method is a static method, or takes <code class="docutils literal notranslate"><span class="pre">*args</span></code> or
+    <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">Specimen</span><span class="p">(</span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="nd">@sk</span><span class="o">.</span><span class="n">script</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">classify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="s2">"Class the specimen's ductility by its elongation at break."</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">ductility</span> <span class="o">=</span> <span class="s2">"high"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">elongation</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="n">limit</span> <span class="k">else</span> <span class="s2">"low"</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -2109,17 +2362,17 @@ write it to a file. A method draws one sample; placed above
 <section id="the-project">
 <h2>The project<a class="headerlink" href="#the-project" title="Link to this heading">¶</a></h2>
 <p>What a project declares in its <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, as a script reads it: its
-model, its queries, profiles, exports and figures, its units and quantities.
+model, its queries, profiles, exports and figures, its units and properties.
 <code class="docutils literal notranslate"><span class="pre">project</span></code>, on a sample or a list of samples, gives it.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.Project">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Project</span></span><a class="headerlink" href="#samplekit.Project" title="Link to this definition">¶</a></dt>
 <dd><p>A project: what its <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> declares, read-only.</p>
-<p>Read from a sample or a list — <code class="docutils literal notranslate"><span class="pre">brew.project</span></code>, <code class="docutils literal notranslate"><span class="pre">brews.project</span></code>. Outside
+<p>Read from a sample or a list — <code class="docutils literal notranslate"><span class="pre">steel.project</span></code>, <code class="docutils literal notranslate"><span class="pre">specimens.project</span></code>. Outside
 any project every collection of entries is empty.</p>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">brews</span><span class="o">.</span><span class="n">project</span><span class="o">.</span><span class="n">queries</span><span class="p">)[:</span><span class="mi">3</span><span class="p">]</span>
-<span class="go">['ipas', 'strong', 'medals']</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">project</span><span class="o">.</span><span class="n">queries</span><span class="p">)</span>
+<span class="go">['ductile']</span>
 </pre></div>
 </div>
 <dl class="py attribute">
@@ -2143,13 +2396,8 @@ any project every collection of entries is empty.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Project.matplotlib">
 <span class="sig-name descname"><span class="pre">matplotlib</span></span><a class="headerlink" href="#samplekit.Project.matplotlib" title="Link to this definition">¶</a></dt>
-<dd><p>a
-dict by matplotlib's own dotted names.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The matplotlib settings every figure is drawn with, <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code></p>
-</dd>
-</dl>
+<dd><p>The matplotlib settings every figure is drawn with, <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code> —
+a dict by matplotlib's own dotted names.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2224,6 +2472,14 @@ read with.</p>
 <dt class="sig sig-object py" id="samplekit.Collection.exclude">
 <span class="sig-name descname"><span class="pre">exclude</span></span><a class="headerlink" href="#samplekit.Collection.exclude" title="Link to this definition">¶</a></dt>
 <dd><p>The globs of files that are not samples.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="samplekit.Collection.files">
+<span class="sig-name descname"><span class="pre">files</span></span><a class="headerlink" href="#samplekit.Collection.files" title="Link to this definition">¶</a></dt>
+<dd><p>Where a sample's own files are looked for, <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> —
+the folders searched by the sample's name, and the patterns naming it,
+as written.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2329,7 +2585,14 @@ uncertainty — or <code class="docutils literal notranslate"><span class="pre">
 <dl class="py class">
 <dt class="sig sig-object py" id="samplekit.Export">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Export</span></span><a class="headerlink" href="#samplekit.Export" title="Link to this definition">¶</a></dt>
-<dd><p>An export, <code class="docutils literal notranslate"><span class="pre">[export.*]</span></code>: a profile written to a file in a format.</p>
+<dd><p>An export, <code class="docutils literal notranslate"><span class="pre">[export.*]</span></code>: a profile written to a file in a format, or
+a figure drawn to a file.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="samplekit.Export.figure">
+<span class="sig-name descname"><span class="pre">figure</span></span><a class="headerlink" href="#samplekit.Export.figure" title="Link to this definition">¶</a></dt>
+<dd><p>The name of the figure it draws, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for a table's export.</p>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Export.filename">
 <span class="sig-name descname"><span class="pre">filename</span></span><a class="headerlink" href="#samplekit.Export.filename" title="Link to this definition">¶</a></dt>
@@ -2339,12 +2602,8 @@ uncertainty — or <code class="docutils literal notranslate"><span class="pre">
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Export.format">
 <span class="sig-name descname"><span class="pre">format</span></span><a class="headerlink" href="#samplekit.Export.format" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">&quot;csv&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;tsv&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;json&quot;</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The format</p>
-</dd>
-</dl>
+<dd><p>The data format — <code class="docutils literal notranslate"><span class="pre">&quot;csv&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;tsv&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;json&quot;</span></code> — or <code class="docutils literal notranslate"><span class="pre">None</span></code> for
+a document its style writes, or a figure.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2368,7 +2627,7 @@ uncertainty — or <code class="docutils literal notranslate"><span class="pre">
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Export.profile">
 <span class="sig-name descname"><span class="pre">profile</span></span><a class="headerlink" href="#samplekit.Export.profile" title="Link to this definition">¶</a></dt>
-<dd><p>The name of the profile it writes.</p>
+<dd><p>The name of the profile it writes, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for a figure's export.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2414,6 +2673,13 @@ series; <code class="docutils literal notranslate"><span class="pre">None</span>
 <span class="sig-name descname"><span class="pre">legend</span></span><a class="headerlink" href="#samplekit.FigureDeclaration.legend" title="Link to this definition">¶</a></dt>
 <dd><p>Where the legend goes — <code class="docutils literal notranslate"><span class="pre">&quot;best&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;outside&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code> or one of
 matplotlib's places — or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="samplekit.FigureDeclaration.matplotlib">
+<span class="sig-name descname"><span class="pre">matplotlib</span></span><a class="headerlink" href="#samplekit.FigureDeclaration.matplotlib" title="Link to this definition">¶</a></dt>
+<dd><p>Its own matplotlib settings, over the project's <code class="docutils literal notranslate"><span class="pre">[matplotlib]</span></code>, by
+matplotlib's dotted names.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2528,23 +2794,13 @@ each style.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Unit.spelling">
 <span class="sig-name descname"><span class="pre">spelling</span></span><a class="headerlink" href="#samplekit.Unit.spelling" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">&quot;degC&quot;</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The unit as the files write it</p>
-</dd>
-</dl>
+<dd><p>The unit as the files write it — <code class="docutils literal notranslate"><span class="pre">&quot;degC&quot;</span></code>.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Unit.variants">
 <span class="sig-name descname"><span class="pre">variants</span></span><a class="headerlink" href="#samplekit.Unit.variants" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">{&quot;plain&quot;:</span> <span class="pre">&quot;°C&quot;}</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The unit in each style, by style name</p>
-</dd>
-</dl>
+<dd><p>The unit in each style, by style name — <code class="docutils literal notranslate"><span class="pre">{&quot;plain&quot;:</span> <span class="pre">&quot;°C&quot;}</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2571,7 +2827,7 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dt class="sig sig-object py" id="samplekit.PropertyDeclaration.symbol_variants">
 <span class="sig-name descname"><span class="pre">symbol_variants</span></span><a class="headerlink" href="#samplekit.PropertyDeclaration.symbol_variants" title="Link to this definition">¶</a></dt>
 <dd><p>The symbol in each style, by style name:
-<code class="docutils literal notranslate"><span class="pre">{&quot;figure&quot;:</span> <span class="pre">&quot;Original</span> <span class="pre">gravity&quot;}</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">{&quot;figure&quot;:</span> <span class="pre">&quot;$\\sigma$&quot;}</span></code>.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2586,8 +2842,8 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dt class="sig sig-object py" id="samplekit.Names">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">samplekit.</span></span><span class="sig-name descname"><span class="pre">Names</span></span><a class="headerlink" href="#samplekit.Names" title="Link to this definition">¶</a></dt>
 <dd><p>The entries a project declares, read-only, by name.</p>
-<p>An entry is read as an attribute or an item — <code class="docutils literal notranslate"><span class="pre">project.queries.ipas</span></code> or
-<code class="docutils literal notranslate"><span class="pre">project.queries[&quot;ipas&quot;]</span></code> — and iterating gives the names. An unknown
+<p>An entry is read as an attribute or an item — <code class="docutils literal notranslate"><span class="pre">project.queries.ductile</span></code> or
+<code class="docutils literal notranslate"><span class="pre">project.queries[&quot;ductile&quot;]</span></code> — and iterating gives the names. An unknown
 name raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> or <code class="docutils literal notranslate"><span class="pre">KeyError</span></code> naming the nearest.</p>
 </dd></dl>
 
@@ -2597,16 +2853,11 @@ name raises <code class="docutils literal notranslate"><span class="pre">Attribu
 <dd><p>A field of a list, as <code class="docutils literal notranslate"><span class="pre">SampleList.fields</span></code> gives it, and as <code class="docutils literal notranslate"><span class="pre">-c</span></code> and
 <code class="docutils literal notranslate"><span class="pre">-s</span></code> take it.</p>
 <p><code class="docutils literal notranslate"><span class="pre">str(field)</span></code> is its path, and a field is accepted wherever a field's name
-is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(brews.fields.abv)</span></code>.</p>
+is: <code class="docutils literal notranslate"><span class="pre">specimens.sorted(specimens.fields.area)</span></code>.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="samplekit.Field.path">
 <span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#samplekit.Field.path" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">&quot;abv&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;fermentation.gravity[1]&quot;</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The field's path</p>
-</dd>
-</dl>
+<dd><p>The field's path — <code class="docutils literal notranslate"><span class="pre">&quot;area&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;curve.force[0.2]&quot;</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2683,6 +2934,7 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 <li><a class="reference internal" href="#samplekit.Sample.files"><code class="docutils literal notranslate"><span class="pre">Sample.files()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.items"><code class="docutils literal notranslate"><span class="pre">Sample.items()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.keys"><code class="docutils literal notranslate"><span class="pre">Sample.keys()</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Sample.linked"><code class="docutils literal notranslate"><span class="pre">Sample.linked()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.name"><code class="docutils literal notranslate"><span class="pre">Sample.name</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.not_current"><code class="docutils literal notranslate"><span class="pre">Sample.not_current()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.note"><code class="docutils literal notranslate"><span class="pre">Sample.note</span></code></a></li>
@@ -2690,10 +2942,12 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 <li><a class="reference internal" href="#samplekit.Sample.outdated"><code class="docutils literal notranslate"><span class="pre">Sample.outdated()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.path"><code class="docutils literal notranslate"><span class="pre">Sample.path</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.project"><code class="docutils literal notranslate"><span class="pre">Sample.project</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Sample.remove"><code class="docutils literal notranslate"><span class="pre">Sample.remove()</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Sample.rename"><code class="docutils literal notranslate"><span class="pre">Sample.rename()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.save"><code class="docutils literal notranslate"><span class="pre">Sample.save()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.set_dependencies"><code class="docutils literal notranslate"><span class="pre">Sample.set_dependencies()</span></code></a></li>
-<li><a class="reference internal" href="#samplekit.Sample.stale"><code class="docutils literal notranslate"><span class="pre">Sample.stale()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Sample.tags"><code class="docutils literal notranslate"><span class="pre">Sample.tags</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Sample.to_text"><code class="docutils literal notranslate"><span class="pre">Sample.to_text()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#samplekit.SampleList"><code class="docutils literal notranslate"><span class="pre">SampleList</span></code></a><ul>
@@ -2713,6 +2967,7 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 <li><a class="reference internal" href="#samplekit.SampleList.to_csv"><code class="docutils literal notranslate"><span class="pre">SampleList.to_csv()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.SampleList.to_dict"><code class="docutils literal notranslate"><span class="pre">SampleList.to_dict()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.SampleList.to_json"><code class="docutils literal notranslate"><span class="pre">SampleList.to_json()</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.SampleList.to_text"><code class="docutils literal notranslate"><span class="pre">SampleList.to_text()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.SampleList.to_tsv"><code class="docutils literal notranslate"><span class="pre">SampleList.to_tsv()</span></code></a></li>
 </ul>
 </li>
@@ -2725,16 +2980,14 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 <li><a class="reference internal" href="#samplekit.Property.edited_upstream"><code class="docutils literal notranslate"><span class="pre">Property.edited_upstream</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.failure"><code class="docutils literal notranslate"><span class="pre">Property.failure</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.format"><code class="docutils literal notranslate"><span class="pre">Property.format()</span></code></a></li>
-<li><a class="reference internal" href="#samplekit.Property.invalidate"><code class="docutils literal notranslate"><span class="pre">Property.invalidate()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.is_computed"><code class="docutils literal notranslate"><span class="pre">Property.is_computed</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.is_edited"><code class="docutils literal notranslate"><span class="pre">Property.is_edited</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.is_outdated"><code class="docutils literal notranslate"><span class="pre">Property.is_outdated</span></code></a></li>
-<li><a class="reference internal" href="#samplekit.Property.is_stale"><code class="docutils literal notranslate"><span class="pre">Property.is_stale</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.readings"><code class="docutils literal notranslate"><span class="pre">Property.readings</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.state"><code class="docutils literal notranslate"><span class="pre">Property.state</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.stats"><code class="docutils literal notranslate"><span class="pre">Property.stats</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.symbol"><code class="docutils literal notranslate"><span class="pre">Property.symbol</span></code></a></li>
-<li><a class="reference internal" href="#samplekit.Property.text"><code class="docutils literal notranslate"><span class="pre">Property.text</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Property.to_text"><code class="docutils literal notranslate"><span class="pre">Property.to_text()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.u"><code class="docutils literal notranslate"><span class="pre">Property.u</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.uncertainty"><code class="docutils literal notranslate"><span class="pre">Property.uncertainty</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Property.unit"><code class="docutils literal notranslate"><span class="pre">Property.unit</span></code></a></li>
@@ -2769,15 +3022,14 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 <li><a class="reference internal" href="#samplekit.Table.index_unit"><code class="docutils literal notranslate"><span class="pre">Table.index_unit</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Table.index_values"><code class="docutils literal notranslate"><span class="pre">Table.index_values</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Table.title"><code class="docutils literal notranslate"><span class="pre">Table.title</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Table.to_csv"><code class="docutils literal notranslate"><span class="pre">Table.to_csv()</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Table.to_text"><code class="docutils literal notranslate"><span class="pre">Table.to_text()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Table.uncertainties"><code class="docutils literal notranslate"><span class="pre">Table.uncertainties()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Table.update"><code class="docutils literal notranslate"><span class="pre">Table.update()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Table.values"><code class="docutils literal notranslate"><span class="pre">Table.values()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#samplekit.Column"><code class="docutils literal notranslate"><span class="pre">Column</span></code></a><ul>
-<li><a class="reference internal" href="#samplekit.Column.unit"><code class="docutils literal notranslate"><span class="pre">Column.unit</span></code></a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#samplekit.ComputedColumns"><code class="docutils literal notranslate"><span class="pre">ComputedColumns</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.ColumnView"><code class="docutils literal notranslate"><span class="pre">ColumnView</span></code></a><ul>
 <li><a class="reference internal" href="#samplekit.ColumnView.uncertainties"><code class="docutils literal notranslate"><span class="pre">ColumnView.uncertainties</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.ColumnView.values"><code class="docutils literal notranslate"><span class="pre">ColumnView.values</span></code></a></li>
@@ -2798,16 +3050,19 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 </ul>
 </li>
 <li><a class="reference internal" href="#samplekit.Summary"><code class="docutils literal notranslate"><span class="pre">Summary</span></code></a><ul>
+<li><a class="reference internal" href="#samplekit.Summary.considered"><code class="docutils literal notranslate"><span class="pre">Summary.considered</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.count"><code class="docutils literal notranslate"><span class="pre">Summary.count</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.first_quartile"><code class="docutils literal notranslate"><span class="pre">Summary.first_quartile</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.maximum"><code class="docutils literal notranslate"><span class="pre">Summary.maximum</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.mean"><code class="docutils literal notranslate"><span class="pre">Summary.mean</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.median"><code class="docutils literal notranslate"><span class="pre">Summary.median</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.minimum"><code class="docutils literal notranslate"><span class="pre">Summary.minimum</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Summary.not_applicable"><code class="docutils literal notranslate"><span class="pre">Summary.not_applicable</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.population_stdev"><code class="docutils literal notranslate"><span class="pre">Summary.population_stdev</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.sample_stdev"><code class="docutils literal notranslate"><span class="pre">Summary.sample_stdev</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.standard_error"><code class="docutils literal notranslate"><span class="pre">Summary.standard_error</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.third_quartile"><code class="docutils literal notranslate"><span class="pre">Summary.third_quartile</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Summary.to_text"><code class="docutils literal notranslate"><span class="pre">Summary.to_text()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Summary.weighted"><code class="docutils literal notranslate"><span class="pre">Summary.weighted</span></code></a></li>
 </ul>
 </li>
@@ -2816,6 +3071,10 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 <li><a class="reference internal" href="#figures">Figures</a><ul>
 <li><a class="reference internal" href="#samplekit.plot"><code class="docutils literal notranslate"><span class="pre">plot()</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.figure"><code class="docutils literal notranslate"><span class="pre">figure()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#scripts">Scripts</a><ul>
+<li><a class="reference internal" href="#samplekit.script"><code class="docutils literal notranslate"><span class="pre">script()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#the-project">The project</a><ul>
@@ -2840,6 +3099,7 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 </li>
 <li><a class="reference internal" href="#samplekit.Collection"><code class="docutils literal notranslate"><span class="pre">Collection</span></code></a><ul>
 <li><a class="reference internal" href="#samplekit.Collection.exclude"><code class="docutils literal notranslate"><span class="pre">Collection.exclude</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.Collection.files"><code class="docutils literal notranslate"><span class="pre">Collection.files</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Collection.include"><code class="docutils literal notranslate"><span class="pre">Collection.include</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Collection.recursive"><code class="docutils literal notranslate"><span class="pre">Collection.recursive</span></code></a></li>
 </ul>
@@ -2865,6 +3125,7 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 </ul>
 </li>
 <li><a class="reference internal" href="#samplekit.Export"><code class="docutils literal notranslate"><span class="pre">Export</span></code></a><ul>
+<li><a class="reference internal" href="#samplekit.Export.figure"><code class="docutils literal notranslate"><span class="pre">Export.figure</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Export.filename"><code class="docutils literal notranslate"><span class="pre">Export.filename</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Export.format"><code class="docutils literal notranslate"><span class="pre">Export.format</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.Export.name"><code class="docutils literal notranslate"><span class="pre">Export.name</span></code></a></li>
@@ -2880,6 +3141,7 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
 <li><a class="reference internal" href="#samplekit.FigureDeclaration.group"><code class="docutils literal notranslate"><span class="pre">FigureDeclaration.group</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.FigureDeclaration.kind"><code class="docutils literal notranslate"><span class="pre">FigureDeclaration.kind</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.FigureDeclaration.legend"><code class="docutils literal notranslate"><span class="pre">FigureDeclaration.legend</span></code></a></li>
+<li><a class="reference internal" href="#samplekit.FigureDeclaration.matplotlib"><code class="docutils literal notranslate"><span class="pre">FigureDeclaration.matplotlib</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.FigureDeclaration.name"><code class="docutils literal notranslate"><span class="pre">FigureDeclaration.name</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.FigureDeclaration.query"><code class="docutils literal notranslate"><span class="pre">FigureDeclaration.query</span></code></a></li>
 <li><a class="reference internal" href="#samplekit.FigureDeclaration.style"><code class="docutils literal notranslate"><span class="pre">FigureDeclaration.style</span></code></a></li>
@@ -2931,7 +3193,7 @@ is: <code class="docutils literal notranslate"><span class="pre">brews.sorted(br
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=4b0c7688"></script>
+</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
