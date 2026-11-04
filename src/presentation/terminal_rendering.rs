@@ -64,7 +64,7 @@ impl Style {
     }
 
     pub fn names() -> [&'static str; 2] {
-        ["plain", "boxed"]
+        crate::config::project_config::TABLE_STYLES
     }
 }
 
@@ -128,6 +128,20 @@ pub const ABSENT: &str = "—";
 /// Not bytes, not `char` count. `é` is one column and two bytes; a CJK
 /// character is two columns; a combining accent is zero. Byte-based width
 /// produces ragged tables for exactly the users this program has.
+/// What a terminal draws of `text`: its colours taken out. A painted cell is
+/// judged by what it says, a number or a unit, never by its escapes.
+fn drawn(text: &str) -> std::borrow::Cow<'_, str> {
+    if !text.contains('\u{1b}') {
+        return std::borrow::Cow::Borrowed(text);
+    }
+    let mut parser = anstyle_parse::Parser::<anstyle_parse::DefaultCharAccumulator>::default();
+    let mut drawn = Drawn(String::new());
+    for byte in text.as_bytes() {
+        parser.advance(&mut drawn, *byte);
+    }
+    std::borrow::Cow::Owned(drawn.0)
+}
+
 pub fn width(text: &str) -> usize {
     // A style takes no room on the screen, and must take none in the layout
     // either: a cell that carries colour would otherwise widen its column by the
@@ -176,15 +190,380 @@ pub fn mark_of(state: &crate::format::fingerprint::Freshness) -> Option<&'static
 /// take the same colour for the same state, or the two teach different things.
 pub fn style_of(state: &crate::format::fingerprint::Freshness) -> Option<anstyle::Style> {
     use crate::format::fingerprint::Freshness;
-    let colour = match state {
+    let palette = palette();
+    match state {
         Freshness::Stale { .. } | Freshness::Broken { .. } | Freshness::Unjudged { .. } => {
-            anstyle::AnsiColor::Yellow
+            Some(palette.outdated)
         }
-        Freshness::Failed { .. } => anstyle::AnsiColor::Red,
-        Freshness::Edited | Freshness::RecordMissing => anstyle::AnsiColor::Cyan,
-        Freshness::Source | Freshness::Current => return None,
+        Freshness::Failed { .. } => Some(palette.failed),
+        Freshness::Edited | Freshness::RecordMissing => Some(palette.edited),
+        Freshness::Source | Freshness::Current => None,
+    }
+}
+
+/// The command line's colours by role, `[colors]`'s or the defaults the TUI
+/// has too, and whether they are drawn at all. Off until a command whose
+/// output is a terminal turns it on: the TUI, the exports, Python and the
+/// tests share this rendering, and draw plain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Palette {
+    /// A value and its uncertainty: bold, on the role's colour.
+    pub value: anstyle::Style,
+    pub attribute: anstyle::Style,
+    /// A link: underlined, in the role's colour.
+    pub link: anstyle::Style,
+    pub unit: anstyle::Style,
+    pub failed: anstyle::Style,
+    pub outdated: anstyle::Style,
+    pub edited: anstyle::Style,
+    /// A value current, `✓` and `written:`.
+    pub current: anstyle::Style,
+    /// What says nothing happened, and advice.
+    pub muted: anstyle::Style,
+    /// `error:` before what went wrong.
+    pub error: anstyle::Style,
+    /// `warning:` before what may be wrong.
+    pub message: anstyle::Style,
+    pub enabled: bool,
+}
+
+impl Palette {
+    /// The project's colours, each role it leaves out the default one.
+    pub fn of(config: Option<&ProjectConfig>, enabled: bool) -> Palette {
+        let role = |name: &str| {
+            let written = config
+                .and_then(|config| config.color(name))
+                .or_else(|| {
+                    crate::config::project_config::COLOR_ROLES
+                        .iter()
+                        .find(|(role, _)| *role == name)
+                        .map(|(_, color)| *color)
+                })
+                .unwrap_or("default");
+            anstyle::Style::new().fg_color(ansi_color(written))
+        };
+        Palette {
+            value: role("value").bold(),
+            attribute: role("attribute"),
+            link: role("link").underline(),
+            unit: role("unit"),
+            failed: role("failed"),
+            outdated: role("outdated"),
+            edited: role("edited"),
+            current: role("current"),
+            muted: role("muted"),
+            error: role("error"),
+            message: role("message"),
+            enabled,
+        }
+    }
+}
+
+impl Default for Palette {
+    fn default() -> Palette {
+        Palette::of(None, false)
+    }
+}
+
+/// A colour as `[colors]` writes it, which the configuration has already
+/// checked, for the terminal: `None` for its own foreground.
+fn ansi_color(written: &str) -> Option<anstyle::Color> {
+    use anstyle::AnsiColor as Ansi;
+    if let Some(hex) = written.strip_prefix('#') {
+        let channel = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).unwrap_or(0);
+        return Some(anstyle::RgbColor(channel(0), channel(2), channel(4)).into());
+    }
+    let ansi = match written {
+        "black" => Ansi::Black,
+        "red" => Ansi::Red,
+        "green" => Ansi::Green,
+        "yellow" => Ansi::Yellow,
+        "blue" => Ansi::Blue,
+        "magenta" => Ansi::Magenta,
+        "cyan" => Ansi::Cyan,
+        "grey" | "gray" => Ansi::White,
+        "dark-grey" | "dark-gray" => Ansi::BrightBlack,
+        "light-red" => Ansi::BrightRed,
+        "light-green" => Ansi::BrightGreen,
+        "light-yellow" => Ansi::BrightYellow,
+        "light-blue" => Ansi::BrightBlue,
+        "light-magenta" => Ansi::BrightMagenta,
+        "light-cyan" => Ansi::BrightCyan,
+        "white" => Ansi::BrightWhite,
+        _ => return None,
     };
-    Some(anstyle::Style::new().fg_color(Some(colour.into())))
+    Some(ansi.into())
+}
+
+thread_local! {
+    /// The palette of the command running: set once, read wherever its output
+    /// is painted, rather than handed down every call.
+    static PALETTE: std::cell::Cell<Palette> = std::cell::Cell::new(Palette::default());
+}
+
+/// The palette this command draws with, plain until it is set.
+pub fn set_palette(palette: Palette) {
+    PALETTE.with(|held| held.set(palette));
+}
+
+pub fn palette() -> Palette {
+    PALETTE.with(std::cell::Cell::get)
+}
+
+/// Whether stderr is painted: a terminal reads it and nothing turned colour
+/// off. Decided by the command line, read where a Python side is started.
+static STDERR_PAINTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_stderr_painted(painted: bool) {
+    STDERR_PAINTED.store(painted, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// What a Python side writing to the same stderr is given to paint its own
+/// `warning:`, `error:` and advice as the command line does: each style's
+/// escape, by name, or nothing where stderr is not painted.
+pub fn child_colours() -> Vec<(&'static str, String)> {
+    if !STDERR_PAINTED.load(std::sync::atomic::Ordering::Relaxed) {
+        return Vec::new();
+    }
+    let palette = palette();
+    vec![
+        (
+            "SAMPLEKIT_PAINT_WARNING",
+            palette.message.render().to_string(),
+        ),
+        ("SAMPLEKIT_PAINT_ERROR", palette.error.render().to_string()),
+        ("SAMPLEKIT_PAINT_MUTED", palette.muted.render().to_string()),
+        ("SAMPLEKIT_PAINT_RESET", anstyle::Reset.render().to_string()),
+    ]
+}
+
+/// `text` in `style` where the palette is on, each word apart so that a line
+/// wrapped between words never cuts a colour in two.
+pub fn paint(text: &str, style: anstyle::Style) -> String {
+    if !palette().enabled || text.is_empty() {
+        return text.to_string();
+    }
+    let mut out = String::with_capacity(text.len() + 16);
+    for (at, word) in text.split(' ').enumerate() {
+        if at > 0 {
+            out.push(' ');
+        }
+        if !word.is_empty() {
+            out.push_str(&painted(word, style, true));
+        }
+    }
+    out
+}
+
+/// A state as a table says it, `never computed`, `outdated — notch`, in the
+/// colour the TUI gives the same words: what has to be computed in the
+/// outdated colour, a failure in the failed one, a hand's value in the edited
+/// one. `None` for a word that says nothing is wrong.
+pub fn state_style(said: &str) -> Option<anstyle::Style> {
+    let palette = palette();
+    let said = said.trim();
+    if said.is_empty() || matches!(said, "entered" | "—" | "-") {
+        None
+    } else if said == "current" {
+        Some(palette.current)
+    } else if said.starts_with("failed") {
+        Some(palette.failed)
+    } else if said.starts_with("edited") || said.starts_with("record missing") {
+        Some(palette.edited)
+    } else {
+        // Outdated, never computed, waiting, its formula changed: a value to
+        // compute again, said in the outdated colour whatever its words.
+        Some(palette.outdated)
+    }
+}
+
+/// A state cell painted, where the palette is on and nothing painted it yet.
+pub fn painted_state(said: &str) -> String {
+    if !palette().enabled || said.contains('\u{1b}') {
+        return said.to_string();
+    }
+    match state_style(said) {
+        Some(style) => paint(said, style),
+        None => said.to_string(),
+    }
+}
+
+/// A value as a report says it, `12.513 ± 0.010 mm`, painted where the palette
+/// is on: its number bold and the unit after it in the unit's colour. What is
+/// no number, `unchanged`, `13 new`, is left as it is.
+pub fn painted_said(text: &str) -> String {
+    if !palette().enabled {
+        return text.to_string();
+    }
+    let words: Vec<&str> = text.split(' ').collect();
+    let number = |word: &str| word.parse::<f64>().is_ok();
+    // A list of readings, `1.995, 2.004, 2.008`, is values too.
+    if words.len() > 1
+        && words
+            .iter()
+            .all(|word| number(word.strip_suffix(',').unwrap_or(word)))
+        && words[..words.len() - 1]
+            .iter()
+            .all(|word| word.ends_with(','))
+    {
+        return paint(text, palette().value);
+    }
+    if !words.first().is_some_and(|first| number(first)) {
+        return text.to_string();
+    }
+    // A count, `13 new`, `20 changed`, `21 cells`, says how many, not a value.
+    if words.len() == 2 && matches!(words[1], "new" | "changed" | "cells" | "cell" | "rows") {
+        return text.to_string();
+    }
+    match words.as_slice() {
+        [.., last] if words.len() > 1 && !number(last) && *last != "±" => {
+            let unit = *last;
+            let number = &text[..text.len() - unit.len() - 1];
+            painted_quantity(&format!("{number} {unit}"), Some(unit))
+        }
+        _ => paint(text, palette().value),
+    }
+}
+
+/// A table's cells painted by what their column holds, where the palette is
+/// on: a property's value bold, an attribute's in its colour, a unit in the
+/// unit's. A cell standing for nothing, and a column of names or paths, stay
+/// as they are. Called once the rows are laid out, before any mark is added.
+pub fn paint_cells(profile: &Profile, subjects: &[Subject], rows: &mut [Vec<String>]) {
+    let palette = palette();
+    if !palette.enabled {
+        return;
+    }
+    for (at, column) in profile.columns().iter().enumerate() {
+        let Ok(field) = fields::parse(&column.field) else {
+            continue;
+        };
+        let style = match &field {
+            Field::Named {
+                channel: Channel::Unit,
+                ..
+            }
+            | Field::Cell {
+                channel: Channel::Unit,
+                ..
+            } => Some(palette.unit),
+            Field::Named {
+                channel: Channel::Symbol,
+                ..
+            }
+            | Field::Cell {
+                channel: Channel::Symbol,
+                ..
+            } => None,
+            Field::Named { name, .. } => {
+                if subjects
+                    .iter()
+                    .any(|subject| subject.sample.property(name).is_ok())
+                {
+                    Some(palette.value)
+                } else if subjects
+                    .iter()
+                    .any(|subject| subject.sample.attribute(name).is_ok())
+                {
+                    Some(palette.attribute)
+                } else {
+                    None
+                }
+            }
+            Field::Cell { .. } => Some(palette.value),
+            Field::ListItem { .. } => Some(palette.attribute),
+            Field::Reserved(_) => None,
+        };
+        let Some(style) = style else {
+            continue;
+        };
+        for row in rows.iter_mut() {
+            if let Some(cell) = row.get_mut(at)
+                && !matches!(cell.as_str(), "" | ABSENT | "-" | "n/a")
+            {
+                *cell = paint(cell, style);
+            }
+        }
+    }
+}
+
+/// The links of a table drawn in a terminal shown as Markdown shows them,
+/// their text alone, marked where they leave the project or lead nowhere,
+/// underlined in the link's colour where the palette is on. Each sample's
+/// wikilinks are found among `samples`, each its path and its `name:`.
+pub fn show_links(
+    profile: &Profile,
+    subjects: &[Subject],
+    rows: &mut [Vec<String>],
+    samples: &[(std::path::PathBuf, Option<String>)],
+) {
+    use crate::presentation::links::{self, Leads};
+    let palette = palette();
+    for (subject, row) in subjects.iter().zip(rows.iter_mut()) {
+        for (cell, link) in row.iter_mut().zip(links::row(profile, subject, samples)) {
+            let Some(link) = link else {
+                continue;
+            };
+            *cell = if palette.enabled {
+                let style = match link.leads {
+                    Leads::Nowhere => palette.error.underline(),
+                    _ => palette.link,
+                };
+                paint(&link.text, style)
+            } else {
+                link.text
+            };
+        }
+    }
+}
+
+/// A header, `width [mm]`: its label bold, its unit in the unit's colour.
+pub fn painted_header(header: &str) -> String {
+    if !palette().enabled {
+        return header.to_string();
+    }
+    match header.rsplit_once(" [") {
+        Some((label, unit)) if unit.ends_with(']') => format!(
+            "{} {}",
+            paint(label, anstyle::Style::new().bold()),
+            paint(&format!("[{unit}"), palette().unit)
+        ),
+        _ => paint(header, anstyle::Style::new().bold()),
+    }
+}
+
+/// A quantity as a line writes it, `12.513 ± 0.010 mm`: the number bold, the
+/// unit after it in the unit's colour. Text that is no number is an attribute's.
+pub fn painted_quantity(text: &str, unit: Option<&str>) -> String {
+    let palette = palette();
+    if !palette.enabled || text.is_empty() || text == ABSENT {
+        return text.to_string();
+    }
+    let (number, unit) = match unit.filter(|unit| !unit.is_empty()) {
+        Some(unit) => match text
+            .strip_suffix(unit)
+            .and_then(|rest| rest.strip_suffix(' '))
+        {
+            Some(number) => (number, Some(unit)),
+            None => (text, None),
+        },
+        None => (text, None),
+    };
+    let looks_numeric = number.split(' ').next().is_some_and(|first| {
+        first
+            .trim_start_matches(['-', '+', '('])
+            .parse::<f64>()
+            .is_ok()
+    });
+    let style = if looks_numeric {
+        palette.value
+    } else {
+        palette.attribute
+    };
+    match unit {
+        Some(unit) => format!("{} {}", paint(number, style), paint(unit, palette.unit)),
+        None => paint(number, style),
+    }
 }
 
 /// The mark that goes *beside this text*, where one does.
@@ -233,6 +612,10 @@ pub fn painted_as(
 ) -> String {
     match style_of(state) {
         Some(style) => painted(text, style, colour),
+        // A value current says so in the current colour, as the TUI does.
+        None if matches!(state, crate::format::fingerprint::Freshness::Current) => {
+            painted(text, palette().current, colour)
+        }
         None => text.to_string(),
     }
 }
@@ -296,7 +679,7 @@ pub fn wrap(text: &str, columns: usize) -> Vec<String> {
     if columns == 0 || width(text) <= columns {
         return vec![text.to_string()];
     }
-    // No hyphenation: `farmhouse-saison` is one name, and textwrap otherwise
+    // No hyphenation: `farmhouse-steel` is one name, and textwrap otherwise
     // broke it at its hyphen while the column still had room for it whole.
     let options = textwrap::Options::new(columns)
         .break_words(true)
@@ -321,15 +704,33 @@ pub fn truncate(text: &str, columns: usize) -> String {
     let room = columns.saturating_sub(1);
     let mut out = String::new();
     let mut used = 0usize;
-    for cluster in text.graphemes(true) {
+    let mut painted = false;
+    let mut rest = text;
+    // A colour, `ESC [ … m`, is copied whole and takes no room: counted as
+    // text, it widened the cut and could end it inside an escape.
+    'cut: while !rest.is_empty() {
+        if let Some(body) = rest.strip_prefix("\u{1b}[")
+            && let Some(end) = body.find('m')
+            && body[..end].chars().all(|c| c.is_ascii_digit() || c == ';')
+        {
+            out.push_str(&rest[..2 + end + 1]);
+            painted = true;
+            rest = &body[end + 1..];
+            continue;
+        }
+        let cluster = rest.graphemes(true).next().unwrap_or(rest);
         let cluster_width = width(cluster);
         if used + cluster_width > room {
-            break;
+            break 'cut;
         }
         out.push_str(cluster);
         used += cluster_width;
+        rest = &rest[cluster.len()..];
     }
     out.push('…');
+    if painted {
+        out.push_str("\u{1b}[0m");
+    }
     out
 }
 
@@ -409,6 +810,22 @@ pub fn lay_out_keeping(
     grey: bool,
     keep: usize,
 ) -> Layout {
+    // A header bold, its unit in the unit's colour, where a terminal reads it
+    // and the palette is on: decided here, where the target is known.
+    let headers = if matches!(target, Target::Terminal { .. }) && palette().enabled {
+        headers
+            .iter()
+            .map(|header| {
+                if header.contains('\u{1b}') {
+                    header.clone()
+                } else {
+                    painted_header(header)
+                }
+            })
+            .collect()
+    } else {
+        headers
+    };
     // **What the terminal added gives way before what was asked for**: where
     // the width hides a column someone asked for, the added ones go if that
     // shows more of it. A `project` column kept whole beside a truncated,
@@ -513,7 +930,7 @@ fn lay_out_as_given(
         .map(|at| {
             // A column the terminal added is a name; any other whose cells all
             // look like numbers aligns on the point — the first one too, which
-            // `-c og,name` asked for as a number and got as a name.
+            // `-c radius,name` asked for as a number and got as a name.
             if at < added {
                 return Alignment::Left;
             }
@@ -669,9 +1086,19 @@ pub fn draw(layout: &Layout, style: Style) -> String {
 
 /// Whether a cell is a number: a value, then at most an uncertainty after `±`
 /// and one unit — and nothing else. The first word alone decided it, and
-/// `12 samples, dry-stout` was a number, aligned on a point it did not have.
+/// `12 samples, dry-nickel` was a number, aligned on a point it did not have.
 fn looks_numeric(cell: &str) -> bool {
+    let cell = drawn(cell);
+    let cell = cell.as_ref();
     let number = |word: &str| !word.is_empty() && word.parse::<f64>().is_ok();
+    // A value that waits is bracketed, `(69 %)`, and is a number still.
+    let trimmed = cell.trim();
+    let cell = trimmed
+        .strip_prefix('(')
+        .and_then(|inner| inner.split_once(')'))
+        .map_or(trimmed.to_string(), |(inner, mark)| {
+            format!("{inner}{mark}")
+        });
     let mut words = cell.split_whitespace();
     if !words.next().is_some_and(number) {
         return false;
@@ -700,7 +1127,8 @@ fn looks_numeric(cell: &str) -> bool {
 
 /// The unit a numeric cell ends with, its state's mark set aside; empty
 /// where it has none.
-fn unit_of(cell: &str) -> &str {
+fn unit_of(cell: &str) -> String {
+    let cell = drawn(cell);
     let mut words: Vec<&str> = cell.split_whitespace().collect();
     if words
         .last()
@@ -709,9 +1137,9 @@ fn unit_of(cell: &str) -> &str {
         words.pop();
     }
     match words.as_slice() {
-        [_] | [_, "±", _] => "",
-        [.., unit] => unit,
-        [] => "",
+        [_] | [_, "±", _] => String::new(),
+        [.., unit] => unit.to_string(),
+        [] => String::new(),
     }
 }
 
@@ -822,7 +1250,7 @@ fn fit(
         let mut trial = widths[..shown].to_vec();
         narrow_text(&mut trial, &texts[..shown], available, style);
         // Only a word too long for any sensible column is broken: one that
-        // fits in twelve cells — `haze` — is kept whole, and a column
+        // fits in twelve cells — `roughness` — is kept whole, and a column
         // is hidden instead, as a narrow terminal always did.
         let whole = (0..shown).all(|at| !texts[at] || trial[at] >= words[at].min(12));
         // Columns a table is for are not hidden: they wrap inside their words.
@@ -994,7 +1422,7 @@ fn line(
         for (at, w) in widths.iter().enumerate() {
             let shown = pieces[at].get(physical).cloned().unwrap_or_default();
             // A header reads like its column: from the left over text, and
-            // ending where the numbers end over a numeric column, where `brix`
+            // ending where the numbers end over a numeric column, where `porosity`
             // hugging the point would look wrong.
             let align = if header {
                 match alignment[at] {
@@ -1037,6 +1465,7 @@ fn line(
 /// table unfolded, its index first. The note is left out unless asked for, then
 /// written after, as the file holds it. Over a selection, each sample is shown
 /// once, one after the other.
+#[allow(clippy::too_many_arguments)]
 pub fn sheet(
     subject: &Subject,
     config: Option<&ProjectConfig>,
@@ -1044,8 +1473,42 @@ pub fn sheet(
     precision: Option<&crate::format::schema::PrecisionSchema>,
     target: Target,
     note: bool,
+    table_style: Style,
+    samples: Option<&[(std::path::PathBuf, Option<String>)]>,
+) -> String {
+    sheet_of_held(
+        subject,
+        config,
+        style,
+        precision,
+        target,
+        note,
+        table_style,
+        None,
+        samples,
+    )
+}
+
+/// [`sheet`], leaving out what a model declares and nothing holds: a value
+/// with none, and a table with no row, that `held` — the names the sample's
+/// file holds — does not name. Python's `to_text` writes the sample as `view`
+/// writes its file, which knows nothing of the model. Given the project's
+/// `samples`, each its path and its `name:`, a terminal shows the links as a
+/// table drawn there does.
+#[allow(clippy::too_many_arguments)]
+pub fn sheet_of_held(
+    subject: &Subject,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+    precision: Option<&crate::format::schema::PrecisionSchema>,
+    target: Target,
+    note: bool,
+    table_style: Style,
+    held: Option<&[String]>,
+    samples: Option<&[(std::path::PathBuf, Option<String>)]>,
 ) -> String {
     let sample = subject.sample;
+    let unheld = |name: &str| held.is_some_and(|held| !held.iter().any(|kept| kept == name));
     let mut out = format!("{}\n", name_of(subject));
     let terminal = matches!(target, Target::Terminal { .. });
     let _pass = crate::format::fingerprint::Pass::begin();
@@ -1063,6 +1526,14 @@ pub fn sheet(
         sample
             .property_names()
             .into_iter()
+            .filter(|name| {
+                !unheld(name.as_str())
+                    || sample.property(name).is_ok_and(|handle| {
+                        handle
+                            .peek(crate::core::property::Property::peek_value)
+                            .is_some_and(|value| !value.is_absent())
+                    })
+            })
             .map(|name| name.to_string()),
     );
     let profile = crate::config::profiles::anonymous(
@@ -1092,18 +1563,79 @@ pub fn sheet(
             )
         })
         .collect();
+    // In a terminal, a link is its text alone, as a table drawn there shows it.
+    let linked = match samples {
+        Some(samples) if terminal => crate::presentation::links::row(&profile, subject, samples),
+        _ => vec![None; shown.len()],
+    };
+    let shown: Vec<String> = shown
+        .into_iter()
+        .zip(&linked)
+        .map(|(text, link)| link.as_ref().map_or(text, |link| link.text.clone()))
+        .collect();
     let value_width = shown.iter().map(|text| width(text)).max().unwrap_or(0);
+    // Painted once laid out, on a terminal: a property's number bold and its
+    // unit in the unit's colour, an attribute's value in its own.
+    let painting = terminal && palette().enabled;
+    let shown: Vec<String> = if painting {
+        profile
+            .columns()
+            .iter()
+            .zip(&shown)
+            .zip(&linked)
+            .map(|((entry, text), link)| {
+                if let Some(link) = link {
+                    let style = match link.leads {
+                        crate::presentation::links::Leads::Nowhere => palette().error.underline(),
+                        _ => palette().link,
+                    };
+                    return paint(text, style);
+                }
+                let property = Identifier::new(&entry.field)
+                    .ok()
+                    .is_some_and(|name| sample.property(&name).is_ok());
+                if property {
+                    let unit = presentation(
+                        entry,
+                        subject,
+                        Declaration::Profile(&profile),
+                        config,
+                        style,
+                    )
+                    .unit;
+                    painted_quantity(text, unit.as_deref())
+                } else if matches!(text.as_str(), "" | ABSENT) {
+                    text.clone()
+                } else {
+                    paint(text, palette().attribute)
+                }
+            })
+            .collect()
+    } else {
+        shown
+    };
     for (field, shown) in fields.iter().zip(&shown) {
         let state = Identifier::new(field)
             .ok()
             .and_then(|name| states.get(&name))
             .and_then(said_state);
         let line = match state {
-            Some((mark, word)) if terminal => format!(
-                "  {}   {}   {mark} {word}",
-                pad(field, label_width, Alignment::Left),
-                pad(shown, value_width, Alignment::Left)
-            ),
+            Some((mark, word)) if terminal => {
+                let said = format!("{mark} {word}");
+                let said = match Identifier::new(field)
+                    .ok()
+                    .and_then(|name| states.get(&name))
+                    .and_then(style_of)
+                {
+                    Some(style) if painting => paint(&said, style),
+                    _ => said,
+                };
+                format!(
+                    "  {}   {}   {said}",
+                    pad(field, label_width, Alignment::Left),
+                    pad(shown, value_width, Alignment::Left)
+                )
+            }
             Some((_, word)) => format!(
                 "  {}   {}   {word}",
                 pad(field, label_width, Alignment::Left),
@@ -1113,88 +1645,53 @@ pub fn sheet(
         };
         out.push_str(line.trim_end());
         out.push('\n');
+        // A quantity's readings beneath it: a reading typed wrong is seen
+        // where its mean is, found otherwise only with `-c name,notch.readings`.
+        let readings = Identifier::new(field)
+            .ok()
+            .and_then(|name| sample.property(&name).ok())
+            .and_then(|handle| {
+                handle.peek(|property| {
+                    property.readings().map(|readings| {
+                        readings
+                            .as_slice()
+                            .iter()
+                            .map(|reading| reading.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    })
+                })
+            });
+        if let Some(readings) = readings {
+            let readings = if painting {
+                paint(&readings, palette().value)
+            } else {
+                readings
+            };
+            out.push_str(&format!(
+                "  {}   {} {readings}\n",
+                pad("", label_width, Alignment::Left),
+                if painting {
+                    paint("readings", palette().muted)
+                } else {
+                    "readings".to_string()
+                }
+            ));
+        }
     }
     for name in sample.table_names() {
-        let Ok(found) = sample.table(name) else {
+        if unheld(name.as_str())
+            && sample
+                .table(name)
+                .is_ok_and(|table| table.rows().count() == 0)
+        {
             continue;
-        };
-        let columns: Vec<Identifier> = found.column_names().into_iter().cloned().collect();
-        let rows_count = found.rows().count();
-        out.push_str(&format!(
-            "\n  {name} · {rows_count} {}\n",
-            if rows_count == 1 { "row" } else { "rows" }
-        ));
-        // Each column headed with its unit, which its cells then leave out.
-        let headers: Vec<String> = columns
-            .iter()
-            .map(|column| {
-                let unit = found
-                    .presentation_of(column, &crate::core::table::RowAddress::ordinal(0))
-                    .ok()
-                    .and_then(|presentation| presentation.unit)
-                    .map(|unit| {
-                        resolve(
-                            &formatting::Presentation {
-                                unit: Some(unit.clone()),
-                                ..Default::default()
-                            },
-                            &format!("{name}.{column}"),
-                            config,
-                            style,
-                        )
-                        .unit
-                        .unwrap_or(unit)
-                    });
-                match unit {
-                    Some(unit) => format!("{column} [{unit}]"),
-                    None => column.to_string(),
-                }
-            })
-            .collect();
-        let mut rows = Vec::new();
-        for row in found.rows() {
-            let index: Vec<crate::core::value::Value> = row.index().into_iter().cloned().collect();
-            let mut cells = Vec::new();
-            for column in &columns {
-                let mark = if terminal {
-                    crate::format::fingerprint::check_cell_among(sample, name, column, &index)
-                        .ok()
-                        .as_ref()
-                        .and_then(mark_of)
-                } else {
-                    None
-                };
-                let shown = match row.cell(column) {
-                    Ok(property) => property
-                        .value()
-                        .ok()
-                        .filter(|value| !value.is_absent())
-                        .map(|value| {
-                            let mut resolved = resolve(
-                                property.presentation(),
-                                &format!("{name}.{column}"),
-                                config,
-                                style,
-                            );
-                            resolved.unit = None;
-                            if let Some(precision) = precision.and_then(|given| given.precision()) {
-                                resolved.precision = Some(precision);
-                            }
-                            formatting::format_value(&value, &resolved)
-                        })
-                        .unwrap_or_else(|| ABSENT.to_string()),
-                    Err(_) => ABSENT.to_string(),
-                };
-                cells.push(match mark {
-                    Some(mark) => format!("{shown} {mark}"),
-                    None => shown,
-                });
-            }
-            rows.push(cells);
         }
-        for line in table(headers, rows, target, Style::Plain).lines() {
-            out.push_str(format!("  {line}").trim_end());
+        if let Some(unfolded) =
+            unfolded_table(subject, name, config, style, precision, target, table_style)
+        {
             out.push('\n');
+            out.push_str(&unfolded);
         }
     }
     // The researcher's text, byte for byte, and only when asked for.
@@ -1206,6 +1703,232 @@ pub fn sheet(
         }
     }
     out
+}
+
+/// One table of a sample unfolded, as `view` shows it: its name and its row
+/// count, then its columns headed with their units, its index first. `None`
+/// where the sample holds no table of that name.
+pub fn unfolded_table(
+    subject: &Subject,
+    name: &Identifier,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+    precision: Option<&crate::format::schema::PrecisionSchema>,
+    target: Target,
+    table_style: Style,
+) -> Option<String> {
+    let sample = subject.sample;
+    let terminal = matches!(target, Target::Terminal { .. });
+    let found = sample.table(name).ok()?;
+    // No field of the sample's own: a cell is named whole.
+    let profile = crate::config::profiles::anonymous(Vec::new());
+    let mut out = String::new();
+    let columns: Vec<Identifier> = found.column_names().into_iter().cloned().collect();
+    let rows_count = found.rows().count();
+    out.push_str(&format!(
+        "  {name} · {rows_count} {}\n",
+        if rows_count == 1 { "row" } else { "rows" }
+    ));
+    // Each column headed with its unit, which its cells then leave out.
+    let headers: Vec<String> = columns
+        .iter()
+        .map(|column| {
+            // The file's unit, or the one `[property."table.column"]`
+            // declares where the file writes none, as `-c` heads it.
+            let written = found
+                .presentation_of(column, &crate::core::table::RowAddress::ordinal(0))
+                .ok()
+                .and_then(|presentation| presentation.unit);
+            let unit = resolve(
+                &formatting::Presentation {
+                    unit: written.clone(),
+                    ..Default::default()
+                },
+                &format!("{name}.{column}"),
+                config,
+                style,
+            )
+            .unit
+            .or(written);
+            match unit {
+                Some(unit) => format!("{column} [{unit}]"),
+                None => column.to_string(),
+            }
+        })
+        .collect();
+    let indexes: Vec<Vec<crate::core::value::Value>> = found
+        .rows()
+        .map(|row| row.index().into_iter().cloned().collect())
+        .collect();
+    let cell_of = |column: &Identifier, index: &[crate::core::value::Value]| {
+        crate::query::field_addressing::describe(&crate::query::field_addressing::Field::Cell {
+            table: name.clone(),
+            column: column.clone(),
+            row: crate::core::table::RowAddress::index(index.to_vec()),
+            channel: crate::query::field_addressing::Channel::Value,
+        })
+    };
+    // A column's numbers share their decimals, as a table of samples has them
+    // share: where nothing declares a precision, plain numbers padded to the
+    // most precise, values with uncertainties written to one number of
+    // decimals where one suits them all.
+    let mut shared: Vec<Option<usize>> = Vec::new();
+    let mut plain: Vec<bool> = Vec::new();
+    for column in &columns {
+        let mut known = Vec::new();
+        let mut numbers = true;
+        let mut uncertain = true;
+        let mut declared = precision.is_some();
+        for index in &indexes {
+            let Ok(field) = fields::parse(&cell_of(column, index)) else {
+                numbers = false;
+                break;
+            };
+            let entry = ColumnSpec {
+                field: cell_of(column, index),
+                label: None,
+                header: None,
+                precision: None,
+                template: None,
+            };
+            declared |= presentation(
+                &entry,
+                subject,
+                Declaration::Profile(&profile),
+                config,
+                style,
+            )
+            .precision
+            .is_some();
+            match (
+                read(&field, Channel::Value, subject),
+                read(&field, Channel::Uncertainty, subject),
+            ) {
+                (None | Some(Value::Absent), _) => {}
+                (Some(Value::Number(value)), Some(Value::Number(uncertainty))) => {
+                    known.push((value, uncertainty));
+                }
+                (Some(Value::Number(_) | Value::Integer(_)), None) => uncertain = false,
+                _ => {
+                    numbers = false;
+                    uncertain = false;
+                }
+            }
+        }
+        let places = (!declared && uncertain)
+            .then(|| places_suiting(known))
+            .flatten();
+        shared.push(places);
+        plain.push(!declared && numbers && places.is_none() && !uncertain);
+    }
+    let mut rows = Vec::new();
+    let mut marks = Vec::new();
+    for index in &indexes {
+        let mut cells = Vec::new();
+        let mut marked = Vec::new();
+        for (at, column) in columns.iter().enumerate() {
+            // The mark in its state's colour, where the palette is on.
+            let mark = if terminal {
+                crate::format::fingerprint::check_cell_among(sample, name, column, index)
+                    .ok()
+                    .and_then(|state| {
+                        let mark = mark_of(&state)?;
+                        Some(match style_of(&state) {
+                            Some(style) => paint(mark, style),
+                            None => mark.to_string(),
+                        })
+                    })
+            } else {
+                None
+            };
+            // A cell as `-c 'table.column[index]'` shows it, through the
+            // same path: its readings' statistic, its uncertainty, and
+            // `n/a` as written, never as a cell left empty.
+            let entry = ColumnSpec {
+                field: cell_of(column, index),
+                label: None,
+                header: None,
+                precision: precision.cloned(),
+                template: None,
+            };
+            // Without its unit, which heads the column.
+            let mut shown = render_cell_at(
+                &entry,
+                subject,
+                Declaration::Profile(&profile),
+                config,
+                style,
+                true,
+                false,
+                shared[at],
+            );
+            if shown.is_empty() {
+                shown = ABSENT.to_string();
+            }
+            cells.push(shown);
+            marked.push(mark);
+        }
+        rows.push(cells);
+        marks.push(marked);
+    }
+    for (at, even) in plain.iter().enumerate() {
+        let cells: Vec<&String> = rows.iter().filter_map(|row| row.get(at)).collect();
+        let Some(most) = even.then(|| most_decimals(&cells)).flatten() else {
+            continue;
+        };
+        for (row, index) in rows.iter_mut().zip(&indexes) {
+            if row[at].as_str() == ABSENT {
+                continue;
+            }
+            let entry = ColumnSpec {
+                field: cell_of(&columns[at], index),
+                label: None,
+                header: None,
+                precision: None,
+                template: None,
+            };
+            row[at] = render_cell_at(
+                &entry,
+                subject,
+                Declaration::Profile(&profile),
+                config,
+                style,
+                true,
+                false,
+                Some(most),
+            );
+        }
+    }
+    for (cells, marked) in rows.iter_mut().zip(marks) {
+        for (cell, mark) in cells.iter_mut().zip(marked) {
+            if terminal && !matches!(cell.as_str(), "" | ABSENT | "n/a") {
+                // A number as a value, a text as an attribute's value is.
+                let style = if looks_numeric(cell) {
+                    palette().value
+                } else {
+                    palette().attribute
+                };
+                *cell = paint(cell, style);
+            }
+            if let Some(mark) = mark {
+                cell.push(' ');
+                cell.push_str(&mark);
+            }
+        }
+    }
+    let headers: Vec<String> = if terminal && palette().enabled {
+        headers
+            .iter()
+            .map(|header| painted_header(header))
+            .collect()
+    } else {
+        headers
+    };
+    for line in table(headers, rows, target, table_style).lines() {
+        out.push_str(format!("  {line}").trim_end());
+        out.push('\n');
+    }
+    Some(out)
 }
 
 /// A value's state as the sample's screen says it: its mark and its word,
@@ -1266,6 +1989,231 @@ pub fn row(
         .collect()
 }
 
+/// A column's numbers, where nothing says how many digits they have, written
+/// to as many decimals as the most precise of them: `2` beside `1.99` is
+/// `2.00`, `12.5` beside `12.49` is `12.50`. A column only of numbers without an
+/// uncertainty, none of whose cells a precision, a template or a channel
+/// writes: a declared precision already writes them alike, and text that looks
+/// like a number — a version, `1.10` — is never padded. The digits are added
+/// to the text, never rounded again. A column of values with uncertainties is
+/// written to one number of decimals where one suits every row:
+/// `12.4920 ± 0.0055` above `12.497 ± 0.012` is
+/// `12.492 ± 0.006`. `rows` are [`row`]'s, one per subject, each written under
+/// its configuration.
+pub fn even_decimals(
+    profile: &Profile,
+    subjects: &[Subject],
+    configs: &[Option<&ProjectConfig>],
+    style: Option<&str>,
+    rows: &mut [Vec<String>],
+) {
+    for (at, column) in profile.columns().iter().enumerate() {
+        let Ok(field) = fields::parse(&column.field) else {
+            continue;
+        };
+        if column.template.is_some() || fields::has_explicit_channel(&column.field) {
+            continue;
+        }
+        if let Some(places) = shared_places(profile, column, &field, subjects, configs, style) {
+            for ((row, subject), config) in rows.iter_mut().zip(subjects).zip(configs) {
+                let Some(cell) = row.get_mut(at) else {
+                    continue;
+                };
+                if cell.as_str() == ABSENT {
+                    continue;
+                }
+                *cell = render_cell_at(
+                    column,
+                    subject,
+                    Declaration::Profile(profile),
+                    *config,
+                    style,
+                    true,
+                    false,
+                    Some(places),
+                );
+            }
+            continue;
+        }
+        let plain = subjects.iter().zip(configs).all(|(subject, config)| {
+            let resolved = presentation(
+                column,
+                subject,
+                Declaration::Profile(profile),
+                *config,
+                style,
+            );
+            let number = matches!(
+                read(&field, Channel::Value, subject),
+                None | Some(Value::Number(_) | Value::Integer(_) | Value::Absent)
+            );
+            resolved.precision.is_none()
+                && resolved.property.is_none()
+                && number
+                && read(&field, Channel::Uncertainty, subject).is_none()
+        });
+        if !plain {
+            continue;
+        }
+        // Written again to that many decimals, as `.Nf` would: an entered
+        // number keeps its digits and gains zeros, and a computed one its own
+        // digits, where zeros added to its short form would have been false.
+        let cells: Vec<&String> = rows.iter().filter_map(|row| row.get(at)).collect();
+        let Some(most) = most_decimals(&cells) else {
+            continue;
+        };
+        for ((row, subject), config) in rows.iter_mut().zip(subjects).zip(configs) {
+            let Some(cell) = row.get_mut(at) else {
+                continue;
+            };
+            if cell.as_str() != ABSENT {
+                *cell = render_cell_at(
+                    column,
+                    subject,
+                    Declaration::Profile(profile),
+                    *config,
+                    style,
+                    true,
+                    false,
+                    Some(most),
+                );
+            }
+        }
+    }
+}
+
+/// The decimals of the most precise of a column's cells, each a number written
+/// as text: what the whole column is then written to. `None` where a cell is
+/// in exponent form or no number, or none has a decimal: the column is left as
+/// it is.
+fn most_decimals(cells: &[&String]) -> Option<usize> {
+    let mut most = 0;
+    for cell in cells {
+        if cell.as_str() == ABSENT {
+            continue;
+        }
+        cell.parse::<f64>().ok()?;
+        if cell.contains(['e', 'E']) {
+            return None;
+        }
+        most = most.max(
+            cell.split_once('.')
+                .map_or(0, |(_, decimals)| decimals.len()),
+        );
+    }
+    (most > 0).then_some(most)
+}
+
+/// The most decimals that suit every value of a column known to an
+/// uncertainty, each keeping one or two significant digits of it, two when
+/// the first is a 1. `None` where no number suits them all, or a value is not
+/// one: each is then written to its own.
+fn places_suiting(values: impl IntoIterator<Item = (f64, f64)>) -> Option<usize> {
+    let mut fewest = i32::MIN;
+    let mut most = i32::MAX;
+    let mut any = false;
+    for (value, uncertainty) in values {
+        if !value.is_finite() {
+            return None;
+        }
+        // A zero uncertainty has no significant digit to keep: it takes the
+        // column's decimals, and chooses none — a curve's first row, `0 ± 0`,
+        // unshared the whole column.
+        if uncertainty == 0.0 {
+            continue;
+        }
+        let (low, high) = formatting::uncertainty_places(uncertainty)?;
+        fewest = fewest.max(low);
+        most = most.min(high);
+        any = true;
+    }
+    (any && fewest <= most && most >= 0).then_some(most as usize)
+}
+
+/// The decimals a column of values with uncertainties is written to, where
+/// nothing is declared: the one number [`even_decimals`] gives the whole
+/// column, or else the most any row is written to. `None` for a column that is
+/// not only of such values: a summary writes its extremes as it did.
+pub fn column_places(
+    profile: &Profile,
+    column: &ColumnSpec,
+    subjects: &[Subject],
+    configs: &[Option<&ProjectConfig>],
+    style: Option<&str>,
+) -> Option<usize> {
+    let field = fields::parse(&column.field).ok()?;
+    if column.template.is_some() || fields::has_explicit_channel(&column.field) {
+        return None;
+    }
+    if let Some(places) = shared_places(profile, column, &field, subjects, configs, style) {
+        return Some(places);
+    }
+    let mut most: Option<i32> = None;
+    for (subject, config) in subjects.iter().zip(configs) {
+        let resolved = presentation(
+            column,
+            subject,
+            Declaration::Profile(profile),
+            *config,
+            style,
+        );
+        if resolved.precision.is_some() {
+            return None;
+        }
+        match (
+            read(&field, Channel::Value, subject),
+            read(&field, Channel::Uncertainty, subject),
+        ) {
+            (None | Some(Value::Absent), _) => continue,
+            (Some(Value::Number(_)), Some(Value::Number(uncertainty))) => {
+                let (_, high) = formatting::uncertainty_places(uncertainty)?;
+                most = Some(most.map_or(high, |most| most.max(high)));
+            }
+            _ => return None,
+        }
+    }
+    most.filter(|most| *most >= 0).map(|most| most as usize)
+}
+
+/// The one number of decimals a column of values with uncertainties can be
+/// written to, the most that suits every row: each uncertainty keeps one or
+/// two significant digits, and two when the first is a 1. `None` where no
+/// number suits them all, or where the column is not only of such values with
+/// nothing declared: each row then keeps its own rounding.
+fn shared_places(
+    profile: &Profile,
+    column: &ColumnSpec,
+    field: &fields::Field,
+    subjects: &[Subject],
+    configs: &[Option<&ProjectConfig>],
+    style: Option<&str>,
+) -> Option<usize> {
+    let mut known = Vec::new();
+    for (subject, config) in subjects.iter().zip(configs) {
+        let resolved = presentation(
+            column,
+            subject,
+            Declaration::Profile(profile),
+            *config,
+            style,
+        );
+        if resolved.precision.is_some() {
+            return None;
+        }
+        match (
+            read(field, Channel::Value, subject),
+            read(field, Channel::Uncertainty, subject),
+        ) {
+            (None | Some(Value::Absent), _) => continue,
+            (Some(Value::Number(value)), Some(Value::Number(uncertainty))) => {
+                known.push((value, uncertainty));
+            }
+            _ => return None,
+        }
+    }
+    places_suiting(known)
+}
+
 /// The headers of a profile's table: each column's label, and its unit when
 /// every subject that has one agrees.
 ///
@@ -1284,12 +2232,32 @@ pub fn columns(
         .iter()
         .map(|column| {
             let label = profile.label_for(column).to_string();
-            match agreed_unit(column, subjects, profile, config, style) {
+            // A style whose form of a property places the unit writes it in
+            // each cell, and the header none.
+            if style_places_unit(config, style) {
+                return label;
+            }
+            match agreed_unit(column, subjects, profile, &|_| config, style) {
                 Some(unit) => format!("{label} [{unit}]"),
                 None => label,
             }
         })
         .collect()
+}
+
+/// Whether the style in force writes a property's unit itself: its `property`
+/// places `{unit}` inside it.
+pub fn style_places_unit(config: Option<&ProjectConfig>, style: Option<&str>) -> bool {
+    config
+        .and_then(|config| config.resolved_as(&Presentation::default(), "", style).ok())
+        .is_some_and(|resolved| resolved.property.as_deref().is_some_and(places_unit))
+}
+
+/// Whether a form of a property places the unit inside it, `\SI{…}{{unit}}`:
+/// one ending on `{unit}`, as `{value} ± {uncertainty} {unit}` does, leaves it
+/// to a header that heads a column with it.
+fn places_unit(template: &str) -> bool {
+    template.contains("{unit}") && !template.trim_end().ends_with("{unit}")
 }
 
 /// The unit every subject holding one agrees on for a column, as a header shows
@@ -1301,14 +2269,48 @@ pub fn column_unit(
     config: Option<&ProjectConfig>,
     style: Option<&str>,
 ) -> Option<String> {
-    agreed_unit(column, subjects, profile, config, style)
+    agreed_unit(column, subjects, profile, &|_| config, style)
 }
 
-fn agreed_unit(
+/// [`column_unit`] over samples of several projects, each resolved under its
+/// own: `configs` holds each subject's configuration. A unit every project
+/// declares alike heads the column whatever order the projects were named in.
+pub fn column_unit_each(
     column: &ColumnSpec,
     subjects: &[Subject],
     profile: &Profile,
-    config: Option<&ProjectConfig>,
+    configs: &[Option<&ProjectConfig>],
+    style: Option<&str>,
+) -> Option<String> {
+    agreed_unit(
+        column,
+        subjects,
+        profile,
+        &|at| configs.get(at).copied().flatten(),
+        style,
+    )
+}
+
+/// Whether a sample holds something for `field` that can be in a unit: one
+/// that holds nothing has no unit to disagree with, whatever `[property.*]`
+/// would give it, and neither has a text, a date or a truth — `[property.style]
+/// unit = "kg"` headed a column of alloy styles `style [kg]`.
+fn holds(field: &fields::Field, subject: &Subject) -> bool {
+    matches!(
+        fields::resolve(field, subject),
+        Ok(fields::Resolution::Scalar(Some(ref value)))
+            if !matches!(
+                value,
+                Value::Text(_) | Value::Boolean(_) | Value::Date(_) | Value::DateTime(_)
+            )
+    )
+}
+
+fn agreed_unit<'a>(
+    column: &ColumnSpec,
+    subjects: &[Subject],
+    profile: &Profile,
+    config_of: &dyn Fn(usize) -> Option<&'a ProjectConfig>,
     style: Option<&str>,
 ) -> Option<String> {
     let Ok(field) = fields::parse(&column.field) else {
@@ -1323,12 +2325,18 @@ fn agreed_unit(
         return None;
     }
     let mut agreed: Option<String> = None;
-    for subject in subjects {
+    let mut held = false;
+    for (at, subject) in subjects
+        .iter()
+        .enumerate()
+        .filter(|(_, subject)| holds(&field, subject))
+    {
+        held = true;
         let property = presentation_of(&field, subject);
         let composed = profile.presentation_for(column, &property);
-        let Some(unit) = resolve(&composed, &address(&field), config, style).unit else {
+        let Some(unit) = resolve(&composed, &address(&field), config_of(at), style).unit else {
             // A value with no unit under a header naming one would read as in
-            // that unit: `5` under `grain_mass [kg]`, written in grams for all
+            // that unit: `5` under `ore_mass [kg]`, written in grams for all
             // anyone knows. Only a row with nothing in it is no evidence.
             if matches!(
                 fields::resolve(&field, subject),
@@ -1346,7 +2354,40 @@ fn agreed_unit(
             Some(_) => return None,
         }
     }
+    // Nothing computed yet: the unit the model declares heads the column, as
+    // it will once the values are there.
+    if !held && agreed.is_none() {
+        return declared_unit(&field, config_of(0)).and_then(|unit| {
+            let declared = Presentation {
+                unit: Some(unit),
+                symbol: None,
+                precision: None,
+            };
+            let composed = profile.presentation_for(column, &declared);
+            resolve(&composed, &address(&field), config_of(0), style).unit
+        });
+    }
     agreed
+}
+
+/// The unit the model declares for a field, from its description: none where
+/// no model is described, or it declares none.
+fn declared_unit(field: &fields::Field, config: Option<&ProjectConfig>) -> Option<String> {
+    let description = crate::config::model_runtime::current_description(config?)?;
+    match field {
+        fields::Field::Named { name, .. } => {
+            description.properties.get(name.as_str())?.unit.clone()
+        }
+        fields::Field::Cell { table, column, .. } => description
+            .tables
+            .get(table.as_str())?
+            .columns
+            .iter()
+            .find(|described| described.name == column.as_str())?
+            .unit
+            .clone(),
+        _ => None,
+    }
 }
 
 /// The columns whose samples do not agree on a unit, with the spellings they
@@ -1355,6 +2396,43 @@ fn agreed_unit(
 /// `agreed_unit` answers `None` there, and a header that simply drops its unit
 /// prints two incomparable numbers under a word that promises nothing. The
 /// caller is the one that can refuse, so this is what it asks.
+/// Each column's units over `subjects`, resolved under `config`, as a header
+/// would name them: what a selection over several projects compares across
+/// their configurations.
+pub fn units_of(
+    profile: &Profile,
+    subjects: &[Subject],
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+) -> Vec<(String, Vec<String>)> {
+    let mut found = Vec::new();
+    for column in profile.columns() {
+        let Ok(field) = fields::parse(&column.field) else {
+            continue;
+        };
+        if fields::has_explicit_channel(&column.field)
+            && matches!(
+                fields::channel(&field),
+                Channel::Unit | Channel::Symbol | Channel::Stat(Statistic::Count)
+            )
+        {
+            continue;
+        }
+        let mut spellings: Vec<String> = Vec::new();
+        for subject in subjects.iter().filter(|subject| holds(&field, subject)) {
+            let property = presentation_of(&field, subject);
+            let composed = profile.presentation_for(column, &property);
+            if let Some(unit) = resolve(&composed, &address(&field), config, style).unit
+                && !spellings.contains(&unit)
+            {
+                spellings.push(unit);
+            }
+        }
+        found.push((column.field.clone(), spellings));
+    }
+    found
+}
+
 pub fn disagreeing_units(
     profile: &Profile,
     subjects: &[Subject],
@@ -1376,11 +2454,11 @@ pub fn disagreeing_units(
         {
             continue;
         }
-        if agreed_unit(column, subjects, profile, config, style).is_some() {
+        if agreed_unit(column, subjects, profile, &|_| config, style).is_some() {
             continue;
         }
         let mut spellings: Vec<String> = Vec::new();
-        for subject in subjects {
+        for subject in subjects.iter().filter(|subject| holds(&field, subject)) {
             let property = presentation_of(&field, subject);
             let composed = profile.presentation_for(column, &property);
             if let Some(unit) = resolve(&composed, &address(&field), config, style).unit
@@ -1409,6 +2487,17 @@ pub fn cell(
     render_cell(entry, subject, declaration, config, style, quantity, true)
 }
 
+/// The same cell without its unit, which its column's header says.
+pub fn bare_cell(
+    entry: &ColumnSpec,
+    subject: &Subject,
+    declaration: Declaration<'_>,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+) -> String {
+    render_cell(entry, subject, declaration, config, style, true, false)
+}
+
 /// How one column's numbers are presented, resolved once: what the file says,
 /// composed with what the column overrides, resolved against the project's
 /// declarations and the style in force.
@@ -1432,6 +2521,21 @@ pub fn presentation(
     resolve(&composed, &address(&field), config, style)
 }
 
+/// The text a column's template writes for a subject, as a delimited export
+/// writes it: `None` where the column has no template, or the subject no
+/// value to fill it with.
+pub fn templated(
+    entry: &ColumnSpec,
+    subject: &Subject,
+    declaration: Declaration<'_>,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+) -> Option<String> {
+    entry.template.as_ref()?;
+    let text = render_cell(entry, subject, declaration, config, style, true, true);
+    (text != ABSENT).then_some(text)
+}
+
 /// `unit` is false for a table cell, whose unit is in the header instead.
 fn render_cell(
     entry: &ColumnSpec,
@@ -1442,12 +2546,49 @@ fn render_cell(
     quantity: bool,
     unit: bool,
 ) -> String {
+    render_cell_at(
+        entry,
+        subject,
+        declaration,
+        config,
+        style,
+        quantity,
+        unit,
+        None,
+    )
+}
+
+/// [`render_cell`], at `places` decimals where given: as a declared `.Nf`
+/// writes the cell, through the style's form.
+#[allow(clippy::too_many_arguments)]
+fn render_cell_at(
+    entry: &ColumnSpec,
+    subject: &Subject,
+    declaration: Declaration<'_>,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+    quantity: bool,
+    unit: bool,
+    places: Option<usize>,
+) -> String {
     let Ok(field) = fields::parse(&entry.field) else {
         return ABSENT.to_string();
     };
     let mut resolved = presentation(entry, subject, declaration, config, style);
+    if let Some(places) = places {
+        resolved.precision = Precision::both(&format!(".{places}f")).ok();
+    }
     let requested = fields::channel(&field);
-    if !unit && requested != Channel::Unit {
+    // A template writes `{unit}` where it says: the unit is its to place,
+    // not the header's to take — a column's, or the style's form of a
+    // property, `\SI{12.1 \pm 0.05}{\gram}`.
+    let placed = |template: &Option<String>| template.as_deref().is_some_and(places_unit);
+    if !unit
+        && requested != Channel::Unit
+        && entry.template.is_none()
+        && !placed(&resolved.property)
+        && !placed(&resolved.unitless)
+    {
         resolved.unit = None;
     }
     // A count is a number of readings: the quantity's unit is not its unit, and
@@ -1482,8 +2623,14 @@ fn render_cell(
     // A template replaces the default rendering, and only for the column that
     // declares one. It never alters a stored value: it is given the same
     // resolved literals the default rendering would use.
+    // A value absent or not applicable has nothing to fill it with: shown as
+    // any cell without one is, not as `\num{ \pm }`.
     if let Some(template) = &entry.template {
-        return fill(template, value.as_ref(), uncertainty.as_ref(), &resolved);
+        return match &value {
+            None | Some(Value::Absent) => ABSENT.to_string(),
+            Some(Value::NotApplicable) => "n/a".to_string(),
+            Some(_) => fill(template, value.as_ref(), uncertainty.as_ref(), &resolved),
+        };
     }
     let Some(value) = value else {
         return ABSENT.to_string();
@@ -1496,7 +2643,7 @@ fn render_cell(
     match (&value, requested) {
         // A stored uncertainty is never negative, so `new` accepts every one a
         // sample can hold.
-        (Value::Number(number), Channel::Uncertainty) => {
+        (Value::Number(number), channel) if fields::is_spread(channel) => {
             crate::core::uncertainty::Uncertainty::new(*number)
                 .map(|stored| formatting::format_uncertainty(&stored, &resolved))
                 .unwrap_or_else(|_| formatting::format_value(&value, &resolved))
@@ -1523,7 +2670,20 @@ pub fn quantity(
             .or_else(|| presentation.precision.clone()),
         ..presentation.clone()
     };
-    let resolved = resolve(&composed, address, config, None);
+    quantity_in(value, uncertainty, &composed, address, config, None)
+}
+
+/// [`quantity`] in a style named, `[render] style`'s where none is: its units,
+/// its symbols, its form of a property.
+pub fn quantity_in(
+    value: &Value,
+    uncertainty: Option<&Uncertainty>,
+    presentation: &Presentation,
+    address: &str,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+) -> String {
+    let resolved = resolve(presentation, address, config, style);
     formatting::format_quantity(value, uncertainty, &resolved)
 }
 
@@ -1567,7 +2727,11 @@ fn fill(
             Some(spec) => Resolved {
                 unit: resolved.unit.clone(),
                 symbol: resolved.symbol.clone(),
-                separator: resolved.separator.clone(),
+                property: resolved.property.clone(),
+                uncertainty: resolved.uncertainty.clone(),
+                unitless: resolved.unitless.clone(),
+                unit_alone: resolved.unit_alone.clone(),
+                unit_in_form: resolved.unit_in_form.clone(),
                 precision: crate::core::formatting::Precision::both(spec).ok(),
             },
             None => resolved.clone(),
@@ -1578,11 +2742,10 @@ fn fill(
                     out.push_str(&formatting::format_value(value, &local));
                 }
             }
+            // An uncertainty through the uncertainty's specifier, rounded up.
             "uncertainty" | "u" => {
-                if let Some(uncertainty) = uncertainty
-                    && let Ok(magnitude) = Value::number(uncertainty.magnitude())
-                {
-                    out.push_str(&formatting::format_value(&magnitude, &local));
+                if let Some(uncertainty) = uncertainty {
+                    out.push_str(&formatting::format_uncertainty(uncertainty, &local));
                 }
             }
             // The resolved literals, so a template in a math-styled project
@@ -1690,7 +2853,7 @@ fn address(field: &Field) -> String {
     }
 }
 
-fn name_of(subject: &Subject) -> String {
+pub fn name_of(subject: &Subject) -> String {
     if let Some(name) = subject.sample.name() {
         return name.to_string();
     }

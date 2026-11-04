@@ -1,5 +1,6 @@
-# A release: the command line for each system, the Python package's wheels,
-# a GitHub release holding them, and the package on PyPI and crates.io.
+# A release: the command line for each system, in a GitHub release with its
+# checksums; the Python package's wheels and sdist on PyPI; the crate on
+# crates.io.
 #
 # Inert until it is turned on: it runs only once the repository variable
 # PUBLISH_RELEASE is set to `true`. Before the first release:
@@ -146,8 +147,29 @@ jobs:
           name: sdist
           path: dist
 
+  # The migration tool: one Python zip application, PyYAML inside.
+  migrate:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build
+        run: |
+          python -m pip install pyyaml
+          python migrate/build.py samplekit-migrate.pyz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-migrate
+          path: samplekit-migrate.pyz
+
+  # The command line alone, an archive per system, the migration tool, and
+  # their checksums: the Python package is PyPI's, where pip and uv choose the
+  # wheel themselves.
   github-release:
-    needs: [version, binaries, wheels, sdist]
+    needs: [version, binaries, migrate, wheels, sdist]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -155,8 +177,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
+          pattern: binary-*
           path: artifacts
           merge-multiple: true
+      # One file of checksums beside the archives, to check a download by.
+      - name: Checksums
+        run: (cd artifacts && sha256sum -- * > SHA256SUMS)
       - name: This version's part of the changelog
         run: |
           python3 - "${{ needs.version.outputs.version }}" > notes.md <<'EOF'

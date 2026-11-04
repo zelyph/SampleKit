@@ -57,12 +57,61 @@ fn a_recent_project_opens_by_its_digit_or_enter() {
 fn the_workbench_keeps_its_folders_whole_for_the_start_page() {
     let scratch = Scratch::new("recent-kept");
     let workbench = Workbench::open(&scratch.0).unwrap();
-    samplekit::tui::model::remember(&workbench);
+    samplekit::tui::model::remember(&workbench).unwrap();
     let recent = samplekit::tui::model::recent_projects();
     assert!(
         recent.contains(&dunce::canonicalize(&scratch.0).unwrap()),
         "{recent:?}"
     );
+}
+
+#[test]
+fn a_folder_holding_projects_offers_them_first() {
+    // Started in a folder of projects, the setup's questions came first, to
+    // make one more beside them.
+    let root = folders("inside");
+    fs::create_dir_all(root.join("plain/deeper")).unwrap();
+    fs::write(
+        root.join("plain/deeper/.samplekitrc"),
+        "schema_version = 1\n",
+    )
+    .unwrap();
+    fs::create_dir_all(root.join(".hidden/kept")).unwrap();
+    fs::write(
+        root.join(".hidden/kept/.samplekitrc"),
+        "schema_version = 1\n",
+    )
+    .unwrap();
+    let start = Start::with_recent(&root, vec![root.join("project")]).offering_inside();
+    assert_eq!(
+        start.inside,
+        [root.join("plain/deeper"), root.join("project")]
+    );
+    // Offered once, not again among the recent projects.
+    assert!(start.recent.is_empty(), "{:?}", start.recent);
+    let mut start = Start::with_recent(&root, Vec::new()).offering_inside();
+    assert_eq!(
+        press(&mut start, "j\n"),
+        Effect::Done(Outcome::Open(root.join("project")))
+    );
+    // Setting one up here comes after them.
+    let mut start = Start::with_recent(&root, Vec::new()).offering_inside();
+    assert_eq!(
+        press(&mut start, "jj\n"),
+        Effect::Done(Outcome::Create(root.clone()))
+    );
+    let buffer = page_buffer(&mut start, 100, 40);
+    let text: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+    assert!(text.contains("Projects in this folder"), "{text}");
+    assert!(text.contains("set a project up here"), "{text}");
+    // A folder in a project offers nothing below it.
+    assert!(
+        Start::with_recent(&root.join("project"), Vec::new())
+            .offering_inside()
+            .inside
+            .is_empty()
+    );
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]
@@ -110,10 +159,10 @@ fn a_new_project_is_a_folder_made_then_set_up() {
         start.key(Key::Backspace);
     }
     assert_eq!(
-        press(&mut start, "brews\n"),
-        Effect::Done(Outcome::Made(root.join("brews")))
+        press(&mut start, "pieces\n"),
+        Effect::Done(Outcome::Made(root.join("pieces")))
     );
-    assert!(root.join("brews").is_dir());
+    assert!(root.join("pieces").is_dir());
     let _ = fs::remove_dir_all(root);
 }
 
@@ -237,11 +286,11 @@ fn the_demo_is_written_the_first_time_then_opened() {
     let demo = data.join("demo");
     let mut start = demo_page(&root, &data);
     let outcome = press(&mut start, "gj\n");
-    let first = demo.join("01-first-brews");
+    let first = demo.join("01-measured");
     assert_eq!(outcome, Effect::Done(Outcome::Step(first.clone())));
     // Every file of the demo in the repository, byte for byte: the one the
     // binary embeds, and the one written.
-    let repository = files_under(&Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/brewing"));
+    let repository = files_under(&Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/tensile"));
     let embedded: BTreeMap<String, Vec<u8>> = DEMO_FILES
         .iter()
         .map(|(name, bytes)| (name.to_string(), bytes.to_vec()))
@@ -251,8 +300,29 @@ fn the_demo_is_written_the_first_time_then_opened() {
         repository.keys().collect::<Vec<_>>()
     );
     assert!(embedded == repository);
-    assert!(files_under(&demo) == repository);
-    assert!(repository.contains_key("01-first-brews/.samplekitrc"));
+    // Written, its pages link to this version's documentation, not the latest.
+    let versioned: BTreeMap<String, Vec<u8>> = repository
+        .iter()
+        .map(|(name, bytes)| {
+            let bytes = if name.ends_with(".md") {
+                String::from_utf8_lossy(bytes)
+                    .replace(
+                        "https://zelyph.github.io/SampleKit/latest/",
+                        concat!(
+                            "https://zelyph.github.io/SampleKit/",
+                            env!("CARGO_PKG_VERSION"),
+                            "/"
+                        ),
+                    )
+                    .into_bytes()
+            } else {
+                bytes.clone()
+            };
+            (name.clone(), bytes)
+        })
+        .collect();
+    assert!(files_under(&demo) == versioned);
+    assert!(repository.contains_key("01-measured/.samplekitrc"));
     // The first step opened, the environment made beside it and said.
     let Effect::Done(outcome) = outcome else {
         unreachable!()
@@ -263,19 +333,19 @@ fn the_demo_is_written_the_first_time_then_opened() {
         fs::read_to_string(demo.join(".venv/made")).unwrap(),
         "made\n"
     );
-    // A step written reads, its brews computed.
-    let step = Workbench::open(&demo.join("05-fermentation")).unwrap();
-    assert_eq!(step.collection.len(), 12);
-    let stout = fs::read_to_string(demo.join("05-fermentation/brews/dry-stout.md")).unwrap();
-    assert!(stout.contains("abv:"), "{stout}");
+    // A step written reads, its specimens computed.
+    let step = Workbench::open(&demo.join("04-results")).unwrap();
+    assert_eq!(step.collection.len(), 3);
+    let nickel = fs::read_to_string(demo.join("04-results/samples/steel-01.md")).unwrap();
+    assert!(nickel.contains("tensile_strength:"), "{nickel}");
     // A second visit shows the demo's page as it is, the first step marked.
-    let brew = demo.join("01-first-brews/brews/citra-ipa.md");
-    fs::write(&brew, "edited\n").unwrap();
+    let specimen = demo.join("01-measured/samples/steel-01.md");
+    fs::write(&specimen, "edited\n").unwrap();
     let mut start = demo_page(&root, &data);
     assert_eq!(press(&mut start, "gj\n"), Effect::None);
     assert_eq!(start.mode, Mode::Demo { cursor: 0 });
     assert!(start.installing.is_none());
-    assert_eq!(fs::read_to_string(&brew).unwrap(), "edited\n");
+    assert_eq!(fs::read_to_string(&specimen).unwrap(), "edited\n");
     assert_eq!(
         fs::read_to_string(demo.join(".venv/made")).unwrap(),
         "made\n"
@@ -313,8 +383,8 @@ fn the_demo_is_a_page_of_its_steps() {
         folders_embedded.into_iter().collect::<Vec<_>>(),
         steps.iter().map(|(folder, ..)| *folder).collect::<Vec<_>>()
     );
-    assert_eq!(steps[0].1, "First brews");
-    assert_eq!(steps[4].1, "Fermentation");
+    assert_eq!(steps[0].1, "Measured");
+    assert_eq!(steps[4].1, "Projects");
     let drawn = page_at(&mut start, 100, 30).join("\n");
     for (at, (_, title, what)) in steps.iter().enumerate() {
         assert!(
@@ -323,11 +393,16 @@ fn the_demo_is_a_page_of_its_steps() {
         );
         assert!(drawn.contains(what), "{what}\n{drawn}");
     }
-    for said in ["The tutorial", "Reset the demo", "1…8 a step", "Esc back"] {
+    for said in [
+        "The walkthrough",
+        "Reset the demo",
+        "1…5 a step",
+        "Esc back",
+    ] {
         assert!(drawn.contains(said), "{said}\n{drawn}");
     }
     // Enter on step 5 opens it, and so does its digit.
-    let fifth = demo.join("05-fermentation");
+    let fifth = demo.join("05-projects");
     assert_eq!(
         press(&mut start, "jjjj\n"),
         Effect::Done(Outcome::Step(fifth.clone()))
@@ -341,7 +416,7 @@ fn the_demo_is_a_page_of_its_steps() {
     let workbench = samplekit::tui::start::opened(&Outcome::Step(fifth.clone()))
         .unwrap()
         .unwrap();
-    assert_eq!(workbench.collection.len(), 12);
+    assert_eq!(workbench.collection.len(), 5);
     // Quitting it comes back to the page, step 5 marked; Esc back to the
     // start page, whose `q` quits.
     let mut start = demo_page(&root, &data);
@@ -350,7 +425,7 @@ fn the_demo_is_a_page_of_its_steps() {
     assert!(
         page_at(&mut start, 100, 30)
             .join("\n")
-            .contains("▸ 5  Fermentation")
+            .contains("▸ 5  Projects")
     );
     press(&mut start, "\u{1b}");
     assert_eq!(start.mode, Mode::Menu);
@@ -358,15 +433,35 @@ fn the_demo_is_a_page_of_its_steps() {
     let mut start = demo_page(&root, &data);
     start.returning(&Outcome::Open(root.join("project")));
     assert_eq!(start.mode, Mode::Menu);
-    // The tutorial, in the browser.
+    // The walkthrough, the home page, in the browser.
     let mut start = demo_page(&root, &data);
     assert_eq!(
-        press(&mut start, "gj\njjjjjjjj\n"),
+        press(&mut start, "gj\njjjjj\n"),
         Effect::Browse(samplekit::tui::start::TUTORIAL)
     );
     assert_eq!(press(&mut start, "q"), Effect::None);
     assert_eq!(start.mode, Mode::Menu);
     let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn the_demos_folder_is_shown_from_its_page() {
+    // Its files edited by hand and the command line tried in it: nothing on
+    // the page led to the folder.
+    let _state = Scratch::new("demo-folder-state");
+    let root = folders("demo-folder");
+    let data = root.join("data");
+    let demo = data.join("demo");
+    let mut start = demo_page(&root, &data);
+    let Effect::Done(outcome) = press(&mut start, "gj\n") else {
+        panic!("written: {:?} {}", start.mode, start.message);
+    };
+    opened_on_demo(&mut start, &outcome);
+    let mut start = demo_page(&root, &data);
+    press(&mut start, "gj\n");
+    let drawn = page_at(&mut start, 100, 30).join("\n");
+    assert!(drawn.contains("The demo's folder"), "{drawn}");
+    assert_eq!(press(&mut start, "jjjjjj\n"), Effect::Show(demo));
 }
 
 #[test]
@@ -381,16 +476,16 @@ fn resetting_the_demo_asks_then_writes_it_again() {
         panic!("written: {:?} {}", start.mode, start.message);
     };
     opened_on_demo(&mut start, &outcome);
-    // A file added, a brew edited.
-    let added = demo.join("04-computing/notes.txt");
-    let brew = demo.join("04-computing/brews/dry-stout.md");
-    let original = fs::read(&brew).unwrap();
+    // A file added, a specimen edited.
+    let added = demo.join("04-results/notes.txt");
+    let specimen = demo.join("04-results/samples/steel-01.md");
+    let original = fs::read(&specimen).unwrap();
     fs::write(&added, "mine\n").unwrap();
-    fs::write(&brew, "edited\n").unwrap();
+    fs::write(&specimen, "edited\n").unwrap();
     // Asked first, from the demo's page, saying what is lost; nothing
     // changes on another key.
     let mut start = demo_page(&root, &data);
-    assert_eq!(press(&mut start, "gj\njjjjjjjjj\n"), Effect::None);
+    assert_eq!(press(&mut start, "gj\njjjjjjj\n"), Effect::None);
     assert!(matches!(start.mode, Mode::Reset), "{:?}", start.mode);
     let drawn = page_at(&mut start, 100, 30).join("\n");
     for said in [
@@ -402,16 +497,16 @@ fn resetting_the_demo_asks_then_writes_it_again() {
         assert!(drawn.contains(said), "{said}\n{drawn}");
     }
     assert_eq!(press(&mut start, "n"), Effect::None);
-    assert_eq!(start.mode, Mode::Demo { cursor: 9 });
+    assert_eq!(start.mode, Mode::Demo { cursor: 7 });
     assert!(added.exists());
     // `y`: written again as it comes, and its environment made anew.
     press(&mut start, "\n");
     let Effect::Done(outcome) = press(&mut start, "y") else {
         panic!("reset: {}", start.message);
     };
-    assert_eq!(outcome, Outcome::Step(demo.join("01-first-brews")));
+    assert_eq!(outcome, Outcome::Step(demo.join("01-measured")));
     assert!(!added.exists());
-    assert_eq!(fs::read(&brew).unwrap(), original);
+    assert_eq!(fs::read(&specimen).unwrap(), original);
     let workbench = opened_on_demo(&mut start, &outcome);
     assert_eq!(workbench.message, "the fake environment is made");
     assert_eq!(
@@ -512,7 +607,7 @@ fn x_forgets_a_recent_project() {
     // Its state removed, the folder itself untouched.
     let scratch = Scratch::new("recent-forgotten");
     let workbench = Workbench::open(&scratch.0).unwrap();
-    samplekit::tui::model::remember(&workbench);
+    samplekit::tui::model::remember(&workbench).unwrap();
     let folder = dunce::canonicalize(&scratch.0).unwrap();
     let mut start = Start::with_recent(
         &dunce::canonicalize(std::env::temp_dir()).unwrap(),
@@ -521,7 +616,25 @@ fn x_forgets_a_recent_project() {
     // On an item, x does nothing.
     press(&mut start, "jx");
     assert_eq!(start.recent.len(), 1);
+    // Asked first: any other key keeps it.
     press(&mut start, "kx");
+    assert!(
+        matches!(start.mode, Mode::Forget { .. }),
+        "{:?}",
+        start.mode
+    );
+    let drawn = page_at(&mut start, 100, 30).join("\n");
+    for said in [
+        "Forget this recent project?",
+        "left as they are",
+        "y forget it",
+    ] {
+        assert!(drawn.contains(said), "{said}\n{drawn}");
+    }
+    press(&mut start, "n");
+    assert_eq!(start.mode, Mode::Menu);
+    assert_eq!(start.recent.len(), 1);
+    press(&mut start, "xy");
     assert!(start.recent.is_empty());
     assert!(start.message.contains("no longer"), "{}", start.message);
     assert!(!samplekit::tui::model::recent_projects().contains(&folder));
@@ -806,7 +919,7 @@ fn the_rows_move_only_when_the_cursor_leaves_them() {
 fn the_folders_are_narrowed_by_typing() {
     // The owner: a folder among many is found by typing, as in the pickers.
     let root = folders("narrow");
-    for name in ["measurements", "manuscript", "beers", "notes"] {
+    for name in ["measurements", "manuscript", "alloys", "notes"] {
         fs::create_dir_all(root.join(name)).unwrap();
     }
     let mut start = Start::with_recent(&root, Vec::new());
@@ -815,11 +928,11 @@ fn the_folders_are_narrowed_by_typing() {
         page_at(&mut start, 100, 30).join("\n").contains("/ narrow"),
         "the keys say it"
     );
-    // Letters in order, not side by side: `br` keeps beers alone.
-    press(&mut start, "/br");
+    // Letters in order, not side by side: `ay` keeps alloys alone.
+    press(&mut start, "/ay");
     let drawn = page_at(&mut start, 100, 30).join("\n");
-    assert!(drawn.contains("/ br"), "{drawn}");
-    assert!(drawn.contains("▸ beers/"), "{drawn}");
+    assert!(drawn.contains("/ ay"), "{drawn}");
+    assert!(drawn.contains("▸ alloys/"), "{drawn}");
     for gone in ["measurements/", "notes/", "plain/", "open this folder"] {
         assert!(!drawn.contains(gone), "{gone}\n{drawn}");
     }
@@ -837,7 +950,7 @@ fn the_folders_are_narrowed_by_typing() {
     };
     assert_eq!(narrowing, &None);
     assert!(
-        matches!(&entries[*cursor], samplekit::tui::start::Entry::Folder { path, .. } if *path == root.join("beers")),
+        matches!(&entries[*cursor], samplekit::tui::start::Entry::Folder { path, .. } if *path == root.join("alloys")),
         "{entries:?}"
     );
     let drawn = page_at(&mut start, 100, 30).join("\n");
@@ -967,7 +1080,11 @@ fn a_question_mark_shows_the_pages_help() {
     assert_eq!(start.mode, browsing);
     // The menu's keys name it.
     press(&mut start, "\u{1b}");
-    assert!(page_at(&mut start, 100, 30).join("\n").contains("? help"));
+    assert!(
+        page_at(&mut start, 100, 30)
+            .join("\n")
+            .contains("? all keys")
+    );
     let _ = fs::remove_dir_all(root);
 }
 
@@ -978,7 +1095,7 @@ fn esc_on_the_first_setup_question_goes_back_removing_the_folder_made() {
     use samplekit::tui::model::Effect as Did;
     use samplekit::tui::start::opened;
     let root = folders("setup-back");
-    let made = root.join("brews");
+    let made = root.join("pieces");
     fs::create_dir_all(&made).unwrap();
     let mut workbench = opened(&Outcome::Made(made.clone())).unwrap().unwrap();
     assert_eq!(workbench.key(Key::Esc), Did::Quit);
@@ -1017,7 +1134,7 @@ fn the_demos_steps_are_not_recent_projects() {
     let recent = vec![
         demo.join("03-selecting"),
         root.join("project"),
-        demo.join("01-first-brews"),
+        demo.join("01-measured"),
         root.join("plain"),
     ];
     let mut start = Start::with_recent(&root, recent);
@@ -1068,8 +1185,8 @@ fn the_pages_keys_are_coloured_as_the_tuis() {
     assert!(page_key(&buffer, "n  New project", 0));
     assert!(!page_key(&buffer, "n  New project", 3));
     assert!(page_key(&buffer, "1  ", 0));
-    assert!(page_key(&buffer, "? help", 0));
-    assert!(!page_key(&buffer, "? help", 2));
+    assert!(page_key(&buffer, "? all keys", 0));
+    assert!(!page_key(&buffer, "? all keys", 2));
     // A key a message names.
     assert!(page_key(&buffer, "Enter on a project", 0));
     assert!(!page_key(&buffer, "Enter on a project", 6));
@@ -1114,7 +1231,7 @@ fn a_name_and_the_letters_are_typed_in_rat_texts_line() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     let chord = |code: KeyCode, modifiers: KeyModifiers| Key::Chord(KeyEvent::new(code, modifiers));
     let root = folders("typed-line");
-    for name in ["measurements", "beers", "notes"] {
+    for name in ["measurements", "alloys", "notes"] {
         fs::create_dir_all(root.join(name)).unwrap();
     }
     let mut start = Start::with_recent(&root, Vec::new());
@@ -1126,17 +1243,17 @@ fn a_name_and_the_letters_are_typed_in_rat_texts_line() {
     );
     assert_eq!(start.mode, before);
     // A new folder's name: its last word taken out, then given back.
-    press(&mut start, "n+brews of may");
+    press(&mut start, "n+pieces of may");
     start.key(chord(KeyCode::Backspace, KeyModifiers::CONTROL));
     let Mode::Naming { text, .. } = &start.mode else {
         panic!("naming: {:?}", start.mode);
     };
-    assert_eq!(text, "brews of ");
+    assert_eq!(text, "pieces of ");
     start.key(chord(KeyCode::Char('z'), KeyModifiers::CONTROL));
     let Mode::Naming { text, .. } = &start.mode else {
         panic!("naming: {:?}", start.mode);
     };
-    assert_eq!(text, "brews of may");
+    assert_eq!(text, "pieces of may");
     // A paste into the narrowing keeps the folders holding it.
     press(&mut start, "\u{1b}\u{1b}o/");
     start.paste("mtrl");
@@ -1151,8 +1268,42 @@ fn a_name_and_the_letters_are_typed_in_rat_texts_line() {
     };
     assert_eq!(text, "mtrl");
     assert!(
-        matches!(&entries[*cursor], samplekit::tui::start::Entry::Folder { path, .. } if *path == root.join("beers")),
+        matches!(&entries[*cursor], samplekit::tui::start::Entry::Folder { path, .. } if *path == root.join("alloys")),
         "{entries:?}"
     );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn the_demo_written_links_to_its_own_versions_documentation() {
+    // Its pages linked to the documentation's latest version: installed with
+    // one version, the demo pointed at whatever the next described.
+    let root = folders("demo-links");
+    let written = root.join("demo");
+    samplekit::tui::start::write_demo(&written).unwrap();
+    let page = fs::read_to_string(written.join("01-measured/README.md")).unwrap();
+    assert!(!page.contains("/SampleKit/latest/"), "{page}");
+    assert!(
+        page.contains(concat!("/SampleKit/", env!("CARGO_PKG_VERSION"), "/")),
+        "{page}"
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn the_pages_help_folds_rather_than_cuts() {
+    // At 120 columns, and narrower, the help's lines ended in `…`.
+    let root = folders("help-folded");
+    let mut start = Start::with_recent(&root, vec![root.join("project")]);
+    press(&mut start, "?");
+    for width in [120, 60] {
+        let screen = page_at(&mut start, width, 200);
+        assert!(
+            !screen.iter().any(|line| line.trim_end().ends_with('…')),
+            "{}",
+            screen.join("\n")
+        );
+        assert!(screen.join("\n").contains("New project"));
+    }
     let _ = fs::remove_dir_all(root);
 }

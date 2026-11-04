@@ -14,7 +14,7 @@ use pyo3::IntoPyObjectExt;
 use pyo3::basic::CompareOp;
 use pyo3::exceptions::{
     PyAttributeError, PyFileExistsError, PyFileNotFoundError, PyIndexError, PyIsADirectoryError,
-    PyNotADirectoryError, PyOSError, PyRuntimeError, PyTypeError, PyValueError,
+    PyKeyError, PyNotADirectoryError, PyOSError, PyRuntimeError, PyTypeError, PyValueError,
 };
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyDict, PyIterator, PyList, PySlice, PyString, PyTuple, PyType};
@@ -26,8 +26,8 @@ use crate::collection::sample_list::{self as list, Entry, FieldWarning, ListErro
 use crate::config::discovery;
 use crate::config::profiles;
 use crate::config::project_config::{
-    self as project, ColumnSpec, ExportTarget, FigureDeclaration, Format, NamedQuery, Profile,
-    ProjectConfig, PropertyDeclaration, RenderSettings,
+    self as project, ColumnSpec, Export, ExportTarget, FigureDeclaration, Format, NamedQuery,
+    Profile, ProjectConfig, PropertyDeclaration, RenderSettings,
 };
 use crate::core::dependency_graph::Node;
 use crate::core::formatting::{self, Precision, Presentation, Resolved};
@@ -50,8 +50,8 @@ use crate::query::filter_language as filter;
 use crate::query::ordering;
 
 use super::pyo3_bridge::{
-    self as bridge, IntoPyErr, OrRaise, PythonColumnCompute, PythonCompute, PythonQuantityCompute,
-    PythonRowCompute, SharedSample,
+    self as bridge, Half, IntoPyErr, OrRaise, PythonColumnCompute, PythonCompute,
+    PythonQuantityCompute, PythonRowCompute, SharedSample,
 };
 
 // ---------------------------------------------------------------- helpers
@@ -86,6 +86,15 @@ fn path_from(object: &Bound<'_, PyAny>) -> PyResult<PathBuf> {
         .import("os")?
         .call_method1("fspath", (object,))?;
     Ok(PathBuf::from(text.extract::<String>()?))
+}
+
+/// A path a sample or a list is read from or saved to, made absolute from the
+/// folder the script is in now: held relative, a `chdir` later sent `save()`
+/// to another folder's file, said *removed or moved*, and its advice wrote
+/// the sample outside the project.
+fn file_path_from(object: &Bound<'_, PyAny>) -> PyResult<PathBuf> {
+    let path = path_from(object)?;
+    Ok(std::path::absolute(&path).unwrap_or(path))
 }
 
 fn python_path(py: Python<'_>, path: &Path) -> PyResult<Py<PyAny>> {
@@ -314,7 +323,7 @@ fn declared_from(object: &Bound<'_, PyAny>, what: &str) -> PyResult<DeclaredInpu
             None => {
                 return Err(PyValueError::new_err(format!(
                     "'{key}' is not a channel: {what} takes 'v' and 'u', \
-                     depends_on={{\"v\": [\"malt\"], \"u\": [\"malt\", \"p.v\"]}}"
+                     depends_on={{\"v\": [\"width\"], \"u\": [\"width\", \"area.v\"]}}"
                 )));
             }
         }
@@ -370,12 +379,8 @@ fn known(py: Python<'_>, sample: &Sample, node: &Node) -> PyResult<()> {
 /// format, as `samplekit export -o` refuses it: the format is the
 /// configuration's there, and the path contradicts it. `to_csv` names its
 /// format itself, and takes any file.
-fn refuse_another_format(path: &Path, format: Format, name: &str) -> PyResult<()> {
-    let spelled = |format: Format| match format {
-        Format::Csv => "csv",
-        Format::Tsv => "tsv",
-        Format::Json => "json",
-    };
+fn refuse_another_format(path: &Path, format: &Format, name: &str) -> PyResult<()> {
+    let spelled = |format: &Format| export_formats::extension(format);
     let named = path
         .extension()
         .and_then(|extension| extension.to_str())
@@ -383,15 +388,18 @@ fn refuse_another_format(path: &Path, format: Format, name: &str) -> PyResult<()
             "csv" => Some(Format::Csv),
             "tsv" => Some(Format::Tsv),
             "json" => Some(Format::Json),
+            other if matches!(format, Format::Text(text) if text.extension == other) => {
+                Some(format.clone())
+            }
             _ => None,
         });
     match named {
-        Some(named) if named != format => Err(PyValueError::new_err(format!(
+        Some(named) if named != *format => Err(PyValueError::new_err(format!(
             "output={}: '{name}' writes {}, and the extension names {} — name the file .{}, \
              or change format in [export.{name}]; nothing was written",
             path.display(),
             spelled(format).to_ascii_uppercase(),
-            spelled(named).to_ascii_uppercase(),
+            spelled(&named).to_ascii_uppercase(),
             spelled(format)
         ))),
         _ => Ok(()),
@@ -401,9 +409,15 @@ fn refuse_another_format(path: &Path, format: Format, name: &str) -> PyResult<()
 /// A dataset without its uncertainty columns empty for every sample, each said
 /// with a warning as the command line says it on stderr. JSON writes a
 /// quantity's uncertainty inside it, and says nothing.
-fn noted_empty(py: Python<'_>, dataset: &Dataset, format: Format) -> PyResult<Dataset> {
+fn noted_empty(py: Python<'_>, dataset: &Dataset, format: &Format) -> PyResult<Dataset> {
     let (trimmed, empty) = export_formats::without_empty_uncertainties(dataset);
-    if !matches!(format, Format::Json) {
+    // A document writing each property in one cell has no column to leave out.
+    let columns = match format {
+        Format::Json => false,
+        Format::Text(document) => document.property.is_none(),
+        _ => true,
+    };
+    if columns {
         for header in empty {
             warn_value(
                 py,
@@ -419,27 +433,26 @@ fn node_name(node: &Node) -> String {
 }
 
 /// A precision is the project's to declare, never a model's: the keyword is
-/// kept only to say where it went, rather than a bare `unexpected keyword
-/// argument`.
-fn refuse_precision(precision: Option<&Bound<'_, PyAny>>, address: &str) -> PyResult<()> {
+/// kept only to say where it went, a property's section and a column's, which
+/// the configuration quotes.
+fn refuse_precision(precision: Option<&Bound<'_, PyAny>>) -> PyResult<()> {
     if precision.is_some_and(|given| !given.is_none()) {
-        return Err(PyTypeError::new_err(format!(
+        return Err(PyTypeError::new_err(
             "a precision is declared in the project, not in a model: write \
-             [property.{address}] precision = \".3f\" in .samplekitrc"
-        )));
+             [property.<name>] precision = \".3f\" in .samplekitrc, or for a table's column \
+             [property.\"<table>.<column>\"] precision = \".3f\" in .samplekitrc",
+        ));
     }
     Ok(())
 }
 
-/// A symbol is the project's to declare, never a model's, as a precision is :
-/// the keyword is kept only to say where it went. `address` is the section's
-/// name, `<name>` or `"<table>.<column>"` as the configuration quotes a
-/// column's.
-fn refuse_symbol(symbol: Option<&str>, address: &str) -> PyResult<()> {
+/// A symbol is the project's to declare, never a model's, as a precision is.
+fn refuse_symbol(symbol: Option<&str>) -> PyResult<()> {
     if let Some(symbol) = symbol {
         return Err(PyTypeError::new_err(format!(
             "a symbol is declared in the project, not in a model: write \
-             [property.{address}] symbol = {symbol:?} in .samplekitrc"
+             [property.<name>] symbol = {symbol:?} in .samplekitrc, or for a table's column \
+             [property.\"<table>.<column>\"] symbol = {symbol:?} in .samplekitrc"
         )));
     }
     Ok(())
@@ -512,6 +525,9 @@ fn copy_of(property: &Property) -> Result<Property, ComputeError> {
             measured.set_written_value(property.written_value().cloned());
             measured
                 .declare_statistics(property.declared_location(), property.declared_convention());
+            if property.statistic_taken() {
+                measured.take_statistic();
+            }
             measured
         }
         None => Property::stored(property.value()?),
@@ -526,6 +542,17 @@ fn copy_of(property: &Property) -> Result<Property, ComputeError> {
 
 fn readings_from(object: &Bound<'_, PyAny>) -> PyResult<Readings> {
     let py = object.py();
+    // One number is no readings: said with both ways, where Python's own
+    // *'float' object is not iterable* was the answer.
+    if object.is_instance_of::<pyo3::types::PyFloat>()
+        || object.is_instance_of::<pyo3::types::PyInt>()
+    {
+        return Err(PyTypeError::new_err(format!(
+            "one number is not readings: readings = [{0}] for readings of one, or the \
+             property's value = {0} for a value",
+            object.repr()?
+        )));
+    }
     let mut numbers = Vec::new();
     for item in object.try_iter()? {
         let item = item?;
@@ -571,6 +598,13 @@ fn cells_from(mapping: &Bound<'_, PyAny>) -> PyResult<Vec<(Identifier, Property)
 
 fn cell_to_python(py: Python<'_>, cell: &Cell) -> PyResult<Py<PyAny>> {
     match cell {
+        // `None`, as JSON writes it: pandas reads it as NaN, where `NA` made
+        // the column one of objects, which `pd.to_numeric` refused.
+        Cell::Scalar(Some(Value::NotApplicable))
+        | Cell::Written {
+            value: Value::NotApplicable,
+            ..
+        } => Ok(py.None()),
         Cell::Scalar(Some(value)) | Cell::Written { value, .. } => bridge::to_python(py, value),
         Cell::Scalar(None) => Ok(py.None()),
         Cell::Tags(tags) => Ok(PyList::new(py, tags)?.into_any().unbind()),
@@ -602,12 +636,15 @@ fn function_of(callable: &Bound<'_, PyAny>) -> Py<PyAny> {
 pub struct SampleFile {
     path: Option<PathBuf>,
     origin: Option<Origin>,
+    /// The file's text as it was read or last written: what a save writes
+    /// the script's changes over.
+    read: Option<String>,
     config: Option<Rc<ProjectConfig>>,
     pending: Option<PathBuf>,
     /// What a `Property(depends_on=…)` declared, waiting to be applied.
     ///
-    /// A model writes `self.brix = sk.Property(compute=…, depends_on=["malt"])`
-    /// before `malt` need exist, so the names cannot be checked where they are
+    /// A model writes `self.porosity = sk.Property(compute=…, depends_on=["diameter"])`
+    /// before `diameter` need exist, so the names cannot be checked where they are
     /// written. They are kept here and applied once the model is built.
     declared: Vec<(Identifier, DeclaredInputs)>,
     /// Every value whose inputs were declared, by either route — the keyword
@@ -623,6 +660,10 @@ pub struct SampleFile {
     /// a table's derivation reads and fills. The worker's, to take each
     /// formula's digest from.
     formula_code: IndexMap<String, FormulaCode>,
+    /// The values `compute()` ran since the sample was last saved, whose
+    /// records the save keeps under the formula that ran: one giving the very
+    /// number it held was left *formula changed* for ever.
+    computed: Vec<String>,
 }
 
 /// A formula's declaration by role, as [`SampleFile::formula_code`] keeps it.
@@ -653,6 +694,24 @@ fn apply_declarations(py: Python<'_>, shared: &SharedSample, file: &FileRef) -> 
     };
     for (output, declared) in pending {
         shared.write(|sample| {
+            // An attribute its formulas read and the sample does not hold —
+            // the model described with no file, a new sample, a file that
+            // has not got it yet — held empty: an input like any, which
+            // what reads it waits for, and taken into the formula's digest
+            // alike. The model was said unreadable, and the file not read.
+            {
+                for text in declared.all() {
+                    if let Ok(name) = Identifier::new(&text)
+                        && name != output
+                        && !sample.has_property(&name)
+                        && !sample.has_attribute(&name)
+                        && sample.table(&name).is_err()
+                        && !near_a_name_held(sample, &name)
+                    {
+                        let _ = sample.set_attribute(name, AttributeValue::Scalar(Value::Absent));
+                    }
+                }
+            }
             let formulas = Formulas::in_sample(sample, &output);
             let (nodes, channels) =
                 resolve_declaration(py, sample, &output, &declared, formulas, !from_file)?;
@@ -789,6 +848,21 @@ fn refuse_half_declared(
     Ok(())
 }
 
+/// Whether `name` is a slip from a name the sample holds — `srcc` for
+/// `src`: a typo in `depends_on` is refused with the name it is near, where
+/// a name near none — `material`, which its files give — is an attribute
+/// held empty until they do.
+fn near_a_name_held(sample: &Sample, name: &Identifier) -> bool {
+    let held: Vec<String> = sample
+        .property_names()
+        .into_iter()
+        .chain(sample.attribute_names())
+        .chain(sample.table_names())
+        .map(|held| held.to_string())
+        .collect();
+    crate::core::identifier::nearest(name.as_str(), held.iter().map(String::as_str)).is_some()
+}
+
 /// The address of one channel of one property: `p.v`.
 fn own_channel(property: &Identifier, channel: Produced) -> InputName {
     InputName::Column {
@@ -817,6 +891,18 @@ fn resolve_input(
              depends_on={{\"u\": [\"{output}.v\"]}}"
         ))),
         InputName::Named(name) => {
+            // A sample made without a file — the model described, a new
+            // sample — has only what its model declared: an attribute its
+            // files supply, `material`, is read from them, and is no error
+            // here. The model was said unreadable, and `new` wrote what it
+            // declares as attributes.
+            if unfiled
+                && !sample.has_property(&name)
+                && !sample.has_attribute(&name)
+                && !near_a_name_held(sample, &name)
+            {
+                return Ok((None, InputName::Named(name)));
+            }
             if !sample.has_property(&name) && !sample.has_attribute(&name) {
                 let available: Vec<String> = sample
                     .property_names()
@@ -825,16 +911,12 @@ fn resolve_input(
                     .map(|name| name.to_string())
                     .collect();
                 let mut message = unknown_message("input", name.as_str(), &available);
-                // A sample made without a file has only what its model
-                // declared: an input the file would have supplied is not there
-                // to be read.
-                if unfiled {
-                    message.push_str(&format!(
-                        "\n  '{output}' declares that it reads '{name}', and this sample \
-                         has no file to supply it: declare it in __init__, \
-                         self.{name} = sk.Property(...), so that it exists before a file fills it"
-                    ));
-                }
+                message.push_str(&format!(
+                    "\n  '{output}' declares that it reads '{name}', which this sample's file \
+                     does not hold: write it there, samplekit FILE set {name}=…, or declare it \
+                     in __init__ — self.{name} = \"\" for a text, self.{name} = sk.Property() \
+                     for a measured value"
+                ));
                 return Err(bridge::key_error(message));
             }
             Ok((Some(Node::Named(name.clone())), InputName::Named(name)))
@@ -874,7 +956,7 @@ fn resolve_input(
             ) {
                 (true, Some(_)) => Err(PyValueError::new_err(format!(
                     "'{text}' names one channel of another value, and what a record follows \
-                     is the whole quantity: declare '{table}'\n  \
+                     is the whole property: declare '{table}'\n  \
                      a channel address is for this value's own, \
                      depends_on={{\"u\": [\"{output}.v\"]}}"
                 ))),
@@ -902,7 +984,7 @@ fn resolve_input(
                 }
             }
         }
-        InputName::Cell(_) => Err(PyValueError::new_err(format!(
+        InputName::Cell(_) | InputName::CellValue(_) => Err(PyValueError::new_err(format!(
             "'{text}' names a cell of the row a table formula runs on, and a \
              property has no row"
         ))),
@@ -1016,7 +1098,7 @@ fn refuse_undeclared(_py: Python<'_>, shared: &SharedSample, file: &FileRef) -> 
     if !undeclared.is_empty() {
         return Err(PyValueError::new_err(format!(
             "{}: {}\n  \
-             declare it where the value is made, sk.Property(compute=…, depends_on=[\"malt\"]), \
+             declare it where the value is made, sk.Property(compute=…, depends_on=[\"width\"]), \
              or with self.set_dependencies(\"…\", depends_on=[…])\n  \
              depends_on=[] says the formula reads nothing of the sample\n  \
              without it, a change to an input would never mark the value outdated",
@@ -1072,8 +1154,11 @@ fn missing_file(path: &Path) -> PyErr {
         .into_iter()
         .flatten()
         .flatten()
+        .filter(|entry| {
+            // A folder too: `sk.load("piece")` beside `pieces/` suggested nothing.
+            entry.path().is_dir() || entry.file_name().to_string_lossy().ends_with(".md")
+        })
         .filter_map(|entry| entry.file_name().into_string().ok())
-        .filter(|name| name.ends_with(".md"))
         .collect();
     let written = path
         .file_name()
@@ -1203,24 +1288,34 @@ fn change_handle(handle: &PropertyHandle, change: Change) {
         Change::Readings(readings) => {
             handle.set_readings(readings, handle.peek(Property::convention))
         }
-        Change::Uncertainty(uncertainty) => handle.set_uncertainty(uncertainty),
+        // Typed over one a formula or a statistic gives, an override marked
+        // as `set` marks it: a save wrote it unmarked, and it read current.
+        Change::Uncertainty(Some(uncertainty)) => {
+            crate::collection::editing::set_uncertainty_by_hand(handle, uncertainty);
+        }
+        Change::Uncertainty(None) => handle.set_uncertainty(None),
         Change::Presentation(presentation) => handle.set_presentation(presentation),
         Change::Invalidate => handle.invalidate(),
     }
 }
 
-/// A quantity: a value, its uncertainty and its unit.
+/// A property: a value, its uncertainty and its unit.
 ///
 /// A property stands for its value in arithmetic and comparisons, so
-/// ``ipa.abv * 2`` and ``ipa.abv > 6`` work on the number, and it prints as
-/// the whole quantity, ``6.8 ± 0.1 %``. A model declares its properties in its
+/// ``steel.area * 2`` and ``steel.area > 25`` work on the number, and it prints
+/// as the whole property, ``25.056 ± 0.053 mm²``. A model declares its properties in its
 /// ``__init__``; a property a model does not declare is made the same way and
 /// assigned to the sample.
 ///
 /// A property is one of four kinds, by what is given: a value entered by hand;
 /// readings, whose value and uncertainty a statistic gives; a value a formula
-/// computes (``compute``, ``compute_uncertainty`` or ``compute_quantity``); or
-/// nothing yet.
+/// computes (``compute``, or ``compute_value`` and ``compute_uncertainty``);
+/// or nothing yet.
+///
+/// A ``Table`` declares its columns with it too: there a property describes
+/// every cell of its column, with the same keywords, and its formula is given
+/// the row, ``f(row)``. A column takes no value nor uncertainty: each cell
+/// holds its own, in the file.
 ///
 /// Args:
 ///     value: The value — a number, text, a boolean, a date, ``samplekit.NA``
@@ -1233,21 +1328,26 @@ fn change_handle(handle: &PropertyHandle, change: Change) {
 ///         under ``[property.NAME]``.
 ///     precision: Not taken here: a precision is declared in ``.samplekitrc``,
 ///         under ``[property.NAME]``.
-///     compute: A function of no argument returning the value.
+///     compute: A function of no argument returning the property: a number,
+///         or ``(value, uncertainty)``.
+///     compute_value: A function of no argument returning the value alone,
+///         beside an uncertainty entered, given by readings or computed apart.
 ///     compute_uncertainty: A function of no argument returning the
 ///         uncertainty, beside a value entered or computed apart.
-///     compute_quantity: A function of no argument returning
-///         ``(value, uncertainty)`` from one run.
-///     depends_on: What the formula reads: a list of names — ``["og", "fg"]``,
-///         ``"fermentation.gravity"`` for a column — or, where the value and
-///         the uncertainty have a formula each, ``{"v": [...], "u": [...]}``.
-///         ``[]`` says it reads nothing of the sample. It can also be declared
-///         later with ``Sample.set_dependencies``.
+///     compute_column: For a table's column only: a function given the
+///         columns it reads, by name, and returning a list, one cell per row,
+///         each a number or ``(value, uncertainty)``.
+///     depends_on: What the formula reads: a list of names — ``["width", "thickness"]``,
+///         ``"curve.force"`` for a column, ``"row.force"`` for a
+///         cell of the same row — or, where the value and the uncertainty have
+///         a formula each, ``{"v": [...], "u": [...]}``. ``[]`` says it reads
+///         nothing of the sample. It can also be declared later with
+///         ``Sample.set_dependencies``.
 ///
 /// Raises:
 ///     ValueError: Two arguments give the same thing — ``value`` and a
-///         formula, ``compute`` and ``compute_quantity`` — or a value is not a
-///         number where a unit is given.
+///         formula, ``compute`` and ``compute_value``, ``compute_column`` and
+///         another — or a value is not a number where a unit is given.
 ///     TypeError: A formula is not callable, or a symbol or a precision is
 ///         given.
 ///
@@ -1255,7 +1355,8 @@ fn change_handle(handle: &PropertyHandle, change: Change) {
 ///     >>> import samplekit as sk
 ///     >>> sk.Property(3.2, 0.1, unit="kg")
 ///     Property(value=3.2, uncertainty=0.1, unit='kg')
-///     >>> og = sk.Property(value=sk.stats.mean, uncertainty=sk.stats.standard_error)
+///     >>> width = sk.Property(unit="mm", value=sk.stats.mean,
+///     ...                     uncertainty=sk.stats.standard_error)
 #[pyclass(name = "Property", module = "samplekit", unsendable)]
 pub struct PyProperty {
     state: RefCell<PropertyState>,
@@ -1267,6 +1368,25 @@ pub struct PyProperty {
     /// carried to the sample that takes it, for the worker's digest of the
     /// formula. Empty for a value no formula gives.
     code: RefCell<Vec<(String, Py<PyAny>)>>,
+    /// What it was given, kept as given, for a table that takes it as one of
+    /// its columns: there it describes every cell, and its formulas are
+    /// given the row.
+    as_column: RefCell<Option<ColumnGiven>>,
+}
+
+/// A `Property` as a table's column reads it: its unit, the statistics of each
+/// cell's readings, each formula as it was given and what it reads, and
+/// whether a value of its own was given, which a column refuses.
+pub struct ColumnGiven {
+    unit: Option<String>,
+    statistics: crate::core::property::DeclaredStatistics,
+    compute: Option<Py<PyAny>>,
+    compute_value: Option<Py<PyAny>>,
+    compute_uncertainty: Option<Py<PyAny>>,
+    compute_column: Option<Py<PyAny>>,
+    depends_on: Option<Py<PyAny>>,
+    /// `value=5`, `uncertainty=0.1` or readings: a cell's own, never a column's.
+    entered: Option<&'static str>,
 }
 
 impl PyProperty {
@@ -1275,6 +1395,7 @@ impl PyProperty {
             state: RefCell::new(PropertyState::Detached(Box::new(property))),
             declared: RefCell::new(None),
             code: RefCell::new(Vec::new()),
+            as_column: RefCell::new(None),
         }
     }
 
@@ -1287,6 +1408,7 @@ impl PyProperty {
             }),
             declared: RefCell::new(None),
             code: RefCell::new(Vec::new()),
+            as_column: RefCell::new(None),
         }
     }
 
@@ -1299,6 +1421,7 @@ impl PyProperty {
             }),
             declared: RefCell::new(None),
             code: RefCell::new(Vec::new()),
+            as_column: RefCell::new(None),
         }
     }
 
@@ -1335,7 +1458,7 @@ impl PyProperty {
                     &waits,
                 );
                 if !never {
-                    warn_if_stale(py, sample, handle.name(), &named)?;
+                    warn_if_stale(py, sample, file, handle.name(), &named)?;
                 }
                 (outcome, Some(sample.clone()))
             }
@@ -1450,6 +1573,27 @@ impl PyProperty {
         }
     }
 
+    /// Which assignment of the readings a list read now belongs to: a list
+    /// read before they were assigned again is bound to nothing, as a tag
+    /// list is — it replaced the readings typed since, in silence.
+    fn readings_epoch(&self) -> u64 {
+        match self.readings_key() {
+            Some((sample, key)) => sample.epoch(&key),
+            None => 0,
+        }
+    }
+
+    /// The sample and the key its readings' assignments are counted under.
+    fn readings_key(&self) -> Option<(SharedSample, Identifier)> {
+        match &*self.state.try_borrow().ok()? {
+            PropertyState::Attached { handle, sample, .. } => {
+                let key = Identifier::new(&format!("readings_of_{}", handle.name())).ok()?;
+                Some((sample.clone(), key))
+            }
+            _ => None,
+        }
+    }
+
     fn readings_of(&self, py: Python<'_>) -> PyResult<Option<Readings>> {
         match &*self.state.try_borrow().map_err(|_| busy())? {
             PropertyState::Detached(property) => Ok(property.readings().cloned()),
@@ -1546,6 +1690,11 @@ impl PyProperty {
     }
 
     fn apply(&self, py: Python<'_>, change: Change) -> PyResult<()> {
+        // A property of no sample — one a formula makes for its own
+        // arithmetic — is the formula's to change.
+        if !matches!(&*self.state.borrow(), PropertyState::Detached(_)) {
+            refuse_while_a_formula_runs(&self.label(py))?;
+        }
         let cell = {
             let mut state = self.state.try_borrow_mut().map_err(|_| busy())?;
             match &mut *state {
@@ -1553,8 +1702,9 @@ impl PyProperty {
                     change_property(property, change);
                     return Ok(());
                 }
-                PropertyState::Attached { handle, .. } => {
+                PropertyState::Attached { handle, sample, .. } => {
                     refuse_while_computing(handle)?;
+                    sample.touch(handle.name().as_str());
                     change_handle(handle, change);
                     return Ok(());
                 }
@@ -1713,6 +1863,90 @@ fn given<'py>(object: Option<&Bound<'py, PyAny>>) -> Option<Bound<'py, PyAny>> {
     object.filter(|object| !object.is_none()).cloned()
 }
 
+impl PyProperty {
+    /// The state as the workbench and the messages say it.
+    fn state_said(&self, py: Python<'_>) -> PyResult<&'static str> {
+        let cell = {
+            let state = self.state.try_borrow().map_err(|_| busy())?;
+            match &*state {
+                PropertyState::Detached(property) => return Ok(detached_state(property)),
+                PropertyState::Attached {
+                    handle,
+                    sample,
+                    file,
+                } => {
+                    let name = handle.name().clone();
+                    let word = sample.read_sample("a value's state", |held| {
+                        let handle = held.property(&name).or_raise(py)?;
+                        Ok(if handle.is_edited() {
+                            "edited"
+                        } else if statistic_owed(&handle) {
+                            "never computed"
+                        } else if !handle.is_computed() && !handle.has_uncertainty_formula() {
+                            // Read without its model, a derived value says what
+                            // its records say.
+                            if handle.records().computed.is_some() {
+                                match fingerprint::check_property(held, &name).or_raise(py)? {
+                                    fingerprint::Freshness::Current => "current",
+                                    // `check_property` raises a cycle rather
+                                    // than answering `Unjudged`; were it ever
+                                    // to answer it, not current is the side to
+                                    // err on.
+                                    stale @ (fingerprint::Freshness::Stale { .. }
+                                    | fingerprint::Freshness::Broken { .. }
+                                    | fingerprint::Freshness::Unjudged { .. }) => {
+                                        outdated_or_waiting(held, &stale)
+                                    }
+                                    fingerprint::Freshness::Edited
+                                    | fingerprint::Freshness::RecordMissing => "edited",
+                                    fingerprint::Freshness::Failed { .. } => "failed",
+                                    fingerprint::Freshness::Source => {
+                                        handle.peek(entered_or_absent)
+                                    }
+                                }
+                            } else {
+                                handle.peek(entered_or_absent)
+                            }
+                        } else if handle.has_failed() {
+                            "failed"
+                        } else if owed(&handle) {
+                            "never computed"
+                        } else if fingerprint::is_stale(held, &name).or_raise(py)? {
+                            match fingerprint::check_property(held, &name) {
+                                Ok(stale) => outdated_or_waiting(held, &stale),
+                                Err(_) => "outdated",
+                            }
+                        } else {
+                            "current"
+                        })
+                    })?;
+                    // What the model owes it, as `status` says it: a formula
+                    // changed since it computed this value, or one it reads —
+                    // outdated, though current by its inputs; an input nobody
+                    // entered — waiting, where it was said never computed.
+                    let planned = planned_of(sample, file);
+                    let owed = planned
+                        .get(name.as_str())
+                        .and_then(|said| crate::collection::computation::planned_word(said));
+                    return Ok(match (word, owed) {
+                        ("current", Some("outdated")) => "outdated",
+                        ("current" | "never computed" | "outdated", Some("waiting")) => "waiting",
+                        _ => word,
+                    });
+                }
+                PropertyState::Cell {
+                    table,
+                    index,
+                    column,
+                } => (table.clone_ref(py), index.clone(), column.clone()),
+            }
+        };
+        let (table, index, column) = cell;
+        let table = table.borrow(py);
+        table.cell_state(py, &index, &column)
+    }
+}
+
 #[pymethods]
 impl PyProperty {
     #[classattr]
@@ -1726,10 +1960,14 @@ impl PyProperty {
         symbol=None,
         precision=None,
         compute=None,
+        compute_value=None,
         compute_uncertainty=None,
-        compute_quantity=None,
+        compute_column=None,
         depends_on=None
-    ))]
+    ),
+    text_signature = "(value=None, uncertainty=None, unit=None, symbol=None, precision=None, \
+                      compute=None, compute_value=None, compute_uncertainty=None, \
+                      compute_column=None, depends_on=None)")]
     #[allow(clippy::too_many_arguments)] // The keyword surface python-api specifies.
     fn new(
         py: Python<'_>,
@@ -1739,21 +1977,28 @@ impl PyProperty {
         symbol: Option<String>,
         precision: Option<&Bound<'_, PyAny>>,
         compute: Option<&Bound<'_, PyAny>>,
+        compute_value: Option<&Bound<'_, PyAny>>,
         compute_uncertainty: Option<&Bound<'_, PyAny>>,
-        compute_quantity: Option<&Bound<'_, PyAny>>,
+        compute_column: Option<&Bound<'_, PyAny>>,
         depends_on: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
-        refuse_symbol(symbol.as_deref(), "<name>")?;
-        refuse_precision(precision, "<name>")?;
+        refuse_symbol(symbol.as_deref())?;
+        refuse_precision(precision)?;
         let (value, uncertainty) = (given(value), given(uncertainty));
-        let (compute, compute_uncertainty, compute_quantity) = (
+        let (compute, compute_value, compute_uncertainty) = (
             given(compute),
+            given(compute_value),
             given(compute_uncertainty),
-            given(compute_quantity),
         );
-        for callable in [&compute, &compute_uncertainty, &compute_quantity]
-            .into_iter()
-            .flatten()
+        let compute_column = given(compute_column);
+        for callable in [
+            &compute,
+            &compute_value,
+            &compute_uncertainty,
+            &compute_column,
+        ]
+        .into_iter()
+        .flatten()
         {
             if !callable.is_callable() {
                 return Err(PyTypeError::new_err(format!(
@@ -1762,24 +2007,64 @@ impl PyProperty {
                 )));
             }
         }
-        if compute.is_some() && compute_quantity.is_some() {
+        // A column's formula at once fills a table's column, and nothing beside
+        // it computes one of its cells.
+        if compute_column.is_some()
+            && (compute.is_some()
+                || compute_value.is_some()
+                || compute_uncertainty.is_some()
+                || value.is_some()
+                || uncertainty.is_some())
+        {
             return Err(PyValueError::new_err(
-                "compute and compute_quantity both give the value: pass one of them",
+                "compute_column computes a table's whole column, each cell from it: pass it \
+                 alone, with what it reads in depends_on",
             ));
         }
-        if compute_quantity.is_some() && compute_uncertainty.is_some() {
+        // What a table taking this as a column reads of it, as it was given:
+        // the formulas with their own `self`, and a value of its own, which a
+        // column refuses.
+        let entered = match (&value, &uncertainty) {
+            (Some(given), _)
+                if given.is_instance_of::<PyList>() || given.is_instance_of::<PyTuple>() =>
+            {
+                Some("readings")
+            }
+            (Some(given), _) if !given.is_instance_of::<PyStatistic>() => Some("a value"),
+            (_, Some(given)) if !given.is_instance_of::<PyStatistic>() => Some("an uncertainty"),
+            _ => None,
+        };
+        let kept =
+            |given: &Option<Bound<'_, PyAny>>| given.as_ref().map(|given| given.clone().unbind());
+        let column_given = (
+            kept(&compute),
+            kept(&compute_value),
+            kept(&compute_uncertainty),
+            kept(&compute_column),
+            depends_on.map(|given| given.clone().unbind()),
+            entered,
+        );
+        if compute.is_some() && compute_value.is_some() {
             return Err(PyValueError::new_err(
-                "compute_quantity gives the uncertainty with the value, so compute_uncertainty \
-                 would be a second answer: pass one of them",
+                "compute gives the whole property, its value included: pass compute, or \
+                 compute_value for the value alone",
             ));
         }
-        if (compute.is_some() || compute_quantity.is_some()) && value.is_some() {
+        // An uncertainty beside the property's formula is what compute_value
+        // is for: rc.1's compute= kept one, and this one would not.
+        if compute.is_some() && (compute_uncertainty.is_some() || uncertainty.is_some()) {
             return Err(PyValueError::new_err(
-                "a computed property takes its value from its formula: pass value or compute, \
-                 not both",
+                "compute gives the whole property, its uncertainty included: for a value \
+                 computed beside an uncertainty given apart, pass compute_value",
             ));
         }
-        if (compute_uncertainty.is_some() || compute_quantity.is_some()) && uncertainty.is_some() {
+        if (compute.is_some() || compute_value.is_some()) && value.is_some() {
+            return Err(PyValueError::new_err(
+                "a computed property takes its value from its formula: pass value or the \
+                 formula, not both",
+            ));
+        }
+        if compute_uncertainty.is_some() && uncertainty.is_some() {
             return Err(PyValueError::new_err(
                 "a computed uncertainty comes from its formula: pass uncertainty or the formula, \
                  not both",
@@ -1796,11 +2081,13 @@ impl PyProperty {
             _ => None,
         };
         // Kept as they were given, before a statistic stands for a value.
+        // Each under the keyword it was given with: a formula's digest is
+        // taken of it, and the reference says so.
         let mut code: Vec<(String, Py<PyAny>)> = Vec::new();
         for (role, given) in [
             ("compute", &compute),
+            ("compute_value", &compute_value),
             ("compute_uncertainty", &compute_uncertainty),
-            ("compute_quantity", &compute_quantity),
         ] {
             if let Some(given) = given {
                 code.push((role.to_string(), function_of(given)));
@@ -1829,11 +2116,12 @@ impl PyProperty {
             uncertainty
         };
 
-        let mut property = if let Some(formula) = compute {
+        let mut property = if let Some(formula) = compute_value {
             Property::computed(Rc::new(PythonCompute {
                 callable: bridge::Formula::held(formula)?,
+                gives_value: true,
             }))
-        } else if let Some(formula) = compute_quantity {
+        } else if let Some(formula) = compute {
             Property::joint(Rc::new(PythonQuantityCompute {
                 callable: bridge::Formula::held(formula)?,
             }))
@@ -1859,9 +2147,11 @@ impl PyProperty {
         if let Some(formula) = compute_uncertainty {
             property.set_uncertainty_formula(Rc::new(PythonCompute {
                 callable: bridge::Formula::held(formula)?,
+                gives_value: false,
             }));
         }
         property.declare_statistics(location, convention);
+        let unit_given = unit.clone();
         property.set_presentation(Presentation {
             unit,
             symbol: None,
@@ -1869,6 +2159,21 @@ impl PyProperty {
         });
         let built = PyProperty::detached(property);
         *built.code.borrow_mut() = code;
+        let (compute, compute_value, compute_uncertainty, compute_column, given_inputs, entered) =
+            column_given;
+        *built.as_column.borrow_mut() = Some(ColumnGiven {
+            unit: unit_given,
+            statistics: crate::core::property::DeclaredStatistics {
+                value: location,
+                uncertainty: convention,
+            },
+            compute,
+            compute_value,
+            compute_uncertainty,
+            compute_column,
+            depends_on: given_inputs,
+            entered,
+        });
         // Kept, not applied: the names it gives need not exist yet, and a model
         // ordinarily declares them before the values they read.
         if let Some(given) = depends_on {
@@ -1877,7 +2182,7 @@ impl PyProperty {
         Ok(built)
     }
 
-    /// The value: a number, text, a boolean, a date, ``samplekit.NA``, or
+    /// The value — a number, text, a boolean, a date, ``samplekit.NA``, or
     /// ``None`` when there is none.
     ///
     /// Assigning a value to a computed property overrides its formula: the
@@ -1903,8 +2208,8 @@ impl PyProperty {
         self.apply(py, Change::Value(value))
     }
 
-    /// The value: the same as ``value``, spelt as a field path spells it
-    /// (``abv.v``).
+    /// The value — the same as ``value``, spelt as a field path spells it
+    /// (``area.v``).
     #[getter]
     fn v(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         self.value(py)
@@ -1929,8 +2234,8 @@ impl PyProperty {
         self.apply(py, Change::Uncertainty(uncertainty))
     }
 
-    /// The uncertainty: the same as ``uncertainty``, spelt as a field path spells
-    /// it (``abv.u``).
+    /// The uncertainty — the same as ``uncertainty``, spelt as a field path spells
+    /// it (``area.u``).
     #[getter]
     fn u(&self, py: Python<'_>) -> PyResult<Option<f64>> {
         self.uncertainty(py)
@@ -1948,6 +2253,10 @@ impl PyProperty {
         Ok(self.readings_of(py)?.map(|readings| PySummary {
             summary: crate::core::statistics::summarize(&readings),
             weighted_mean: None,
+            weighted_error: None,
+            considered: None,
+            not_applicable: 0,
+            row: None,
         }))
     }
 
@@ -1963,9 +2272,10 @@ impl PyProperty {
             return Ok(None);
         };
         let items = PyList::new(py, readings.as_slice())?;
+        let epoch = slf.borrow().readings_epoch();
         Ok(Some(
             bridge::bound_list_factory(py)?
-                .call1((slf, "readings", 0u64, items))?
+                .call1((slf, "readings", epoch, items))?
                 .unbind(),
         ))
     }
@@ -1975,10 +2285,10 @@ impl PyProperty {
         &self,
         py: Python<'_>,
         name: &str,
-        _epoch: u64,
+        epoch: u64,
         candidate: &Bound<'_, PyList>,
     ) -> PyResult<Option<Py<PyAny>>> {
-        if name != "readings" {
+        if name != "readings" || self.readings_epoch() != epoch {
             return Ok(None);
         }
         let readings = readings_from(candidate.as_any())?;
@@ -1995,7 +2305,11 @@ impl PyProperty {
             ));
         }
         self.refuse_readings_over_a_formula(py)?;
-        self.apply(py, Change::Readings(readings_from(value)?))
+        self.apply(py, Change::Readings(readings_from(value)?))?;
+        if let Some((sample, key)) = self.readings_key() {
+            sample.advance(&key);
+        }
+        Ok(())
     }
 
     /// The unit, as the file writes it — ``"g"``, ``"degC"`` — or ``None``.
@@ -2013,7 +2327,7 @@ impl PyProperty {
         self.apply(py, Change::Presentation(presentation))
     }
 
-    /// The quantity's symbol: the one this sample's file writes, else the one
+    /// The property's symbol — the one this sample's file writes, else the one
     /// the project declares in ``.samplekitrc`` under ``[property.NAME]``, else
     /// ``None``. Read only: a symbol is the project's, declared there, never
     /// set by a model or a script.
@@ -2028,90 +2342,73 @@ impl PyProperty {
         Ok(config.and_then(|config| config.property(&address).and_then(|d| d.symbol.clone())))
     }
 
-    /// The quantity as a terminal shows it — value, uncertainty and unit, at the
-    /// declared precision: what ``str()`` gives.
-    #[getter]
-    fn text(&self, py: Python<'_>) -> PyResult<String> {
-        self.render(py, None, true)
-    }
-
     /// Whether a formula gives the value.
     #[getter]
     fn is_computed(&self, py: Python<'_>) -> PyResult<bool> {
         self.computed(py)
     }
 
-    /// Discard the computed value.
-    ///
-    /// The value reads *never computed* (a statistic of readings, *outdated*), and
-    /// every value computed from it reads *outdated*, until ``compute()`` runs
-    /// them again.
-    fn invalidate(&self, py: Python<'_>) -> PyResult<()> {
+    /// Whether the value is the statistic its readings declare, not taken yet:
+    /// a computation gives it, and a value reading it waits for nothing. The
+    /// worker's plan asks it; nothing else does.
+    #[getter]
+    fn _statistic_owed(&self) -> PyResult<bool> {
+        Ok(match &*self.state.try_borrow().map_err(|_| busy())? {
+            PropertyState::Attached { handle, .. } => {
+                handle.peek(|property| {
+                    property.has_declared_statistic()
+                        && property.readings().is_some()
+                        && property.written_value().is_none()
+                        && !property.statistic_taken()
+                }) || statistic_stated_otherwise(handle)
+            }
+            _ => false,
+        })
+    }
+
+    /// How many formulas give it, for the worker's count alone: two where the
+    /// value and the uncertainty have one each, counted apart.
+    #[getter]
+    fn _formulas(&self) -> PyResult<usize> {
+        Ok(match &*self.state.try_borrow().map_err(|_| busy())? {
+            PropertyState::Attached { handle, .. } => handle.peek(|property| {
+                if property.is_computed()
+                    && !property.is_joint()
+                    && property.has_uncertainty_formula()
+                {
+                    2
+                } else {
+                    1
+                }
+            }),
+            _ => 1,
+        })
+    }
+
+    /// The computed value discarded, for the worker alone: a failure an earlier
+    /// model gave, cleared where the value now waits. Withdrawn from scripts —
+    /// fingerprints say what is outdated, and ``compute(force=True)`` gives a
+    /// value back to its formula.
+    fn _invalidate(&self, py: Python<'_>) -> PyResult<()> {
         self.apply(py, Change::Invalidate)
     }
 
     /// Where the value stands, in one word.
     ///
-    /// One of ``"entered"`` (typed in, no formula), ``"current"``,
-    /// ``"outdated"`` (an input changed since it was computed),
-    /// ``"never computed"``, ``"edited"`` (a value typed over its formula) or
-    /// ``"failed"`` (its formula raised).
+    /// One of ``"entered"`` (typed in, no formula), ``"absent"`` (no formula,
+    /// and nothing typed in), ``"current"``,
+    /// ``"outdated"`` (an input changed since it was computed), ``"waiting"``
+    /// (an input it reads was emptied since: the number is the one computed
+    /// before), ``"never_computed"``, ``"edited"`` (a value typed over its
+    /// formula) or ``"failed"`` (its formula raised): the words a filter's
+    /// ``state`` takes.
     #[getter]
     fn state(&self, py: Python<'_>) -> PyResult<&'static str> {
-        let cell = {
-            let state = self.state.try_borrow().map_err(|_| busy())?;
-            match &*state {
-                PropertyState::Detached(property) => return Ok(detached_state(property)),
-                PropertyState::Attached { handle, sample, .. } => {
-                    let name = handle.name().clone();
-                    return sample.read_sample("a value's state", |held| {
-                        let handle = held.property(&name).or_raise(py)?;
-                        Ok(if handle.is_edited() {
-                            "edited"
-                        } else if statistic_owed(&handle) {
-                            "never computed"
-                        } else if !handle.is_computed() && !handle.has_uncertainty_formula() {
-                            // Read without its model, a derived value says what
-                            // its records say.
-                            if handle.records().computed.is_some() {
-                                match fingerprint::check_property(held, &name).or_raise(py)? {
-                                    fingerprint::Freshness::Current => "current",
-                                    // `check_property` raises a cycle rather
-                                    // than answering `Unjudged`; were it ever
-                                    // to answer it, not current is the side to
-                                    // err on.
-                                    fingerprint::Freshness::Stale { .. }
-                                    | fingerprint::Freshness::Broken { .. }
-                                    | fingerprint::Freshness::Unjudged { .. } => "outdated",
-                                    fingerprint::Freshness::Edited
-                                    | fingerprint::Freshness::RecordMissing => "edited",
-                                    fingerprint::Freshness::Failed { .. } => "failed",
-                                    fingerprint::Freshness::Source => "entered",
-                                }
-                            } else {
-                                "entered"
-                            }
-                        } else if handle.has_failed() {
-                            "failed"
-                        } else if owed(&handle) {
-                            "never computed"
-                        } else if fingerprint::is_stale(held, &name).or_raise(py)? {
-                            "outdated"
-                        } else {
-                            "current"
-                        })
-                    });
-                }
-                PropertyState::Cell {
-                    table,
-                    index,
-                    column,
-                } => (table.clone_ref(py), index.clone(), column.clone()),
-            }
-        };
-        let (table, index, column) = cell;
-        let table = table.borrow(py);
-        table.cell_state(py, &index, &column)
+        // One word for a program, as a filter, `--accept` and a file write it.
+        Ok(match self.state_said(py)? {
+            "never computed" => "never_computed",
+            word => word,
+        })
     }
 
     /// What the formula raised when it last ran, or ``None`` if it did not fail.
@@ -2150,18 +2447,28 @@ impl PyProperty {
         }
     }
 
-    /// Whether the value is outdated: an input changed since it was computed.
+    /// Whether the value is outdated — an input changed since it was computed.
     #[getter]
     fn is_outdated(&self, py: Python<'_>) -> PyResult<bool> {
         let cell = {
             let state = self.state.try_borrow().map_err(|_| busy())?;
             match &*state {
                 PropertyState::Detached(_) => return Ok(false),
-                PropertyState::Attached { handle, sample, .. } => {
+                PropertyState::Attached {
+                    handle,
+                    sample,
+                    file,
+                } => {
                     let name = handle.name().clone();
-                    return sample.read_sample("whether a value is outdated", |held| {
+                    let stale = sample.read_sample("whether a value is outdated", |held| {
                         fingerprint::is_stale(held, &name).or_raise(py)
-                    });
+                    })?;
+                    // A changed formula outdates it as a changed input does,
+                    // as `state` says: the two answered apart.
+                    return Ok(stale
+                        || planned_of(sample, file)
+                            .get(name.as_str())
+                            .is_some_and(|said| said.contains("formula changed")));
                 }
                 PropertyState::Cell {
                     table,
@@ -2175,13 +2482,7 @@ impl PyProperty {
         table.is_cell_stale(py, &index, &column)
     }
 
-    /// The same as ``is_outdated``, under its former name.
-    #[getter]
-    fn is_stale(&self, py: Python<'_>) -> PyResult<bool> {
-        self.is_outdated(py)
-    }
-
-    /// Whether the value is edited: typed over its formula, or a computed table
+    /// Whether the value is edited — typed over its formula, or a computed table
     /// cell whose record is missing.
     #[getter]
     fn is_edited(&self, py: Python<'_>) -> PyResult<bool> {
@@ -2204,14 +2505,26 @@ impl PyProperty {
 
     /// The edited values this one was computed from, directly or further up.
     #[getter]
-    fn edited_upstream(&self) -> PyResult<Vec<String>> {
+    fn edited_upstream(&self, py: Python<'_>) -> PyResult<Vec<String>> {
         let (sample, name) = {
             let state = self.state.try_borrow().map_err(|_| busy())?;
             match &*state {
                 PropertyState::Attached { handle, sample, .. } => {
                     (sample.clone(), handle.name().clone())
                 }
-                PropertyState::Detached(_) | PropertyState::Cell { .. } => return Ok(Vec::new()),
+                PropertyState::Detached(_) => return Ok(Vec::new()),
+                // A cell, by what its column's formula reads: it answered
+                // `[]` whatever its row held.
+                PropertyState::Cell {
+                    table,
+                    index,
+                    column,
+                } => {
+                    let (table, index, column) =
+                        (table.clone_ref(py), index.clone(), column.clone());
+                    drop(state);
+                    return table.borrow(py).edited_upstream_of(py, &index, &column);
+                }
             }
         };
         sample.read_sample("what a value rests on", |held| {
@@ -2291,14 +2604,14 @@ impl PyProperty {
         }
     }
 
-    /// Format the quantity at its declared precision.
+    /// Format the property at its declared precision.
     ///
     /// Args:
     ///     unit: Include the unit.
     ///
     /// Returns:
-    ///     The quantity as text, such as ``"6.8 ± 0.1 %"``. For another
-    ///     precision, use a format specifier: ``f"{ipa.abv:.2f}"``.
+    ///     The property as text, such as ``"25.056 ± 0.053 mm²"``. For another
+    ///     precision, use a format specifier: ``f"{steel.area:.2f}"``.
     #[pyo3(signature = (unit=true))]
     fn format(&self, py: Python<'_>, unit: bool) -> PyResult<String> {
         self.render(py, None, unit)
@@ -2308,14 +2621,61 @@ impl PyProperty {
         self.render(py, None, true)
     }
 
-    /// A format specifier is a column precision, as `-c malt:.2f` writes one.
+    /// The property as a style writes it: its units, its symbols, its form
+    /// of a property — ``\SI{12.5 \pm 0.05}{\gram}`` in a style declaring
+    /// ``property = '\SI{{value} \pm {uncertainty}}{{unit}}'``.
+    ///
+    /// Args:
+    ///     style: A style's name: ``"plain"``, one SampleKit gives —
+    ///         ``"latex"``, ``"markdown"``, ``"html"`` — or one ``.samplekitrc``
+    ///         declares. Without it, ``[render] style``'s, as ``str()`` gives.
+    ///
+    /// Returns:
+    ///     The text, ``n/a`` where the value does not apply, and the style's
+    ///     ``missing`` where there is none.
+    ///
+    /// Raises:
+    ///     ValueError: No style has that name.
+    ///
+    /// Example:
+    ///     >>> steel.area.to_text("latex")
+    ///     '$25.056 \\pm 0.053$ mm²'
+    #[pyo3(signature = (style=None))]
+    fn to_text(&self, py: Python<'_>, style: Option<&str>) -> PyResult<String> {
+        let (config, address) = self.context(py);
+        style_known(config.as_deref(), style)?;
+        let value = self.value_of(py)?;
+        if value.is_not_applicable() {
+            return Ok("n/a".to_string());
+        }
+        if value.is_absent() {
+            return Ok(style
+                .and_then(|name| config.as_deref().and_then(|config| config.style(name)))
+                .and_then(|settings| settings.missing.clone())
+                .unwrap_or_else(|| terminal_rendering::ABSENT.to_string()));
+        }
+        let uncertainty = self.uncertainty_of(py)?;
+        let presentation = self.presentation_of(py)?;
+        Ok(terminal_rendering::quantity_in(
+            &value,
+            uncertainty.as_ref(),
+            &presentation,
+            &address,
+            config.as_deref(),
+            style,
+        ))
+    }
+
+    /// A format specifier is a column precision, as `-c area:.2f` writes one.
     fn __format__(&self, py: Python<'_>, spec: &str) -> PyResult<String> {
         if spec.is_empty() {
             return self.render(py, None, true);
         }
+        // The precision's own refusal names the specifier: said once, with
+        // what a format specifier is here.
         let precision = Precision::both(spec).map_err(|error| {
             PyValueError::new_err(format!(
-                "'{spec}' is not a precision the command line accepts: {error}"
+                "{error} — a format specifier is a column precision, as -c area:.2f writes one"
             ))
         })?;
         self.render(py, Some(&precision), true)
@@ -2400,6 +2760,19 @@ impl PyProperty {
 
     fn __rmod__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         binary(py, "mod", &operand_of(other)?, &self.operand(py)?)
+    }
+
+    /// `divmod(p, n)`, as `p // n` and `p % n` are taken.
+    fn __divmod__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        let quotient = self.__floordiv__(py, other)?;
+        let remainder = self.__mod__(py, other)?;
+        Ok(PyTuple::new(py, [quotient, remainder])?.into_any().unbind())
+    }
+
+    fn __rdivmod__(&self, py: Python<'_>, other: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        let quotient = self.__rfloordiv__(py, other)?;
+        let remainder = self.__rmod__(py, other)?;
+        Ok(PyTuple::new(py, [quotient, remainder])?.into_any().unbind())
     }
 
     fn __pow__(
@@ -2490,133 +2863,8 @@ impl PyProperty {
     }
 
     fn __getattr__(slf: &Bound<'_, Self>, name: &str) -> PyResult<Py<PyAny>> {
-        let replacement = match name {
-            "data" => Some("readings"),
-            "unit_math" | "symbol_math" => Some(
-                "a project's [unit] and [property] declarations, whose variants a style selects",
-            ),
-            "precision_unc" => Some("precision, which takes a (value, uncertainty) pair"),
-            "is_valid" => Some("value, which raises when the formula fails"),
-            _ => None,
-        };
-        // A removed member names its replacement, and Python's nearest name
-        // after it would be a second, different answer; otherwise the nearest
-        // member is offered, in the words every other refusal uses.
-        Err(match replacement {
-            Some(replacement) => bridge::said_in_full(PyAttributeError::new_err(format!(
-                "Property.{name} does not exist: use {replacement}"
-            ))),
-            None => no_attribute(slf.as_any(), name),
-        })
-    }
-}
-
-// ----------------------------------------------------------------- Column
-
-/// One column of a ``Table``: its unit, and the statistics of its cells'
-/// readings.
-///
-/// Args:
-///     unit: The unit of every cell, as the file writes it.
-///     symbol: Not taken here: a symbol is declared in ``.samplekitrc``,
-///         under ``[property."TABLE.COLUMN"]``.
-///     precision: Not taken here: a precision is declared in ``.samplekitrc``,
-///         under ``[property.TABLE.COLUMN]``.
-///     value: A statistic from ``samplekit.stats`` that gives each cell's value
-///         from the readings it holds.
-///     uncertainty: A spread from ``samplekit.stats`` that gives each cell's
-///         uncertainty from its readings.
-///
-/// Raises:
-///     TypeError: A symbol or a precision is given, or ``value`` or
-///         ``uncertainty`` is not a statistic.
-///     ValueError: A spread is given as the value.
-///
-/// Example:
-///     >>> day = sk.Column(unit="d")
-#[pyclass(name = "Column", module = "samplekit", unsendable)]
-pub struct PyColumn {
-    presentation: Presentation,
-    /// Which statistic of a cell's readings stands for its value and its
-    /// uncertainty, as a property declares them.
-    statistics: crate::core::property::DeclaredStatistics,
-}
-
-#[pymethods]
-impl PyColumn {
-    #[new]
-    #[pyo3(signature = (unit=None, symbol=None, precision=None, value=None, uncertainty=None))]
-    fn new(
-        unit: Option<String>,
-        symbol: Option<String>,
-        precision: Option<&Bound<'_, PyAny>>,
-        value: Option<&Bound<'_, PyAny>>,
-        uncertainty: Option<&Bound<'_, PyAny>>,
-    ) -> PyResult<Self> {
-        refuse_symbol(symbol.as_deref(), "\"<table>.<column>\"")?;
-        refuse_precision(precision, "\"<table>.<column>\"")?;
-        Ok(PyColumn {
-            presentation: Presentation {
-                unit,
-                symbol: None,
-                precision: None,
-            },
-            statistics: crate::core::property::DeclaredStatistics {
-                value: column_statistic(value, "value", "sk.stats.mean")?
-                    .map(|given| location_of(&given))
-                    .transpose()?,
-                uncertainty: column_statistic(
-                    uncertainty,
-                    "uncertainty",
-                    "sk.stats.standard_error",
-                )?
-                .map(|given| convention_of(&given))
-                .transpose()?,
-            },
-        })
-    }
-
-    /// The unit of every cell, or ``None``.
-    #[getter]
-    fn unit(&self) -> Option<String> {
-        self.presentation.unit.clone()
-    }
-
-    fn __repr__(&self) -> String {
-        // Python's spelling of an absent argument: `Some("degC")` is Rust's.
-        let python = |text: &Option<String>| match text {
-            Some(text) => format!("{text:?}"),
-            None => "None".to_string(),
-        };
-        let mut shown = format!("Column(unit={}", python(&self.presentation.unit));
-        if let Some(location) = self.statistics.value {
-            shown.push_str(&format!(", value=sk.stats.{}", location.name()));
-        }
-        if let Some(convention) = self.statistics.uncertainty {
-            shown.push_str(&format!(", uncertainty=sk.stats.{}", convention.name()));
-        }
-        shown.push(')');
-        shown
-    }
-}
-
-/// A column's cells hold their own values: what it can say for all of them is
-/// which statistic of their readings stands for a channel, and anything else
-/// given there is refused rather than read as a default.
-fn column_statistic<'py>(
-    given: Option<&Bound<'py, PyAny>>,
-    channel: &str,
-    example: &str,
-) -> PyResult<Option<Bound<'py, PyAny>>> {
-    match given.filter(|given| !given.is_none()) {
-        Some(given) if !given.is_instance_of::<PyStatistic>() => {
-            Err(PyTypeError::new_err(format!(
-                "a column's {channel} is a statistic of its cells' readings, such as {example}; \
-             each cell holds its own value, and {} is not one",
-                bridge::a_type(given)
-            )))
-        }
-        other => Ok(other.cloned()),
+        // The nearest member is offered, in the words every other refusal uses.
+        Err(no_attribute(slf.as_any(), name))
     }
 }
 
@@ -2653,7 +2901,10 @@ enum TableTarget<'a> {
 impl TableTarget<'_> {
     fn add_row(self, py: Python<'_>, cells: Vec<(Identifier, Property)>) -> PyResult<()> {
         match self {
-            TableTarget::Detached(table) => table.add_row(cells).or_raise(py),
+            TableTarget::Detached(table) => {
+                table.refuses_what_is_no_number(&cells).or_raise(py)?;
+                table.add_row(cells).or_raise(py)
+            }
             TableTarget::Held { sample, name } => sample.add_row(name, cells).or_raise(py),
         }
     }
@@ -2665,133 +2916,27 @@ impl TableTarget<'_> {
         cells: Vec<(Identifier, Property)>,
     ) -> PyResult<()> {
         match self {
-            TableTarget::Detached(table) => table.update_row(row, cells).or_raise(py),
+            TableTarget::Detached(table) => {
+                table.refuses_what_is_no_number(&cells).or_raise(py)?;
+                table.update_row(row, cells).or_raise(py)
+            }
             TableTarget::Held { sample, name } => sample.update_row(name, row, cells).or_raise(py),
         }
     }
 
-    fn invalidate_row(self, py: Python<'_>, row: &RowAddress) -> PyResult<()> {
+    fn invalidate_cell(
+        self,
+        py: Python<'_>,
+        row: &RowAddress,
+        column: &Identifier,
+    ) -> PyResult<()> {
         match self {
-            TableTarget::Detached(table) => table.invalidate_row(row).or_raise(py),
-            TableTarget::Held { sample, name } => sample.invalidate_row(name, row).or_raise(py),
-        }
-    }
-}
-
-enum Span {
-    Row,
-    Column,
-}
-
-/// Each derived column's declaration, from the derivations
-/// [`derivations_from`] has already found well formed: the function, what it
-/// reads and fills, and the column's unit — one entry per column it fills.
-fn derivation_code(
-    py: Python<'_>,
-    object: Option<&Bound<'_, PyAny>>,
-    role: &str,
-    declared: &IndexMap<Identifier, ColumnMeta>,
-) -> PyResult<Vec<(String, FormulaCode)>> {
-    let Some(object) = object.filter(|object| !object.is_none()) else {
-        return Ok(Vec::new());
-    };
-    let text = |text: String| PyString::new(py, &text).into_any().unbind();
-    let mut code = Vec::new();
-    for item in object.try_iter()? {
-        let item = item?;
-        let outputs = strings_from(&item.get_item(0)?, "outputs")?;
-        let inputs = strings_from(&item.get_item(1)?, "inputs")?;
-        let function = function_of(&item.get_item(2)?);
-        for output in &outputs {
-            let mut parts = vec![
-                (role.to_string(), function.clone_ref(py)),
-                ("inputs".to_string(), text(inputs.join(", "))),
-                ("outputs".to_string(), text(outputs.join(", "))),
-            ];
-            let unit = Identifier::new(output)
-                .ok()
-                .and_then(|name| declared.get(&name))
-                .and_then(|meta| meta.presentation.unit.clone());
-            if let Some(unit) = unit {
-                parts.push(("unit".to_string(), text(unit)));
+            TableTarget::Detached(table) => table.invalidate_cell(row, column).or_raise(py),
+            TableTarget::Held { sample, name } => {
+                sample.invalidate_cell(name, row, column).or_raise(py)
             }
-            code.push((output.clone(), parts));
         }
     }
-    Ok(code)
-}
-
-fn derivations_from(
-    py: Python<'_>,
-    object: Option<&Bound<'_, PyAny>>,
-    span: Span,
-) -> PyResult<Vec<Derivation>> {
-    let Some(object) = object.filter(|object| !object.is_none()) else {
-        return Ok(Vec::new());
-    };
-    let mut derivations = Vec::new();
-    for item in object.try_iter()? {
-        let item = item?;
-        let triple = item
-            .cast::<PyTuple>()
-            .ok()
-            .filter(|triple| triple.len() == 3)
-            .ok_or_else(|| {
-                PyTypeError::new_err("a derivation is a tuple (outputs, inputs, callback)")
-            })?;
-        let outputs: Vec<Identifier> = strings_from(&triple.get_item(0)?, "outputs")?
-            .iter()
-            .map(|name| bridge::identifier_from(py, name))
-            .collect::<PyResult<_>>()?;
-        if outputs.is_empty() {
-            return Err(PyValueError::new_err(
-                "a derivation fills at least one column",
-            ));
-        }
-        let inputs: Vec<InputName> = strings_from(&triple.get_item(1)?, "inputs")?
-            .iter()
-            .map(|text| input_name(text))
-            .collect::<PyResult<_>>()?;
-        let callback = triple.get_item(2)?;
-        if !callback.is_callable() {
-            return Err(PyTypeError::new_err(format!(
-                "a derivation's third part is its callback, and this is {}",
-                bridge::a_type(&callback)
-            )));
-        }
-        let callable = bridge::Formula::held(callback)?;
-        derivations.push(match span {
-            Span::Row => Derivation::Row {
-                formula: Rc::new(PythonRowCompute {
-                    callable,
-                    outputs: outputs.clone(),
-                }),
-                outputs,
-                inputs,
-            },
-            Span::Column => {
-                let columns = inputs
-                    .iter()
-                    .filter_map(|input| match input {
-                        InputName::Column { table, column } => {
-                            Some((table.clone(), column.clone()))
-                        }
-                        _ => None,
-                    })
-                    .collect();
-                Derivation::Column {
-                    formula: Rc::new(PythonColumnCompute {
-                        callable,
-                        outputs: outputs.clone(),
-                        columns,
-                    }),
-                    outputs,
-                    inputs,
-                }
-            }
-        });
-    }
-    Ok(derivations)
 }
 
 /// The qualifiers that may be the table's own name: those whose column inputs
@@ -2876,42 +3021,211 @@ fn resolve_with_upstream(
     }
 }
 
+/// What a column's formulas read: a list, or one per channel, `{"v": [...],
+/// "u": [...]}`, read together, each input once.
+fn column_inputs(given: &Bound<'_, PyAny>) -> PyResult<Vec<String>> {
+    let Ok(channels) = given.cast::<PyDict>() else {
+        return strings_from(given, "depends_on");
+    };
+    let mut inputs: Vec<String> = Vec::new();
+    for (key, listed) in channels.iter() {
+        let key: String = key.extract()?;
+        if key != "v" && key != "u" {
+            return Err(PyValueError::new_err(format!(
+                "depends_on is keyed by channel, \"v\" and \"u\", and '{key}' is not one"
+            )));
+        }
+        for input in strings_from(&listed, "depends_on")? {
+            if !inputs.contains(&input) {
+                inputs.push(input);
+            }
+        }
+    }
+    Ok(inputs)
+}
+
+/// A table's formula as the core runs it: given each row, or the columns it
+/// reads whole (`whole`), filling `outputs`, what of each cell `half` says.
+fn table_derivation(
+    _py: Python<'_>,
+    outputs: Vec<Identifier>,
+    inputs: &[String],
+    callable: &Bound<'_, PyAny>,
+    whole: bool,
+    half: Half,
+) -> PyResult<Derivation> {
+    let inputs: Vec<InputName> = inputs
+        .iter()
+        .map(|text| input_name(text))
+        .collect::<PyResult<_>>()?;
+    let callable = bridge::Formula::held(callable.clone())?;
+    Ok(if whole {
+        let columns = inputs
+            .iter()
+            .filter_map(|input| match input {
+                InputName::Column { table, column } => Some((table.clone(), column.clone())),
+                _ => None,
+            })
+            .collect();
+        Derivation::Column {
+            formula: Rc::new(PythonColumnCompute {
+                callable,
+                outputs: outputs.clone(),
+                columns,
+            }),
+            outputs,
+            inputs,
+        }
+    } else {
+        Derivation::Row {
+            formula: Rc::new(PythonRowCompute {
+                callable,
+                outputs: outputs.clone(),
+                half,
+            }),
+            outputs,
+            inputs,
+        }
+    })
+}
+
+/// Several columns of a table filled by one formula: given each row, or the
+/// columns it reads whole.
+///
+/// A column filled alone declares its formula on its ``Property``; this is for
+/// one computation that gives several columns at once, a fit's two parameters.
+///
+/// Args:
+///     columns: The columns it fills: a name, or a list of names.
+///     compute: A function given each row, a ``RowView``, and returning a dict:
+///         one cell for each column it fills, a number or
+///         ``(value, uncertainty)``.
+///     compute_column: A function given the columns it reads, by name, and
+///         returning a dict: one list of cells for each column it fills, one
+///         cell per row.
+///     depends_on: What the formula reads: ``"row.force"`` for a cell of the
+///         same row, ``"curve.force"`` for a whole column, ``"area"`` for a
+///         property of the sample; ``[]`` for nothing.
+///
+/// Raises:
+///     ValueError: Neither formula is given, or both, or ``depends_on`` is not.
+///     TypeError: A formula is not callable.
+///
+/// Example:
+///     >>> bounds = sk.ComputedColumns(
+///     ...     ["low", "high"], compute=lambda row: {"low": 1.0, "high": 2.0},
+///     ...     depends_on=[],
+///     ... )
+#[pyclass(name = "ComputedColumns", module = "samplekit", unsendable)]
+pub struct PyComputedColumns {
+    columns: Vec<String>,
+    compute: Option<Py<PyAny>>,
+    compute_column: Option<Py<PyAny>>,
+    depends_on: Vec<String>,
+}
+
+#[pymethods]
+impl PyComputedColumns {
+    #[new]
+    #[pyo3(signature = (columns, *, compute=None, compute_column=None, depends_on=None))]
+    fn new(
+        columns: &Bound<'_, PyAny>,
+        compute: Option<&Bound<'_, PyAny>>,
+        compute_column: Option<&Bound<'_, PyAny>>,
+        depends_on: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let columns = strings_from(columns, "columns")?;
+        if columns.is_empty() {
+            return Err(PyValueError::new_err(
+                "ComputedColumns fills at least one column: name them first",
+            ));
+        }
+        let (compute, compute_column) = (given(compute), given(compute_column));
+        let formula = match (&compute, &compute_column) {
+            (Some(formula), None) | (None, Some(formula)) => formula,
+            (None, None) => {
+                return Err(PyValueError::new_err(
+                    "ComputedColumns computes its columns: compute= given each row, or \
+                     compute_column= given the columns whole",
+                ));
+            }
+            (Some(_), Some(_)) => {
+                return Err(PyValueError::new_err(
+                    "ComputedColumns takes one formula: compute= given each row, or \
+                     compute_column= given the columns whole, not both",
+                ));
+            }
+        };
+        if !formula.is_callable() {
+            return Err(PyTypeError::new_err(format!(
+                "a formula is a callable, and this is {}",
+                bridge::a_type(formula)
+            )));
+        }
+        let Some(depends_on) = given(depends_on) else {
+            return Err(PyValueError::new_err(
+                "ComputedColumns says what its formula reads: depends_on=[\"row.force\"], or \
+                 depends_on=[] for nothing",
+            ));
+        };
+        let depends_on = strings_from(&depends_on, "depends_on")?;
+        for input in &depends_on {
+            input_name(input)?;
+        }
+        Ok(PyComputedColumns {
+            columns,
+            compute: compute.map(|formula| formula.unbind()),
+            compute_column: compute_column.map(|formula| formula.unbind()),
+            depends_on,
+        })
+    }
+
+    fn __repr__(&self) -> String {
+        let role = if self.compute.is_some() {
+            "compute"
+        } else {
+            "compute_column"
+        };
+        format!(
+            "ComputedColumns({:?}, {role}=…, depends_on={:?})",
+            self.columns, self.depends_on
+        )
+    }
+}
+
 /// A table of a sample: named columns, and rows identified by their index.
 ///
 /// The index is the column — or the columns — whose values identify a row: a
-/// day, a temperature, a taster. A cell is read by its index value, never by
-/// its position: ``table.at(3, "gravity")``.
+/// day, a temperature, a inspector. A cell is read by its index value, never by
+/// its position: ``table.at(0.2, "force")``.
 ///
-/// Some columns can be computed: ``compute_rows`` fills cells row by row, and
-/// ``compute_columns`` fills a whole column at once. Each entry is a triple
-/// ``(outputs, inputs, function)``: the column or columns it fills, what it
-/// reads (``"row.gravity"`` for a cell of the same row,
-/// ``"fermentation.gravity"`` for a whole column, ``"og"`` for a property of
-/// the sample), and the function. A row function takes a ``RowView`` and
-/// returns a cell, or a dict of cells by column; a column function takes a
-/// dict of ``ColumnView`` by name and returns a list of cells, one per row,
-/// or a dict of such lists.
+/// A column is declared with ``Property``: its unit, the statistics of its
+/// cells' readings, or the formula that computes each cell, given the row
+/// (``compute``, ``compute_value``, ``compute_uncertainty``), or the whole
+/// column at once (``compute_column``). A formula filling several columns at
+/// once is a ``ComputedColumns``, given in ``computed``.
 ///
 /// Args:
-///     columns: A dict of ``Column`` by name, in the order they are shown.
-///     index: The name of the index column, or a list of names.
+///     columns: A dict of ``Property`` by name, in the order they are shown.
+///     index: The name of the index column, or a list of names; always named.
 ///     title: A title for the table.
 ///     rows: The first rows: each a dict of cells by column name.
-///     compute_rows: The columns computed row by row.
-///     compute_columns: The columns computed whole.
-///
-/// Raises:
-///     TypeError: A column is not a ``Column``.
-///     ValueError: The index names no column, or a row does not fit the
+///     computed: The ``ComputedColumns`` of the table, each filling several
 ///         columns.
 ///
+/// Raises:
+///     TypeError: A column is not a ``Property``, or is given a value; the
+///         index is not named.
+///     ValueError: The index names no column, a row does not fit the columns,
+///         or a column is filled by two formulas.
+///
 /// Example:
-///     >>> tasting = sk.Table(
-///     ...     {"taster": sk.Column(), "score": sk.Column()},
-///     ...     "taster",
-///     ...     rows=[{"taster": "Ana", "score": 41}],
+///     >>> inspection = sk.Table(
+///     ...     {"inspector": sk.Property(), "score": sk.Property()},
+///     ...     index="inspector",
+///     ...     rows=[{"inspector": "Ana", "score": 41}],
 ///     ... )
-///     >>> tasting.at("Ana", "score").value
+///     >>> inspection.at("Ana", "score").value
 ///     41
 #[pyclass(name = "Table", module = "samplekit", unsendable)]
 pub struct PyTable {
@@ -2986,6 +3300,27 @@ impl PyTable {
     }
 
     /// Where one cell stands: entered, never computed, outdated or current.
+    /// What a cell's column formula reads that is edited, for its row.
+    fn edited_upstream_of(
+        &self,
+        py: Python<'_>,
+        index: &[Value],
+        column: &Identifier,
+    ) -> PyResult<Vec<String>> {
+        let state = self.state.try_borrow().map_err(|_| busy())?;
+        match &*state {
+            TableState::Detached { .. } => Ok(Vec::new()),
+            TableState::Attached { sample, name, .. } => {
+                let _ = py;
+                sample.read_sample("what a cell rests on", |held| {
+                    Ok(fingerprint::edited_upstream_of_cell(
+                        held, name, column, index,
+                    ))
+                })
+            }
+        }
+    }
+
     fn cell_state(
         &self,
         py: Python<'_>,
@@ -3009,14 +3344,38 @@ impl PyTable {
             } else {
                 "current"
             }),
-            TableState::Attached { sample, name, .. } => {
-                sample.read_sample("a cell's state", |held| {
+            TableState::Attached { sample, file, name } => {
+                let word = sample.read_sample("a cell's state", |held| {
                     if !held.table(name).or_raise(py)?.is_derived(column) {
                         return Ok("entered");
                     }
-                    Ok(cell_reason(py, held, name, column, index, false, true)?
-                        .unwrap_or("current"))
-                })
+                    let word = cell_reason(py, held, name, column, index, false, true)?
+                        .unwrap_or("current");
+                    // An input of its row, or a cell its column reads, emptied
+                    // since: it waits, as `status` says.
+                    if word == "outdated"
+                        && let Ok(state) = fingerprint::check_cell(held, name, column, index)
+                        && !crate::collection::editing::emptied_inputs(held, &state).is_empty()
+                    {
+                        return Ok("waiting");
+                    }
+                    Ok(word)
+                })?;
+                let planned = planned_of(sample, file);
+                let said = planned.get(&format!("{name}.{column}"));
+                // Its column's formula changed since it computed it: outdated,
+                // as `status` says, though current by its inputs.
+                if word == "current" && said.is_some_and(|said| said.contains("formula changed")) {
+                    return Ok("outdated");
+                }
+                // Its column waits for an input nobody entered — a row added
+                // without its hardness — as `status` and `compute` say.
+                if matches!(word, "current" | "outdated" | "never computed")
+                    && said.is_some_and(|said| said.starts_with("waits for"))
+                {
+                    return Ok("waiting");
+                }
+                Ok(word)
             }
         }
     }
@@ -3099,6 +3458,7 @@ impl PyTable {
                 TableState::Attached { sample, name, .. } => (sample.clone(), name.clone()),
             }
         };
+        sample.touch(name.as_str());
         sample.write(|held| {
             work(TableTarget::Held {
                 sample: held,
@@ -3133,12 +3493,48 @@ impl PyTable {
     ) -> PyResult<()> {
         let address = RowAddress::Index(index.to_vec());
         if let Change::Invalidate = change {
-            return self.write(|target| target.invalidate_row(py, &address));
+            return self.write(|target| target.invalidate_cell(py, &address, column));
         }
         let replacement = self.read(py, false, |table| {
             let cell = table.at(&address, column).or_raise(py)?;
             let mut copy = copy_of(cell).or_raise(py)?;
+            // A value written beside an uncertainty its formula gives keeps
+            // that formula's record: the uncertainty is then outdated, never
+            // overridden.
+            let beside = matches!(change, Change::Value(_))
+                && table.produced_by(column) == Some(Produced::Uncertainty)
+                && cell.records().computed.is_some();
+            // A hand on the very channel a formula of one half gives is an
+            // override, as a whole cell written by hand is.
+            let overrides = match (table.produced_by(column), &change) {
+                (Some(Produced::Uncertainty), Change::Uncertainty(Some(_)))
+                | (Some(Produced::Value), Change::Value(_)) => true,
+                // A whole cell a formula gives, its value typed.
+                (None, Change::Value(_)) => table.is_derived(column),
+                _ => false,
+            };
+            let kept = cell.records().clone();
             change_property(&mut copy, change);
+            if beside {
+                copy.set_records(kept);
+            } else if overrides && kept.computed.is_some() {
+                // The formula's record kept, its own digest marked edited, as
+                // the command line's `set` writes it: cleared, the cell read
+                // *record missing*.
+                let produced = kept.produced;
+                let digest = crate::format::fingerprint::own_of(
+                    &crate::format::schema::property_as_is(&copy),
+                    produced,
+                )
+                .marked_edited();
+                copy.set_records(crate::core::property::Records {
+                    fingerprint: Some(digest),
+                    failure: None,
+                    ..kept
+                });
+            } else if overrides {
+                copy.set_records(crate::core::property::Records::none());
+            }
             Ok(copy)
         })?;
         self.write(|target| target.update_row(py, &address, vec![(column.clone(), replacement)]))
@@ -3178,32 +3574,182 @@ impl PyTable {
 #[pymethods]
 impl PyTable {
     #[new]
-    #[pyo3(signature = (columns, index, *, title=None, rows=None, compute_rows=None, compute_columns=None))]
+    #[pyo3(signature = (columns, *positional, index=None, title=None, rows=None, computed=None))]
+    #[allow(clippy::too_many_arguments)] // The keyword surface python-api specifies.
     fn new(
         py: Python<'_>,
         columns: &Bound<'_, PyAny>,
-        index: &Bound<'_, PyAny>,
+        positional: &Bound<'_, PyTuple>,
+        index: Option<&Bound<'_, PyAny>>,
         title: Option<String>,
         rows: Option<&Bound<'_, PyAny>>,
-        compute_rows: Option<&Bound<'_, PyAny>>,
-        compute_columns: Option<&Bound<'_, PyAny>>,
+        computed: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
+        // The index is named: a bare second argument did not say what it was,
+        // and an index of several columns has no place to stand.
+        if let Ok(given) = positional.get_item(0) {
+            return Err(PyTypeError::new_err(format!(
+                "a table names its index: index={}, the column whose values name its rows \
+                 (index=[\"day\", \"hour\"] for several)",
+                given
+                    .repr()
+                    .map(|repr| repr.to_string())
+                    .unwrap_or_default()
+            )));
+        }
+        let Some(index) = index.filter(|index| !index.is_none()) else {
+            return Err(PyTypeError::new_err(
+                "a table names its index, the column whose values name its rows: \
+                 index=\"day\", or index=[\"day\", \"hour\"] for several",
+            ));
+        };
+        let text = |text: String| PyString::new(py, &text).into_any().unbind();
         let mut declared = IndexMap::new();
+        let mut derivations: Vec<Derivation> = Vec::new();
+        let mut code: Vec<(String, FormulaCode)> = Vec::new();
         for item in columns.call_method0("items")?.try_iter()? {
             let pair = item?;
             let name: String = pair.get_item(0)?.extract()?;
             let column = pair.get_item(1)?;
-            let column = column.cast::<PyColumn>().map_err(|_| {
+            let not_a_property = || {
                 PyTypeError::new_err(format!(
-                    "the column '{name}' is declared with Column(...), and this is {}",
+                    "the column '{name}' is declared with sk.Property(...), its unit, the \
+                     statistics of its cells' readings or its formulas, and this is {}",
                     bridge::a_type(&column)
                 ))
-            })?;
+            };
+            let property = column.cast::<PyProperty>().map_err(|_| not_a_property())?;
+            let property = property.borrow();
+            let held = property.as_column.borrow();
+            let Some(given) = held.as_ref() else {
+                return Err(not_a_property());
+            };
+            if let Some(what) = given.entered {
+                return Err(PyTypeError::new_err(format!(
+                    "the column '{name}' is given {what}, and each cell holds its own, in the \
+                     file: a column declares a unit, the statistics of its cells' readings, or \
+                     its formulas"
+                )));
+            }
+            let identifier = bridge::identifier_from(py, &name)?;
+            let unit = given.unit.clone();
+            let formulas: Vec<(&str, &Py<PyAny>, Half)> = [
+                ("compute", &given.compute, Half::Whole),
+                ("compute_value", &given.compute_value, Half::Value),
+                (
+                    "compute_uncertainty",
+                    &given.compute_uncertainty,
+                    Half::Uncertainty,
+                ),
+                ("compute_column", &given.compute_column, Half::Whole),
+            ]
+            .into_iter()
+            .filter_map(|(role, formula, half)| {
+                formula.as_ref().map(|formula| (role, formula, half))
+            })
+            .collect();
+            if let Some((role, formula, half)) = formulas.first() {
+                let Some(inputs) = given.depends_on.as_ref() else {
+                    return Err(PyValueError::new_err(format!(
+                        "the column '{name}' says what its formula reads: depends_on=[\"row.force\", \
+                         \"area\"], or depends_on=[] for nothing"
+                    )));
+                };
+                let inputs = column_inputs(inputs.bind(py))?;
+                // A cell's uncertainty may read the value beside it, as a
+                // property's does, by that channel's name: `row.force.v`.
+                let own = format!("row.{name}");
+                let own_value = format!("row.{name}.v");
+                if inputs.contains(&own) {
+                    return Err(PyValueError::new_err(format!(
+                        "the column '{name}' declares that it reads itself, and a cell cannot \
+                         rest on its own result\n  an uncertainty may read the value beside it \
+                         — compute_uncertainty=…, depends_on=[\"{own_value}\"]"
+                    )));
+                }
+                // Only an uncertainty's formula reads the value beside it.
+                let value_reads_itself = given
+                    .depends_on
+                    .as_ref()
+                    .and_then(|given| given.bind(py).cast::<PyDict>().ok().cloned())
+                    .and_then(|channels| channels.get_item("v").ok().flatten())
+                    .map(|listed| strings_from(&listed, "depends_on"))
+                    .transpose()?
+                    .is_some_and(|listed| listed.contains(&own_value));
+                let reads_own_value = inputs.contains(&own_value);
+                let uncertainty_formula = formulas
+                    .iter()
+                    .any(|(_, _, half)| matches!(half, Half::Uncertainty));
+                if reads_own_value && (value_reads_itself || !uncertainty_formula) {
+                    return Err(PyValueError::new_err(format!(
+                        "the column '{name}' reads {own_value}, the value beside its uncertainty: \
+                         only a formula of compute_uncertainty= reads it"
+                    )));
+                }
+                if let [_, (second_role, second, _)] = formulas.as_slice() {
+                    // Its value's formula, then its uncertainty's, on each
+                    // row: the uncertainty is given the value just computed,
+                    // which it reads within the run, no input of it.
+                    let inputs_text = inputs.join(", ");
+                    let inputs: Vec<InputName> = inputs
+                        .iter()
+                        .filter(|text| **text != own_value)
+                        .map(|text| input_name(text))
+                        .collect::<PyResult<_>>()?;
+                    derivations.push(Derivation::Row {
+                        formula: Rc::new(bridge::PythonHalvesCompute {
+                            value: bridge::Formula::held(formula.bind(py).clone())?,
+                            uncertainty: bridge::Formula::held(second.bind(py).clone())?,
+                            output: identifier.clone(),
+                        }),
+                        outputs: vec![identifier.clone()],
+                        inputs,
+                    });
+                    let mut parts = vec![
+                        (role.to_string(), function_of(formula.bind(py))),
+                        (second_role.to_string(), function_of(second.bind(py))),
+                    ];
+                    parts.push(("inputs".to_string(), text(inputs_text)));
+                    parts.push(("outputs".to_string(), text(name.clone())));
+                    if let Some(unit) = unit.clone() {
+                        parts.push(("unit".to_string(), text(unit)));
+                    }
+                    code.push((name.clone(), parts));
+                } else {
+                    let whole = *role == "compute_column";
+                    derivations.push(table_derivation(
+                        py,
+                        vec![identifier.clone()],
+                        &inputs,
+                        formula.bind(py),
+                        whole,
+                        *half,
+                    )?);
+                    let mut parts = vec![
+                        (role.to_string(), function_of(formula.bind(py))),
+                        ("inputs".to_string(), text(inputs.join(", "))),
+                        ("outputs".to_string(), text(name.clone())),
+                    ];
+                    if let Some(unit) = unit.clone() {
+                        parts.push(("unit".to_string(), text(unit)));
+                    }
+                    code.push((name.clone(), parts));
+                }
+            } else if given.depends_on.is_some() {
+                return Err(PyValueError::new_err(format!(
+                    "the column '{name}' says what a formula reads and has no formula: pass \
+                     compute=, compute_value=, compute_uncertainty= or compute_column="
+                )));
+            }
             declared.insert(
-                bridge::identifier_from(py, &name)?,
+                identifier,
                 ColumnMeta {
-                    presentation: column.borrow().presentation.clone(),
-                    statistics: column.borrow().statistics,
+                    presentation: Presentation {
+                        unit,
+                        symbol: None,
+                        precision: None,
+                    },
+                    statistics: given.statistics,
                 },
             );
         }
@@ -3211,15 +3757,69 @@ impl PyTable {
             .iter()
             .map(|name| bridge::identifier_from(py, name))
             .collect::<PyResult<_>>()?;
-        let mut derivations = derivations_from(py, compute_rows, Span::Row)?;
-        derivations.extend(derivations_from(py, compute_columns, Span::Column)?);
-        let mut code = derivation_code(py, compute_rows, "compute_rows", &declared)?;
-        code.extend(derivation_code(
-            py,
-            compute_columns,
-            "compute_columns",
-            &declared,
-        )?);
+        // Several columns filled by one formula, each part named.
+        if let Some(computed) = computed.filter(|computed| !computed.is_none()) {
+            for item in computed.try_iter()? {
+                let item = item?;
+                let formula = item.cast::<PyComputedColumns>().map_err(|_| {
+                    PyTypeError::new_err(format!(
+                        "computed= holds sk.ComputedColumns(...), and this is {}",
+                        bridge::a_type(&item)
+                    ))
+                })?;
+                let formula = formula.borrow();
+                let outputs: Vec<Identifier> = formula
+                    .columns
+                    .iter()
+                    .map(|name| bridge::identifier_from(py, name))
+                    .collect::<PyResult<_>>()?;
+                let (role, callable, whole) = match (&formula.compute, &formula.compute_column) {
+                    (Some(callable), None) => ("compute", callable, false),
+                    (None, Some(callable)) => ("compute_column", callable, true),
+                    _ => unreachable!("ComputedColumns holds exactly one formula"),
+                };
+                derivations.push(table_derivation(
+                    py,
+                    outputs,
+                    &formula.depends_on,
+                    callable.bind(py),
+                    whole,
+                    Half::Whole,
+                )?);
+                for output in &formula.columns {
+                    let mut parts = vec![
+                        (role.to_string(), function_of(callable.bind(py))),
+                        ("inputs".to_string(), text(formula.depends_on.join(", "))),
+                        ("outputs".to_string(), text(formula.columns.join(", "))),
+                    ];
+                    let unit = Identifier::new(output)
+                        .ok()
+                        .and_then(|name| declared.get(&name))
+                        .and_then(|meta: &ColumnMeta| meta.presentation.unit.clone());
+                    if let Some(unit) = unit {
+                        parts.push(("unit".to_string(), text(unit)));
+                    }
+                    code.push((output.clone(), parts));
+                }
+            }
+        }
+        // One formula a column: a second one for it is refused, as two for a
+        // property's value are.
+        let mut filled: Vec<&Identifier> = Vec::new();
+        for derivation in &derivations {
+            let outputs = match derivation {
+                Derivation::Row { outputs, .. } | Derivation::Column { outputs, .. } => outputs,
+            };
+            for output in outputs {
+                if filled.contains(&output) {
+                    return Err(PyValueError::new_err(format!(
+                        "the column '{output}' is filled by two formulas, its own and a \
+                         ComputedColumns, or two of those: keep one"
+                    )));
+                }
+                filled.push(output);
+            }
+        }
         // A column declaring the statistics of its cells gives their values as
         // a formula does: its digest is taken from them, so a statistic changed
         // stales the cells.
@@ -3228,7 +3828,6 @@ impl PyTable {
             if statistics.is_empty() {
                 continue;
             }
-            let text = |text: String| PyString::new(py, &text).into_any().unbind();
             let mut parts = Vec::new();
             if let Some(location) = statistics.value {
                 parts.push((
@@ -3330,6 +3929,50 @@ impl PyTable {
             Some(cells) => cells_from(cells.as_any())?,
             None => Vec::new(),
         };
+        // A number given to a cell whose uncertainty a formula gives is its
+        // value alone: the uncertainty beside it stays, with its record, as
+        // `cell.value = …` and the command line's `set` leave it.
+        let cells = self.read(py, false, |table| {
+            cells
+                .into_iter()
+                .map(|(column, cell)| {
+                    let bare =
+                        cell.peek_uncertainty().flatten().is_none() && cell.readings().is_none();
+                    if bare
+                        && table.produced_by(&column) == Some(Produced::Uncertainty)
+                        && let Ok(existing) = table.at(&address, &column)
+                    {
+                        let kept = existing.records().clone();
+                        let mut copy = copy_of(existing).or_raise(py)?;
+                        copy.set_value(cell.peek_value().unwrap_or_else(Value::absent));
+                        copy.set_records(kept);
+                        return Ok((column, copy));
+                    }
+                    // A cell a formula gives, written by hand: an override,
+                    // its record kept and marked edited, as `set` writes it.
+                    let mut cell = cell;
+                    if table.is_derived(&column)
+                        && table.produced_by(&column) != Some(Produced::Uncertainty)
+                        && cell.records().computed.is_none()
+                        && let Ok(existing) = table.at(&address, &column)
+                        && existing.records().computed.is_some()
+                    {
+                        let kept = existing.records().clone();
+                        let digest = crate::format::fingerprint::own_of(
+                            &crate::format::schema::property_as_is(&cell),
+                            kept.produced,
+                        )
+                        .marked_edited();
+                        cell.set_records(crate::core::property::Records {
+                            fingerprint: Some(digest),
+                            failure: None,
+                            ..kept
+                        });
+                    }
+                    Ok((column, cell))
+                })
+                .collect::<PyResult<Vec<_>>>()
+        })?;
         self.write(|target| target.update_row(py, &address, cells))
     }
 
@@ -3347,8 +3990,8 @@ impl PyTable {
     ///         names the nearest.
     ///
     /// Example:
-    ///     >>> ipa.fermentation.at(2, "gravity").value
-    ///     1.029
+    ///     >>> steel.curve.at(0.2, "force").value
+    ///     9.516
     fn at(slf: &Bound<'_, Self>, index: &Bound<'_, PyAny>, column: &str) -> PyResult<PyProperty> {
         let py = slf.py();
         let this = slf.borrow();
@@ -3379,8 +4022,8 @@ impl PyTable {
     ///     KeyError: The column is unknown; the message lists the columns.
     ///
     /// Example:
-    ///     >>> ipa.fermentation.values("gravity")[:3]
-    ///     [1.041, 1.029, 1.021]
+    ///     >>> steel.curve.values("force")[:3]
+    ///     [0.0, 1.281, 2.585]
     fn values(&self, py: Python<'_>, column: &str) -> PyResult<Vec<Py<PyAny>>> {
         let column = bridge::identifier_from(py, column)?;
         let read = self.read(py, true, |table| column_read(py, table, &column))?;
@@ -3440,6 +4083,13 @@ impl PyTable {
                 })
                 .collect()
         })
+    }
+
+    /// Whether a formula gives `column` row by row. The worker's, to say
+    /// what a column read whole waits for.
+    fn _derived_by_rows(&self, py: Python<'_>, column: &str) -> PyResult<bool> {
+        let column = Identifier::new(column).or_raise(py)?;
+        self.read(py, false, |table| Ok(table.is_derived_by_rows(&column)))
     }
 
     /// The names of the columns that are not the index.
@@ -3559,17 +4209,6 @@ impl PyTable {
         // The message carries the nearest name already: Python adding its
         // own wrote the suggestion twice.
         (|| {
-            let replacement = match name {
-                "cell" => Some("at(index, column), or table[position][column]"),
-                "column" => Some("table.<column>, or table.values(column)"),
-                "index_column" => Some("index"),
-                _ => None,
-            };
-            if let Some(replacement) = replacement {
-                return Err(PyAttributeError::new_err(format!(
-                    "Table.{name} does not exist: use {replacement}"
-                )));
-            }
             if name.starts_with('_') {
                 return Err(PyAttributeError::new_err(format!(
                     "'Table' object has no attribute '{name}'"
@@ -3602,6 +4241,131 @@ impl PyTable {
         PyList::new(py, rows)?.try_iter()
     }
 
+    /// The table as ``samplekit view`` unfolds it: its columns headed with
+    /// their units, its index first, each cell in a style's forms — those of
+    /// its sample's project, or of the project the current folder is in for a
+    /// table of no sample.
+    ///
+    /// Args:
+    ///     style: A style's name: ``"plain"``, one SampleKit gives, or one
+    ///         ``.samplekitrc`` declares. Without it, ``[render] style``'s.
+    ///
+    /// Returns:
+    ///     The text.
+    ///
+    /// Raises:
+    ///     ValueError: No style has that name.
+    ///
+    /// Example:
+    ///     >>> print(steel.curve.to_text())
+    #[pyo3(signature = (style=None))]
+    fn to_text(&self, py: Python<'_>, style: Option<&str>) -> PyResult<String> {
+        // A table of no sample is written as the project here writes one.
+        let config = match self.config() {
+            Some(config) => Some(config),
+            None => config_for(py, Path::new("table.md"))?,
+        };
+        style_known(config.as_deref(), style)?;
+        let attached = match &*self.state.try_borrow().map_err(|_| busy())? {
+            TableState::Attached { sample, file, name } => {
+                Some((sample.clone(), file.borrow().path.clone(), name.clone()))
+            }
+            TableState::Detached { .. } => None,
+        };
+        if let Some((sample, path, name)) = attached {
+            return sample.read_sample("the table", |sample| {
+                Ok(sheet_of(
+                    sample,
+                    path.as_deref(),
+                    config.as_deref(),
+                    style,
+                    Some(&name),
+                ))
+            });
+        }
+        // A table of no sample is lent to one made for it, and taken back.
+        let mut state = self.state.try_borrow_mut().map_err(|_| busy())?;
+        let TableState::Detached { table, .. } = &mut *state else {
+            return Err(busy());
+        };
+        let name = table.name().clone();
+        // Lent only where the loan cannot fail: a sample taking a table
+        // refuses it for its own formulas alone, and a table refused would
+        // be lost.
+        crate::core::dependency_graph::DependencyGraph::new()
+            .declare_all(&table.declarations())
+            .map_err(|error| PyValueError::new_err(error.to_string()))?;
+        let key = Identifier::new("key").expect("a name");
+        let placeholder = crate::core::table::Table::new(
+            name.clone(),
+            vec![key.clone()],
+            IndexMap::from([(key, crate::core::table::ColumnMeta::default())]),
+            Vec::new(),
+        )
+        .or_raise(py)?;
+        let lent = std::mem::replace(table.as_mut(), placeholder);
+        let mut holder = Sample::new();
+        holder.set_table(name.clone(), lent).or_raise(py)?;
+        let shown = sheet_of(&holder, None, config.as_deref(), style, Some(&name));
+        if let Ok(back) = holder.remove_table(&name) {
+            *table.as_mut() = back;
+        }
+        Ok(shown)
+    }
+
+    /// The table as rows of CSV, as ``samplekit FILE view TABLE --csv``
+    /// prints it: its index first, each column a value and its uncertainty
+    /// headed with the unit, at the precision its columns declare.
+    ///
+    /// Returns:
+    ///     The text.
+    ///
+    /// Raises:
+    ///     ValueError: The table belongs to no sample yet.
+    ///
+    /// Example:
+    ///     >>> text = steel.curve.to_csv()
+    fn to_csv(&self, py: Python<'_>) -> PyResult<String> {
+        let (sample, path, name) = match &*self.state.try_borrow().map_err(|_| busy())? {
+            TableState::Attached { sample, file, name } => (
+                sample.inner.clone(),
+                file.borrow().path.clone(),
+                name.clone(),
+            ),
+            TableState::Detached { .. } => {
+                return Err(PyValueError::new_err(
+                    "a table of no sample has no rows to write: give it to a sample first",
+                ));
+            }
+        };
+        let config = self.config();
+        let list = crate::collection::sample_list::from_entries(vec![
+            crate::collection::sample_list::Entry {
+                path,
+                sample,
+                states: None,
+            },
+        ]);
+        let (dataset, _) = crate::collection::exports::table_rows(
+            &name,
+            &list,
+            config.as_deref(),
+            &Format::Csv,
+            None,
+            None,
+        )
+        .map_err(|error| PyValueError::new_err(error.to_string()))?;
+        let (trimmed, empty) = export_formats::without_empty_uncertainties(&dataset);
+        for header in empty {
+            warn_value(
+                py,
+                &format!("{header} is left out: it is empty in every row"),
+            )?;
+        }
+        export_formats::serialize(&trimmed, Format::Csv)
+            .map_err(|error| PyValueError::new_err(error.to_string()))
+    }
+
     fn __repr__(&self, py: Python<'_>) -> PyResult<String> {
         let name = self.name();
         self.read(py, false, |table| {
@@ -3631,13 +4395,30 @@ enum RowSource {
     },
 }
 
-/// One row of a table, as a function in ``compute_rows`` receives it.
+/// One row of a table, as a column's formula receives it.
 ///
 /// A cell is read by its column's name, as an attribute or an item:
-/// ``row.gravity`` or ``row["gravity"]``, each a ``Property``.
+/// ``row.force`` or ``row["force"]``, each a ``Property``.
 #[pyclass(name = "RowView", module = "samplekit", unsendable)]
 pub struct PyRowView {
     source: RowSource,
+}
+
+/// Gives a row a formula received the value one of its cells was just
+/// computed to, for the formula that runs after it on the same row.
+pub fn set_snapshot_value(
+    py: Python<'_>,
+    view: &Py<PyRowView>,
+    column: &Identifier,
+    value: Value,
+) -> PyResult<()> {
+    let view = view.borrow(py);
+    if let RowSource::Snapshot { cells, .. } = &view.source
+        && let Some(cell) = cells.get(column)
+    {
+        cell.borrow(py).apply(py, Change::Value(value))?;
+    }
+    Ok(())
 }
 
 /// The row a row formula receives.
@@ -3779,8 +4560,8 @@ enum ColumnSource {
     },
 }
 
-/// One column of a table, as a function in ``compute_columns`` receives it,
-/// and as ``table.column_name`` reads it.
+/// One column of a table, as a ``compute_column`` formula receives it, and
+/// as ``table.column_name`` reads it.
 ///
 /// Iterating gives each cell as a ``Property``, in row order, and an item is
 /// the cell of a row, by its index value: ``column[3]``.
@@ -4006,27 +4787,6 @@ fn tag_from(text: &str) -> PyResult<Identifier> {
     })
 }
 
-fn removed_sample_member(name: &str) -> Option<&'static str> {
-    Some(match name {
-        "get_property" | "get_table" => "s[\"name\"], or s.name",
-        "set_property" => "s[\"name\"] = Property(...)",
-        "set_table" => "s[\"name\"] = Table(...)",
-        "has_property" => "\"name\" in s",
-        "remove_property" | "remove_table" => "del s[\"name\"]",
-        "set_value" => "s[\"name\"].value = ...",
-        "set_uncertainty" => "s[\"name\"].uncertainty = ...",
-        "set_unit" => "s[\"name\"].unit = ...",
-        "set_symbol" => "s[\"name\"].symbol = ...",
-        "property_names" | "table_names" => "list(s), or s.keys()",
-        "load" | "load_with_model" | "load_data" => "the constructor, Sample(path)",
-        "notes" => "note",
-        "render_report" | "render_view" | "view_names" | "view_definition" => {
-            "the command line: samplekit view"
-        }
-        _ => return None,
-    })
-}
-
 /// One sample, read from and saved to a Markdown file.
 #[pyclass(name = "Sample", module = "samplekit", subclass, weakref, unsendable)]
 pub struct PySample {
@@ -4237,6 +4997,7 @@ impl PySample {
         let this = slf.borrow();
         let id = bridge::identifier_from(py, name)?;
         let shared = this.shared();
+        shared.touch(id.as_str());
         let existing = this.lookup(&id)?;
 
         if let Ok(property) = value.cast::<PyProperty>() {
@@ -4249,9 +5010,21 @@ impl PySample {
             if let Some(Found::Property(handle)) = &existing {
                 refuse_while_computing(handle)?;
             }
+            let whole_column = property
+                .borrow()
+                .as_column
+                .borrow()
+                .as_ref()
+                .is_some_and(|given| given.compute_column.is_some());
+            if whole_column {
+                return Err(PyValueError::new_err(format!(
+                    "'{name}' is given compute_column, which computes a table's column whole: \
+                     a property of the sample is computed by compute=, given nothing"
+                )));
+            }
             // A value a formula gives, replaced by one without a formula, lost
-            // the formula without a word: `s.abv = Property(5)` read as setting
-            // the alcohol and dropped how it is computed. The override is the
+            // the formula without a word: `s.modulus = Property(5)` read as setting
+            // the modulus and dropped how it is computed. The override is the
             // form that keeps it; deleting first says the formula is meant to go.
             let made = this.file.borrow().settled;
             if made && let Some(Found::Property(handle)) = &existing {
@@ -4302,7 +5075,7 @@ impl PySample {
                 }
             }
             // What the constructor was told this value reads, kept until the
-            // model is built: `depends_on=["malt"]` is written before `malt`
+            // model is built: `depends_on=["diameter"]` is written before `diameter`
             // need exist, so the names cannot be checked here.
             let declared = property.borrow().declared.borrow().clone();
             if let Some(inputs) = declared {
@@ -4412,6 +5185,23 @@ impl PySample {
                 located(py, error, &format!("'{name}'"))
             }
         })?;
+        // An attribute changing kind — text to a number, a date to text — is
+        // assigned, and said: a filter or a comparison reads it otherwise from
+        // then on, where it read it one way before.
+        if let Some(Found::Attribute(before)) = &existing {
+            let (was, is) = (attribute_kind(before), attribute_kind(&attribute));
+            if let (Some(was), Some(is)) = (was, is)
+                && was != is
+            {
+                warn_value(
+                    py,
+                    &format!(
+                        "'{name}' was {was} and is now {is}: a filter or a comparison of it reads \
+                         it as {is} from now on"
+                    ),
+                )?;
+            }
+        }
         shared.write(|sample| sample.set_attribute(id.clone(), attribute).or_raise(py))?;
         shared.advance(&id);
         Ok(())
@@ -4422,6 +5212,7 @@ impl PySample {
             return Err(self.unknown(name, missing)?);
         };
         let shared = self.shared();
+        shared.touch(id.as_str());
         match self.lookup(&id)? {
             Some(Found::Property(handle)) => {
                 refuse_while_computing(&handle)?;
@@ -4459,7 +5250,7 @@ fn refuse_other_than_a_number(
     }
     if value.is_instance_of::<PyBool>() {
         return Err(PyValueError::new_err(format!(
-            "{quantity}, and {} is a boolean, not a quantity",
+            "{quantity}, and {} is a boolean, not a number",
             bridge::repr(value)
         )));
     }
@@ -4536,7 +5327,7 @@ impl PySample {
             })?;
         }
         if let Some(path) = path.filter(|path| !path.is_none()) {
-            this.file.borrow_mut().pending = Some(path_from(path)?);
+            this.file.borrow_mut().pending = Some(file_path_from(path)?);
         }
         Ok(())
     }
@@ -4551,6 +5342,7 @@ impl PySample {
         kwargs: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<()> {
         let py = slf.py();
+        prime_model(&slf.get_type());
         let this = slf.borrow();
         let pending = this.file.borrow_mut().pending.take();
         let Some(path) = pending else {
@@ -4607,7 +5399,15 @@ impl PySample {
             shared.advance(&name);
         }
         shared.advance(&tags_id());
+        // What the model's declarations set as the sample was made is no
+        // change of the script's: a save writes what it changes from here.
+        shared.forget_touched();
         let mut file = this.file.borrow_mut();
+        // The text the origin's digest was taken of: one changed in between is
+        // no base, and the save writes the sample whole, refused as changed.
+        file.read = std::fs::read_to_string(&path)
+            .ok()
+            .filter(|text| document::digest_of(text) == origin.digest);
         file.path = Some(path);
         file.origin = Some(origin);
         file.config = config;
@@ -4654,15 +5454,37 @@ impl PySample {
         candidate: &Bound<'_, PyList>,
     ) -> PyResult<Option<Py<PyAny>>> {
         let py = slf.py();
+        // A list of the sample — its tags — changed by a formula as it runs:
+        // `self.tags.append(…)` wrote its tag, and nothing failed.
+        refuse_while_a_formula_runs(&format!("'{name}'"))?;
         let this = slf.borrow();
         let shared = this.shared();
         let id = bridge::identifier_from(py, name)?;
         if shared.epoch(&id) != epoch {
             return Ok(None);
         }
+        shared.touch(id.as_str());
         if id == tags_id() {
             let tags = tags_from(candidate.as_any())?;
             let committed: Vec<String> = tags.iter().map(|tag| tag.to_string()).collect();
+            // A tag the sample carries already, appended again, changes
+            // nothing: said, rather than done in silence.
+            let given: Vec<String> = candidate
+                .iter()
+                .filter_map(|item| item.extract::<String>().ok())
+                .collect();
+            let twice: Vec<&String> = given
+                .iter()
+                .enumerate()
+                .filter(|(at, tag)| given[..*at].contains(tag))
+                .map(|(_, tag)| tag)
+                .collect();
+            if let Some(tag) = twice.first() {
+                warn_value(
+                    py,
+                    &format!("'{tag}' is a tag of this sample already: it is carried once"),
+                )?;
+            }
             shared.write(|sample| {
                 sample.set_tags(tags);
                 Ok(())
@@ -4720,7 +5542,7 @@ impl PySample {
         })
     }
 
-    /// The project the sample's file belongs to: what its ``.samplekitrc``
+    /// The project the sample's file belongs to — what its ``.samplekitrc``
     /// declares.
     #[getter]
     fn project(&self) -> PyProject {
@@ -4740,7 +5562,7 @@ impl PySample {
         )
     }
 
-    /// The note: the Markdown text below the frontmatter, kept as written.
+    /// The note — the Markdown text below the frontmatter, kept as written.
     #[getter]
     fn note(&self) -> PyResult<String> {
         self.shared()
@@ -4764,6 +5586,261 @@ impl PySample {
             .unbind())
     }
 
+    /// The sample an attribute links to, read as ``sk.load`` reads it, or
+    /// the file it leads to.
+    ///
+    /// A link is an attribute written ``"[[NAME]]"``, as Obsidian writes
+    /// one: the sample of the project whose file is NAME.md, else whose
+    /// ``name`` is NAME; or a Markdown link to a file,
+    /// ``"[the second](NAME.md)"``, its path read from this sample's folder.
+    /// A sample's file gives the sample; any other file its path. A list of
+    /// links gives a list, in order.
+    ///
+    /// Args:
+    ///     field: The attribute holding the link, or the links.
+    ///
+    /// Returns:
+    ///     The sample it names, or a ``pathlib.Path`` for a file that is no
+    ///     sample; for a list, a list of them, in order.
+    ///
+    /// Raises:
+    ///     KeyError: The sample holds no such attribute.
+    ///     ValueError: The attribute is no link: text, or a web address; or
+    ///         several samples answer to it.
+    ///     FileNotFoundError: No sample answers to it, or nothing is at its
+    ///         path.
+    ///
+    /// Example:
+    ///     >>> steel.linked("reference").name
+    ///     'aluminium-01'
+    fn linked(slf: &Bound<'_, Self>, field: &str) -> PyResult<Py<PyAny>> {
+        let py = slf.py();
+        let this = slf.borrow();
+        let name =
+            Identifier::new(field).map_err(|error| PyKeyError::new_err(error.to_string()))?;
+        let (texts, list) = this.shared().read_sample(field, |sample| {
+            Ok(match sample.attribute(&name) {
+                Ok(crate::core::sample::AttributeValue::Scalar(value)) => {
+                    (vec![value.clone()], false)
+                }
+                Ok(crate::core::sample::AttributeValue::List(values)) => (values.clone(), true),
+                Err(_) => {
+                    return Err(PyKeyError::new_err(format!(
+                        "{field}: the sample holds no attribute of that name"
+                    )));
+                }
+            })
+        })?;
+        let own = this.file.borrow().path.clone();
+        let config = this.file.borrow().config.clone();
+        drop(this);
+        let from = own.unwrap_or_else(|| PathBuf::from("sample.md"));
+        let mut samples = Vec::new();
+        for (at, value) in texts.iter().enumerate() {
+            let said = if list {
+                format!("{field}[#{at}]")
+            } else {
+                field.to_string()
+            };
+            let link = match value {
+                Value::Text(text) => crate::core::link::parse(text),
+                _ => None,
+            };
+            let Some(link) = link else {
+                return Err(PyValueError::new_err(format!(
+                    "{said} is no link: a link to a sample is written \"[[name]]\", or \
+                     \"[text](name.md)\""
+                )));
+            };
+            let leads = crate::config::discovery::destination(&link, &from, || {
+                crate::config::discovery::linkable(config.as_deref(), &from, &[])
+            });
+            let path = match leads {
+                crate::config::discovery::Destination::Sample(path) => path,
+                crate::config::discovery::Destination::Address(address) => {
+                    return Err(PyValueError::new_err(format!(
+                        "{said} is a web address, {address}, and no sample"
+                    )));
+                }
+                crate::config::discovery::Destination::File(path) => {
+                    samples.push(py.import("pathlib")?.getattr("Path")?.call1((path,))?);
+                    continue;
+                }
+                crate::config::discovery::Destination::Nowhere(target) => {
+                    let written = link.shown().to_string();
+                    return Err(PyFileNotFoundError::new_err(match link {
+                        crate::core::link::Link::Sample { .. } => format!(
+                            "{said}: [[{target}]] leads to no sample: no file of the project \
+                             is named {target}, and no sample's name is"
+                        ),
+                        _ => format!(
+                            "{said}: {written} leads to nothing: no file is at {target}, from \
+                             the sample's folder"
+                        ),
+                    }));
+                }
+                crate::config::discovery::Destination::Several(paths) => {
+                    return Err(PyValueError::new_err(format!(
+                        "{said}: {} leads to {} samples: {}",
+                        link.shown(),
+                        paths.len(),
+                        paths
+                            .iter()
+                            .map(|path| path.display().to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )));
+                }
+            };
+            samples.push(py.import("samplekit")?.getattr("load")?.call1((path,))?);
+        }
+        if list {
+            Ok(PyList::new(py, samples)?.into_any().unbind())
+        } else {
+            Ok(samples
+                .pop()
+                .map(|sample| sample.unbind())
+                .unwrap_or_else(|| py.None()))
+        }
+    }
+
+    /// Delete the sample's file.
+    ///
+    /// The project's history keeps it, and ``samplekit FILE restore --write``
+    /// gives it back; the sample's own files, under ``[collection] files``,
+    /// stay. The sample keeps its values: ``save()`` writes it again.
+    ///
+    /// Raises:
+    ///     ValueError: The sample has no file, or the script runs under
+    ///         ``samplekit run``, whose preview cannot hold a removal.
+    ///     FileNotFoundError: Its file was removed or moved since it was read.
+    ///     OSError: The file changed on disk since it was read.
+    ///
+    /// Example:
+    ///     >>> sk.Sample("samples/steel-01.md").remove()
+    #[pyo3(name = "remove")]
+    fn remove_file(slf: &Bound<'_, Self>) -> PyResult<()> {
+        let py = slf.py();
+        let this = slf.borrow();
+        let Some(path) = this.file.borrow().path.clone() else {
+            return Err(PyValueError::new_err("this sample has no file to remove"));
+        };
+        if document::holding_saves() {
+            return Err(PyValueError::new_err(
+                "a script samplekit run previews cannot remove a sample: samplekit FILE remove \
+                 does",
+            ));
+        }
+        let Ok(held) = fs::read_to_string(&path) else {
+            return Err(PyFileNotFoundError::new_err(format!(
+                "{} was removed or moved since it was read, and nothing was removed",
+                path.display()
+            )));
+        };
+        if let Some(read) = this.file.borrow().read.as_deref()
+            && read != held
+        {
+            return Err(PyOSError::new_err(format!(
+                "{} changed on disk since it was read, and nothing was removed: read it again \
+                 to see what changed",
+                path.display()
+            )));
+        }
+        let unread = history_begin(&path);
+        document::note_written(&path);
+        fs::remove_file(&path)
+            .map_err(|error| PyOSError::new_err(format!("{}: {error}", path.display())))?;
+        {
+            // Its values stay, and a save writes them as a new file's.
+            let mut file = this.file.borrow_mut();
+            file.origin = None;
+            file.read = None;
+        }
+        history_saved(py, &path, unread, true)
+    }
+
+    /// Rename the sample: its file, its own files, and every link of its
+    /// project leading to it.
+    ///
+    /// The file becomes ``NEW.md`` beside the old one, its own files under
+    /// ``[collection] files`` renamed with it, its ``name`` too where it was
+    /// the file's name; each link of the project that led to it, ``[[OLD]]``
+    /// or ``[text](OLD.md)``, is written to lead to it again. The history
+    /// keeps the samples; renamed back, the files and the links go back too.
+    ///
+    /// Args:
+    ///     new: The new name: the file's, without its folder or ``.md``.
+    ///
+    /// Returns:
+    ///     The sample's new path.
+    ///
+    /// Raises:
+    ///     ValueError: The sample has no file, the name is no file's name, or
+    ///         the script runs under ``samplekit run``, whose preview cannot
+    ///         hold a rename.
+    ///     FileExistsError: Another sample, or one of its files, has the name.
+    ///     OSError: The file changed on disk since it was read.
+    ///
+    /// Example:
+    ///     >>> sk.Sample("samples/steel-01.md").rename("steel-04")
+    ///     PosixPath('samples/steel-04.md')
+    fn rename(slf: &Bound<'_, Self>, new: &str) -> PyResult<Py<PyAny>> {
+        let py = slf.py();
+        let this = slf.borrow();
+        let Some(path) = this.file.borrow().path.clone() else {
+            return Err(PyValueError::new_err("this sample has no file to rename"));
+        };
+        if document::holding_saves() {
+            return Err(PyValueError::new_err(
+                "a script samplekit run previews cannot rename a sample: samplekit FILE rename \
+                 does",
+            ));
+        }
+        if let (Some(read), Ok(held)) = (
+            this.file.borrow().read.as_deref(),
+            fs::read_to_string(&path),
+        ) && read != held
+        {
+            return Err(PyOSError::new_err(format!(
+                "{} changed on disk since it was read, and nothing was renamed: read it again \
+                 to see what changed",
+                path.display()
+            )));
+        }
+        let config = this.file.borrow().config.clone();
+        let plan =
+            crate::collection::renaming::plan(config.as_deref(), &path, new).map_err(|error| {
+                if error.0.contains("exists") {
+                    PyFileExistsError::new_err(error.0)
+                } else {
+                    PyValueError::new_err(error.0)
+                }
+            })?;
+        let unread = history_begin(&path);
+        crate::collection::renaming::apply(&plan).map_err(|error| PyOSError::new_err(error.0))?;
+        if let Some((_, name)) = &plan.name {
+            let name = name.clone();
+            this.shared().write(|sample| {
+                sample.set_name(Some(name));
+                Ok(())
+            })?;
+        }
+        {
+            let mut file = this.file.borrow_mut();
+            file.path = Some(plan.to.clone());
+            file.read = fs::read_to_string(&plan.to).ok();
+            file.origin = document::load_sample(&plan.to)
+                .ok()
+                .map(|(_, origin)| origin);
+        }
+        history_saved(py, &plan.to, unread, true)?;
+        Ok(py
+            .import("pathlib")?
+            .getattr("Path")?
+            .call1((plan.to.clone(),))?
+            .unbind())
+    }
+
     /// Write the sample to its file.
     ///
     /// Nothing is overwritten unless asked: a file changed on disk since it was
@@ -4778,6 +5855,7 @@ impl PySample {
     ///
     /// Raises:
     ///     ValueError: The sample has no file yet and no ``path`` is given.
+    ///         Also: another process is saving the same file at this moment.
     ///     FileExistsError: ``path`` exists already.
     ///     FileNotFoundError: The folder does not exist, or the sample's file was
     ///         removed or moved since it was read.
@@ -4786,8 +5864,8 @@ impl PySample {
     ///     PermissionError: The file is read-only.
     ///
     /// Example:
-    ///     >>> ipa.volume.value = 21
-    ///     >>> ipa.save()
+    ///     >>> steel.grade = "S275"
+    ///     >>> steel.save()
     #[pyo3(signature = (path=None, overwrite=false))]
     fn save(
         slf: &Bound<'_, Self>,
@@ -4799,7 +5877,7 @@ impl PySample {
         let own = this.file.borrow().path.clone();
         let requested = path
             .filter(|path| !path.is_none())
-            .map(path_from)
+            .map(file_path_from)
             .transpose()?;
         let target = match (&requested, &own) {
             (Some(requested), _) => requested.clone(),
@@ -4872,19 +5950,91 @@ impl PySample {
             Destination::Path(target.clone())
         };
 
+        // A folder made a project: what the project above kept of its files
+        // brought into its own history before a first write here starts it.
+        if !document::holding_saves()
+            && let Some(project) =
+                crate::config::version_control::projects_of(std::slice::from_ref(&target))
+                    .into_iter()
+                    .next()
+            && let Some(said) = crate::config::version_control::bring_from_above(&project)
+        {
+            warn_value(py, &said)?;
+        }
         let shared = this.shared();
+        // Saves held for a preview keep no history: the command that writes
+        // them does.
+        let holding = document::holding_saves();
         // What the project held before the script's first save, for the one
         // snapshot the script takes.
-        let unread = history_begin(&target);
+        let unread = if holding {
+            Vec::new()
+        } else {
+            history_begin(&target)
+        };
+        // The records the file held before: a record new in it is one the
+        // script computed, and the trace keeps which formula did.
+        // The file as it was: a save that wrote nothing is named in no
+        // snapshot's message, which listed twelve files where two changed.
+        let before_bytes = std::fs::read(&target).ok();
+        let before_records = document::load_sample(&target)
+            .map(|(sample, _)| crate::config::version_control::records_of_values(&sample))
+            .unwrap_or_default();
         // Runs no formula: a value never computed is written absent, and a
         // stale value with the record that says so.
-        let saved = shared.write(|sample| Ok(document::save_computed(sample, &destination)))?;
+        // Its own file, as it was read: only what the script changed, or
+        // computed, is written — a statistic the model took of its readings on
+        // reading, or a unit it declares for a value the file does not hold,
+        // is no change of the script's, where `tags.append` wrote them all.
+        let touched = shared.touched();
+        let changes_only = rewriting
+            && !created
+            && this.file.borrow().origin.is_some()
+            && !touched.contains(COMPUTED);
+        let read = this.file.borrow().read.clone();
+        let saved = shared.write(|sample| {
+            Ok(if changes_only {
+                document::save_changed(sample, &destination, &touched, read.as_deref())
+            } else {
+                document::save_computed(sample, &destination)
+            })
+        })?;
+        if saved.is_ok() {
+            shared.forget_touched();
+        }
+        let file_config = this.file.borrow().config.clone();
         let origin = saved.map_err(|error| match error {
-            DocumentError::ConcurrentEdit { path } => PyOSError::new_err(format!(
-                "{} changed since it was read, and nothing was written: save(overwrite=True) \
-                 replaces it",
-                path.display()
-            )),
+            DocumentError::ConcurrentEdit { path } => {
+                // What changed there, value by value, and the way that keeps
+                // it: `overwrite=True` alone was offered, which wrote over it
+                // without a word of what it lost.
+                let changed: Vec<String> = match (&read, std::fs::read(&path).ok(), &file_config) {
+                    (Some(read), Some(now), Some(config)) => {
+                        crate::presentation::changes::changes_of(
+                            &path.display().to_string(),
+                            Some(&read.clone().into_bytes()),
+                            Some(&now),
+                            config,
+                        )
+                        .into_iter()
+                        .skip(1)
+                        .collect()
+                    }
+                    _ => Vec::new(),
+                };
+                let said = if changed.is_empty() {
+                    String::new()
+                } else {
+                    format!(":\n{}", changed.join("\n"))
+                };
+                PyOSError::new_err(format!(
+                    "{} changed since it was read, and nothing was written{said}\n  read it \
+                     again, sk.Sample(path), to make your change over what it holds now; \
+                     save(overwrite=True) writes this sample over it, and what changed there \
+                     is lost",
+                    path.display()
+                ))
+            }
             other => other.into_py_err(py),
         })?;
         let config = if rewriting {
@@ -4895,12 +6045,84 @@ impl PySample {
         {
             let mut file = this.file.borrow_mut();
             file.path = Some(target.clone());
+            file.read = document::current_text(&target)
+                .ok()
+                .filter(|text| document::digest_of(text) == origin.digest);
             file.origin = Some(origin);
             file.config = config;
         }
+        let traced = this.file.borrow().config.clone();
+        let computed = std::mem::take(&mut this.file.borrow_mut().computed);
         drop(this);
-        history_saved(py, &target, unread)?;
+        if holding {
+            return log_failures(slf);
+        }
+        if let Some(formulas) = formula_digests(slf)
+            && let Ok(mut session) = HISTORY_SESSION.lock()
+        {
+            session.tracing.saved(
+                traced.as_deref(),
+                &before_records,
+                &target,
+                &formulas,
+                &computed,
+            );
+        }
+        let changed = std::fs::read(&target).ok() != before_bytes;
+        history_saved(py, &target, unread, changed)?;
         log_failures(slf)
+    }
+
+    /// Whether anything was changed since the sample was read or last saved.
+    #[getter]
+    fn _changed(&self) -> bool {
+        !self.shared().touched().is_empty()
+    }
+
+    /// The sample as ``samplekit view`` shows it — its values, then its
+    /// tables — each value in a style's forms.
+    ///
+    /// Args:
+    ///     style: A style's name: ``"plain"``, one SampleKit gives, or one
+    ///         ``.samplekitrc`` declares. Without it, ``[render] style``'s.
+    ///
+    /// Returns:
+    ///     The text.
+    ///
+    /// Raises:
+    ///     ValueError: No style has that name.
+    ///
+    /// Example:
+    ///     >>> print(steel.to_text())
+    #[pyo3(signature = (style=None))]
+    fn to_text(&self, style: Option<&str>) -> PyResult<String> {
+        let file = self.file.borrow();
+        let config = file.config.clone();
+        style_known(config.as_deref(), style)?;
+        let path = file.path.clone();
+        drop(file);
+        // What the file holds, as `view` reads it: a value or a table only the
+        // model declares, empty, is not written.
+        let held: Option<Vec<String>> = path.as_deref().and_then(|path| {
+            crate::format::document::load_sample(path)
+                .ok()
+                .map(|(file, _)| {
+                    file.property_names()
+                        .into_iter()
+                        .chain(file.table_names())
+                        .map(ToString::to_string)
+                        .collect()
+                })
+        });
+        self.shared().read_sample("the sample", |sample| {
+            Ok(sheet_held(
+                sample,
+                path.as_deref(),
+                config.as_deref(),
+                style,
+                held.as_deref(),
+            ))
+        })
     }
 
     /// The sample's own files: images, reports, anything found by the sample's
@@ -4936,7 +6158,10 @@ impl PySample {
     /// Raises:
     ///     FileNotFoundError: No file of the sample matches.
     ///     ValueError: More than five would open and ``many`` is false.
-    ///     RuntimeError: There is no display to open them on.
+    ///     RuntimeError: Over SSH without a display — ``DISPLAY`` and
+    ///         ``WAYLAND_DISPLAY`` unset — there is nothing to open them on.
+    ///         Elsewhere the system's opener is started, and what it does
+    ///         without a display is its own.
     #[pyo3(signature = (pattern=None, navigate=false, many=false))]
     fn open(
         &self,
@@ -5009,14 +6234,14 @@ impl PySample {
     ///         formula.
     ///
     /// Example:
-    ///     >>> class Brew(sk.Sample):
+    ///     >>> class Specimen(sk.Sample):
     ///     ...     def __init__(self, path=None, name=None):
     ///     ...         super().__init__(path, name=name)
-    ///     ...         self.abv = sk.Property(unit="%", compute=self._abv)
-    ///     ...         self.set_dependencies("abv", depends_on=["og", "fg"])
+    ///     ...         self.area = sk.Property(unit="mm²", compute_value=self._area)
+    ///     ...         self.set_dependencies("area", depends_on=["width", "thickness"])
     ///     ...
-    ///     ...     def _abv(self):
-    ///     ...         return (self.og.value - self.fg.value) * 131.25
+    ///     ...     def _area(self):
+    ///     ...         return self.width.value * self.thickness.value
     #[pyo3(signature = (output, *, depends_on))]
     fn set_dependencies(
         &self,
@@ -5061,8 +6286,8 @@ impl PySample {
     ///     KeyError: An unknown name; the message names the nearest.
     ///
     /// Example:
-    ///     >>> ipa.dependencies("abv")
-    ///     ['fg', 'og']
+    ///     >>> steel.dependencies("area")
+    ///     ['thickness', 'width']
     fn dependencies(&self, py: Python<'_>, output: &str) -> PyResult<Vec<String>> {
         if let Some((table, column)) = output.split_once('.') {
             let table = bridge::identifier_from(py, table)?;
@@ -5070,21 +6295,27 @@ impl PySample {
             return self.shared().read_sample("the dependencies", |sample| {
                 let held = sample.table(&table).or_raise(py)?;
                 held.column(&column).or_raise(py)?;
-                Ok(held
+                let mut inputs: Vec<String> = held
                     .inputs_of(&column)
                     .map(|inputs| inputs.iter().map(ToString::to_string).collect())
-                    .unwrap_or_default())
+                    .unwrap_or_default();
+                // Sorted, as the reference says: the declaration's order was
+                // given.
+                inputs.sort();
+                Ok(inputs)
             });
         }
         let output = bridge::identifier_from(py, output)?;
         self.shared().read_sample("the dependencies", |sample| {
             known(py, sample, &Node::Named(output.clone()))?;
-            Ok(sample
+            let mut inputs: Vec<String> = sample
                 .dependencies_of(&output)
                 .or_raise(py)?
                 .iter()
                 .map(node_name)
-                .collect())
+                .collect();
+            inputs.sort();
+            Ok(inputs)
         })
     }
 
@@ -5102,7 +6333,7 @@ impl PySample {
         let node = match input_name(input)? {
             InputName::Named(name) => Node::Named(name),
             InputName::Column { table, column } => Node::Column { table, column },
-            InputName::Cell(_) => {
+            InputName::Cell(_) | InputName::CellValue(_) => {
                 return Err(PyValueError::new_err("a property depends on no row's cell"));
             }
         };
@@ -5112,7 +6343,9 @@ impl PySample {
                 Node::Named(name) => sample.dependents_of(name).or_raise(py)?,
                 Node::Column { .. } => sample.affected_by_change(&node).or_raise(py)?,
             };
-            Ok(direct.iter().map(node_name).collect())
+            let mut names: Vec<String> = direct.iter().map(node_name).collect();
+            names.sort();
+            Ok(names)
         })
     }
 
@@ -5129,25 +6362,27 @@ impl PySample {
     ///     KeyError: An unknown name; the message names the nearest.
     ///
     /// Example:
-    ///     >>> ipa.affected_by_change("og")
-    ///     ['abv', 'attenuation', 'drop', 'efficiency', 'fermentation.apparent', 'fermentation.rate']
+    ///     >>> steel.affected_by_change("thickness")
+    ///     ['area', 'curve.stress', 'tensile_strength', 'yield_strength', 'young_modulus']
     fn affected_by_change(&self, py: Python<'_>, input: &str) -> PyResult<Vec<String>> {
         let node = match input_name(input)? {
             InputName::Named(name) => Node::Named(name),
             InputName::Column { table, column } => Node::Column { table, column },
-            InputName::Cell(_) => {
+            InputName::Cell(_) | InputName::CellValue(_) => {
                 return Err(PyValueError::new_err("a property depends on no row's cell"));
             }
         };
         self.shared()
             .read_sample("what a change affects", |sample| {
                 known(py, sample, &node)?;
-                Ok(sample
+                let mut names: Vec<String> = sample
                     .affected_by_change(&node)
                     .or_raise(py)?
                     .iter()
                     .map(node_name)
-                    .collect())
+                    .collect();
+                names.sort();
+                Ok(names)
             })
     }
 
@@ -5174,8 +6409,8 @@ impl PySample {
     ///         and the others that failed.
     ///
     /// Example:
-    ///     >>> ipa.compute()
-    ///     >>> ipa.save()
+    ///     >>> steel.compute()
+    ///     >>> steel.save()
     #[pyo3(signature = (*names, rerun=false, force=false))]
     fn compute(
         &self,
@@ -5195,19 +6430,21 @@ impl PySample {
         )
     }
 
-    /// The outdated values: those an input changed under since they were
+    /// The outdated values — those an input changed under since they were
     /// computed.
     ///
     /// Returns:
     ///     The names of the outdated properties, and ``table.column`` for a
     ///     column with an outdated cell.
     fn outdated(&self, py: Python<'_>) -> PyResult<Vec<String>> {
-        Ok(target_names(&stale_targets(py, &self.shared())?))
-    }
-
-    /// The same as ``outdated()``, under its former name.
-    fn stale(&self, py: Python<'_>) -> PyResult<Vec<String>> {
-        self.outdated(py)
+        let mut names = target_names(&stale_targets(py, &self.shared())?);
+        // And what a changed formula outdates, as `state` and `status` say.
+        for (value, said) in planned_of(&self.shared(), &self.file) {
+            if said.contains("formula changed") && !names.contains(&value) {
+                names.push(value);
+            }
+        }
+        Ok(names)
     }
 
     /// Every value that is not current, and why: what ``samplekit status``
@@ -5218,14 +6455,21 @@ impl PySample {
     ///
     /// Returns:
     ///     A dict from each name — a property, or ``table.column`` — to a reason:
-    ///     ``"outdated"``, ``"edited"``, ``"failed"``, ``"never computed"`` or
-    ///     ``"waits for fg"``.
+    ///     ``"outdated"``, ``"formula changed"``, ``"edited"``, ``"failed"``,
+    ///     ``"never computed"`` or ``"waits for notch"``.
     ///
     /// Example:
-    ///     >>> ipa.not_current()
+    ///     >>> steel.not_current()
     ///     {}
     fn not_current<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         let out = PyDict::new(py);
+        // A formula changed since it computed a value, or one it reads: as
+        // `status` says it, from the trace — current by its inputs was said.
+        for (value, said) in planned_of(&self.shared(), &self.file) {
+            if said.contains("formula changed") {
+                out.set_item(value, said)?;
+            }
+        }
         self.shared().read_sample("the sample", |sample| {
             let states = fingerprint::check(sample).unwrap_or_default();
             for name in sample.property_names() {
@@ -5251,8 +6495,28 @@ impl PySample {
                 }
                 // Never computed is the model's to know, and `owed` is how the
                 // plan knows it: a formula that has not produced what it owes.
+                // One whose input failed waits behind it, as `status` says.
                 if owed(&handle) {
-                    out.set_item(name.to_string(), "never computed")?;
+                    let failed: Vec<String> = sample
+                        .dependencies_of(&name)
+                        .unwrap_or_default()
+                        .iter()
+                        .map(node_name)
+                        .filter(|input| {
+                            Identifier::new(input).ok().is_some_and(|input| {
+                                states.get(&input).and_then(not_current_word) == Some("failed")
+                            })
+                        })
+                        .collect();
+                    if failed.is_empty() {
+                        out.set_item(name.to_string(), "never computed")?;
+                    } else {
+                        let said: Vec<String> = failed
+                            .iter()
+                            .map(|input| format!("{input}, which failed"))
+                            .collect();
+                        out.set_item(name.to_string(), format!("waits for {}", said.join("; ")))?;
+                    }
                     continue;
                 }
                 if let Some(said) = said {
@@ -5341,10 +6605,10 @@ impl PySample {
     }
 
     /// Each formula's declaration, by the value it gives: a list of `(role,
-    /// object)` — `compute`, `compute_uncertainty` or `compute_quantity` with
+    /// object)` — `compute`, `compute_value` or `compute_uncertainty` with
     /// its function, `value` or `uncertainty` with the statistic declared,
-    /// `unit`, and for a column `compute_rows` or `compute_columns` with what
-    /// it reads and fills. The worker's, to take each formula's digest from.
+    /// `compute_column` with its function, `unit`, and for a column what it
+    /// reads and fills. The worker's, to take each formula's digest from.
     fn _formula_code<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         let out = PyDict::new(py);
         for (name, parts) in &self.file.borrow().formula_code {
@@ -5359,6 +6623,52 @@ impl PySample {
 
     /// Runs one entry of the plan: a property, or the cells of a column the same
     /// choice selects.
+    /// A value whose formula the worker stopped from outside, past
+    /// `--timeout`: failed by `error`, as though the formula had raised it.
+    /// A property, or every cell of a table's column; `False` for anything
+    /// else, which is then only said.
+    fn _fail_planned(
+        &self,
+        py: Python<'_>,
+        value: &str,
+        error: Bound<'_, PyAny>,
+    ) -> PyResult<bool> {
+        let failure = bridge::formula_failed(py, PyErr::from_value(error));
+        let shared = self.shared();
+        // A table's column: each of its cells failed, as a formula's raise
+        // fails them; it was left as it was, its old cells read as current.
+        if let Some((table, column)) = value.split_once('.') {
+            let (Ok(table), Ok(column)) = (Identifier::new(table), Identifier::new(column)) else {
+                return Ok(false);
+            };
+            let message = failure.to_string();
+            let failed =
+                shared.write(|sample| Ok(sample.fail_column(&table, &column, &message).is_ok()))?;
+            if failed {
+                shared.touch(COMPUTED);
+            }
+            return Ok(failed);
+        }
+        let Ok(name) = Identifier::new(value) else {
+            return Ok(false);
+        };
+        let failed = shared.read_sample("the sample", |sample| {
+            Ok(match sample.property(&name) {
+                Ok(handle) => {
+                    handle.peek(|property| property.fail_with(failure));
+                    true
+                }
+                Err(_) => false,
+            })
+        })?;
+        // Saved as a computation is, so that the failure is written though
+        // nothing else is computed after it.
+        if failed {
+            shared.touch(COMPUTED);
+        }
+        Ok(failed)
+    }
+
     fn _compute_planned(
         &self,
         py: Python<'_>,
@@ -5385,7 +6695,7 @@ impl PySample {
         compute_now(py, &shared, &targets)
     }
 
-    /// The edited values: those typed over their formula.
+    /// The edited values — those typed over their formula.
     ///
     /// Returns:
     ///     The names of the edited properties, and ``table.column`` for a column
@@ -5437,11 +6747,6 @@ impl PySample {
                     slf.get_type().name()?
                 )));
             }
-            if let Some(replacement) = removed_sample_member(name) {
-                return Err(PyAttributeError::new_err(format!(
-                    "Sample.{name} does not exist: use {replacement}"
-                )));
-            }
             PySample::get_among(
                 slf,
                 name,
@@ -5454,12 +6759,17 @@ impl PySample {
 
     fn __getitem__(slf: &Bound<'_, Self>, name: &str) -> PyResult<Py<PyAny>> {
         // A name is the object it names; anything else the command line
-        // addresses, `name`, `malt.u`, `conditioning.carbonation[50]`, is read as it
+        // addresses, `name`, `diameter.u`, `tempering.nitridation[50]`, is read as it
         // reads it.
         if name.trim().is_empty() {
             return Err(bridge::key_error(format!(
                 "'{name}' is not a field path: an empty field name names nothing"
             )));
+        }
+        // What the sample carries by a name of its own is read as its
+        // attribute is: `s["tags"]` was an unknown field beside `s.tags`.
+        if matches!(name, "tags" | "name" | "note" | "path" | "filename") {
+            return Ok(slf.getattr(name)?.unbind());
         }
         let reserved = crate::core::sample::RESERVED.contains(&name);
         if !reserved && Identifier::new(name).is_ok() {
@@ -5472,6 +6782,7 @@ impl PySample {
         if name.starts_with('_') {
             return generic_setattr(slf.as_any(), name, Some(value));
         }
+        refuse_while_a_formula_runs(&format!("'{name}'"))?;
         match name {
             "path" | "filename" => {
                 return Err(PyAttributeError::new_err(format!(
@@ -5489,7 +6800,9 @@ impl PySample {
                 } else {
                     Some(sample_name(value)?)
                 };
-                return slf.borrow().shared().write(|sample| {
+                let shared = slf.borrow().shared();
+                shared.touch("name");
+                return shared.write(|sample| {
                     sample.set_name(name);
                     Ok(())
                 });
@@ -5498,15 +6811,34 @@ impl PySample {
                 let note: String = value
                     .extract()
                     .map_err(|_| PyTypeError::new_err("a sample's note is a str"))?;
-                return slf.borrow().shared().write(|sample| {
+                let shared = slf.borrow().shared();
+                shared.touch("note");
+                return shared.write(|sample| {
                     sample.set_note(note);
                     Ok(())
                 });
             }
             "tags" => {
                 let tags = tags_from(value)?;
+                // A tag given twice is carried once, and said, as one
+                // appended again is: `tags = ['a', 'a']` said nothing.
+                let given = value.try_iter()?.count();
+                if given > tags.len() {
+                    warn_value(
+                        slf.py(),
+                        &format!(
+                            "{} given more than once: each is carried once",
+                            if given - tags.len() == 1 {
+                                "a tag is"
+                            } else {
+                                "tags are"
+                            }
+                        ),
+                    )?;
+                }
                 let this = slf.borrow();
                 let shared = this.shared();
+                shared.touch("tags");
                 shared.write(|sample| {
                     sample.set_tags(tags);
                     Ok(())
@@ -5530,6 +6862,29 @@ impl PySample {
     }
 
     fn __setitem__(slf: &Bound<'_, Self>, name: &str, value: &Bound<'_, PyAny>) -> PyResult<()> {
+        refuse_while_a_formula_runs(&format!("'{name}'"))?;
+        // A path is read, not assigned: named with the assignment that does
+        // it, where the identifier's advice made an attribute `radius_v`.
+        if name.contains(['.', '[']) {
+            let head = name.split(['.', '[']).next().unwrap_or(name);
+            let way = if name.contains('[') {
+                format!(
+                    "a row's cell is changed through its table: s.{head}.update(<index>, \
+                     <column>=<value>)"
+                )
+            } else {
+                let channel = name.split_once('.').map_or("value", |(_, rest)| rest);
+                let channel = match channel {
+                    "v" => "value",
+                    "u" => "uncertainty",
+                    other => other,
+                };
+                format!("a channel is assigned on its property: s.{head}.{channel} = <value>")
+            };
+            return Err(PyValueError::new_err(format!(
+                "'{name}' is a field's path, which is read and not assigned — {way}"
+            )));
+        }
         PySample::assign(slf, name, value)
     }
 
@@ -5537,6 +6892,7 @@ impl PySample {
         if name.starts_with('_') {
             return generic_setattr(slf.as_any(), name, None);
         }
+        refuse_while_a_formula_runs(&format!("'{name}'"))?;
         if matches!(
             name,
             "path" | "filename" | "project" | "name" | "note" | "tags"
@@ -5638,6 +6994,9 @@ fn wrap_loaded(
         let this = cell.borrow();
         *this.shared.borrow_mut() = SharedSample::new(sample);
         let mut file = this.file.borrow_mut();
+        file.read = std::fs::read_to_string(&path)
+            .ok()
+            .filter(|text| document::digest_of(text) == origin.digest);
         file.path = Some(path);
         file.origin = Some(origin);
         file.config = config;
@@ -5747,6 +7106,7 @@ fn prepare(py: Python<'_>, shared: &SharedSample, targets: &[Target]) -> PyResul
                         .map(|tuple| RowAddress::Index(tuple.into_iter().cloned().collect()))
                         .collect(),
                 };
+                shared.touch(COMPUTED);
                 for row in rows {
                     sample.retake_statistic(table, &row, column).or_raise(py)?;
                     // Recorded at once, as a computed value is when it runs:
@@ -5756,7 +7116,9 @@ fn prepare(py: Python<'_>, shared: &SharedSample, targets: &[Target]) -> PyResul
                 continue;
             }
             match target {
-                Target::Property(_) => {}
+                // About to run again: what it gives is in the unit the model
+                // declares now.
+                Target::Property(name) => sample.property(name).or_raise(py)?.adopt_declared_unit(),
                 Target::Column { table, column } => {
                     // Named, an override gives way to its formula.
                     sample
@@ -5784,6 +7146,8 @@ fn prepare(py: Python<'_>, shared: &SharedSample, targets: &[Target]) -> PyResul
 
 /// One target run, its failure raised as the formula's own exception.
 fn run_target(py: Python<'_>, shared: &SharedSample, target: &Target) -> PyResult<()> {
+    // A computation stamps the whole sample: the next save writes it whole.
+    shared.touch(COMPUTED);
     {
         // A property is invalidated as it is reached: a failure raises, and what
         // comes after it keeps the value it had, stale, rather than none.
@@ -5804,6 +7168,12 @@ fn run_target(py: Python<'_>, shared: &SharedSample, target: &Target) -> PyResul
                         |sample| sample.property(name).or_raise(py),
                         |snapshot| snapshot.properties.get(name).cloned().ok_or_else(busy),
                     )?;
+                    // Readings whose statistic nothing took yet: taken here,
+                    // value and spread, as `compute` on the command line takes
+                    // them. The value came, its uncertainty did not.
+                    if statistic_owed(&handle) {
+                        handle.take_statistic();
+                    }
                     handle.value().or_raise(py)?;
                     handle.uncertainty().or_raise(py)?;
                 }
@@ -5998,6 +7368,16 @@ fn not_current_word(state: &fingerprint::Freshness) -> Option<&'static str> {
     }
 }
 
+/// A value not current: *waiting* where an input it reads was emptied since —
+/// its number the one computed before — as `status` says it, else *outdated*.
+fn outdated_or_waiting(sample: &Sample, state: &fingerprint::Freshness) -> &'static str {
+    if crate::collection::editing::emptied_inputs(sample, state).is_empty() {
+        "outdated"
+    } else {
+        "waiting"
+    }
+}
+
 fn owed(handle: &PropertyHandle) -> bool {
     (handle.is_computed() && handle.peek(Property::peek_value).is_none())
         || (handle.has_uncertainty_formula() && handle.peek(Property::peek_uncertainty).is_none())
@@ -6008,7 +7388,7 @@ fn owed(handle: &PropertyHandle) -> bool {
 /// and no value written beside them. The model gives the value as it reads
 /// them, running nothing, but the file holds none — a table shows *—* — until a
 /// computation writes it: *never computed*, as a cell of a statistic column is,
-/// on every surface. The demo's blonde saison had its gravities *—* in the
+/// on every surface. The demo's blonde steel had its hardnesses *—* in the
 /// table and in no list of `status`.
 fn statistic_owed(handle: &PropertyHandle) -> bool {
     handle.records().computed.is_none()
@@ -6016,7 +7396,23 @@ fn statistic_owed(handle: &PropertyHandle) -> bool {
             property.has_declared_statistic()
                 && property.readings().is_some()
                 && property.written_value().is_none()
+                // One the file states is read as it stands: owed, it was
+                // *never computed* beside the value every table showed.
+                && !property.statistic_taken()
         })
+}
+
+/// A statistic the file states where the model declares another: the
+/// computation takes the model's, and says so.
+fn statistic_stated_otherwise(handle: &PropertyHandle) -> bool {
+    handle.peek(|property| property.stated_statistic() != (None, None))
+}
+
+/// What a computation changes of a statistic a file states otherwise.
+fn statistic_change(sample: &Sample, label: &str) -> Option<String> {
+    let name = Identifier::new(label).ok()?;
+    let handle = sample.property(&name).ok()?;
+    handle.peek(Property::statistic_change_said)
 }
 
 /// What a computation runs, each with why. In its scope — the values named, or
@@ -6075,6 +7471,8 @@ fn selected_among(
                             force.then_some("edited")
                         } else if owed(&handle) {
                             Some("never computed")
+                        } else if statistic_stated_otherwise(&handle) {
+                            Some("statistic")
                         } else if fingerprint::is_stale(sample, &name).or_raise(py)? {
                             Some("outdated")
                         } else if formula_changed(name.to_string()) {
@@ -6170,6 +7568,14 @@ fn cell_reason(
     if sample.is_cell_held(table, &address, column).or_raise(py)? {
         return Ok(force.then_some("edited"));
     }
+    // A cell its formula failed on runs again, said failed as `status` says
+    // it: listed *never computed*, the run then contradicted the list.
+    if sample.table(table).is_ok_and(|held| {
+        held.at(&address, column)
+            .is_ok_and(|cell| cell.records().failure.is_some())
+    }) {
+        return Ok(Some("failed"));
+    }
     if sample.cell_run(table, &address, column).or_raise(py)? == CellRun::NeverRan {
         return Ok(Some("never computed"));
     }
@@ -6225,11 +7631,21 @@ fn statistic_cell_reason(
 }
 
 /// Where a property no sample holds stands: it has no inputs to be stale against.
+/// A value typed in, or none typed: `"absent"`, as JSON says it, where it
+/// holds neither a value nor readings — *entered* was said of nothing.
+fn entered_or_absent(property: &Property) -> &'static str {
+    let held = property
+        .peek_value()
+        .is_some_and(|value| !value.is_absent())
+        || property.readings().is_some();
+    if held { "entered" } else { "absent" }
+}
+
 fn detached_state(property: &Property) -> &'static str {
     if property.is_edited() {
         "edited"
     } else if !property.is_computed() && !property.has_uncertainty_formula() {
-        "entered"
+        entered_or_absent(property)
     } else if property.has_failed() {
         "failed"
     } else if (property.is_computed() && property.peek_value().is_none())
@@ -6255,6 +7671,76 @@ fn names_of(names: &Bound<'_, PyTuple>) -> PyResult<Option<Vec<String>>> {
         .map(Some)
 }
 
+/// What the model owes each value of the sample, as `status` plans it from
+/// the model's description — described again where it is not current, a
+/// model edited or pulled since — and the project's trace; nothing where the
+/// sample has no file.
+fn planned_of(shared: &SharedSample, file: &FileRef) -> std::collections::BTreeMap<String, String> {
+    let (path, config, computed) = {
+        let file = file.borrow();
+        (
+            file.path.clone(),
+            file.config.clone(),
+            file.computed.clone(),
+        )
+    };
+    let (Some(path), Some(config)) = (path, config) else {
+        return Default::default();
+    };
+    let mut planned = shared
+        .read_sample("the sample", |sample| {
+            Ok(crate::collection::computation::planned_states_described(
+                Some(&config),
+                &path,
+                sample,
+            )
+            .unwrap_or_default())
+        })
+        .unwrap_or_default();
+    // What `compute()` has just run is its formula's now, before the save
+    // that keeps it so.
+    planned.retain(|value, _| !computed.contains(value));
+    planned
+}
+
+/// [`planned_of`] by the model's description as it stands, never described
+/// again: no Python starts, and no model is imported.
+fn planned_now(
+    shared: &SharedSample,
+    file: &FileRef,
+) -> std::collections::BTreeMap<String, String> {
+    let (path, config, computed) = {
+        let file = file.borrow();
+        (
+            file.path.clone(),
+            file.config.clone(),
+            file.computed.clone(),
+        )
+    };
+    let (Some(path), Some(config)) = (path, config) else {
+        return Default::default();
+    };
+    let mut planned = shared
+        .read_sample("the sample", |sample| {
+            Ok(
+                crate::collection::computation::planned_states(Some(&config), &path, sample)
+                    .unwrap_or_default(),
+            )
+        })
+        .unwrap_or_default();
+    planned.retain(|value, _| !computed.contains(value));
+    planned
+}
+
+/// The values whose own formula changed since they were computed.
+fn changed_formulas(shared: &SharedSample, file: &FileRef) -> Vec<String> {
+    planned_of(shared, file)
+        .into_iter()
+        .filter(|(_, said)| said == "formula changed")
+        .map(|(value, _)| value)
+        .collect()
+}
+
 /// A computation as `Sample.compute` and `Property.compute` ask for one.
 fn compute_selected(
     py: Python<'_>,
@@ -6268,10 +7754,33 @@ fn compute_selected(
     // said what it reads, as one declared in `__init__` is refused at
     // construction.
     refuse_undeclared(py, shared, file)?;
-    let chosen: Vec<Target> = selected(py, shared, names, rerun, force)?
+    // A formula changed since it computed a value runs, as `samplekit compute`
+    // runs it: the trace says which.
+    let changed = changed_formulas(shared, file);
+    let chosen: Vec<Target> = selected_among(py, shared, names, rerun, force, &changed)?
         .into_iter()
         .map(|(target, _)| target)
         .collect();
+    // Readings whose statistic nothing took yet — given in this session, a
+    // quantity's first — taken now, value and spread, as `samplekit compute`
+    // takes them: the value came, and its uncertainty stayed `None`.
+    shared.write(|sample| {
+        for name in sample
+            .property_names()
+            .into_iter()
+            .cloned()
+            .collect::<Vec<_>>()
+        {
+            let asked = names.is_none_or(|names| names.iter().any(|named| named == name.as_str()));
+            if asked
+                && let Ok(handle) = sample.property(&name)
+                && statistic_owed(&handle)
+            {
+                handle.take_statistic();
+            }
+        }
+        Ok(())
+    })?;
     // As `samplekit compute` does: a failure does not stop the others, and a
     // formula over an input nobody entered waits rather than runs.
     let mut run = Run::default();
@@ -6280,16 +7789,34 @@ fn compute_selected(
         if !targets.is_empty() {
             let targets = in_dependency_order(shared, targets)?;
             run.each(py, shared, &targets)?;
+            // A statistic of readings runs no Python, so no formula's run
+            // records it: recorded here, as a whole computation does, or the
+            // value named stayed *never computed* once taken.
+            shared.write(|sample| {
+                fingerprint::stamp(sample).ok();
+                Ok(())
+            })?;
         }
         return run.said(py, shared, file);
     }
+    // A statistic of readings runs no Python, so no formula's run records
+    // it: recorded after each round, as for values named, or it stayed
+    // pending, and the run gave up *after 11 rounds* on a sample begun.
+    let stamp = || {
+        shared.write(|sample| {
+            fingerprint::stamp(sample).ok();
+            Ok(())
+        })
+    };
     if !chosen.is_empty() {
         let chosen = in_dependency_order(shared, chosen)?;
         run.each(py, shared, &chosen)?;
+        stamp()?;
     }
     // A computed value can stale what reads it, so this runs until nothing is
     // pending but what waits or failed; each round computes only what needs it.
     let limit = shared.read_sample("the sample", |sample| Ok(formula_targets(sample).len()))? + 1;
+    let mut before: Option<Vec<String>> = None;
     for _ in 0..=limit {
         let targets: Vec<Target> = pending_targets(py, shared)?
             .into_iter()
@@ -6298,8 +7825,21 @@ fn compute_selected(
         if targets.is_empty() {
             return run.said(py, shared, file);
         }
+        // A round that leaves pending what the one before did computes
+        // nothing more: what is left waits, as `samplekit compute` says.
+        let names = target_names(&targets);
+        if before.as_ref() == Some(&names) {
+            run.waiting.extend(
+                names
+                    .into_iter()
+                    .map(|name| (name, vec!["what it reads".to_string()])),
+            );
+            return run.said(py, shared, file);
+        }
+        before = Some(names);
         let targets = in_dependency_order(shared, targets)?;
         run.each(py, shared, &targets)?;
+        stamp()?;
     }
     Err(PyRuntimeError::new_err(format!(
         "these values still need computing after {limit} rounds: {}",
@@ -6313,6 +7853,8 @@ fn compute_selected(
 struct Run {
     failed: Vec<(String, PyErr)>,
     waiting: Vec<(String, Vec<String>)>,
+    /// What ran and gave its value.
+    ran: Vec<String>,
 }
 
 impl Run {
@@ -6360,8 +7902,9 @@ impl Run {
                 self.waiting.push((name, missing));
                 continue;
             }
-            if let Err(error) = run_target(py, shared, target) {
-                self.failed.push((name, error));
+            match run_target(py, shared, target) {
+                Ok(()) => self.ran.push(name),
+                Err(error) => self.failed.push((name, error)),
             }
         }
         bridge::record_computed(shared, before);
@@ -6372,6 +7915,14 @@ impl Run {
     /// The run said: what waits as a warning, and the first failure raised
     /// with the others named — each already recorded as failed.
     fn said(mut self, py: Python<'_>, shared: &SharedSample, file: &FileRef) -> PyResult<()> {
+        {
+            let mut held = file.borrow_mut();
+            for name in self.ran.drain(..) {
+                if !held.computed.contains(&name) {
+                    held.computed.push(name);
+                }
+            }
+        }
         if !self.waiting.is_empty() {
             let failed: Vec<String> = self.failed.iter().map(|(name, _)| name.clone()).collect();
             let said: Vec<String> = self
@@ -6415,23 +7966,104 @@ fn missing_inputs(sample: &Sample, target: &Target, unavailable: &[String]) -> V
         let name = match input {
             Node::Named(name) => name,
             // A column of another table with no value in it is an input nobody
-            // entered, as the command line judges it: a tasting table without a
+            // entered, as the command line judges it: a inspection table without a
             // row made a mean score of nothing raise, where `samplekit compute`
             // said the score waits. The target's own table is read row by row,
             // and a row being computed exists.
             Node::Column { table, column } => {
                 let spelled = format!("{table}.{column}");
-                let empty = own_table != Some(&table)
-                    && (unavailable.contains(&spelled)
-                        || sample.table(&table).ok().is_none_or(|held| {
-                            held.column(&column).ok().is_none_or(|view| {
-                                view.cells().all(|(_, cell)| {
-                                    cell.peek_value().is_none_or(|value| value.is_absent())
-                                })
+                // A formula of the target's own table giving its column row by
+                // row reads each row, and a row being computed exists.
+                let row_by_row = own_table == Some(&table)
+                    && match target {
+                        Target::Column { column: own, .. } | Target::Cell { column: own, .. } => {
+                            sample
+                                .table(&table)
+                                .is_ok_and(|held| held.is_derived_by_rows(own))
+                        }
+                        Target::Property(_) => false,
+                    };
+                if row_by_row {
+                    // The row's own cell it reads, where nobody entered it:
+                    // what the cell waits for, named — it was said to wait
+                    // for nothing, and its run gave up.
+                    if let Target::Cell { index, .. } = target
+                        && sample
+                            .table(&table)
+                            .ok()
+                            .and_then(|held| {
+                                held.at(&RowAddress::Index(index.clone()), &column).ok()
                             })
-                        }));
-                if empty && !missing.contains(&spelled) {
-                    missing.push(spelled);
+                            .is_some_and(|cell| {
+                                cell.peek_value().is_none_or(|value| value.is_absent())
+                            })
+                    {
+                        let at: Vec<String> = index
+                            .iter()
+                            .map(|value| {
+                                crate::core::formatting::format_value(
+                                    value,
+                                    &crate::core::formatting::Resolved::plain(
+                                        &crate::core::formatting::Presentation::default(),
+                                    ),
+                                )
+                            })
+                            .collect();
+                        let said = format!("{spelled}[{}]", at.join(", "));
+                        if !missing.contains(&said) {
+                            missing.push(said);
+                        }
+                    }
+                    continue;
+                }
+                // A column read whole with a cell nobody entered waits for
+                // that cell, named: given `None` among the numbers, the formula
+                // raised a TypeError.
+                let said = if unavailable.contains(&spelled) {
+                    Some(spelled.clone())
+                } else {
+                    match sample
+                        .table(&table)
+                        .ok()
+                        .and_then(|held| held.column(&column).ok())
+                    {
+                        None => Some(spelled.clone()),
+                        Some(view) => {
+                            let cells: Vec<(Vec<&Value>, bool)> = view
+                                .cells()
+                                .map(|(index, cell)| {
+                                    (
+                                        index,
+                                        cell.peek_value().is_none_or(|value| value.is_absent()),
+                                    )
+                                })
+                                .collect();
+                            if cells.iter().all(|(_, absent)| *absent) {
+                                Some(spelled.clone())
+                            } else {
+                                cells.iter().find(|(_, absent)| *absent).map(|(index, _)| {
+                                    let index: Vec<String> = index
+                                        .iter()
+                                        .map(|value| {
+                                            crate::core::formatting::format_value(
+                                                value,
+                                                &crate::core::formatting::Resolved::plain(
+                                                    &crate::core::formatting::Presentation::default(
+                                                    ),
+                                                ),
+                                            )
+                                        })
+                                        .collect();
+                                    format!("{spelled}[{}]", index.join(", "))
+                                })
+                            }
+                        }
+                    }
+                };
+                if let Some(said) = said
+                    && !missing.contains(&said)
+                {
+                    missing.push(said);
                 }
                 continue;
             }
@@ -6451,7 +8083,11 @@ fn missing_inputs(sample: &Sample, target: &Target, unavailable: &[String]) -> V
                     })
             })
         } else {
-            !sample.has_attribute(&name)
+            // An attribute held empty — read by a formula, and no file gave
+            // it yet — is owed as a value nobody entered is.
+            sample.attribute(&name).map_or(true, |held| {
+                matches!(held, AttributeValue::Scalar(Value::Absent))
+            })
         };
         if absent && !missing.contains(&name.to_string()) {
             missing.push(name.to_string());
@@ -6723,7 +8359,7 @@ fn node_inputs(sample: &Sample, node: &Node) -> Vec<Node> {
             .into_iter()
             .map(|input| match input {
                 InputName::Named(name) => Node::Named(name),
-                InputName::Cell(other) => Node::Column {
+                InputName::Cell(other) | InputName::CellValue(other) => Node::Column {
                     table: table.clone(),
                     column: other,
                 },
@@ -6771,7 +8407,11 @@ fn visit_in_order(
         visit_in_order(sample, &input, groups, visited, ordered);
     }
     if let Some((label, reason)) = groups.get(node) {
-        ordered.push((label.clone(), reason.to_string()));
+        let said = match *reason {
+            "statistic" => statistic_change(sample, label).unwrap_or_else(|| "outdated".into()),
+            other => other.to_string(),
+        };
+        ordered.push((label.clone(), said));
     }
 }
 
@@ -6831,17 +8471,6 @@ fn path_given(
 const COMPOSED: &str = "a list is composed, not edited: build one with +, SampleList([...]), or \
                         list(samples) for a Python list";
 
-fn removed_list_member(name: &str) -> Option<&'static str> {
-    Some(match name {
-        "append" | "extend" | "insert" | "pop" | "remove" | "clear" | "copy" => COMPOSED,
-        "names" => "[sample.name for sample in samples]",
-        "query_names" => "samples.project.queries",
-        "sort_multi" => "sort([first, second]), each key reversed by a leading '-'",
-        "to_records" | "to_dataframe" => "to_dict(columns=...), which pd.DataFrame reads as it is",
-        _ => return None,
-    })
-}
-
 /// What a list operation's formulas computed, recorded when it ends.
 struct Recording {
     samples: Vec<SharedSample>,
@@ -6864,7 +8493,7 @@ enum ProjectChoice {
 /// An ordered list of samples, read like a Python list.
 ///
 /// A list is read from a folder, or built from samples already read. An item
-/// is a sample, by position or by name — ``brews["citra-ipa"]`` — and a slice
+/// is a sample, by position or by name — ``specimens["steel-01"]`` — and a slice
 /// is a list. Lists join with ``+``. ``filter``, ``query``, ``sorted`` and
 /// ``group_by`` make new lists; the samples in them are the same objects.
 ///
@@ -6884,11 +8513,11 @@ enum ProjectChoice {
 ///     FileNotFoundError: The folder does not exist.
 ///
 /// Example:
-///     >>> brews = sk.SampleList("brews")
-///     >>> len(brews)
-///     12
-///     >>> brews["citra-ipa"].style
-///     'ipa'
+///     >>> specimens = sk.SampleList("samples")
+///     >>> len(specimens)
+///     3
+///     >>> specimens["steel-01"].material
+///     'steel'
 #[pyclass(name = "SampleList", module = "samplekit", unsendable, sequence)]
 pub struct PySampleList {
     samples: RefCell<Vec<Py<PyAny>>>,
@@ -7082,7 +8711,10 @@ impl PySampleList {
         // Said only where a word asked needs what the model would say.
         let count: usize = unread.values().sum();
         if count > 0 && needs_the_model {
-            let why: Vec<&str> = unread.keys().map(String::as_str).collect();
+            let why: Vec<&str> = unread
+                .keys()
+                .map(|reason| crate::config::model_runtime::reason_line(reason))
+                .collect();
             let (whose, what) = if count == 1 {
                 ("1 sample".to_string(), "its state is what its file says")
             } else {
@@ -7201,15 +8833,76 @@ impl PySampleList {
                     .collect();
                 Err(PyValueError::new_err(format!(
                     "these samples come from more than one project, so no declared name resolves \
-                     against them: {}\n  pass the entry itself, such as project.profiles.name",
+                     against them: {}\n  pass the entry itself, such as project.profiles.<name> \
+                     or project.queries.<name>",
                     named.join(" and ")
                 )))
             }
         }
     }
 
+    /// Every project the list's samples come from, each once.
+    fn project_configs(&self, py: Python<'_>) -> PyResult<Vec<Rc<ProjectConfig>>> {
+        let mut configs: Vec<Rc<ProjectConfig>> = Vec::new();
+        for object in self.objects(py) {
+            let sample = object.bind(py).cast::<PySample>()?.borrow();
+            if let Some(config) = sample.file.borrow().config.clone()
+                && !configs.iter().any(|held| held.root() == config.root())
+            {
+                configs.push(config);
+            }
+        }
+        if configs.is_empty()
+            && let Some(origin) = &self.origin
+        {
+            configs.push(origin.clone());
+        }
+        Ok(configs)
+    }
+
     fn single_config(&self, py: Python<'_>, kind: &str, name: &str) -> PyResult<Rc<ProjectConfig>> {
-        match self.project_choice(py)? {
+        let choice = match self.project_choice(py) {
+            Ok(choice) => choice,
+            // Several projects declaring one query alike are one query: the
+            // command line runs it in each, and the list refused it.
+            Err(refused) if kind == "query" => {
+                let mut configs: Vec<Rc<ProjectConfig>> = Vec::new();
+                for object in self.objects(py) {
+                    let sample = object.bind(py).cast::<PySample>()?.borrow();
+                    let config = sample.file.borrow().config.clone();
+                    let Some(config) = config else {
+                        return Err(refused);
+                    };
+                    if !configs.iter().any(|held| held.root() == config.root()) {
+                        configs.push(config);
+                    }
+                }
+                let declared: Vec<Option<NamedQuery>> = configs
+                    .iter()
+                    .map(|config| named_queries::named(config, name).ok().cloned())
+                    .collect();
+                let alike = declared
+                    .first()
+                    .and_then(Option::as_ref)
+                    .is_some_and(|first| {
+                        declared.iter().all(|other| {
+                            other.as_ref().is_some_and(|other| {
+                                other.filter == first.filter && other.directory == first.directory
+                            })
+                        })
+                    });
+                return match configs.into_iter().next() {
+                    Some(config) if alike => Ok(config),
+                    _ => Err(PyValueError::new_err(format!(
+                        "these samples come from more than one project, which declare the query \
+                         '{name}' differently, or not each: pass the entry itself, such as \
+                         project.queries.{name}"
+                    ))),
+                };
+            }
+            Err(refused) => return Err(refused),
+        };
+        match choice {
             ProjectChoice::One(config) => Ok(config),
             ProjectChoice::Outside => Err(bridge::key_error(format!(
                 "no {kind} '{name}': no .samplekitrc was found above these samples, so nothing \
@@ -7261,6 +8954,21 @@ impl PySampleList {
         refuse_sorting_by_state(&spec)?;
         self.prepare(py)?;
         let collection = self.rust_list(py)?;
+        // A row or a position no sample holds is a mistake, as `filter` and
+        // `to_csv` say: sorted by it, the list came back as it was, in silence.
+        {
+            let guards: Vec<_> = collection
+                .iter()
+                .map(|entry| entry.sample.borrow())
+                .collect();
+            let samples: Vec<&crate::core::sample::Sample> =
+                guards.iter().map(|guard| &**guard).collect();
+            for key in spec.keys() {
+                if let Some(error) = fields::held_nowhere(&key.field, &samples) {
+                    return Err(bridge::key_error(error.to_string()));
+                }
+            }
+        }
         let _recording = self.recording(py)?;
         bridge::forget_raised();
         let sorted = bridge::without_gil(py, || collection.sorted(&spec)).or_raise(py)?;
@@ -7299,7 +9007,20 @@ impl PySampleList {
                     )
                 }))
             }
-            (Some(columns), None) => Ok((profiles::anonymous(written_columns(columns)?), false)),
+            // A written column's name is what is written, as `-c` takes it:
+            // a data file's header, a document's label.
+            (Some(columns), None) => Ok((
+                profiles::anonymous(
+                    written_columns(columns)?
+                        .into_iter()
+                        .map(|column| ColumnSpec {
+                            header: column.header.clone().or_else(|| column.label.clone()),
+                            ..column
+                        })
+                        .collect(),
+                ),
+                false,
+            )),
             (None, Some(profile)) => {
                 if let Ok(entry) = profile.cast::<PyProfile>() {
                     return Ok((entry.borrow().declaration.clone(), true));
@@ -7322,8 +9043,27 @@ impl PySampleList {
         includes: (bool, bool),
         numbers: exports::Numbers,
     ) -> PyResult<Dataset> {
+        self.dataset_as(py, profile, declared, includes, numbers, Format::Csv)
+    }
+
+    /// [`Self::dataset`] for `format`, which says how units are spelled.
+    fn dataset_as(
+        &self,
+        py: Python<'_>,
+        profile: &Profile,
+        declared: bool,
+        includes: (bool, bool),
+        numbers: exports::Numbers,
+        format: Format,
+    ) -> PyResult<Dataset> {
         self.prepare(py)?;
         let mut collection = self.rust_list(py)?;
+        // What the model owes is planned from its description, had written
+        // where it is missing, as the command line has it: on a fresh clone
+        // a value waiting was written with no state.
+        for config in self.project_configs(py)? {
+            let _ = crate::collection::computation::describe_if_missing(&config);
+        }
         // A column of `state` shows every word, so the model is read for it, as
         // `-c name,state` reads it.
         if profile
@@ -7377,11 +9117,12 @@ impl PySampleList {
         let target = ExportTarget {
             name: profile.name.clone(),
             profile: profile.name.clone(),
-            format: Format::Csv,
+            format,
             output: PathBuf::from("-"),
             filename: includes.0,
             path: includes.1,
             query: None,
+            style: None,
         };
         // Units spelled as the project declares them, as the command line does.
         let config = match self.project_choice(py) {
@@ -7403,7 +9144,7 @@ impl PySampleList {
         // Which columns a field makes — a quantity's two — is judged over the
         // list this one was taken from, as the command line judges it over
         // the collection before its filter: a selection that kept nothing
-        // wrote `abv` where the command line writes its value and its
+        // wrote `modulus` where the command line writes its value and its
         // uncertainty, each with its unit.
         // Over several projects the list carries each sample's configuration,
         // which a row's precision is read from, and is described by itself.
@@ -7447,7 +9188,15 @@ impl PySampleList {
     /// The list a selection is described by: the one it was first taken
     /// from, or this one.
     fn described_list(&self, py: Python<'_>) -> PyResult<SampleList> {
+        // A list made by hand is described by its project's samples, as one a
+        // filter left is by the list it came from: a unit no sample of it
+        // held was left out of its headers.
         if self.source.is_empty() {
+            if let Ok(ProjectChoice::One(config)) = self.project_choice(py)
+                && let Ok(project) = list::from_directory(config.root())
+            {
+                return Ok(project);
+            }
             return self.rust_list(py);
         }
         let entries = self
@@ -7475,15 +9224,16 @@ impl PySampleList {
         overwrite: bool,
     ) -> PyResult<Option<String>> {
         let (profile, declared) = self.export_profile(py, columns, profile)?;
-        let dataset = self.dataset(
+        let dataset = self.dataset_as(
             py,
             &profile,
             declared,
             (false, false),
             exports::Numbers::AsWritten,
+            format.clone(),
         )?;
-        let dataset = noted_empty(py, &dataset, format)?;
-        let text = export_formats::serialize(&dataset, format).or_raise(py)?;
+        let dataset = noted_empty(py, &dataset, &format)?;
+        let text = export_formats::serialize(&dataset, format.clone()).or_raise(py)?;
         match path.filter(|path| !path.is_none()) {
             // The method names the format and the caller the file, as `--csv -o
             // x.json` writes CSV into `x.json`.
@@ -7494,6 +9244,7 @@ impl PySampleList {
                     Format::Csv => "to_csv",
                     Format::Tsv => "to_tsv",
                     Format::Json => "to_json",
+                    Format::Text(_) => "to_text",
                 };
                 self.keep_output(py, &path, &format!("{} · {method}", script_said(py)))?;
                 Ok(None)
@@ -7785,7 +9536,13 @@ fn waiting(sample: &SharedSample, name: &Identifier, never: bool) -> PyResult<Ve
 
 /// A value only a formula could give, which none has given yet.
 fn never_valued(property: &Property) -> bool {
-    property.is_computed() && property.peek_value().is_none() && !property.has_failed()
+    (property.is_computed() && property.peek_value().is_none() && !property.has_failed())
+        // Readings whose statistic nothing took give `None`, and say why, as
+        // a formula's value never computed does: silent, `None` read as data.
+        || (property.declared_location().is_some()
+            && property.readings().is_some()
+            && property.written_value().is_none()
+            && !property.statistic_taken())
 }
 
 fn never_uncertain(property: &Property) -> bool {
@@ -7800,7 +9557,7 @@ fn never_uncertain(property: &Property) -> bool {
 /// never turns a save into a failure.
 fn log_failures(sample: &Bound<'_, PySample>) -> PyResult<()> {
     let py = sample.py();
-    let failures: Vec<(String, PyErr)> =
+    let failures: Vec<(String, Py<PyAny>)> =
         sample
             .borrow()
             .shared()
@@ -7812,7 +9569,7 @@ fn log_failures(sample: &Bound<'_, PySample>) -> PyResult<()> {
                         let handle = held.property(name).ok()?;
                         let source = handle.peek(Property::failure_source)?;
                         let raised = source.downcast_ref::<bridge::PythonException>()?;
-                        Some((name.to_string(), raised.0.clone_ref(py)))
+                        Some((name.to_string(), raised.as_raised(py).unbind()))
                     })
                     .collect())
             })?;
@@ -7826,11 +9583,28 @@ fn log_failures(sample: &Bound<'_, PySample>) -> PyResult<()> {
         return Ok(());
     };
     for (name, raised) in failures {
-        let text = traceback
-            .call_method1("format_exception", (raised.value(py),))
-            .and_then(|lines| lines.extract::<Vec<String>>())
-            .map(|lines| lines.concat())
+        // The model's frames, as the worker says them, the formula standing
+        // for them where none is the model's: the log held `_worker.py`'s.
+        let formula = worker
+            .call_method1("formula_of", (sample, name.as_str()))
+            .ok();
+        let text = worker
+            .call_method1("model_traceback", (raised.bind(py), formula))
+            .and_then(|text| text.extract::<String>())
+            .or_else(|_| {
+                traceback
+                    .call_method1("format_exception", (raised.bind(py),))
+                    .and_then(|lines| lines.extract::<Vec<String>>())
+                    .map(|lines| lines.concat())
+            })
             .unwrap_or_else(|_| raised.to_string());
+        // The note naming the value is added as the exception leaves the
+        // computation, after it was taken as this value's: said here.
+        let note = format!("while computing '{name}'");
+        let text = match text.contains(&note) {
+            true => text,
+            false => format!("{}\n{note}\n", text.trim_end()),
+        };
         let _ = worker.call_method1("record_failure", (sample, name, text));
     }
     Ok(())
@@ -7863,6 +9637,7 @@ fn whose(sample: &SharedSample, file: &FileRef) -> String {
 fn warn_if_stale(
     py: Python<'_>,
     sample: &SharedSample,
+    file: &FileRef,
     name: &Identifier,
     named: &str,
 ) -> PyResult<()> {
@@ -7881,6 +9656,19 @@ fn warn_if_stale(
         })
         .unwrap_or((false, Vec::new()));
     if !stale {
+        // A formula changed since it computed the value is said as a changed
+        // input is: a read of it was silent. By the description as it stands:
+        // a read starts no Python, and imports no model — a figure declared in
+        // `.samplekitrc` runs no code of the project's.
+        if let Some(said) = planned_now(sample, file)
+            .get(name.as_str())
+            .filter(|said| said.contains("formula changed"))
+        {
+            return warn_value(
+                py,
+                &format!("{named} is outdated — {said}: compute() runs it again"),
+            );
+        }
         return Ok(());
     }
     if waits.is_empty() {
@@ -7905,6 +9693,8 @@ struct HistorySession {
     /// The snapshots this script took, which a file it writes is tied to while
     /// nothing has changed since.
     taken: Vec<String>,
+    /// What the script's saves keep in each project's trace.
+    tracing: crate::collection::computation::Tracing,
 }
 
 /// What a snapshot says ran: a script, its command line and its source as
@@ -7932,6 +9722,7 @@ static HISTORY_SESSION: std::sync::Mutex<HistorySession> = std::sync::Mutex::new
     saved: Vec::new(),
     script: None,
     taken: Vec::new(),
+    tracing: crate::collection::computation::Tracing::new(),
 });
 
 fn canonical(path: &Path) -> PathBuf {
@@ -8045,6 +9836,7 @@ fn history_saved(
     py: Python<'_>,
     path: &Path,
     unread: Vec<(PathBuf, crate::config::version_control::VcsError)>,
+    changed: bool,
 ) -> PyResult<()> {
     use crate::config::version_control;
     let named = version_control::projects_of(std::slice::from_ref(&path.to_path_buf()))
@@ -8063,7 +9855,7 @@ fn history_saved(
     // Read outside the lock: reading `sys` runs Python.
     let script = unknown.then(|| script_run(py));
     if let Ok(mut session) = HISTORY_SESSION.lock() {
-        if !session.saved.contains(&named) {
+        if changed && !session.saved.contains(&named) {
             session.saved.push(named);
         }
         if session.script.is_none() {
@@ -8080,23 +9872,32 @@ fn history_saved(
 /// saying `message` — or the script's command line, or the files saved —
 /// and the script's source kept beside it. Run when the interpreter ends, by
 /// `samplekit.keep()`, and before a figure or an export is tied to a
-/// snapshot.
+/// snapshot. False where nothing was saved since the last one.
 #[pyfunction]
 #[pyo3(signature = (message=None))]
-fn _history_flush(py: Python<'_>, message: Option<String>) -> PyResult<()> {
+fn _history_flush(py: Python<'_>, message: Option<String>) -> PyResult<bool> {
     use crate::config::version_control;
-    let (writings, saved, script) = {
+    let (writings, saved, script, tracing) = {
         let Ok(mut session) = HISTORY_SESSION.lock() else {
-            return Ok(());
+            return Ok(false);
         };
         (
             std::mem::take(&mut session.writings),
             std::mem::take(&mut session.saved),
             session.script.clone(),
+            std::mem::take(&mut session.tracing),
         )
     };
+    // What the script computed, kept in each project's trace before its
+    // snapshot, so that the model's change is said with its formulas.
+    for (_, error) in tracing.keep() {
+        warn_value(
+            py,
+            &format!("the trace of the formulas was not kept: {error}"),
+        )?;
+    }
     if writings.is_empty() {
-        return Ok(());
+        return Ok(false);
     }
     let script = script.unwrap_or_else(|| script_run(py));
     // A message given still names what ran: `python raise.py · message`.
@@ -8109,6 +9910,11 @@ fn _history_flush(py: Python<'_>, message: Option<String>) -> PyResult<()> {
         }
         (ScriptRun::Unnamed, Some(message)) => format!("python · {message}"),
         (ScriptRun::Unnamed, None) => format!("python · saved {}", saved.join(", ")),
+    };
+    let said = if SAVE_INTERRUPTED.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        format!("{said} — {}", version_control::INTERRUPTED)
+    } else {
+        said
     };
     let source = script_source(script);
     // Each project's last snapshot before: one that moved is the script's
@@ -8126,6 +9932,9 @@ fn _history_flush(py: Python<'_>, message: Option<String>) -> PyResult<()> {
             warn_value(py, &format!("the history was not kept: {error}"))?;
         }
     }
+    for said in version_control::notices() {
+        warn_value(py, &said)?;
+    }
     let taken: Vec<String> = projects
         .iter()
         .zip(before)
@@ -8139,7 +9948,7 @@ fn _history_flush(py: Python<'_>, message: Option<String>) -> PyResult<()> {
     if let Ok(mut session) = HISTORY_SESSION.lock() {
         session.taken.extend(taken);
     }
-    Ok(())
+    Ok(true)
 }
 
 /// The script kept beside a snapshot: its file's name and source, or the code
@@ -8153,7 +9962,7 @@ fn script_source(script: ScriptRun) -> Option<(String, Vec<u8>)> {
 }
 
 /// What ran, as a file written from it is recorded: `python` and the script
-/// as it was typed — `python scripts/yeast.py` — as its snapshot names it
+/// as it was typed — `python scripts/report.py` — as its snapshot names it
 /// with a message; `python -c`, or `python` alone in an interactive session.
 fn script_said(py: Python<'_>) -> String {
     let known = HISTORY_SESSION
@@ -8381,15 +10190,21 @@ fn load_directory(
     } else {
         config_for(py, directory)?
     };
-    let mut rules = config
-        .as_ref()
-        .map(|config| config.collection().clone())
-        .unwrap_or_default();
-    if let Some(pattern) = pattern {
-        rules.include = vec![pattern];
-    }
-    let found =
-        bridge::without_gil(py, || discovery::discover_with(directory, &rules)).or_raise(py)?;
+    // Read as the command line reads it: each project below by its own
+    // `[collection]`, a draft its rules exclude left out. A `pattern=` states
+    // the rules instead.
+    let found = match pattern {
+        None => bridge::without_gil(py, || discovery::discover(directory, config.as_deref()))
+            .or_raise(py)?,
+        Some(pattern) => {
+            let mut rules = config
+                .as_ref()
+                .map(|config| config.collection().clone())
+                .unwrap_or_default();
+            rules.include = vec![pattern];
+            bridge::without_gil(py, || discovery::discover_with(directory, &rules)).or_raise(py)?
+        }
+    };
     // A file that will not load is set aside and said, as the command line says
     // it; a model's own failure on a readable file is raised.
     for skipped in &found.skipped {
@@ -8414,16 +10229,31 @@ fn load_directory(
             Err(error) => warn_unread(py, &path, &error.to_string())?,
         }
     }
-    match model_class(py, model, config.as_deref())? {
-        Some(class) => readable
-            .iter()
-            .map(|(path, _, _)| Ok(class.bind(py).call1((python_path(py, path)?,))?.unbind()))
-            .collect(),
-        None => readable
-            .into_iter()
-            .map(|(path, sample, origin)| wrap_loaded(py, sample, path, origin, config.clone()))
-            .collect(),
+    // Each sample follows its own project, as on the command line: a folder
+    // above several projects reads each one's samples with that project's
+    // configuration and model, not the folder's own.
+    let mut configs: Vec<(Option<PathBuf>, Option<Rc<ProjectConfig>>)> = Vec::new();
+    let mut loaded = Vec::with_capacity(readable.len());
+    for (path, sample, origin) in readable {
+        let found = project::find(path.parent().unwrap_or(directory));
+        let own = match configs.iter().find(|(file, _)| *file == found) {
+            Some((_, config)) => config.clone(),
+            None => {
+                let read = match &found {
+                    Some(file) => Some(Rc::new(project::load(file).or_raise(py)?)),
+                    None => None,
+                };
+                configs.push((found, read.clone()));
+                read
+            }
+        };
+        let object = match model_class(py, model, own.as_deref())? {
+            Some(class) => class.bind(py).call1((python_path(py, &path)?,))?.unbind(),
+            None => wrap_loaded(py, sample, path, origin, own)?,
+        };
+        loaded.push(object);
     }
+    Ok(loaded)
 }
 
 #[pymethods]
@@ -8445,7 +10275,7 @@ impl PySampleList {
             return PySampleList::of(py, Vec::new());
         };
         if is_path_like(source)? {
-            let directory = path_from(source)?;
+            let directory = file_path_from(source)?;
             return PySampleList::of(py, load_directory(py, &directory, pattern, model)?);
         }
         if pattern.is_some() || model.is_some_and(|model| !model.is_none()) {
@@ -8578,12 +10408,24 @@ impl PySampleList {
             (if at < 0 { at + length } else { at }).clamp(0, length) as usize
         };
         let (start, stop) = (bound(start), bound(stop.unwrap_or(length)));
-        self.position_of(py, value)?
+        let positions: Vec<usize> = self
+            .position_of(py, value)?
             .into_iter()
-            .find(|position| (start..stop).contains(position))
-            .ok_or_else(|| {
-                PyValueError::new_err(format!("{} is not in the list", bridge::repr(value)))
-            })
+            .filter(|position| (start..stop).contains(position))
+            .collect();
+        // A name two samples carry is no position, as `list["EXAMPLE"]`
+        // refuses it: the first was answered in silence.
+        if positions.len() > 1 && value.extract::<String>().is_ok() {
+            return Err(PyValueError::new_err(format!(
+                "{} samples are named {}: index by the sample itself, or address one by \
+                 position",
+                positions.len(),
+                bridge::repr(value)
+            )));
+        }
+        positions.into_iter().next().ok_or_else(|| {
+            PyValueError::new_err(format!("{} is not in the list", bridge::repr(value)))
+        })
     }
 
     /// How many times a sample is in the list: 0 or 1 for a sample, and, for a
@@ -8602,15 +10444,8 @@ impl PySampleList {
     }
 
     fn __getattr__(slf: &Bound<'_, Self>, name: &str) -> PyResult<Py<PyAny>> {
-        // A removed member names its replacement, and Python's nearest name
-        // after it would be a second, different answer; otherwise the nearest
-        // member is offered, in the words every other refusal uses.
-        Err(match removed_list_member(name) {
-            Some(replacement) => bridge::said_in_full(PyAttributeError::new_err(format!(
-                "SampleList.{name} does not exist: {replacement}"
-            ))),
-            None => no_attribute(slf.as_any(), name),
-        })
+        // The nearest member is offered, in the words every other refusal uses.
+        Err(no_attribute(slf.as_any(), name))
     }
 
     fn __repr__(&self, py: Python<'_>) -> PyResult<String> {
@@ -8626,7 +10461,7 @@ impl PySampleList {
     /// The samples an expression selects, as ``-f`` selects them.
     ///
     /// Args:
-    ///     predicate: A filter expression — ``"abv > 6 && style == ipa"`` — or a
+    ///     predicate: A filter expression — ``"elongation > 20 && material == steel"`` — or a
     ///         function taking a sample and returning whether to keep it.
     ///
     /// Returns:
@@ -8641,8 +10476,8 @@ impl PySampleList {
     ///         allow.
     ///
     /// Example:
-    ///     >>> [brew.name for brew in brews.filter("abv > 6")]
-    ///     ['blonde-saison', 'citra-ipa', 'double-ipa', 'farmhouse-saison']
+    ///     >>> [specimen.name for specimen in specimens.filter("tensile_strength > 300")]
+    ///     ['aluminium-01', 'steel-01']
     fn filter(&self, py: Python<'_>, predicate: &Bound<'_, PyAny>) -> PyResult<PySampleList> {
         let Ok(expression) = predicate.cast::<PyString>() else {
             if !predicate.is_callable() {
@@ -8688,6 +10523,14 @@ impl PySampleList {
         for aside in &diagnostics.set_aside {
             warn_value(py, &aside.said())?;
         }
+        // A text no sample holds, one close to it held: the empty answer's
+        // likely cause, said as the command line says it.
+        for unmatched in &diagnostics.unmatched_texts {
+            warn_value(py, &unmatched.to_string())?;
+        }
+        for unmatched in &diagnostics.unmatched_numbers {
+            warn_value(py, unmatched)?;
+        }
         if let Some(tag) = diagnostics.unknown_tags.first() {
             let mut message = format!("no sample carries the tag '{}'", tag.tag);
             if let Some(suggestion) = &tag.suggestion {
@@ -8712,7 +10555,7 @@ impl PySampleList {
     /// Sort the list in place, and return ``None``.
     ///
     /// Args:
-    ///     key: A field — ``"abv"``, or ``"-abv"`` for descending — several in a
+    ///     key: A field — ``"area"``, or ``"-area"`` for descending — several in a
     ///         list or comma-separated, or a function of a sample as ``sorted``
     ///         takes one.
     ///
@@ -8729,7 +10572,7 @@ impl PySampleList {
     /// A new list in sorted order; this one is unchanged.
     ///
     /// Args:
-    ///     key: A field — ``"abv"``, or ``"-abv"`` for descending — several in a
+    ///     key: A field — ``"area"``, or ``"-area"`` for descending — several in a
     ///         list or comma-separated, or a function of a sample as ``sorted``
     ///         takes one.
     ///
@@ -8741,8 +10584,8 @@ impl PySampleList {
     ///     TypeError: A sort by ``state``, which a sample holds several of.
     ///
     /// Example:
-    ///     >>> brews.sorted("-abv")[0].name
-    ///     'double-ipa'
+    ///     >>> specimens.sorted("-tensile_strength")[0].name
+    ///     'steel-01'
     fn sorted(&self, py: Python<'_>, key: &Bound<'_, PyAny>) -> PyResult<PySampleList> {
         let sorted = self.sorted_objects(py, key)?;
         let list = self.derived(py, sorted)?;
@@ -8764,8 +10607,8 @@ impl PySampleList {
     ///         differently.
     ///
     /// Example:
-    ///     >>> len(brews.query("ipas"))
-    ///     3
+    ///     >>> len(specimens.query("ductile"))
+    ///     2
     fn query(&self, py: Python<'_>, name: &Bound<'_, PyAny>) -> PyResult<PySampleList> {
         let declaration: NamedQuery = if let Ok(entry) = name.cast::<PyQuery>() {
             entry.borrow().declaration.clone()
@@ -8788,7 +10631,7 @@ impl PySampleList {
     /// The statistics of one field over the list, as ``--summary`` gives them.
     ///
     /// Args:
-    ///     field: A field: ``"abv"``, ``"abv.u"``, ``"fermentation.gravity[1]"``.
+    ///     field: A field: ``"area"``, ``"area.u"``, ``"curve.force[0.2]"``.
     ///
     /// Returns:
     ///     A ``Summary``. Its mean is weighted by 1/u² where every value has an
@@ -8799,8 +10642,8 @@ impl PySampleList {
     ///     ValueError: No sample of the list holds a number there.
     ///
     /// Example:
-    ///     >>> round(brews.stats("abv").mean, 2)
-    ///     5.67
+    ///     >>> round(specimens.stats("tensile_strength").mean, 1)
+    ///     352.3
     fn stats(&self, py: Python<'_>, field: &Bound<'_, PyAny>) -> PyResult<PySummary> {
         let path = field_path(field)?;
         let parsed = fields::parse(&path).or_raise(py)?;
@@ -8808,12 +10651,41 @@ impl PySampleList {
         let collection = self.rust_list(py)?;
         let _recording = self.recording(py)?;
         bridge::forget_raised();
-        match collection.summarize(&parsed).or_raise(py)? {
+        let summarised = collection.summarize(&parsed).or_raise(py)?;
+        // The row as `--summary` writes it — its label, its unit, the
+        // project's precision — read where the command line reads them.
+        let row = {
+            let mut held = Vec::new();
+            for object in self.objects(py) {
+                let sample = object.bind(py).cast::<PySample>()?.borrow();
+                let file = sample.file.borrow();
+                if let (Some(path), Some(config)) = (&file.path, &file.config) {
+                    held.push((path.clone(), (**config).clone()));
+                }
+            }
+            let selected = self.rust_list(py)?.with_configurations(held);
+            let described = self.described_list(py)?;
+            profiles::parse_column(&path)
+                .ok()
+                .map(|column| profiles::anonymous(vec![column]))
+                .and_then(|profile| {
+                    crate::presentation::summaries::rows(
+                        &selected, &profile, &described, None, true,
+                    )
+                    .ok()
+                })
+                .and_then(|(rows, _)| rows.into_iter().next())
+        };
+        match summarised {
             // Weighted by 1/u² where every value has an uncertainty, as the
             // command line's summary takes it.
             Some(column) => Ok(PySummary {
                 weighted_mean: column.weighted_mean,
+                weighted_error: column.weighted_error,
+                considered: Some(column.considered),
+                not_applicable: column.not_applicable,
                 summary: column.summary,
+                row,
             }),
             None => Err(PyValueError::new_err(match collection.len() {
                 0 => format!("'{path}' has nothing to summarise: the list holds no sample"),
@@ -8846,8 +10718,8 @@ impl PySampleList {
     ///     RuntimeError: The field is ``state``, which a sample holds several of.
     ///
     /// Example:
-    ///     >>> list(brews.group_by("style"))
-    ///     ['ipa', 'pale_ale', 'porter', 'saison', 'stout', 'wheat']
+    ///     >>> list(specimens.group_by("material"))
+    ///     ['aluminium', 'copper', 'steel']
     fn group_by(&self, py: Python<'_>, fields: &Bound<'_, PyAny>) -> PyResult<Py<PyDict>> {
         let paths = group_fields(fields)?;
         let parsed: Vec<fields::Field> = paths
@@ -8962,14 +10834,18 @@ impl PySampleList {
         }
     }
 
-    /// Write every sample of the list into a folder.
+    /// Write every sample of the list: back where each was read, or into a folder.
     ///
-    /// Each sample is written under its file's name, or its name. Nothing is
-    /// written if any file is refused.
+    /// Without a folder, each sample is written to its own file, as ``save()``
+    /// writes it: a file changed since it was read — by another object, or an
+    /// editor — is refused rather than written over. Into a folder, each is
+    /// written under its file's name, or its name, and nothing is written if
+    /// any file is refused.
     ///
     /// Args:
-    ///     directory: The folder, which must exist.
-    ///     overwrite: Replace existing files.
+    ///     directory: The folder, which must exist; each sample's own file when
+    ///         left out.
+    ///     overwrite: Replace existing files in the folder.
     ///
     /// Returns:
     ///     The paths written.
@@ -8978,14 +10854,104 @@ impl PySampleList {
     ///     FileNotFoundError: The folder does not exist.
     ///     NotADirectoryError: It is a file.
     ///     FileExistsError: A file exists and ``overwrite`` is false.
-    ///     ValueError: Two samples would be written to the same file.
-    #[pyo3(signature = (directory, overwrite=false))]
+    ///     ValueError: Two samples would be written to the same file, or,
+    ///         without a folder, a sample has no file of its own.
+    ///     OSError: Without a folder, a file changed on disk since it was read.
+    #[pyo3(signature = (directory=None, overwrite=false))]
+    #[allow(clippy::too_many_lines)]
     fn save_all(
         &self,
         py: Python<'_>,
-        directory: &Bound<'_, PyAny>,
+        directory: Option<&Bound<'_, PyAny>>,
         overwrite: bool,
     ) -> PyResult<Vec<Py<PyAny>>> {
+        let objects = self.objects(py);
+        let Some(directory) = directory else {
+            // Back where each was read, with `save()`'s check: a sample with
+            // no file of its own is named before anything is written.
+            for (position, object) in objects.iter().enumerate() {
+                let sample = object.bind(py).cast::<PySample>()?.borrow();
+                if sample.file.borrow().path.is_none() {
+                    return Err(PyValueError::new_err(format!(
+                        "the sample at {position}{} has no file of its own, and nothing was \
+                         written: save_all(directory) writes the list into a folder",
+                        sample
+                            .name()?
+                            .map(|name| format!(", {name},"))
+                            .unwrap_or_default()
+                    )));
+                }
+            }
+            // **Every sample checked before any is written**: a file changed
+            // since it was read, removed, or locked by another process
+            // stopped the list there, the samples before it written, and the
+            // error said *nothing was written*.
+            let refused: Vec<String> = objects
+                .iter()
+                .filter_map(|object| {
+                    let sample = object.bind(py).cast::<PySample>().ok()?.borrow();
+                    let file = sample.file.borrow();
+                    let path = file.path.clone()?;
+                    let said = path.display().to_string();
+                    let lock = PathBuf::from(format!("{}.lock", path.display()));
+                    if lock.exists() && crate::format::lock::abandoned(&lock).is_none() {
+                        return Some(format!("  {said}: another process is saving it"));
+                    }
+                    // A file the system will not let be replaced, refused
+                    // with the others before any is written.
+                    if std::fs::metadata(&path).is_ok_and(|meta| meta.permissions().readonly()) {
+                        return Some(format!("  {said}: read-only"));
+                    }
+                    let origin = file.origin.as_ref()?;
+                    match std::fs::read_to_string(&path) {
+                        Err(_) => Some(format!("  {said}: removed or moved since it was read")),
+                        Ok(text) if document::digest_of(&text) != origin.digest => {
+                            Some(format!("  {said}: changed since it was read"))
+                        }
+                        Ok(_) => None,
+                    }
+                })
+                .collect();
+            if !refused.is_empty() {
+                return Err(PyOSError::new_err(format!(
+                    "{} of the list cannot be written, and nothing was written:\n{}\n  \
+                     save() of each sample, with overwrite=True, replaces a file changed since",
+                    refused.len(),
+                    refused.join("\n")
+                )));
+            }
+            let caught = catch_interrupts(py);
+            let mut written = Vec::with_capacity(objects.len());
+            for object in &objects {
+                stop_if_interrupted(py, &written, caught.as_ref())?;
+                // A file changed between the check and its save: the list is
+                // written up to it, which is said — *nothing was written*
+                // spoke of that file alone.
+                if let Err(error) = object.bind(py).call_method0("save") {
+                    let _ = error.value(py).call_method1(
+                        "add_note",
+                        (format!(
+                            "save_all() wrote {} of the {} samples before this one, and none \
+                             after it: those written are saved, the rest are not",
+                            written.len(),
+                            objects.len()
+                        ),),
+                    );
+                    return Err(error);
+                }
+                let sample = object.bind(py).cast::<PySample>()?.borrow();
+                let path = sample
+                    .file
+                    .borrow()
+                    .path
+                    .clone()
+                    .expect("each sample's file was looked for above");
+                written.push(python_path(py, &path)?);
+            }
+            // Pressed during the last: every file written, and said so.
+            stop_if_interrupted(py, &written, caught.as_ref())?;
+            return Ok(written);
+        };
         let directory = path_from(directory)?;
         // Said before anything is written, and in words: the first save failed
         // with the system's "(os error 2)". Not made, as a path given to
@@ -9004,7 +10970,6 @@ impl PySampleList {
                 ))
             });
         }
-        let objects = self.objects(py);
         let mut destinations = Vec::with_capacity(objects.len());
         for (position, object) in objects.iter().enumerate() {
             let sample = object.bind(py).cast::<PySample>()?.borrow();
@@ -9024,16 +10989,19 @@ impl PySampleList {
         // whatever `overwrite` said — conflicts were looked for on disk, and a
         // collision inside the list is not on disk yet. Every one is named, and
         // nothing is written.
-        let mut seen: Vec<&PathBuf> = Vec::new();
+        // Compared as the system compares them: `S1.md` and `s1.md` are one
+        // file on macOS and Windows.
+        let mut seen: Vec<String> = Vec::new();
         let mut shared_files: Vec<String> = Vec::new();
         for destination in &destinations {
-            if seen.contains(&destination) {
+            let key = crate::collection::sample_list::file_key(destination);
+            if seen.contains(&key) {
                 let said = format!("  {}", destination.display());
                 if !shared_files.contains(&said) {
                     shared_files.push(said);
                 }
             } else {
-                seen.push(destination);
+                seen.push(key);
             }
         }
         if !shared_files.is_empty() {
@@ -9061,8 +11029,10 @@ impl PySampleList {
                 )));
             }
         }
+        let caught = catch_interrupts(py);
         let mut written = Vec::with_capacity(destinations.len());
         for (object, destination) in objects.iter().zip(destinations) {
+            stop_if_interrupted(py, &written, caught.as_ref())?;
             let path = python_path(py, &destination)?;
             let keywords = PyDict::new(py);
             keywords.set_item("overwrite", true)?;
@@ -9071,6 +11041,7 @@ impl PySampleList {
                 .call_method("save", (path.clone_ref(py),), Some(&keywords))?;
             written.push(path);
         }
+        stop_if_interrupted(py, &written, caught.as_ref())?;
         Ok(written)
     }
 
@@ -9093,7 +11064,7 @@ impl PySampleList {
         })
     }
 
-    /// The project of the list's samples: what their ``.samplekitrc`` declares.
+    /// The project of the list's samples — what their ``.samplekitrc`` declares.
     ///
     /// Raises:
     ///     ValueError: The samples belong to several projects.
@@ -9125,9 +11096,9 @@ impl PySampleList {
     ///     KeyError: An unknown field or profile; the message names the nearest.
     ///
     /// Example:
-    ///     >>> columns = brews.to_dict(columns="name,abv")
+    ///     >>> columns = specimens.to_dict(columns="name,area")
     ///     >>> list(columns)
-    ///     ['name', 'abv_value', 'abv_uncertainty']
+    ///     ['name', 'area_value', 'area_uncertainty']
     #[pyo3(signature = (columns=None, profile=None))]
     fn to_dict<'py>(
         &self,
@@ -9176,7 +11147,7 @@ impl PySampleList {
     ///     FileExistsError: ``path`` exists and ``overwrite`` is false.
     ///
     /// Example:
-    ///     >>> text = brews.to_csv(columns="name,abv")
+    ///     >>> text = specimens.to_csv(columns="name,area")
     #[pyo3(signature = (path=None, columns=None, profile=None, overwrite=false))]
     fn to_csv(
         &self,
@@ -9187,6 +11158,83 @@ impl PySampleList {
         overwrite: bool,
     ) -> PyResult<Option<String>> {
         self.text(py, Format::Csv, path, columns, profile, overwrite)
+    }
+
+    /// The list as a document in a style: ``"latex"``, ``"markdown"``,
+    /// ``"html"``, or one ``[style.NAME]`` declares, as ``--style NAME -o -``
+    /// writes it.
+    ///
+    /// Args:
+    ///     style: The style's name.
+    ///     path: The file to write. Without it, the text is returned.
+    ///     columns: The fields to include: a list, or comma-separated as ``-c``
+    ///         writes them, each ``FIELD[:PRECISION][=LABEL]``.
+    ///     profile: A profile's name in ``.samplekitrc``, or a ``Profile``,
+    ///         instead of ``columns``.
+    ///     overwrite: Replace an existing file.
+    ///
+    /// Returns:
+    ///     The text, when no ``path`` is given; otherwise ``None``.
+    ///
+    /// Raises:
+    ///     ValueError: No style writing documents has that name, or neither
+    ///         ``columns`` nor ``profile`` is given, or both.
+    ///     KeyError: An unknown field or profile; the message names the nearest.
+    ///     FileExistsError: ``path`` exists and ``overwrite`` is false.
+    ///
+    /// Example:
+    ///     >>> table = specimens.to_text("latex", columns="name,area")
+    #[pyo3(signature = (style, path=None, columns=None, profile=None, overwrite=false))]
+    fn to_text(
+        &self,
+        py: Python<'_>,
+        style: &str,
+        path: Option<&Bound<'_, PyAny>>,
+        columns: Option<&Bound<'_, PyAny>>,
+        profile: Option<&Bound<'_, PyAny>>,
+        overwrite: bool,
+    ) -> PyResult<Option<String>> {
+        // The project's styles, as the command line reads them: a list made
+        // of samples carries none of its own, and the given style was written
+        // over the project's `[style.latex]`.
+        let config: Option<ProjectConfig> = match self.project_choice(py) {
+            Ok(ProjectChoice::One(config)) => Some((*config).clone()),
+            _ => None,
+        };
+        let chosen = config
+            .as_ref()
+            .and_then(|config| config.text_format(style).cloned())
+            .or_else(|| crate::config::project_config::TextFormat::given(style))
+            .ok_or_else(|| {
+                let known: Vec<String> = config.as_ref().map_or_else(
+                    || {
+                        crate::config::project_config::TextFormat::GIVEN
+                            .iter()
+                            .map(|name| name.to_string())
+                            .collect()
+                    },
+                    |config| {
+                        config
+                            .text_format_names()
+                            .iter()
+                            .map(|name| name.to_string())
+                            .collect()
+                    },
+                );
+                PyValueError::new_err(format!(
+                    "'{style}' is no style writing documents: {} are, and [style.NAME] declares \
+                     another",
+                    known.join(", ")
+                ))
+            })?;
+        self.text(
+            py,
+            Format::Text(Box::new(chosen)),
+            path,
+            columns,
+            profile,
+            overwrite,
+        )
     }
 
     /// The list as TSV, as the command line exports it.
@@ -9208,7 +11256,7 @@ impl PySampleList {
     ///     FileExistsError: ``path`` exists and ``overwrite`` is false.
     ///
     /// Example:
-    ///     >>> text = brews.to_tsv(columns="name,abv")
+    ///     >>> text = specimens.to_tsv(columns="name,area")
     #[pyo3(signature = (path=None, columns=None, profile=None, overwrite=false))]
     fn to_tsv(
         &self,
@@ -9240,7 +11288,7 @@ impl PySampleList {
     ///     FileExistsError: ``path`` exists and ``overwrite`` is false.
     ///
     /// Example:
-    ///     >>> text = brews.to_json(columns="name,abv")
+    ///     >>> text = specimens.to_json(columns="name,area")
     #[pyo3(signature = (path=None, columns=None, profile=None, overwrite=false))]
     fn to_json(
         &self,
@@ -9256,7 +11304,8 @@ impl PySampleList {
     /// Write an export declared in ``.samplekitrc``, as ``samplekit export
     /// --write`` does.
     ///
-    /// The export's own query, if it declares one, narrows the list first.
+    /// The export's own query, if it declares one, narrows the list first. An
+    /// export of a figure draws it as ``sk.plot`` does, to its file.
     ///
     /// Args:
     ///     export: The export's name, or an ``Export``.
@@ -9264,46 +11313,87 @@ impl PySampleList {
     ///     overwrite: Replace an existing file.
     ///
     /// Returns:
-    ///     The path written.
+    ///     The path written, absolute.
     ///
     /// Raises:
-    ///     KeyError: No export has that name, or its profile is not declared.
+    ///     KeyError: No export has that name, or its profile or figure is not
+    ///         declared.
     ///     FileExistsError: The file exists and ``overwrite`` is false.
     ///     ValueError: ``output``'s extension does not match the export's format.
     ///
     /// Example:
-    ///     >>> brews.export("overview", output="out/overview.csv")
-    ///     PosixPath('out/overview.csv')
+    ///     >>> specimens.export("paper", output="paper/results.tex").name
+    ///     'results.tex'
     #[pyo3(signature = (export, output=None, overwrite=false))]
     fn export(
-        &self,
+        slf: &Bound<'_, Self>,
         py: Python<'_>,
         export: &Bound<'_, PyAny>,
         output: Option<&Bound<'_, PyAny>>,
         overwrite: bool,
     ) -> PyResult<Py<PyAny>> {
-        let (target, profile, root) = if let Ok(entry) = export.cast::<PyExport>() {
+        let this = slf.borrow();
+        let (declared, profile, root) = if let Ok(entry) = export.cast::<PyExport>() {
             let entry = entry.borrow();
-            let profile = entry.profile.clone().ok_or_else(|| {
-                bridge::key_error(format!(
-                    "the export '{}' names the profile '{}', which is not declared",
-                    entry.target.name, entry.target.profile
-                ))
-            })?;
-            (entry.target.clone(), profile, entry.root.clone())
+            (
+                entry.export.clone(),
+                entry.profile.clone(),
+                entry.root.clone(),
+            )
         } else {
             let name: String = export.extract().map_err(|_| {
                 PyTypeError::new_err("an export is a declared name or project.exports.<name>")
             })?;
-            let config = self.single_config(py, "export", &name)?;
-            let target = config.export(&name).or_raise(py)?.clone();
-            let profile = config.profile(&target.profile).or_raise(py)?.clone();
-            (target, profile, config.root().to_path_buf())
+            let config = this.single_config(py, "export", &name)?;
+            let declared = config.export(&name).or_raise(py)?.clone();
+            let profile = match &declared {
+                Export::Table(target) => {
+                    Some(config.profile(&target.profile).or_raise(py)?.clone())
+                }
+                Export::Figure(_) => None,
+            };
+            (declared, profile, config.root().to_path_buf())
         };
+        let target = match declared {
+            Export::Table(target) => target,
+            // A figure's: drawn as `sk.plot` draws it, to the export's file.
+            Export::Figure(figure) => {
+                let samples = match &figure.query {
+                    Some(query) => Py::new(
+                        py,
+                        this.query(py, &query.clone().into_pyobject(py)?.into_any())?,
+                    )?
+                    .into_any(),
+                    None => slf.clone().into_any().unbind(),
+                };
+                let destination = match output.filter(|output| !output.is_none()) {
+                    Some(output) => path_from(output)?,
+                    None if figure.output.is_absolute() => figure.output.clone(),
+                    None => root.join(&figure.output),
+                };
+                let arguments = pyo3::types::PyDict::new(py);
+                arguments.set_item("output", python_path(py, &destination)?)?;
+                arguments.set_item("overwrite", overwrite)?;
+                if let Some(style) = &figure.style {
+                    arguments.set_item("style", style)?;
+                }
+                drop(this);
+                py.import("samplekit")?
+                    .getattr("plot")?
+                    .call((samples, &figure.figure), Some(&arguments))?;
+                return python_path(py, &destination);
+            }
+        };
+        let profile = profile.ok_or_else(|| {
+            bridge::key_error(format!(
+                "the export '{}' names the profile '{}', which is not declared",
+                target.name, target.profile
+            ))
+        })?;
         // A list narrowed from the one it was taken from is said, as the
         // command line says a filter or a query narrowed a declared export:
         // the file names none of the samples it leaves out.
-        let (held, taken) = (self.samples.borrow().len(), self.source.len());
+        let (held, taken) = (this.samples.borrow().len(), this.source.len());
         if held < taken {
             warn_value(
                 py,
@@ -9318,7 +11408,7 @@ impl PySampleList {
         // this list before the profile shapes it.
         let dataset = match &target.query {
             Some(query) => {
-                let narrowed = self.query(py, &query.clone().into_pyobject(py)?.into_any())?;
+                let narrowed = this.query(py, &query.clone().into_pyobject(py)?.into_any())?;
                 narrowed.dataset(
                     py,
                     &profile,
@@ -9327,7 +11417,7 @@ impl PySampleList {
                     exports::Numbers::AsWritten,
                 )?
             }
-            None => self.dataset(
+            None => this.dataset(
                 py,
                 &profile,
                 true,
@@ -9335,8 +11425,31 @@ impl PySampleList {
                 exports::Numbers::AsWritten,
             )?,
         };
-        let dataset = noted_empty(py, &dataset, target.format)?;
-        let text = export_formats::serialize(&dataset, target.format).or_raise(py)?;
+        let dataset = noted_empty(py, &dataset, &target.format)?;
+        // Written from values that are not current, the file is written and
+        // said, as `samplekit export --write` says it: the table left for the
+        // paper with nothing said.
+        let listed = this.rust_list(py)?;
+        let behind = exports::behind(&listed, &profile, None);
+        if behind.any() {
+            let said = behind.kinds();
+            warn_value(
+                py,
+                &format!(
+                    "'{}' is written from values that are not current: {} in {} {} — \
+                     compute() brings them up to date",
+                    target.name,
+                    said.join(", "),
+                    behind.samples,
+                    if behind.samples == 1 {
+                        "sample"
+                    } else {
+                        "samples"
+                    }
+                ),
+            )?;
+        }
+        let text = export_formats::serialize(&dataset, target.format.clone()).or_raise(py)?;
         // `-` is standard output, as for `samplekit export -o -`.
         if output
             .filter(|output| !output.is_none())
@@ -9353,7 +11466,7 @@ impl PySampleList {
         let destination = match given {
             Some(output) => {
                 let path = path_from(output)?;
-                refuse_another_format(&path, target.format, &target.name)?;
+                refuse_another_format(&path, &target.format, &target.name)?;
                 path
             }
             None if target.output.is_absolute() => target.output.clone(),
@@ -9362,7 +11475,7 @@ impl PySampleList {
         // The destination's folder, declared or given, is made by the write, as
         // `samplekit export` makes it.
         exports::write(&text, &destination, overwrite).or_raise(py)?;
-        self.keep_output(
+        this.keep_output(
             py,
             &destination,
             &format!("{} · export {}", script_said(py), target.name),
@@ -9375,8 +11488,8 @@ impl PySampleList {
 
 /// The entries a project declares, read-only, by name.
 ///
-/// An entry is read as an attribute or an item — ``project.queries.ipas`` or
-/// ``project.queries["ipas"]`` — and iterating gives the names. An unknown
+/// An entry is read as an attribute or an item — ``project.queries.ductile`` or
+/// ``project.queries["ductile"]`` — and iterating gives the names. An unknown
 /// name raises ``AttributeError`` or ``KeyError`` naming the nearest.
 #[pyclass(name = "Names", module = "samplekit", unsendable)]
 pub struct PyNames {
@@ -9478,12 +11591,12 @@ impl PyNames {
 
 /// A project: what its ``.samplekitrc`` declares, read-only.
 ///
-/// Read from a sample or a list — ``brew.project``, ``brews.project``. Outside
+/// Read from a sample or a list — ``steel.project``, ``specimens.project``. Outside
 /// any project every collection of entries is empty.
 ///
 /// Example:
-///     >>> list(brews.project.queries)[:3]
-///     ['ipas', 'strong', 'medals']
+///     >>> list(specimens.project.queries)
+///     ['ductile']
 #[pyclass(name = "Project", module = "samplekit", unsendable)]
 pub struct PyProject {
     config: Option<Rc<ProjectConfig>>,
@@ -9557,10 +11670,13 @@ impl PyProject {
         let mut entries = IndexMap::new();
         if let Some(config) = &self.config {
             for name in config.export_names() {
-                let target = config.export(name).or_raise(py)?.clone();
-                let profile = config.profile(&target.profile).ok().cloned();
+                let export = config.export(name).or_raise(py)?.clone();
+                let profile = match &export {
+                    Export::Table(target) => config.profile(&target.profile).ok().cloned(),
+                    Export::Figure(_) => None,
+                };
                 let entry = PyExport {
-                    target,
+                    export,
                     profile,
                     root: config.root().to_path_buf(),
                 };
@@ -9596,12 +11712,6 @@ impl PyProject {
             .resolved_as(&Presentation::default(), &quantity, Some("plain"))
             .map_err(|error| PyValueError::new_err(error.to_string()))?;
         Ok(formatting::format_value(&value, &resolved))
-    }
-
-    /// Whether the project declares a precision for `field`: a preview shows
-    /// its value at it, and every digit otherwise.
-    fn _declares_precision(&self, field: &str) -> bool {
-        crate::collection::editing::declared_precision(field, self.config.as_deref()).is_some()
     }
 
     /// The unit and the symbol an axis showing `field` is labelled with, in
@@ -9653,31 +11763,14 @@ impl PyProject {
         ))
     }
 
-    /// The matplotlib settings every figure is drawn with, ``[matplotlib]``: a
-    /// dict by matplotlib's own dotted names.
+    /// The matplotlib settings every figure is drawn with, ``[matplotlib]`` —
+    /// a dict by matplotlib's own dotted names.
     #[getter]
     fn matplotlib(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        fn to_python(py: Python<'_>, value: &toml::Value) -> PyResult<Py<PyAny>> {
-            Ok(match value {
-                toml::Value::String(text) => text.into_py_any(py)?,
-                toml::Value::Integer(integer) => integer.into_py_any(py)?,
-                toml::Value::Float(number) => number.into_py_any(py)?,
-                toml::Value::Boolean(flag) => flag.into_py_any(py)?,
-                toml::Value::Array(items) => {
-                    let items = items
-                        .iter()
-                        .map(|item| to_python(py, item))
-                        .collect::<PyResult<Vec<_>>>()?;
-                    PyList::new(py, items)?.into_any().unbind()
-                }
-                // Refused as the file loads, or flattened into dotted names.
-                toml::Value::Datetime(_) | toml::Value::Table(_) => py.None(),
-            })
-        }
         let settings = PyDict::new(py);
         if let Some(config) = &self.config {
             for (name, value) in config.matplotlib() {
-                settings.set_item(name, to_python(py, value)?)?;
+                settings.set_item(name, toml_to_python(py, value)?)?;
             }
         }
         Ok(settings.into_any().unbind())
@@ -9777,6 +11870,7 @@ impl PyProject {
             recursive: rules.recursive,
             include: rules.include,
             exclude: rules.exclude,
+            files: rules.files,
         }
     }
 
@@ -9930,10 +12024,11 @@ impl PyProfile {
     }
 }
 
-/// An export, ``[export.*]``: a profile written to a file in a format.
+/// An export, ``[export.*]``: a profile written to a file in a format, or
+/// a figure drawn to a file.
 #[pyclass(name = "Export", module = "samplekit", unsendable, frozen)]
 pub struct PyExport {
-    target: ExportTarget,
+    export: Export,
     profile: Option<Profile>,
     root: PathBuf,
 }
@@ -9943,52 +12038,88 @@ impl PyExport {
     /// The export's name.
     #[getter]
     fn name(&self) -> String {
-        self.target.name.clone()
+        self.export.name().to_string()
     }
 
-    /// The name of the profile it writes.
+    /// The name of the profile it writes, or ``None`` for a figure's export.
     #[getter]
-    fn profile(&self) -> String {
-        self.target.profile.clone()
+    fn profile(&self) -> Option<String> {
+        match &self.export {
+            Export::Table(target) => Some(target.profile.clone()),
+            Export::Figure(_) => None,
+        }
     }
 
-    /// The format: ``"csv"``, ``"tsv"`` or ``"json"``.
+    /// The name of the figure it draws, or ``None`` for a table's export.
     #[getter]
-    fn format(&self) -> &'static str {
-        match self.target.format {
-            Format::Csv => "csv",
-            Format::Tsv => "tsv",
-            Format::Json => "json",
+    fn figure(&self) -> Option<String> {
+        match &self.export {
+            Export::Table(_) => None,
+            Export::Figure(figure) => Some(figure.figure.clone()),
+        }
+    }
+
+    /// The data format — ``"csv"``, ``"tsv"``, ``"json"`` — or ``None`` for
+    /// a document its style writes, or a figure.
+    #[getter]
+    fn format(&self) -> Option<String> {
+        match &self.export {
+            Export::Table(target) => match &target.format {
+                Format::Csv => Some("csv".to_string()),
+                Format::Tsv => Some("tsv".to_string()),
+                Format::Json => Some("json".to_string()),
+                Format::Text(_) => None,
+            },
+            Export::Figure(_) => None,
         }
     }
 
     /// The file it writes.
     #[getter]
     fn output(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        python_path(py, &self.target.output)
+        python_path(py, self.export.output())
     }
 
     /// Whether the export adds a column with each sample's file name.
     #[getter]
     fn filename(&self) -> bool {
-        self.target.filename
+        matches!(&self.export, Export::Table(target) if target.filename)
     }
 
     /// Whether the export adds a column with each sample's path.
     #[getter]
     fn path(&self) -> bool {
-        self.target.path
+        matches!(&self.export, Export::Table(target) if target.path)
     }
 
     /// The saved query that selects its samples, or ``None``.
     #[getter]
     fn query(&self) -> Option<String> {
-        self.target.query.clone()
+        self.export.query().map(str::to_string)
     }
 
     fn __repr__(&self) -> String {
-        format!("Export('{}')", self.target.name)
+        format!("Export('{}')", self.export.name())
     }
+}
+
+/// A `[matplotlib]` value as Python reads it.
+fn toml_to_python(py: Python<'_>, value: &toml::Value) -> PyResult<Py<PyAny>> {
+    Ok(match value {
+        toml::Value::String(text) => text.into_py_any(py)?,
+        toml::Value::Integer(integer) => integer.into_py_any(py)?,
+        toml::Value::Float(number) => number.into_py_any(py)?,
+        toml::Value::Boolean(flag) => flag.into_py_any(py)?,
+        toml::Value::Array(items) => {
+            let items = items
+                .iter()
+                .map(|item| toml_to_python(py, item))
+                .collect::<PyResult<Vec<_>>>()?;
+            PyList::new(py, items)?.into_any().unbind()
+        }
+        // Refused as the file loads, or flattened into dotted names.
+        toml::Value::Datetime(_) | toml::Value::Table(_) => py.None(),
+    })
 }
 
 /// A figure declared in ``.samplekitrc``, ``[figure.*]``: what it draws, and
@@ -10104,6 +12235,17 @@ impl PyFigureDeclaration {
         self.declaration.figsize
     }
 
+    /// Its own matplotlib settings, over the project's ``[matplotlib]``, by
+    /// matplotlib's dotted names.
+    #[getter]
+    fn matplotlib(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let settings = PyDict::new(py);
+        for (name, value) in &self.declaration.matplotlib {
+            settings.set_item(name, toml_to_python(py, value)?)?;
+        }
+        Ok(settings.into_any().unbind())
+    }
+
     fn __repr__(&self) -> String {
         format!("FigureDeclaration('{}')", self.declaration.name)
     }
@@ -10131,13 +12273,20 @@ impl PyPropertyDeclaration {
     }
 
     /// The symbol in each style, by style name:
-    /// ``{"figure": "Original gravity"}``.
+    /// ``{"figure": "$\\sigma$"}``.
     #[getter]
     fn symbol_variants(&self) -> HashMap<String, String> {
+        // By the style's name, as `Unit.variants` keys them: the file's key,
+        // `symbol_math`, was given.
         self.declaration
             .symbol_variants
             .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
+            .map(|(key, value)| {
+                (
+                    key.strip_prefix("symbol_").unwrap_or(key).to_string(),
+                    value.clone(),
+                )
+            })
             .collect()
     }
 
@@ -10167,13 +12316,13 @@ pub struct PyUnit {
 
 #[pymethods]
 impl PyUnit {
-    /// The unit as the files write it: ``"degC"``.
+    /// The unit as the files write it — ``"degC"``.
     #[getter]
     fn spelling(&self) -> String {
         self.spelling.clone()
     }
 
-    /// The unit in each style, by style name: ``{"plain": "°C"}``.
+    /// The unit in each style, by style name — ``{"plain": "°C"}``.
     #[getter]
     fn variants(&self) -> HashMap<String, String> {
         self.variants
@@ -10261,6 +12410,7 @@ pub struct PyCollection {
     recursive: bool,
     include: Vec<String>,
     exclude: Vec<String>,
+    files: Vec<String>,
 }
 
 #[pymethods]
@@ -10283,6 +12433,14 @@ impl PyCollection {
         PyTuple::new(py, &self.exclude)
     }
 
+    /// Where a sample's own files are looked for, ``[collection] files`` —
+    /// the folders searched by the sample's name, and the patterns naming it,
+    /// as written.
+    #[getter]
+    fn files<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
+        PyTuple::new(py, &self.files)
+    }
+
     fn __repr__(&self) -> String {
         format!("Collection(include={:?})", self.include)
     }
@@ -10294,7 +12452,7 @@ impl PyCollection {
 /// ``-s`` take it.
 ///
 /// ``str(field)`` is its path, and a field is accepted wherever a field's name
-/// is: ``brews.sorted(brews.fields.abv)``.
+/// is: ``specimens.sorted(specimens.fields.area)``.
 #[pyclass(name = "Field", module = "samplekit", unsendable, frozen)]
 pub struct PyField {
     path: String,
@@ -10302,7 +12460,7 @@ pub struct PyField {
 
 #[pymethods]
 impl PyField {
-    /// The field's path: ``"abv"``, ``"fermentation.gravity[1]"``.
+    /// The field's path — ``"area"``, ``"curve.force[0.2]"``.
     #[getter]
     fn path(&self) -> String {
         self.path.clone()
@@ -10326,6 +12484,15 @@ pub struct PySummary {
     /// The mean weighted by 1/u², where every value summarised has an
     /// uncertainty above zero.
     weighted_mean: Option<f64>,
+    /// Its standard error, 1/√Σw.
+    weighted_error: Option<f64>,
+    /// The samples summarised over, and those saying *not applicable*,
+    /// counted apart as `--summary` counts them; `None` for readings.
+    considered: Option<usize>,
+    not_applicable: usize,
+    /// The row `--summary` writes of it, with its label, its unit and its
+    /// precision: `None` for a property's own readings.
+    row: Option<crate::presentation::summaries::SummaryRow>,
 }
 
 #[pymethods]
@@ -10334,6 +12501,21 @@ impl PySummary {
     #[getter]
     fn count(&self) -> usize {
         self.summary.count.get()
+    }
+
+    /// How many samples the value applies to, those holding no number
+    /// included and those saying *not applicable* left out: the denominator of
+    /// ``count``, as ``--summary`` writes ``3/4``. ``None`` for readings.
+    #[getter]
+    fn considered(&self) -> Option<usize> {
+        self.considered
+    }
+
+    /// How many samples say the value is not applicable, counted apart —
+    /// neither summarised nor missing.
+    #[getter]
+    fn not_applicable(&self) -> usize {
+        self.not_applicable
     }
 
     /// The smallest value.
@@ -10348,7 +12530,7 @@ impl PySummary {
         self.summary.maximum
     }
 
-    /// The mean: weighted by 1/u² where every value has an uncertainty above zero,
+    /// The mean — weighted by 1/u² where every value has an uncertainty above zero,
     /// the arithmetic mean otherwise. ``weighted`` says which.
     #[getter]
     fn mean(&self) -> f64 {
@@ -10392,16 +12574,95 @@ impl PySummary {
         self.summary.population_stdev
     }
 
-    /// The standard error of the mean: the sample standard deviation over √n;
-    /// ``None`` for one value.
+    /// The standard error of the mean — 1/√Σw beside a weighted mean, the
+    /// sample standard deviation over √n beside an arithmetic one; ``None``
+    /// for one value unweighted.
     #[getter]
     fn standard_error(&self) -> Option<f64> {
-        self.summary.standard_error
+        self.weighted_error.or(self.summary.standard_error)
+    }
+
+    /// The summary as ``--summary`` writes a row of it: the count, the
+    /// mean, the deviation ``s``, its standard error ``sem``, the median and
+    /// the extremes.
+    ///
+    /// Args:
+    ///     style: Accepted for every ``to_text``; a summary's numbers are
+    ///         written alike in every style.
+    ///
+    /// Returns:
+    ///     The text.
+    #[pyo3(signature = (style=None))]
+    fn to_text(&self, style: Option<&str>) -> String {
+        let _ = style;
+        // A list's field: the row `--summary` writes, labelled, at the
+        // project's precision. It wrote `5.672 … 4.33125` beside the command
+        // line's `5.7 (1/u²) … 4.3`.
+        if let Some(row) = &self.row {
+            let mean = crate::presentation::summaries::mean_header([row]);
+            let headers = ["", "n", mean.as_str(), "s", "sem", "median", "min", "max"]
+                .iter()
+                .map(|name| name.to_string())
+                .collect();
+            let label = match &row.unit {
+                Some(unit) => format!("{} [{unit}]", row.label),
+                None => row.label.clone(),
+            };
+            let mut cells = vec![label];
+            cells.extend(crate::presentation::summaries::written(row, false));
+            return terminal_rendering::table(
+                headers,
+                vec![cells],
+                terminal_rendering::Target::Pipe,
+                terminal_rendering::Style::Plain,
+            )
+            .trim_end()
+            .to_string();
+        }
+        let considered = self.considered.unwrap_or(self.summary.count.get());
+        let row = crate::presentation::summaries::SummaryRow {
+            label: String::new(),
+            unit: None,
+            summary: Some(crate::collection::sample_list::ColumnSummary {
+                summary: self.summary.clone(),
+                considered,
+                not_applicable: self.not_applicable,
+                weighted_mean: self.weighted_mean,
+                weighted_error: self.weighted_error,
+            }),
+            precision: None,
+            places: None,
+            of: considered + self.not_applicable,
+            not_applicable: self.not_applicable,
+        };
+        let mean = crate::presentation::summaries::mean_header([&row]);
+        let headers = ["n", mean.as_str(), "s", "sem", "median", "min", "max"]
+            .iter()
+            .map(|name| name.to_string())
+            .collect();
+        let cells = vec![crate::presentation::summaries::written(&row, false)];
+        terminal_rendering::table(
+            headers,
+            cells,
+            terminal_rendering::Target::Pipe,
+            terminal_rendering::Style::Plain,
+        )
+        .trim_end()
+        .to_string()
     }
 
     fn __repr__(&self) -> String {
+        let of = self
+            .considered
+            .map(|considered| format!("/{considered}"))
+            .unwrap_or_default();
+        let not_applicable = if self.not_applicable > 0 {
+            format!(", not_applicable={}", self.not_applicable)
+        } else {
+            String::new()
+        };
         format!(
-            "Summary(count={}, mean={}{}, median={})",
+            "Summary(count={}{of}{not_applicable}, mean={}{}, median={})",
             self.count(),
             self.mean(),
             if self.weighted() { " (1/u²)" } else { "" },
@@ -10499,6 +12760,39 @@ fn check_new(path: &Bound<'_, PyAny>) -> PyResult<()> {
             path.display()
         )));
     }
+    // A file the collection's patterns do not take is no sample any command
+    // reads: `samples/noext` was written, and `sk.load` never saw it.
+    let config = crate::config::project_config::load_for(directory)
+        .ok()
+        .flatten();
+    let rules = config
+        .as_ref()
+        .map(|config| config.collection().clone())
+        .unwrap_or_default();
+    let root = config.as_ref().map_or_else(
+        || directory.to_path_buf(),
+        |config| config.root().to_path_buf(),
+    );
+    let absolute = std::path::absolute(&path).unwrap_or_else(|_| path.clone());
+    let root = std::path::absolute(&root).unwrap_or(root);
+    if !crate::config::discovery::matches(&absolute, &root, &rules) {
+        let suggested = if path.extension().is_none() {
+            format!(" — {}.md is one", path.display())
+        } else {
+            String::new()
+        };
+        return Err(PyValueError::new_err(format!(
+            "{} is no file the collection reads as a sample: [collection] include takes {}, \
+             and exclude leaves out {}{suggested}",
+            path.display(),
+            rules.include.join(", "),
+            if rules.exclude.is_empty() {
+                "nothing".to_string()
+            } else {
+                rules.exclude.join(", ")
+            }
+        )));
+    }
     Ok(())
 }
 
@@ -10519,13 +12813,154 @@ fn model_at(
     )
 }
 
+/// A style `to_text` may write in: `plain`, one given, or one the project
+/// declares; any other refused naming those there are.
+fn style_known(config: Option<&ProjectConfig>, style: Option<&str>) -> PyResult<()> {
+    let Some(name) = style else {
+        return Ok(());
+    };
+    if name == "plain"
+        || name == crate::config::project_config::FILES_STYLE
+        || config.is_some_and(|config| {
+            config.style(name).is_some() || config.render_style_names().contains(&name)
+        })
+        || crate::config::project_config::TextFormat::GIVEN.contains(&name)
+    {
+        return Ok(());
+    }
+    let known: Vec<String> = config.map_or_else(
+        || {
+            crate::config::project_config::TextFormat::GIVEN
+                .iter()
+                .map(|name| name.to_string())
+                .collect()
+        },
+        |config| {
+            config
+                .render_style_names()
+                .iter()
+                .map(|name| name.to_string())
+                .collect()
+        },
+    );
+    Err(PyValueError::new_err(format!(
+        "no style named '{name}': {} are, and [style.NAME] declares another",
+        known.join(", ")
+    )))
+}
+
+/// A sample written as `view` shows it, each value in `style`'s forms.
+/// A sample written as `view` writes its file: [`sheet_of`], leaving out
+/// what only the model declares and nothing holds.
+fn sheet_held(
+    sample: &Sample,
+    path: Option<&Path>,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+    held: Option<&[String]>,
+) -> String {
+    let vocabulary = fields::vocabulary_of(&[sample]);
+    let subject = fields::Subject {
+        sample,
+        path,
+        vocabulary: &vocabulary,
+        states: None,
+    };
+    let style = style.or_else(|| config.and_then(|config| config.render().style.as_deref()));
+    let precision = config.and_then(|config| config.render().precision.as_ref());
+    let drawn = config
+        .and_then(|config| config.render().table.as_deref())
+        .and_then(terminal_rendering::Style::parse)
+        .unwrap_or_default();
+    terminal_rendering::sheet_of_held(
+        &subject,
+        config,
+        style,
+        precision,
+        terminal_rendering::Target::Pipe,
+        false,
+        drawn,
+        held,
+        None,
+    )
+}
+
+fn sheet_of(
+    sample: &Sample,
+    path: Option<&Path>,
+    config: Option<&ProjectConfig>,
+    style: Option<&str>,
+    table: Option<&Identifier>,
+) -> String {
+    let vocabulary = fields::vocabulary_of(&[sample]);
+    let subject = fields::Subject {
+        sample,
+        path,
+        vocabulary: &vocabulary,
+        states: None,
+    };
+    let style = style.or_else(|| config.and_then(|config| config.render().style.as_deref()));
+    let precision = config.and_then(|config| config.render().precision.as_ref());
+    let drawn = config
+        .and_then(|config| config.render().table.as_deref())
+        .and_then(terminal_rendering::Style::parse)
+        .unwrap_or_default();
+    let written = match table {
+        Some(name) => terminal_rendering::unfolded_table(
+            &subject,
+            name,
+            config,
+            style,
+            precision,
+            terminal_rendering::Target::Pipe,
+            drawn,
+        )
+        .unwrap_or_default(),
+        None => terminal_rendering::sheet(
+            &subject,
+            config,
+            style,
+            precision,
+            terminal_rendering::Target::Pipe,
+            false,
+            drawn,
+            None,
+        ),
+    };
+    written.trim_end().to_string()
+}
+
+/// From now on in this process, a save is checked as ever and held, not
+/// written: a script run by `samplekit run`, whose changes are shown first.
+#[pyfunction(name = "_hold_saves")]
+fn hold_saves() {
+    document::hold_saves();
+}
+
+/// What the held saves would write: each file's path, what it held before —
+/// `None` where it did not exist — and what it would hold.
+#[pyfunction(name = "_held_saves")]
+fn held_saves() -> Vec<(String, Option<String>, String)> {
+    document::held_saves()
+        .into_iter()
+        .map(|(path, before, after)| {
+            (
+                path.to_string_lossy().into_owned(),
+                before.map(|bytes| String::from_utf8_lossy(&bytes).into_owned()),
+                after,
+            )
+        })
+        .collect()
+}
+
 /// Writes the model's description beside the configuration whose folder is
 /// `root`: what `sample` — one of the model's, made without a file —
 /// declares, each formula's digest the worker took, the figures the class
-/// declares, and the digest of the model's files. The worker's, and the
-/// figures' process's; no script's.
+/// declares, its scripts, and the digest of the model's files. The
+/// worker's, and the figures' process's; no script's.
 #[pyfunction(name = "_describe_model")]
-#[pyo3(signature = (sample, model, class_name, root, formulas, figures))]
+#[pyo3(signature = (sample, model, class_name, root, formulas, figures, scripts = None))]
+#[allow(clippy::too_many_arguments)]
 fn describe_model(
     py: Python<'_>,
     sample: PyRef<'_, PySample>,
@@ -10533,8 +12968,15 @@ fn describe_model(
     class_name: String,
     root: &Bound<'_, PyAny>,
     formulas: std::collections::BTreeMap<String, String>,
-    figures: Vec<(String, bool)>,
+    figures: Vec<(String, bool, String)>,
+    scripts: Option<String>,
 ) -> PyResult<String> {
+    // Each script as `_scripts.described` gives it, in JSON.
+    let scripts: Vec<crate::config::model_runtime::DescribedScript> = match scripts {
+        Some(text) => serde_json::from_str(&text)
+            .map_err(|error| PyValueError::new_err(format!("the scripts' description: {error}")))?,
+        None => Vec::new(),
+    };
     use crate::config::model_runtime::{
         self as runtime, DescribedCell, DescribedColumn, DescribedFigure, DescribedModel,
         DescribedProperty, DescribedTable, Draws, ModelDescription, Origin as Given,
@@ -10551,11 +12993,11 @@ fn describe_model(
         file.formula_code
             .iter()
             .filter_map(|(name, parts)| {
-                let by_row = parts.iter().any(|(role, _)| role == "compute_rows");
-                let by_column = parts.iter().any(|(role, _)| role == "compute_columns");
-                if !by_row && !by_column {
+                // A table's formula names what it fills; a property's does not.
+                if !parts.iter().any(|(role, _)| role == "outputs") {
                     return None;
                 }
+                let by_row = !parts.iter().any(|(role, _)| role == "compute_column");
                 let fills = parts
                     .iter()
                     .find(|(role, _)| role == "outputs")
@@ -10636,7 +13078,7 @@ fn describe_model(
                 let view = table.column(column).or_raise(py)?;
                 let statistics = view.statistics();
                 let label = format!("{name}.{column}");
-                let value = if table.is_derived(column) {
+                let derived = table.is_derived(column).then(|| {
                     let reads = table.inputs_of(column).map(texts).unwrap_or_default();
                     let (by_row, fills) = spans
                         .get(&label)
@@ -10647,20 +13089,34 @@ fn describe_model(
                     } else {
                         Given::Columns { reads, fills }
                     }
-                } else if let Some(location) = statistics.value {
-                    Given::Statistic {
+                });
+                let entered_value = || match statistics.value {
+                    Some(location) => Given::Statistic {
                         statistic: location.name().to_string(),
+                    },
+                    None => Given::Entered,
+                };
+                let stated_uncertainty =
+                    statistics.uncertainty.map(|convention| Given::Statistic {
+                        statistic: convention.name().to_string(),
+                    });
+                // A formula of one channel alone says which: the other is
+                // entered, or a statistic of the cell's readings.
+                let (value, uncertainty) = match (derived, table.produced_by(column)) {
+                    (None, _) => (entered_value(), stated_uncertainty),
+                    (Some(derived), None) => (derived, stated_uncertainty),
+                    (Some(derived), Some(Produced::Value)) => {
+                        (derived, Some(stated_uncertainty.unwrap_or(Given::Entered)))
                     }
-                } else {
-                    Given::Entered
+                    (Some(derived), Some(Produced::Uncertainty)) => {
+                        (entered_value(), Some(derived))
+                    }
                 };
                 columns.push(DescribedColumn {
                     name: column.to_string(),
                     unit: view.presentation().unit.clone(),
                     value,
-                    uncertainty: statistics.uncertainty.map(|convention| Given::Statistic {
-                        statistic: convention.name().to_string(),
-                    }),
+                    uncertainty,
                     formula: formulas.get(&label).cloned(),
                 });
             }
@@ -10724,15 +13180,17 @@ fn describe_model(
             attributes,
             figures: figures
                 .iter()
-                .map(|(name, collection)| DescribedFigure {
+                .map(|(name, collection, description)| DescribedFigure {
                     name: name.clone(),
                     draws: if *collection {
                         Draws::Collection
                     } else {
                         Draws::Sample
                     },
+                    description: description.clone(),
                 })
                 .collect(),
+            scripts,
         })
     })?;
     runtime::write_description(&root, &description)
@@ -10778,7 +13236,7 @@ pub struct PyStatistic {
 
 #[pymethods]
 impl PyStatistic {
-    /// Its name, as ``Summary`` spells it: ``"median"``.
+    /// Its name, as ``Summary`` spells it — ``"median"``.
     #[getter]
     fn name(&self) -> &'static str {
         self.name
@@ -10796,7 +13254,8 @@ impl PyStatistic {
 /// ``standard_error``, ``sample_stdev``, ``population_stdev``.
 ///
 /// Example:
-///     >>> og = sk.Property(value=sk.stats.mean, uncertainty=sk.stats.standard_error)
+///     >>> width = sk.Property(unit="mm", value=sk.stats.mean,
+///     ...                     uncertainty=sk.stats.standard_error)
 #[pyclass(name = "stats", module = "samplekit", frozen)]
 pub struct PyStats;
 
@@ -10897,12 +13356,12 @@ fn convention_of(given: &Bound<'_, PyAny>) -> PyResult<crate::core::uncertainty:
 ///     ValueError: A file is not a sample.
 ///
 /// Example:
-///     >>> brews = sk.load("brews")
-///     >>> ipa = sk.load("brews/citra-ipa.md")
-///     >>> ipa.abv
-///     Property(value=6.825000000000035, uncertainty=0.14510233457805027, unit='%')
+///     >>> specimens = sk.load("samples")
+///     >>> steel = sk.load("samples/steel-01.md")
+///     >>> steel.area
+///     Property(value=25.05586444444445, uncertainty=0.05217296159913354, unit='mm²')
 #[pyfunction]
-#[pyo3(signature = (*paths))]
+#[pyo3(signature = (*paths), text_signature = "(*paths)")]
 fn load(py: Python<'_>, paths: &Bound<'_, PyTuple>) -> PyResult<Py<PyAny>> {
     let one = |path: &Bound<'_, PyAny>| -> PyResult<Py<PyAny>> {
         let written: PathBuf = path.extract()?;
@@ -10995,7 +13454,7 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     crate::core::property::set_reads_compute(false);
     module.add_function(pyo3::wrap_pyfunction!(check_new, module)?)?;
     module.add_class::<PyProperty>()?;
-    module.add_class::<PyColumn>()?;
+    module.add_class::<PyComputedColumns>()?;
     module.add_class::<PyRowView>()?;
     module.add_class::<PyColumnView>()?;
     module.add_class::<PyTable>()?;
@@ -11022,6 +13481,8 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(model_for, module)?)?;
     module.add_function(wrap_pyfunction!(model_at, module)?)?;
     module.add_function(wrap_pyfunction!(describe_model, module)?)?;
+    module.add_function(wrap_pyfunction!(hold_saves, module)?)?;
+    module.add_function(wrap_pyfunction!(held_saves, module)?)?;
     module.add("__version__", env!("CARGO_PKG_VERSION"))?;
     // The KeyError every lookup raises, for the package's Python to raise too.
     module.add(
@@ -11070,3 +13531,184 @@ fn opening_failure(error: crate::presentation::opening::OpenError) -> PyErr {
         _ => pyo3::exceptions::PyOSError::new_err(error.to_string()),
     }
 }
+
+/// Each formula's digest in the model of `sample`, by the value it gives, as
+/// the worker takes them: `None` for a sample of no model, or where they could
+/// not be taken — its values are then kept in no trace, and judged by their
+/// inputs alone.
+fn formula_digests(
+    sample: &Bound<'_, PySample>,
+) -> Option<std::collections::BTreeMap<String, String>> {
+    let py = sample.py();
+    let class = sample.get_type();
+    if class.is(py.get_type::<PySample>()) {
+        return None;
+    }
+    let Some(file) = model_file(&class) else {
+        // Said, not passed over: nothing is kept of what computed the values.
+        if let Ok(warnings) = py.import("warnings") {
+            let _ = warnings.call_method1(
+                "warn",
+                (format!(
+                    "{} is defined where no file holds it — a REPL, python -c: what computed \
+                     its values is not kept, and a formula changed later is not seen",
+                    class
+                        .name()
+                        .map(|name| name.to_string())
+                        .unwrap_or_default()
+                ),),
+            );
+        }
+        return None;
+    };
+    py.import("samplekit._worker")
+        .ok()?
+        .call_method1("formula_digests", (sample, file))
+        .ok()?
+        .extract()
+        .ok()
+}
+
+/// The file a model class is written in, where one holds it.
+fn model_file(class: &Bound<'_, pyo3::types::PyType>) -> Option<String> {
+    class
+        .py()
+        .import("inspect")
+        .ok()?
+        .call_method1("getfile", (class,))
+        .ok()?
+        .extract()
+        .ok()
+}
+
+/// A model's formula digests taken the first time it is used in the process,
+/// before any formula runs: the source as it runs, and what each formula
+/// reaches as it was before them.
+pub(crate) fn prime_model(class: &Bound<'_, pyo3::types::PyType>) {
+    let py = class.py();
+    if class.is(py.get_type::<PySample>()) {
+        return;
+    }
+    let Some(file) = model_file(class) else {
+        return;
+    };
+    if let Ok(worker) = py.import("samplekit._worker") {
+        let _ = worker.call_method1("prime", (class, file));
+    }
+}
+
+/// Ctrl-C while `save_all()` writes: the file under way was finished, and
+/// the list stops there, `KeyboardInterrupt` naming the files written; the
+/// script's snapshot says it was interrupted.
+/// Ctrl-C, noted while a list is written rather than raised where it
+/// lands: raised inside a sample's save, the `KeyboardInterrupt` was lost
+/// there, and the list went on to its end. Python's own handler is put back
+/// when this is dropped; `None` off the main thread, where Python allows no
+/// handler, and the signals are then asked as they come.
+struct CaughtInterrupts {
+    caught: Py<PyList>,
+    previous: Py<PyAny>,
+}
+
+impl Drop for CaughtInterrupts {
+    fn drop(&mut self) {
+        Python::attach(|py| {
+            if let Ok(signal) = py.import("signal")
+                && let Ok(number) = signal.getattr("SIGINT")
+            {
+                let _ = signal.call_method1("signal", (number, self.previous.bind(py)));
+            }
+        });
+    }
+}
+
+fn catch_interrupts(py: Python<'_>) -> Option<CaughtInterrupts> {
+    let signal = py.import("signal").ok()?;
+    let number = signal.getattr("SIGINT").ok()?;
+    let previous = signal.call_method1("getsignal", (&number,)).ok()?.unbind();
+    let caught = PyList::empty(py);
+    let noting = py
+        .eval(
+            c"lambda caught: lambda signum, frame: caught.append(signum)",
+            None,
+            None,
+        )
+        .ok()?
+        .call1((&caught,))
+        .ok()?;
+    signal.call_method1("signal", (number, noting)).ok()?;
+    Some(CaughtInterrupts {
+        caught: caught.unbind(),
+        previous,
+    })
+}
+
+fn stop_if_interrupted(
+    py: Python<'_>,
+    written: &[Py<PyAny>],
+    caught: Option<&CaughtInterrupts>,
+) -> PyResult<()> {
+    let noted = caught.is_some_and(|caught| !caught.caught.bind(py).is_empty());
+    let asked = if noted {
+        Err(pyo3::exceptions::PyKeyboardInterrupt::new_err(""))
+    } else {
+        py.check_signals()
+    };
+    if let Err(error) = asked {
+        SAVE_INTERRUPTED.store(true, std::sync::atomic::Ordering::SeqCst);
+        if !error.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
+            return Err(error);
+        }
+        let names: Vec<String> = written
+            .iter()
+            .map(|path| path.bind(py).str().map(|text| text.to_string()))
+            .collect::<PyResult<_>>()?;
+        return Err(pyo3::exceptions::PyKeyboardInterrupt::new_err(format!(
+            "interrupted: {} of the list written, the others left as they were{}",
+            names.len(),
+            if names.is_empty() {
+                String::new()
+            } else {
+                format!(": {}", names.join(", "))
+            }
+        )));
+    }
+    Ok(())
+}
+
+/// A `save_all()` stopped by Ctrl-C: the script's snapshot says so.
+static SAVE_INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// A formula writes only the value it returns: one that changed an input, an
+/// attribute or the tags while it ran raised, naming what it changed, and
+/// its value failed — a measurement is the raw evidence, and one a formula
+/// touched was rewritten at every run, in silence.
+fn refuse_while_a_formula_runs(what: &str) -> PyResult<()> {
+    if crate::core::property::is_computing() {
+        return Err(PyValueError::new_err(format!(
+            "a formula writes only the value it returns: this one changed {what}, and nothing \
+             of it was written"
+        )));
+    }
+    Ok(())
+}
+
+/// The kind of an attribute's value, as a warning names it: `text`, `a
+/// number`, `a date`, `true or false`, `a list`; `None` for none at all.
+fn attribute_kind(attribute: &AttributeValue) -> Option<&'static str> {
+    match attribute {
+        AttributeValue::List(_) => Some("a list"),
+        AttributeValue::Scalar(value) => match value {
+            Value::Text(_) => Some("text"),
+            Value::Integer(_) | Value::Number(_) => Some("a number"),
+            Value::Date(_) | Value::DateTime(_) => Some("a date"),
+            Value::Boolean(_) => Some("true or false"),
+            Value::Absent | Value::NotApplicable => None,
+        },
+    }
+}
+
+/// What a computation marks a sample as having done: its next save writes it
+/// whole, every value computed and recorded; with none, a save writes only
+/// the fields the script changed.
+const COMPUTED: &str = "\u{0}computed";

@@ -59,6 +59,12 @@ pub struct FigureRequest {
     /// The snapshot a figure drawn from the project as it was carries in its
     /// metadata, where the history is not written from the drawing.
     pub snapshot: Option<String>,
+    /// Asked from the workbench, where a figure is written to a file by `w`:
+    /// an advice to write it names that key, not `-o`.
+    pub workbench: bool,
+    /// `--accept outdated`: a figure drawn from values not current exits 0,
+    /// as an export does; it exits 2 otherwise.
+    pub accept_outdated: bool,
 }
 
 #[derive(Debug)]
@@ -117,6 +123,8 @@ pub fn request_json(request: &FigureRequest) -> String {
         "project_style": request.project_style,
         "said": request.said,
         "snapshot": request.snapshot,
+        "workbench": request.workbench,
+        "accept_outdated": request.accept_outdated,
         "overrides": {
             "title": overrides.title,
             "x_label": overrides.x_label,
@@ -172,6 +180,8 @@ pub fn draw_quietly(python: &Path, request: &FigureRequest) -> Result<(), (PlotE
     };
     let mut child = Command::new(python)
         .env("PYTHONDONTWRITEBYTECODE", "1")
+        // Its warnings in the command line's colours, where its stderr is.
+        .envs(crate::presentation::terminal_rendering::child_colours())
         .args(["-c", BOOTSTRAP])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -245,6 +255,8 @@ fn run(python: &Path, body: &str, capture: bool) -> Result<String, PlotError> {
     });
     let mut child = Command::new(python)
         .env("PYTHONDONTWRITEBYTECODE", "1")
+        // Its warnings in the command line's colours, where its stderr is.
+        .envs(crate::presentation::terminal_rendering::child_colours())
         .args(["-c", BOOTSTRAP])
         .stdin(Stdio::piped())
         .stdout(if capture {

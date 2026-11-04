@@ -7,13 +7,13 @@ use samplekit::format::document;
 use samplekit::format::fingerprint::Freshness;
 
 /// A sample whose `headspace` a formula computed, read without the model, and
-/// whose `malt` holds readings, and a table with a derived column.
+/// whose `diameter` holds readings, and a table with a derived column.
 const SAMPLE: &str = "---\nschema_version: 1\nname: E\nproperties:\n  \
-    ibu:\n    v: 12.0\n    u: 0.005773502691896258\n    unit: mL\n    \
+    hb:\n    v: 12.0\n    u: 0.005773502691896258\n    unit: mL\n    \
     computed: {u: {}}\n    fingerprint: 18debc327c6f\n  \
     headspace:\n    v: 1.1309733552923256\n    unit: hL\n    \
-    computed: {v: {ibu: fce15bfbafe1}}\n    fingerprint: 5bcbffb74128\n  \
-    malt: {v: 14.21, readings: [14.21, 14.23, 14.19], u: 0.01, unit: mg}\n---\nN.\n";
+    computed: {v: {hb: fce15bfbafe1}}\n    fingerprint: 5bcbffb74128\n  \
+    diameter: {v: 14.21, readings: [14.21, 14.23, 14.19], u: 0.01, unit: mg}\n---\nN.\n";
 
 fn sample() -> samplekit::core::sample::Sample {
     let path = dunce::canonicalize(std::env::temp_dir())
@@ -69,23 +69,23 @@ fn a_typed_text_is_the_value_it_plainly_is() {
         Value::Date(_)
     ));
     assert_eq!(
-        editing::value_of("altbier").unwrap(),
-        Value::text("altbier")
+        editing::value_of("alumina").unwrap(),
+        Value::text("alumina")
     );
     assert!(editing::value_of("").unwrap().is_absent());
     let list = editing::value_of("[1, 2]").unwrap_err();
     // Readings are a channel of their own.
-    assert!(list.message.contains("fg.readings=[1, 2]"), "{list}");
-    assert!(editing::split_assignment("malt").is_err());
+    assert!(list.message.contains("notch.readings=[1, 2]"), "{list}");
+    assert!(editing::split_assignment("diameter").is_err());
 }
 
 #[test]
 fn text_where_a_number_belongs_is_refused() {
     let mut edited = sample();
-    let refused = editing::apply(&mut edited, "ibu", Value::text("abc"), None).unwrap_err();
+    let refused = editing::apply(&mut edited, "hb", Value::text("abc"), None).unwrap_err();
     assert!(refused.message.contains("measured in mL"), "{refused}");
     assert_eq!(
-        editing::value_at(&edited, "ibu"),
+        editing::value_at(&edited, "hb"),
         Some(Value::number(12.0).unwrap())
     );
 }
@@ -93,18 +93,25 @@ fn text_where_a_number_belongs_is_refused() {
 #[test]
 fn a_value_beside_readings_keeps_them() {
     let mut edited = sample();
-    let change = editing::apply(&mut edited, "malt", Value::number(14.0).unwrap(), None).unwrap();
+    let change =
+        editing::apply(&mut edited, "diameter", Value::number(14.0).unwrap(), None).unwrap();
     let kept = change.kept.expect("the readings are named");
     assert_eq!(kept.readings, [14.21, 14.23, 14.19]);
     assert_eq!(kept.uncertainty, Some(0.01));
-    assert!(edited.property(&id("malt")).unwrap().readings().is_some());
+    assert!(
+        edited
+            .property(&id("diameter"))
+            .unwrap()
+            .readings()
+            .is_some()
+    );
 }
 
 #[test]
 fn not_current_lists_a_column_once() {
     let mut edited = sample();
     assert!(editing::not_current(&edited).is_empty());
-    editing::apply(&mut edited, "ibu", Value::number(13.0).unwrap(), None).unwrap();
+    editing::apply(&mut edited, "hb", Value::number(13.0).unwrap(), None).unwrap();
     let behind = editing::not_current(&edited);
     assert_eq!(behind.len(), 1, "{behind:?}");
     assert_eq!(behind[0].name, "headspace");
@@ -115,9 +122,9 @@ fn not_current_lists_a_column_once() {
 }
 
 /// A table with a derived column, read without the model.
-const WITH_TABLE: &str = "---\nschema_version: 1\nname: T\ntables:\n  conditioning:\n    index: day\n    \
-    columns:\n      day: {}\n      co2: {unit: vol}\n      efficiency: {unit: \"%\"}\n    rows:\n      \
-    - day: 1\n        co2: 2.0\n        efficiency: {v: 90.0, computed: {row.co2: aaaaaaaaaaaa}, \
+const WITH_TABLE: &str = "---\nschema_version: 1\nname: T\ntables:\n  tempering:\n    index: day\n    \
+    columns:\n      day: {}\n      co2: {unit: vol}\n      recovery: {unit: \"%\"}\n    rows:\n      \
+    - day: 1\n        co2: 2.0\n        recovery: {v: 90.0, computed: {row.co2: aaaaaaaaaaaa}, \
     fingerprint: bbbbbbbbbbbb}\n      - day: 2\n        co2: 1.9\n---\n";
 
 fn tabled() -> samplekit::core::sample::Sample {
@@ -138,7 +145,7 @@ fn tabled() -> samplekit::core::sample::Sample {
 fn a_cell_takes_a_number_and_an_index_names_one_row() {
     let mut edited = tabled();
     // Text where the column holds numbers is refused, as for a quantity.
-    let error = editing::apply(&mut edited, "conditioning.co2[1]", Value::text("abc"), None)
+    let error = editing::apply(&mut edited, "tempering.co2[1]", Value::text("abc"), None)
         .unwrap_err()
         .message;
     assert!(
@@ -146,31 +153,30 @@ fn a_cell_takes_a_number_and_an_index_names_one_row() {
         "{error}"
     );
     // An index another row holds would name two rows.
-    let error = editing::apply(&mut edited, "conditioning.day[1]", Value::integer(2), None)
+    let error = editing::apply(&mut edited, "tempering.day[1]", Value::integer(2), None)
         .unwrap_err()
         .message;
     assert!(error.contains("already has a row at (2)"), "{error}");
     // Moved to an index nobody holds, it is a change.
-    let change =
-        editing::apply(&mut edited, "conditioning.day[1]", Value::integer(3), None).unwrap();
+    let change = editing::apply(&mut edited, "tempering.day[1]", Value::integer(3), None).unwrap();
     assert_eq!(change.became, Became::Changed);
     // The row answers to its new index, and the old one is free again.
-    let error = editing::apply(&mut edited, "conditioning.day[2]", Value::integer(3), None)
+    let error = editing::apply(&mut edited, "tempering.day[2]", Value::integer(3), None)
         .unwrap_err()
         .message;
     assert!(error.contains("already has a row at (3)"), "{error}");
     editing::apply(
         &mut edited,
-        "conditioning.co2[3]",
+        "tempering.co2[3]",
         Value::number(2.1).unwrap(),
         None,
     )
     .unwrap();
-    editing::apply(&mut edited, "conditioning.day[2]", Value::integer(1), None).unwrap();
+    editing::apply(&mut edited, "tempering.day[2]", Value::integer(1), None).unwrap();
     // An index is never emptied, and carries no uncertainty.
     for (field, value) in [
-        ("conditioning.day[3]", Value::absent()),
-        ("conditioning.day[3].u", Value::number(0.1).unwrap()),
+        ("tempering.day[3]", Value::absent()),
+        ("tempering.day[3].u", Value::number(0.1).unwrap()),
     ] {
         let error = editing::apply(&mut edited, field, value, None)
             .unwrap_err()
@@ -180,7 +186,7 @@ fn a_cell_takes_a_number_and_an_index_names_one_row() {
     // A row given a column twice, or text where numbers go, is refused.
     let twice = editing::add_row(
         &mut tabled(),
-        "conditioning",
+        "tempering",
         vec![
             ("day".to_string(), Value::integer(9)),
             ("co2".to_string(), Value::number(1.0).unwrap()),
@@ -191,7 +197,7 @@ fn a_cell_takes_a_number_and_an_index_names_one_row() {
     assert!(twice.is_err_and(|error| error.message.contains("given twice")));
     let text = editing::add_row(
         &mut tabled(),
-        "conditioning",
+        "tempering",
         vec![
             ("day".to_string(), Value::integer(9)),
             ("co2".to_string(), Value::text("x")),
@@ -203,7 +209,7 @@ fn a_cell_takes_a_number_and_an_index_names_one_row() {
 
 #[test]
 fn a_declaration_without_a_unit_takes_text() {
-    // `[property.style]` naming only how a figure's legend says it: `style=ipa`
+    // `[property.style]` naming only how a figure's legend says it: `style=titanium`
     // was refused with *write a number*.
     use samplekit::config::project_config::PropertyDeclaration;
     let symbols = PropertyDeclaration {
@@ -211,7 +217,13 @@ fn a_declaration_without_a_unit_takes_text() {
         ..PropertyDeclaration::default()
     };
     let mut edited = sample();
-    let change = editing::apply(&mut edited, "style", Value::text("ipa"), Some(&symbols)).unwrap();
+    let change = editing::apply(
+        &mut edited,
+        "style",
+        Value::text("titanium"),
+        Some(&symbols),
+    )
+    .unwrap();
     assert!(
         matches!(change.became, Became::NewAttribute { .. }),
         "{:?}",
@@ -220,7 +232,7 @@ fn a_declaration_without_a_unit_takes_text() {
     // A number is still the quantity it declares.
     let change = editing::apply(
         &mut edited,
-        "bitterness",
+        "brittleness",
         Value::integer(40),
         Some(&symbols),
     )
@@ -231,7 +243,7 @@ fn a_declaration_without_a_unit_takes_text() {
         unit: Some("g".to_string()),
         ..PropertyDeclaration::default()
     };
-    let error = editing::apply(&mut edited, "grain", Value::text("heavy"), Some(&measured))
+    let error = editing::apply(&mut edited, "ore", Value::text("heavy"), Some(&measured))
         .unwrap_err()
         .message;
     assert!(error.contains("write a number"), "{error}");
@@ -245,11 +257,11 @@ fn a_new_rows_hand_value_in_a_derived_column_is_an_override() {
     let mut edited = tabled();
     let added = editing::add_row(
         &mut edited,
-        "conditioning",
+        "tempering",
         vec![
             ("day".to_string(), Value::integer(3)),
             ("co2".to_string(), Value::number(1.8).unwrap()),
-            ("efficiency".to_string(), Value::number(88.0).unwrap()),
+            ("recovery".to_string(), Value::number(88.0).unwrap()),
         ],
         |_| None,
     )
@@ -258,12 +270,12 @@ fn a_new_rows_hand_value_in_a_derived_column_is_an_override() {
         added
             .given
             .iter()
-            .any(|(column, _, overriding)| column.as_str() == "efficiency" && *overriding)
+            .any(|(column, _, overriding)| column.as_str() == "recovery" && *overriding)
     );
     let freshness = samplekit::format::fingerprint::check_cell(
         &edited,
-        &id("conditioning"),
-        &id("efficiency"),
+        &id("tempering"),
+        &id("recovery"),
         &[Value::integer(3)],
     )
     .unwrap();
@@ -271,7 +283,7 @@ fn a_new_rows_hand_value_in_a_derived_column_is_an_override() {
     // A measured column given by hand is no override.
     let co2 = samplekit::format::fingerprint::check_cell(
         &edited,
-        &id("conditioning"),
+        &id("tempering"),
         &id("co2"),
         &[Value::integer(3)],
     )
@@ -286,20 +298,20 @@ fn a_derived_cell_left_as_it_was_is_not_an_override() {
     // marked.
     let change = editing::apply(
         &mut edited,
-        "conditioning.efficiency[1].u",
+        "tempering.recovery[1].u",
         Value::absent(),
         None,
     )
     .unwrap();
     assert_eq!(change.became, Became::Unchanged);
-    let table = edited.table(&id("conditioning")).unwrap();
+    let table = edited.table(&id("tempering")).unwrap();
     let row = table.rows().next().unwrap();
-    let records = row.cell(&id("efficiency")).unwrap().records().clone();
+    let records = row.cell(&id("recovery")).unwrap().records().clone();
     assert!(!records.fingerprint.is_some_and(|digest| digest.is_edited()));
     // Its value set by hand is an override, the formula's record kept.
     let change = editing::apply(
         &mut edited,
-        "conditioning.efficiency[1]",
+        "tempering.recovery[1]",
         Value::number(50.0).unwrap(),
         None,
     )
@@ -312,7 +324,7 @@ fn an_uncertainty_for_a_cell_that_is_not_there_says_what_is() {
     let mut edited = tabled();
     let error = editing::apply(
         &mut edited,
-        "conditioning.c2[1].u",
+        "tempering.c2[1].u",
         Value::number(0.1).unwrap(),
         None,
     )
@@ -321,7 +333,7 @@ fn an_uncertainty_for_a_cell_that_is_not_there_says_what_is() {
     assert!(error.contains("co2"), "{error}");
     let error = editing::apply(
         &mut edited,
-        "conditioning.co2[99].u",
+        "tempering.co2[99].u",
         Value::number(0.1).unwrap(),
         None,
     )
@@ -334,11 +346,11 @@ fn an_uncertainty_for_a_cell_that_is_not_there_says_what_is() {
 fn a_column_is_listed_once_for_each_way_its_rows_stand() {
     // An edited first row said the whole column was edited, and the stale
     // rows under it were counted as overrides.
-    let text = "---\nschema_version: 1\nname: T\ntables:\n  conditioning:\n    index: day\n    \
-    columns:\n      day: {}\n      co2: {unit: vol}\n      efficiency: {unit: \"%\"}\n    rows:\n      \
-    - day: 1\n        co2: 2.0\n        efficiency: {v: 90.0, computed: {row.co2: aaaaaaaaaaaa}, \
-    fingerprint: bbbbbbbbbbbb}\n      - day: 2\n        co2: 1.9\n        efficiency: {v: 80.0, \
-    computed: {row.co2: aaaaaaaaaaaa}}\n      - day: 3\n        co2: 1.9\n        efficiency: \
+    let text = "---\nschema_version: 1\nname: T\ntables:\n  tempering:\n    index: day\n    \
+    columns:\n      day: {}\n      co2: {unit: vol}\n      recovery: {unit: \"%\"}\n    rows:\n      \
+    - day: 1\n        co2: 2.0\n        recovery: {v: 90.0, computed: {row.co2: aaaaaaaaaaaa}, \
+    fingerprint: bbbbbbbbbbbb}\n      - day: 2\n        co2: 1.9\n        recovery: {v: 80.0, \
+    computed: {row.co2: aaaaaaaaaaaa}}\n      - day: 3\n        co2: 1.9\n        recovery: \
     {v: 80.0, computed: {row.co2: aaaaaaaaaaaa}}\n---\n";
     let path = dunce::canonicalize(std::env::temp_dir())
         .unwrap()
@@ -359,8 +371,8 @@ fn a_column_is_listed_once_for_each_way_its_rows_stand() {
     assert_eq!(
         found,
         [
-            ("conditioning.efficiency".to_string(), false, 1),
-            ("conditioning.efficiency".to_string(), true, 2)
+            ("tempering.recovery".to_string(), false, 1),
+            ("tempering.recovery".to_string(), true, 2)
         ]
     );
 }
@@ -381,7 +393,7 @@ fn readings_are_refused_for_a_computed_value() {
             .is_none()
     );
     // A statistic of readings is recorded as computed, and takes new ones.
-    let text = "---\nschema_version: 1\nname: S\nproperties:\n  malt: {v: 2.0, readings: [1.0, 3.0], \
+    let text = "---\nschema_version: 1\nname: S\nproperties:\n  diameter: {v: 2.0, readings: [1.0, 3.0], \
                 statistics: {v: mean}, computed: {readings: aaaaaaaaaaaa}, fingerprint: \
                 bbbbbbbbbbbb}\n---\n";
     let path = dunce::canonicalize(std::env::temp_dir())
@@ -390,8 +402,8 @@ fn readings_are_refused_for_a_computed_value() {
     std::fs::write(&path, text).unwrap();
     let (mut measured, _) = document::load_sample(&path).expect("the fixture reads");
     let _ = std::fs::remove_file(&path);
-    let readings = editing::readings_of("malt", "4.0,5.0").unwrap();
-    editing::set_readings(&mut measured, &id("malt"), readings).unwrap();
+    let readings = editing::readings_of("diameter", "4.0,5.0").unwrap();
+    editing::set_readings(&mut measured, &id("diameter"), readings).unwrap();
 }
 
 #[test]
@@ -427,19 +439,18 @@ fn a_new_name_is_no_path_and_no_other_samples_in_its_project() {
 fn new_readings_leave_a_written_value_standing() {
     // New evidence, not an erasure — the value entered stays, written, and so
     // does the uncertainty entered beside it.
-    let text =
-        "---\nschema_version: 1\nname: S\nproperties:\n  malt: {v: 12.0, u: 0.1, unit: g}\n---\n";
+    let text = "---\nschema_version: 1\nname: S\nproperties:\n  diameter: {v: 12.0, u: 0.1, unit: g}\n---\n";
     let path = dunce::canonicalize(std::env::temp_dir())
         .unwrap()
         .join(format!("samplekit-editing-stand-{}.md", std::process::id()));
     std::fs::write(&path, text).unwrap();
     let (mut measured, _) = document::load_sample(&path).expect("the fixture reads");
     let _ = std::fs::remove_file(&path);
-    let readings = editing::readings_of("malt", "11.9,12.2").unwrap();
-    editing::set_readings(&mut measured, &id("malt"), readings).unwrap();
-    let malt = measured.property(&id("malt")).unwrap();
-    assert_eq!(malt.readings().unwrap().as_slice(), [11.9, 12.2]);
-    let (written, spread, unit) = malt.peek(|property| {
+    let readings = editing::readings_of("diameter", "11.9,12.2").unwrap();
+    editing::set_readings(&mut measured, &id("diameter"), readings).unwrap();
+    let diameter = measured.property(&id("diameter")).unwrap();
+    assert_eq!(diameter.readings().unwrap().as_slice(), [11.9, 12.2]);
+    let (written, spread, unit) = diameter.peek(|property| {
         (
             property.written_value().cloned(),
             property.peek_uncertainty().flatten().map(|u| u.magnitude()),
@@ -451,62 +462,65 @@ fn new_readings_leave_a_written_value_standing() {
     assert_eq!(unit.as_deref(), Some("g"));
     // A value beside readings with no record is a value written, whoever wrote
     // it — the mean an earlier SampleKit wrote included — and stays too.
-    let text = "---\nschema_version: 1\nname: S\nproperties:\n  malt: {v: 9.0, readings: [8.0, 10.0], unit: g}\n---\n";
+    let text = "---\nschema_version: 1\nname: S\nproperties:\n  diameter: {v: 9.0, readings: [8.0, 10.0], unit: g}\n---\n";
     std::fs::write(&path, text).unwrap();
     let (mut measured, _) = document::load_sample(&path).expect("the fixture reads");
     let _ = std::fs::remove_file(&path);
-    let readings = editing::readings_of("malt", "11,13").unwrap();
-    editing::set_readings(&mut measured, &id("malt"), readings).unwrap();
-    let malt = measured.property(&id("malt")).unwrap();
+    let readings = editing::readings_of("diameter", "11,13").unwrap();
+    editing::set_readings(&mut measured, &id("diameter"), readings).unwrap();
+    let diameter = measured.property(&id("diameter")).unwrap();
     assert_eq!(
-        malt.peek(|property| property.written_value().cloned()),
+        diameter.peek(|property| property.written_value().cloned()),
         Some(Value::number(9.0).unwrap())
     );
-    assert_eq!(malt.value().unwrap(), Value::number(9.0).unwrap());
+    assert_eq!(diameter.value().unwrap(), Value::number(9.0).unwrap());
 }
 
 #[test]
 fn readings_that_look_like_decimal_commas_are_warned_about() {
-    // `og.readings=1,050,1,051` read as four readings, mean 25.75, with
+    // `radius.readings=1,050,1,051` read as four readings, mean 25.75, with
     // nothing said. Said now, with the spelling that cannot be misread
     //  — and not refused, since four whole numbers can be readings.
-    let warned = editing::decimal_commas("og.readings", "1,050,1,051").unwrap();
-    assert!(warned.contains("og.readings=[1.050, 1.051]"), "{warned}");
+    let warned = editing::decimal_commas("radius.readings", "1,050,1,051").unwrap();
+    assert!(
+        warned.contains("radius.readings=[1.050, 1.051]"),
+        "{warned}"
+    );
     let warned = editing::decimal_commas("t.readings", "[20,5,21,5]").unwrap();
     assert!(warned.contains("t.readings=[20.5, 21.5]"), "{warned}");
     assert!(warned.contains("4 readings"), "{warned}");
     assert_eq!(
-        editing::readings_of("og.readings", "1,050,1,051")
+        editing::readings_of("radius.readings", "1,050,1,051")
             .unwrap()
             .as_slice(),
         &[1.0, 50.0, 1.0, 51.0]
     );
     // Readings written with points, and a plain zero, are readings, and
     // nothing is said of them.
-    assert!(editing::decimal_commas("og.readings", "1.050, 1.051, 0").is_none());
-    assert!(editing::decimal_commas("og.readings", "12, 130, 14").is_none());
+    assert!(editing::decimal_commas("radius.readings", "1.050, 1.051, 0").is_none());
+    assert!(editing::decimal_commas("radius.readings", "12, 130, 14").is_none());
 }
 
 #[test]
 fn readings_are_a_channel_with_or_without_brackets() {
-    // `og.readings=1.05,1.06` and `og.readings=[1.05, 1.06]` are one list; one
+    // `radius.readings=1.05,1.06` and `radius.readings=[1.05, 1.06]` are one list; one
     // number is a value, and is refused as readings.
     for written in ["1.05,1.06", "[1.05, 1.06]", " [1.05,1.06] "] {
         assert_eq!(
-            editing::readings_of("og.readings", written)
+            editing::readings_of("radius.readings", written)
                 .unwrap()
                 .as_slice(),
             &[1.05, 1.06],
             "{written}"
         );
     }
-    let one = editing::readings_of("og.readings", "[1.05]").unwrap_err();
-    assert!(one.message.contains("og=1.05"), "{one}");
-    assert!(editing::readings_of("og.readings", "[]").is_err());
-    assert!(editing::gives_readings("og.readings"));
-    assert!(editing::gives_readings("mouthfeel.sweetness[40].readings"));
-    assert!(!editing::gives_readings("og"));
-    assert!(!editing::gives_readings("og.u"));
+    let one = editing::readings_of("radius.readings", "[1.05]").unwrap_err();
+    assert!(one.message.contains("radius=1.05"), "{one}");
+    assert!(editing::readings_of("radius.readings", "[]").is_err());
+    assert!(editing::gives_readings("radius.readings"));
+    assert!(editing::gives_readings("toughness.stiffness[40].readings"));
+    assert!(!editing::gives_readings("radius"));
+    assert!(!editing::gives_readings("radius.u"));
 }
 
 #[test]
@@ -517,17 +531,16 @@ fn a_cells_readings_keep_what_was_written_beside_them() {
     let mut edited = tabled();
     let row = samplekit::core::table::RowAddress::Index(vec![Value::integer(1)]);
     let before = edited
-        .table(&id("conditioning"))
+        .table(&id("tempering"))
         .unwrap()
         .at(&row, &id("co2"))
         .unwrap()
         .value()
         .unwrap();
     let readings = editing::readings_of("x.readings", "1.0,2.0").unwrap();
-    editing::set_cell_readings(&mut edited, &id("conditioning"), &row, &id("co2"), readings)
-        .unwrap();
+    editing::set_cell_readings(&mut edited, &id("tempering"), &row, &id("co2"), readings).unwrap();
     let cell = |sample: &samplekit::core::sample::Sample| {
-        let held = sample.table(&id("conditioning")).unwrap();
+        let held = sample.table(&id("tempering")).unwrap();
         let cell = held.at(&row, &id("co2")).unwrap();
         (
             cell.readings().map(|readings| readings.as_slice().to_vec()),
@@ -537,7 +550,7 @@ fn a_cells_readings_keep_what_was_written_beside_them() {
     assert_eq!(cell(&edited), (Some(vec![1.0, 2.0]), before));
     editing::apply(
         &mut edited,
-        "conditioning.co2[1]",
+        "tempering.co2[1]",
         Value::number(1.7).unwrap(),
         None,
     )
@@ -548,7 +561,7 @@ fn a_cells_readings_keep_what_was_written_beside_them() {
     );
     let index = editing::set_cell_readings(
         &mut edited,
-        &id("conditioning"),
+        &id("tempering"),
         &row,
         &id("day"),
         editing::readings_of("x.readings", "1,2").unwrap(),
@@ -559,11 +572,11 @@ fn a_cells_readings_keep_what_was_written_beside_them() {
 
 #[test]
 fn a_row_takes_readings_in_a_cell() {
-    // `--add-row conditioning day=9 co2.readings=1.0,2.0`.
+    // `--add-row tempering day=9 co2.readings=1.0,2.0`.
     let mut edited = tabled();
     let added = editing::add_row_with_readings(
         &mut edited,
-        "conditioning",
+        "tempering",
         vec![("day".to_string(), Value::integer(9))],
         vec![(
             "co2".to_string(),
@@ -573,7 +586,7 @@ fn a_row_takes_readings_in_a_cell() {
     )
     .unwrap();
     assert_eq!(added.readings, vec![(id("co2"), vec![1.0, 2.0])]);
-    let held = edited.table(&id("conditioning")).unwrap();
+    let held = edited.table(&id("tempering")).unwrap();
     let cell = held
         .at(
             &samplekit::core::table::RowAddress::Index(vec![Value::integer(9)]),
@@ -585,7 +598,7 @@ fn a_row_takes_readings_in_a_cell() {
     assert!(cell.value().unwrap().is_absent());
     let index = editing::add_row_with_readings(
         &mut tabled(),
-        "conditioning",
+        "tempering",
         Vec::new(),
         vec![(
             "day".to_string(),
@@ -599,10 +612,10 @@ fn a_row_takes_readings_in_a_cell() {
 
 #[test]
 fn a_yes_or_no_is_refused_where_a_number_belongs() {
-    // `og=true` was written `v: true` over a quantity holding a number, where
-    // `og=abc` was refused.
+    // `radius=true` was written `v: true` over a quantity holding a number, where
+    // `radius=abc` was refused.
     let mut edited = sample();
-    let error = editing::apply(&mut edited, "malt", Value::boolean(true), None)
+    let error = editing::apply(&mut edited, "diameter", Value::boolean(true), None)
         .unwrap_err()
         .message;
     assert!(
@@ -610,24 +623,19 @@ fn a_yes_or_no_is_refused_where_a_number_belongs() {
         "{error}"
     );
     let mut tabled = tabled();
-    let error = editing::apply(
-        &mut tabled,
-        "conditioning.co2[1]",
-        Value::boolean(false),
-        None,
-    )
-    .unwrap_err()
-    .message;
+    let error = editing::apply(&mut tabled, "tempering.co2[1]", Value::boolean(false), None)
+        .unwrap_err()
+        .message;
     assert!(error.contains("a yes-or-no"), "{error}");
 }
 
 #[test]
 fn several_numbers_in_a_cell_are_refused_as_readings() {
-    // `sweetness=12.1,12.3,12.2` was stored as text in a column with a unit, and
+    // `stiffness=12.1,12.3,12.2` was stored as text in a column with a unit, and
     // the hint of `--add-row` named the address `set` takes.
     let comma = editing::add_row(
         &mut tabled(),
-        "conditioning",
+        "tempering",
         vec![
             ("day".to_string(), Value::integer(9)),
             ("co2".to_string(), Value::text("1,011")),
@@ -642,7 +650,7 @@ fn several_numbers_in_a_cell_are_refused_as_readings() {
     );
     let several = editing::add_row(
         &mut tabled(),
-        "conditioning",
+        "tempering",
         vec![
             ("day".to_string(), Value::integer(9)),
             ("co2".to_string(), Value::text("12.1,12.3,12.2")),
@@ -661,7 +669,7 @@ fn several_numbers_in_a_cell_are_refused_as_readings() {
     let mut bare = sample();
     let lent = {
         let source = tabled();
-        let held = source.table(&id("conditioning")).unwrap();
+        let held = source.table(&id("tempering")).unwrap();
         let columns = held
             .column_names()
             .into_iter()
@@ -681,7 +689,7 @@ fn several_numbers_in_a_cell_are_refused_as_readings() {
             })
             .collect();
         samplekit::core::table::Table::new(
-            id("conditioning"),
+            id("tempering"),
             held.index_columns().to_vec(),
             columns,
             Vec::new(),
@@ -690,7 +698,7 @@ fn several_numbers_in_a_cell_are_refused_as_readings() {
     };
     let first = editing::add_row(
         &mut bare,
-        "conditioning",
+        "tempering",
         vec![
             ("day".to_string(), Value::integer(1)),
             ("co2".to_string(), Value::text("12.1,12.3,12.2")),
@@ -709,11 +717,11 @@ fn several_numbers_in_a_cell_are_refused_as_readings() {
 
 #[test]
 fn not_applicable_drops_the_uncertainty_and_keeps_the_readings() {
-    // `fg=n/a` kept `u: 0.0004` and its readings' statistic went on giving one:
+    // `notch=n/a` kept `u: 0.0004` and its readings' statistic went on giving one:
     // a value that does not apply has no spread.
     let mut edited = sample();
-    editing::apply(&mut edited, "malt", Value::NotApplicable, None).unwrap();
-    let handle = edited.property(&id("malt")).unwrap();
+    editing::apply(&mut edited, "diameter", Value::NotApplicable, None).unwrap();
+    let handle = edited.property(&id("diameter")).unwrap();
     assert_eq!(
         handle.peek(|property| property.peek_uncertainty()),
         Some(None)
@@ -731,13 +739,13 @@ fn tags_are_set_by_their_own_command() {
     let error = editing::apply(&mut sample(), "tags", Value::text("a,b"), None)
         .unwrap_err()
         .message;
-    assert!(error.contains("samplekit tag add"), "{error}");
+    assert!(error.contains("tag add <tag>"), "{error}");
     // A quantity and a word that is none of its channels: said so, not that
     // it named a column.
-    let error = editing::apply(&mut sample(), "malt.x", Value::integer(1), None)
+    let error = editing::apply(&mut sample(), "diameter.x", Value::integer(1), None)
         .unwrap_err()
         .message;
-    assert!(error.contains("x is no channel of malt"), "{error}");
+    assert!(error.contains("x is no channel of diameter"), "{error}");
 }
 
 #[test]
@@ -750,29 +758,29 @@ fn a_name_the_collection_holds_as_a_quantity_is_said_how() {
     std::fs::write(root.join(".samplekitrc"), "schema_version = 1\n").unwrap();
     std::fs::write(
         root.join("a.md"),
-        "---\nschema_version: 1\nname: a\nbatch: B1\nproperties:\n  og: 1.05\n  volume: {v: 20, unit: L}\n  malt: {v: 1, unit: g}\n---\n",
+        "---\nschema_version: 1\nname: a\nbatch: B1\nproperties:\n  radius: 1.05\n  volume: {v: 20, unit: L}\n  diameter: {v: 1, unit: g}\n---\n",
     )
     .unwrap();
     std::fs::write(
         root.join("b.md"),
-        "---\nschema_version: 1\nname: b\nproperties:\n  volume: {v: 21, unit: L}\n  malt: {v: 1000, unit: mg}\n---\n",
+        "---\nschema_version: 1\nname: b\nproperties:\n  volume: {v: 21, unit: L}\n  diameter: {v: 1000, unit: mg}\n---\n",
     )
     .unwrap();
     let collection = samplekit::collection::sample_list::from_directory(&root).unwrap();
-    let og = editing::held_as(&collection, "og").unwrap();
-    assert!(og.numeric && og.unit.is_none() && og.units.is_empty());
+    let radius = editing::held_as(&collection, "radius").unwrap();
+    assert!(radius.numeric && radius.unit.is_none() && radius.units.is_empty());
     let volume = editing::held_as(&collection, "volume").unwrap();
     assert_eq!(volume.unit.as_deref(), Some("L"));
-    let malt = editing::held_as(&collection, "malt").unwrap();
-    assert_eq!(malt.unit, None);
-    assert_eq!(malt.units, ["g", "mg"]);
+    let diameter = editing::held_as(&collection, "diameter").unwrap();
+    assert_eq!(diameter.unit, None);
+    assert_eq!(diameter.units, ["g", "mg"]);
     // An attribute is no quantity, and a name nobody holds is none.
     assert!(editing::held_as(&collection, "batch").is_none());
     assert!(editing::held_as(&collection, "nosuch").is_none());
-    let refused = editing::not_a_number_for("og", None, &Value::text("1,050")).message;
+    let refused = editing::not_a_number_for("radius", None, &Value::text("1,050")).message;
     assert!(
-        refused.contains("'og' holds a number, and '1,050' is text")
-            && refused.contains("og=1.050"),
+        refused.contains("'radius' holds a number, and '1,050' is text")
+            && refused.contains("radius=1.050"),
         "{refused}"
     );
     let _ = std::fs::remove_dir_all(&root);
@@ -785,12 +793,14 @@ fn a_name_a_command_line_would_split_is_refused() {
     // since `new` and the workbench both ask here.
     let collection = samplekit::collection::sample_list::empty();
     let refused = |name: &str| editing::refuses_name(name, &collection, None);
-    assert!(refused("pale ale").is_some_and(|error| error.message.contains("write pale-ale")));
-    assert!(refused("pale\tale").is_some());
-    assert!(refused("-pale").is_some_and(|error| error.message.contains("write pale instead")));
+    assert!(
+        refused("bronze alloy").is_some_and(|error| error.message.contains("write bronze-alloy"))
+    );
+    assert!(refused("bronze\talloy").is_some());
+    assert!(refused("-bronze").is_some_and(|error| error.message.contains("write bronze instead")));
     assert!(refused("--").is_some_and(|error| error.message.contains("a letter or a digit")));
-    assert!(refused("pale-ale").is_none());
-    assert!(refused("pale_ale").is_none());
+    assert!(refused("bronze-alloy").is_none());
+    assert!(refused("bronze_alloy").is_none());
 }
 
 #[test]
@@ -801,10 +811,10 @@ fn a_blank_value_removes_only_what_is_there() {
     let change = editing::apply(&mut edited, "style", Value::absent(), None).unwrap();
     assert_eq!(change.became, Became::Unchanged);
     assert!(!edited.has_attribute(&id("style")));
-    editing::apply(&mut edited, "style", Value::text("ipa"), None).unwrap();
+    editing::apply(&mut edited, "style", Value::text("titanium"), None).unwrap();
     let removed = editing::apply(&mut edited, "style", Value::absent(), None).unwrap();
     assert_ne!(removed.became, Became::Unchanged);
-    assert_eq!(removed.before, Some(Value::text("ipa")));
+    assert_eq!(removed.before, Some(Value::text("titanium")));
 }
 
 #[test]
@@ -824,7 +834,7 @@ fn a_shape_writes_no_name() {
     std::fs::write(
         &path,
         "---\nschema_version: 1\nname: C-01\nbatch: B7\n\
-         properties:\n  malt: {v: 4.7, unit: g}\n---\n",
+         properties:\n  diameter: {v: 4.7, unit: g}\n---\n",
     )
     .unwrap();
     let (pattern, _) = document::load_sample(&path).expect("the pattern reads");
@@ -840,38 +850,45 @@ fn a_shape_writes_no_name() {
 }
 
 #[test]
-fn a_shape_leaves_the_patterns_dates_and_status() {
-    // The rule the workbench's `N` kept for itself, in the shape both surfaces
-    // take — a date, a list of dates and `status` are the pattern's own; a
-    // batch and an operator describe the cask.
+fn a_shape_takes_only_what_is_named() {
+    // Another sample's attributes and quantities came across unasked: only
+    // what `keep` names is taken, a quantity whole and an attribute with its
+    // value.
     let path = dunce::canonicalize(std::env::temp_dir())
         .unwrap()
         .join(format!(
-            "samplekit-editing-own-{}-{:?}.md",
+            "samplekit-editing-kept-{}-{:?}.md",
             std::process::id(),
             std::thread::current().id()
         ));
     std::fs::write(
         &path,
-        "---\nschema_version: 1\nname: P\nbatch: B7\nmade: 2026-09-01\n\
-         dosed: [2026-09-02, 2026-09-03]\nstatus: approved\nmaltster: sam\n\
-         properties:\n  malt: {v: 4.7, unit: g}\n---\n",
+        "---\nschema_version: 1\nname: P\nbatch: B7\nmade: 2026-09-01\nstatus: approved\n\
+         properties:\n  diameter: {v: 4.7, readings: [4.6, 4.8], unit: g}\n  carbon: {v: 1.2, unit: g}\n---\n",
     )
     .unwrap();
     let (pattern, _) = document::load_sample(&path).expect("the pattern reads");
     let _ = std::fs::remove_file(&path);
-    let shaped = editing::shaped_like("ph", Some(&pattern), &[]).unwrap();
-    assert_eq!(shaped.not_carried, ["made", "dosed", "status"]);
-    let carried: Vec<&str> = shaped
-        .attributes
-        .iter()
-        .map(|(name, _)| name.as_str())
-        .collect();
-    assert_eq!(carried, ["batch", "maltster"]);
-    for own in ["made", "dosed", "status"] {
-        assert!(shaped.sample.attribute(&id(own)).is_err(), "{own} carried");
-    }
-    assert!(shaped.sample.attribute(&id("batch")).is_ok());
+    let nothing = editing::shaped_like("ph", Some(&pattern), &[]).unwrap();
+    assert!(nothing.sample.property_names().is_empty());
+    assert!(nothing.sample.attribute_names().is_empty());
+    let kept = editing::shaped_like(
+        "ph",
+        Some(&pattern),
+        &["diameter".to_string(), "batch".to_string()],
+    )
+    .unwrap();
+    assert_eq!(kept.measured, ["diameter"]);
+    assert_eq!(kept.attributes, [("batch".to_string(), "B7".to_string())]);
+    assert!(kept.sample.property(&id("carbon")).is_err());
+    assert!(kept.sample.attribute(&id("made")).is_err());
+    let diameter = kept.sample.property(&id("diameter")).unwrap();
+    assert_eq!(
+        diameter.readings().map(|readings| readings.len().get()),
+        Some(2)
+    );
+    let refused = editing::shaped_like("ph", Some(&pattern), &["feed".to_string()]);
+    assert!(refused.is_err());
 }
 
 /// The model's description, written as the worker writes it, for a model no
@@ -911,7 +928,7 @@ fn entered(unit: Option<&str>) -> serde_json::Value {
 
 #[test]
 fn a_name_is_known_from_the_configuration_then_the_model_then_the_samples() {
-    // `ibu` only the model declared was written as an attribute, which the
+    // `hb` only the model declared was written as an attribute, which the
     // model then refused. The model is read from its description, current or
     // not read at all.
     let root = dunce::canonicalize(std::env::temp_dir())
@@ -921,20 +938,20 @@ fn a_name_is_known_from_the_configuration_then_the_model_then_the_samples() {
     std::fs::create_dir_all(root.join("model")).unwrap();
     std::fs::write(
         root.join(".samplekitrc"),
-        "schema_version = 1\n\n[model]\npath = \"model/keg.py\"\nclass = \"Keg\"\n\n\
-         [property.malt]\nunit = \"g\"\n\n[property.style]\nsymbol = \"S\"\n",
+        "schema_version = 1\n\n[model]\npath = \"model/billet.py\"\nclass = \"Billet\"\n\n\
+         [property.diameter]\nunit = \"g\"\n\n[property.style]\nsymbol = \"S\"\n",
     )
     .unwrap();
     std::fs::write(
-        root.join("model/keg.py"),
-        "import samplekit as sk\n\nclass Keg(sk.Sample):\n    pass\n",
+        root.join("model/billet.py"),
+        "import samplekit as sk\n\nclass Billet(sk.Sample):\n    pass\n",
     )
     .unwrap();
     describe(
         &root,
         serde_json::json!({
-            "malt": entered(Some("kg")),
-            "ibu": entered(Some("mL")),
+            "diameter": entered(Some("kg")),
+            "hb": entered(Some("mL")),
             "collar": entered(None),
             "style": entered(Some("cL")),
             "headspace": entered(None),
@@ -944,7 +961,7 @@ fn a_name_is_known_from_the_configuration_then_the_model_then_the_samples() {
     std::fs::write(
         root.join("a.md"),
         "---\nschema_version: 1\nname: a\nbatch: B1\nproperties:\n  \
-         og: {v: 1.05, unit: SG}\n  collar: {v: 3, unit: cL}\n---\n",
+         radius: {v: 1.05, unit: SG}\n  collar: {v: 3, unit: cL}\n---\n",
     )
     .unwrap();
     std::fs::write(root.join("b.md"), "---\nschema_version: 1\nname: b\n---\n").unwrap();
@@ -956,22 +973,25 @@ fn a_name_is_known_from_the_configuration_then_the_model_then_the_samples() {
     };
 
     // The configuration first, its unit before the model's, the two named.
-    let malt = known(&sample, "malt").unwrap();
-    assert_eq!(malt.from, editing::KnownFrom::Configuration);
-    assert_eq!(malt.declaration.unit.as_deref(), Some("g"));
-    assert_eq!(malt.disagreement, Some(("g".to_string(), "kg".to_string())));
+    let diameter = known(&sample, "diameter").unwrap();
+    assert_eq!(diameter.from, editing::KnownFrom::Configuration);
+    assert_eq!(diameter.declaration.unit.as_deref(), Some("g"));
+    assert_eq!(
+        diameter.disagreement,
+        Some(("g".to_string(), "kg".to_string()))
+    );
     // A declaration without a unit takes the model's.
     let style = known(&sample, "style").unwrap();
     assert_eq!(style.from, editing::KnownFrom::Configuration);
     assert_eq!(style.declaration.unit.as_deref(), Some("cL"));
     assert_eq!(style.disagreement, None);
     // The model, from its file.
-    let ibu = known(&sample, "ibu").unwrap();
+    let hb = known(&sample, "hb").unwrap();
     assert_eq!(
-        ibu.from,
-        editing::KnownFrom::Model(dunce::canonicalize(root.join("model/keg.py")).unwrap())
+        hb.from,
+        editing::KnownFrom::Model(dunce::canonicalize(root.join("model/billet.py")).unwrap())
     );
-    assert_eq!(ibu.declaration.unit.as_deref(), Some("mL"));
+    assert_eq!(hb.declaration.unit.as_deref(), Some("mL"));
     let headspace = known(&sample, "headspace").unwrap();
     assert!(matches!(headspace.from, editing::KnownFrom::Model(_)));
     assert_eq!(headspace.declaration.unit, None);
@@ -980,34 +1000,34 @@ fn a_name_is_known_from_the_configuration_then_the_model_then_the_samples() {
     assert!(matches!(collar.from, editing::KnownFrom::Model(_)));
     assert_eq!(collar.declaration.unit.as_deref(), Some("cL"));
     // Then the samples.
-    let og = known(&sample, "og").unwrap();
-    assert_eq!(og.from, editing::KnownFrom::Samples);
-    assert_eq!(og.declaration.unit.as_deref(), Some("SG"));
+    let radius = known(&sample, "radius").unwrap();
+    assert_eq!(radius.from, editing::KnownFrom::Samples);
+    assert_eq!(radius.declaration.unit.as_deref(), Some("SG"));
     // An attribute elsewhere, a name nobody declares, and a channel are none.
     assert!(known(&sample, "batch").is_none());
     assert!(known(&sample, "nosuch").is_none());
-    assert!(known(&sample, "ibu.u").is_none());
+    assert!(known(&sample, "hb.u").is_none());
 
     // And `apply` writes it as the quantity it is, with its unit.
     let change = editing::apply(
         &mut sample,
-        "ibu",
+        "hb",
         Value::number(25.1).unwrap(),
-        Some(&ibu.declaration),
+        Some(&hb.declaration),
     )
     .unwrap();
     assert_eq!(change.became, Became::NewQuantity);
-    let handle = sample.property(&id("ibu")).unwrap();
+    let handle = sample.property(&id("hb")).unwrap();
     assert_eq!(handle.presentation().unit.as_deref(), Some("mL"));
 
     // The model's file edited: the description is stale, and never read.
     std::fs::write(
-        root.join("model/keg.py"),
-        "import samplekit as sk\n\nclass Keg(sk.Sample):\n    pass  # edited\n",
+        root.join("model/billet.py"),
+        "import samplekit as sk\n\nclass Billet(sk.Sample):\n    pass  # edited\n",
     )
     .unwrap();
     let (fresh, _) = document::load_sample(&root.join("b.md")).unwrap();
-    assert!(known(&fresh, "ibu").is_none());
+    assert!(known(&fresh, "hb").is_none());
     assert_eq!(
         known(&fresh, "collar").unwrap().from,
         editing::KnownFrom::Samples
@@ -1024,12 +1044,12 @@ fn text_for_a_property_the_model_declares_is_a_property() {
     std::fs::create_dir_all(root.join("model")).unwrap();
     std::fs::write(
         root.join(".samplekitrc"),
-        "schema_version = 1\n\n[model]\npath = \"model/keg.py\"\nclass = \"Keg\"\n",
+        "schema_version = 1\n\n[model]\npath = \"model/billet.py\"\nclass = \"Billet\"\n",
     )
     .unwrap();
     std::fs::write(
-        root.join("model/keg.py"),
-        "import samplekit as sk\n\nclass Keg(sk.Sample):\n    pass\n",
+        root.join("model/billet.py"),
+        "import samplekit as sk\n\nclass Billet(sk.Sample):\n    pass\n",
     )
     .unwrap();
     describe(
@@ -1061,13 +1081,13 @@ fn the_name_is_edited_as_an_attribute() {
     // What the file writes, never the file's name: a blank one removes `name:`
     // and the file's name stands for it; a path and a line break are refused.
     let mut edited = samplekit::core::sample::Sample::new();
-    edited.set_file(Some(std::path::Path::new("brews/s-1.md")));
+    edited.set_file(Some(std::path::Path::new("pieces/s-1.md")));
     let typed = editing::typed("name", "007").unwrap();
     assert_eq!(typed, Value::text("007"));
-    let named = editing::apply(&mut edited, "name", Value::text("Cask A"), None).unwrap();
+    let named = editing::apply(&mut edited, "name", Value::text("Slab A"), None).unwrap();
     assert_eq!(named.became, Became::Changed);
     assert_eq!(named.before, Some(Value::text("s-1")));
-    assert_eq!(edited.written_name(), Some("Cask A"));
+    assert_eq!(edited.written_name(), Some("Slab A"));
     let removed = editing::apply(&mut edited, "name", Value::absent(), None).unwrap();
     assert_eq!(removed.became, Became::Cleared);
     assert_eq!(removed.after, Some(Value::text("s-1")));
@@ -1085,14 +1105,14 @@ fn the_name_is_edited_as_an_attribute() {
             "{refused:?}"
         );
     }
-    assert!(editing::refuses_written_name("Cask A, batch 3").is_none());
+    assert!(editing::refuses_written_name("Slab A, batch 3").is_none());
     assert!(editing::apply(&mut edited, "path", Value::text("x"), None).is_err());
 }
 
 #[test]
 fn a_preview_shows_a_value_at_its_declared_precision() {
     // At the precision the project declares, its uncertainty's for `.u`, and
-    // every digit without one; two values it writes alike said whole.
+    // as a table shows it without one; two values it writes alike said whole.
     let root = dunce::canonicalize(std::env::temp_dir())
         .unwrap()
         .join(format!(
@@ -1102,26 +1122,171 @@ fn a_preview_shows_a_value_at_its_declared_precision() {
     std::fs::create_dir_all(&root).unwrap();
     std::fs::write(
         root.join(".samplekitrc"),
-        "schema_version = 1\n[property.abv]\nprecision = [\".2f\", \".3f\"]\n",
+        "schema_version = 1\n[property.modulus]\nprecision = [\".2f\", \".3f\"]\n",
     )
     .unwrap();
     let config = samplekit::config::project_config::load(&root.join(".samplekitrc")).unwrap();
     let noise = Value::number(6.081250000000001).unwrap();
-    assert_eq!(editing::previewed(&noise, "abv", Some(&config)), "6.08");
-    assert_eq!(editing::previewed(&noise, "abv.u", Some(&config)), "6.081");
+    assert_eq!(editing::previewed(&noise, "modulus", Some(&config)), "6.08");
     assert_eq!(
-        editing::previewed(&noise, "og", Some(&config)),
-        "6.081250000000001"
+        editing::previewed(&noise, "modulus.u", Some(&config)),
+        "6.082"
     );
-    assert_eq!(editing::previewed(&noise, "abv", None), "6.081250000000001");
+    assert_eq!(
+        editing::previewed(&noise, "radius", Some(&config)),
+        "6.08125"
+    );
+    assert_eq!(editing::previewed(&noise, "modulus", None), "6.08125");
     let moved = Value::number(6.0812).unwrap();
     assert_eq!(
-        editing::previewed_change(Some(&noise), Some(&moved), "abv", Some(&config)),
+        editing::previewed_change(Some(&noise), Some(&moved), "modulus", Some(&config)),
         ("6.081250000000001".to_string(), "6.0812".to_string())
     );
     assert_eq!(
-        editing::previewed_change(None, Some(&Value::integer(7)), "abv", Some(&config)),
+        editing::previewed_change(None, Some(&Value::integer(7)), "modulus", Some(&config)),
         ("—".to_string(), "7.00".to_string())
     );
     let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_column_holding_an_override_is_still_said_outdated_by_a_change() {
+    // Compared by name, a column already *not current* for its one edited
+    // cell hid the seven rows a change of `radius` made outdated beside it.
+    let entry = |name: &str, state: Freshness, rows: usize| editing::NotCurrent {
+        name: name.to_string(),
+        state,
+        rows,
+    };
+    let stale = || Freshness::Stale {
+        changed: Vec::new(),
+        upstream: Vec::new(),
+    };
+    let before = vec![entry("ageing.nominal", Freshness::Edited, 1)];
+    let after = vec![
+        entry("ageing.nominal", Freshness::Edited, 1),
+        entry("ageing.nominal", stale(), 7),
+        entry("modulus", stale(), 0),
+    ];
+    let newly = editing::newly_not_current(&before, &after);
+    let names: Vec<(&str, usize)> = newly
+        .iter()
+        .map(|entry| (entry.name.as_str(), entry.rows))
+        .collect();
+    assert_eq!(names, vec![("ageing.nominal", 7), ("modulus", 0)]);
+    // Rows that already stood so are not said again; more of them are.
+    let before = vec![entry("t.y", stale(), 2)];
+    let after = vec![entry("t.y", stale(), 5)];
+    assert_eq!(editing::newly_not_current(&before, &after)[0].rows, 3);
+    assert!(editing::newly_not_current(&after, &after).is_empty());
+}
+
+#[test]
+fn a_new_name_a_file_could_not_carry_is_refused() {
+    // `new` wrote `a<BEL>b.md` and said `ab.md`, wrote `CON.md` and `a:b.md`,
+    // which Windows cannot hold, and made `x.md` into `x.md.md`.
+    let collection = samplekit::collection::sample_list::empty();
+    let refused = |name: &str| editing::refuses_name(name, &collection, None);
+    assert!(refused("a\u{7}b").is_some_and(|error| error.message.contains("control character")));
+    assert!(refused("\u{1b}[31mred").is_some());
+    assert!(refused("CON").is_some_and(|error| error.message.contains("a device's name")));
+    assert!(refused("com3").is_some());
+    assert!(refused("a:b").is_some_and(|error| error.message.contains("holds ':'")));
+    assert!(
+        refused("x.md").is_some_and(|error| error.message.contains("a new sample takes a name, x"))
+    );
+    assert!(refused("console").is_none());
+    assert!(refused("COM0").is_none());
+    assert_eq!(
+        editing::name_key("Caf\u{e9}"),
+        editing::name_key("CAFE\u{301}")
+    );
+}
+
+#[test]
+fn a_statistic_kept_comes_with_its_record() {
+    // Kept with its readings, the recorded mean was written with no record:
+    // `record missing`, and `status --exit-code` failed over the copy.
+    let path = dunce::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(format!(
+            "samplekit-editing-kept-statistic-{}.md",
+            std::process::id()
+        ));
+    std::fs::write(
+        &path,
+        "---\nschema_version: 1\nname: W\nproperties:\n  radius:\n    v: 1.052\n    \
+         readings: [1.05, 1.052, 1.054]\n    u: 0.0011547005383792206\n    \
+         statistics: {v: mean, u: standard_error}\n    computed: {readings: cf7451a84781}\n    \
+         fingerprint: 98c0480c1eee\n---\n",
+    )
+    .unwrap();
+    let (pattern, _) = document::load_sample(&path).expect("the pattern reads");
+    let _ = std::fs::remove_file(&path);
+    let radius = Identifier::new("radius").unwrap();
+    assert!(matches!(
+        samplekit::format::fingerprint::check_property(&pattern, &radius),
+        Ok(Freshness::Current)
+    ));
+    let shaped = editing::shaped_like("matte", Some(&pattern), &["radius".to_string()]).unwrap();
+    let state = samplekit::format::fingerprint::check_property(&shaped.sample, &radius);
+    assert!(matches!(state, Ok(Freshness::Current)), "{state:?}");
+}
+
+#[test]
+fn an_attribute_takes_a_list_and_a_quantity_refuses_one() {
+    // `authors=[ana, tom]` was refused as readings: no command wrote a list.
+    let path = dunce::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(format!("samplekit-editing-list-{}.md", std::process::id()));
+    std::fs::write(
+        &path,
+        "---\nschema_version: 1\nname: A\nauthors: [ana]\nproperties:\n  radius: {v: 1.05}\n---\n",
+    )
+    .unwrap();
+    let (mut sample, _) = document::load_sample(&path).expect("the fixture reads");
+    let _ = std::fs::remove_file(&path);
+    let items = editing::list_typed("[ana, 'tom, jr', lea]")
+        .unwrap()
+        .unwrap();
+    assert_eq!(items.len(), 3);
+    let (before, after) = editing::assign_list(&mut sample, "authors", items).unwrap();
+    assert_eq!(
+        (before.as_str(), after.as_str()),
+        ("[ana]", "[ana, 'tom, jr', lea]")
+    );
+    // A list holds one kind: text beside a number is refused.
+    let mixed = editing::list_typed("[ana, 3]").unwrap().unwrap();
+    assert!(editing::assign_list(&mut sample, "authors", mixed).is_err());
+    // A wikilink is text, not a list; a quantity refuses one.
+    assert!(editing::list_typed("[[Other note]]").is_none());
+    let error =
+        editing::assign_list(&mut sample, "radius", vec![Value::number(1.0).unwrap()]).unwrap_err();
+    assert!(
+        error.message.contains("radius.readings="),
+        "{}",
+        error.message
+    );
+}
+
+#[test]
+fn a_number_in_another_form_is_advised_as_its_value() {
+    // The digits before the first letter changed the number: `0x10` was
+    // advised as `volume=0`, `1_000` as `volume=1`.
+    let advised = |written: &str| {
+        editing::not_a_number_for("volume", Some("L"), &Value::text(written)).to_string()
+    };
+    assert!(advised("0x10").contains("volume=16"), "{}", advised("0x10"));
+    assert!(
+        advised("1_000").contains("volume=1000"),
+        "{}",
+        advised("1_000")
+    );
+    assert!(advised("12 L").contains("volume=12"), "{}", advised("12 L"));
+    // An uncertainty is a size: advised as one `set` takes.
+    assert!(
+        advised("20±-1").contains("volume=20 volume.u=1"),
+        "{}",
+        advised("20±-1")
+    );
 }

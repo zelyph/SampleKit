@@ -26,21 +26,31 @@ pub struct ProjectConfig {
     root: PathBuf,
     schema_version: u32,
     model: Option<ModelDeclaration>,
+    /// `[model] python`, with a model or without one: the Python that runs the
+    /// model and draws the figures.
+    python: Option<PathBuf>,
     render: RenderSettings,
     collection: CollectionRules,
     units: IndexMap<String, IndexMap<String, String>>,
     properties: IndexMap<String, PropertyDeclaration>,
+    /// `[style.*]`, those SampleKit gives beside them: how each kind of
+    /// document writes, a table as a document included where it says so.
     styles: IndexMap<String, StyleSettings>,
+    /// The styles the file declares, apart from those given it does not name.
+    declared_styles: Vec<String>,
     queries: IndexMap<String, NamedQuery>,
     profiles: IndexMap<String, Profile>,
-    exports: IndexMap<String, ExportTarget>,
+    exports: IndexMap<String, Export>,
     figures: IndexMap<String, FigureDeclaration>,
     /// `[matplotlib]`: matplotlib's own settings, by their dotted names.
     /// Carried, not interpreted: matplotlib checks them when it draws.
     matplotlib: IndexMap<String, toml::Value>,
-    /// `[workbench.colors]`: the workbench's colour for each role it names,
-    /// where the project changes one. Checked here, drawn there.
-    workbench_colors: IndexMap<String, String>,
+    /// `[colors]`: the colour for each role the TUI and the command line
+    /// draw, where the project changes one. Checked here, drawn there.
+    colors: IndexMap<String, String>,
+    /// `[history] shared`: whether git carries the history, where something
+    /// declares it.
+    history_shared: Option<bool>,
     /// The files imported, nearest first, each once.
     imports: Vec<PathBuf>,
     /// The files declaring each query, profile, export and figure, nearest
@@ -48,6 +58,10 @@ pub struct ProjectConfig {
     origins: IndexMap<(DeclarationKind, String), Vec<PathBuf>>,
     /// This file's declarations identical to what it imports.
     copies: Vec<ImportedCopy>,
+    /// `[collection] files` as the file declaring them wrote them, where an
+    /// imported file does: that file, and each entry with its
+    /// `{project}`.
+    files_declared: Option<(PathBuf, Vec<String>)>,
 }
 
 /// The four kinds of named declaration a listing offers.
@@ -98,16 +112,21 @@ pub struct ImportedCopy {
     pub from: PathBuf,
 }
 
-/// The roles `[workbench.colors]` names, each with the colour the workbench
-/// gives it where the project does not: the terminal's own sixteen, so that its
+/// The roles `[colors]` names, each with the colour the TUI and the command
+/// line give it where the project does not: the terminal's own sixteen, so that its
 /// theme decides the shades.
-pub const WORKBENCH_COLORS: &[(&str, &str)] = &[
+pub const COLOR_ROLES: &[(&str, &str)] = &[
     ("failed", "red"),
     ("outdated", "yellow"),
     ("edited", "magenta"),
     ("current", "green"),
     ("selected", "cyan"),
     ("attribute", "blue"),
+    // A link, underlined in this colour; one leading nowhere in `error`'s.
+    ("link", "blue"),
+    // A value and its uncertainty, drawn bold in this colour; a unit.
+    ("value", "default"),
+    ("unit", "cyan"),
     ("table", "magenta"),
     ("index", "cyan"),
     ("key", "cyan"),
@@ -142,7 +161,7 @@ pub const COLOR_NAMES: &[&str] = &[
     "white",
 ];
 
-/// Whether `text` is a colour `[workbench.colors]` takes.
+/// Whether `text` is a colour `[colors]` takes.
 pub fn is_color(text: &str) -> bool {
     COLOR_NAMES.contains(&text)
         || (text.len() == 7
@@ -196,9 +215,9 @@ pub struct CollectionRules {
 }
 
 impl Default for CollectionRules {
-    /// `*.md`, `*.MD` and `*.markdown` in the given directory, not recursive.
-    /// Non-recursive because a sample directory commonly sits next to
-    /// `README.md` and `generated/`.
+    /// `*.md`, `*.MD` and `*.markdown` in the given directory, not recursive:
+    /// the rules of a folder no project describes, which may be anything. A
+    /// project's own are recursive unless it says otherwise.
     fn default() -> CollectionRules {
         CollectionRules {
             recursive: false,
@@ -213,11 +232,21 @@ impl Default for CollectionRules {
     }
 }
 
-/// `[style.<name>]`: the separator, the only style-dependent literal that is
-/// neither a unit nor a symbol.
+/// `[style.<name>]`: how a kind of document writes — a property, `{value}`,
+/// `{uncertainty}`, `{unit}` and `{symbol}` placed, and one with no
+/// uncertainty; an absent value; what text is escaped for; and, where the
+/// style says it or is given, how a table is a document.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct StyleSettings {
-    pub separator: Option<String>,
+    pub property: Option<String>,
+    /// The piece `{uncertainty}` stands for in `property` and `unitless`,
+    /// written only where there is an uncertainty: ` \pm {uncertainty}`.
+    pub uncertainty: Option<String>,
+    /// The form of a property with no unit, instead of `property`.
+    pub unitless: Option<String>,
+    pub missing: Option<String>,
+    pub escape: Escape,
+    pub document: Option<TextFormat>,
 }
 
 /// What a project declares about one quantity, so that no file repeats it.
@@ -228,6 +257,9 @@ pub struct PropertyDeclaration {
     pub symbol: Option<String>,
     pub symbol_variants: IndexMap<String, String>,
     pub precision: Option<PrecisionSchema>,
+    /// `range = [MIN, MAX]`, in the declared unit: what a value outside is
+    /// said of by `validate`, `set` and `compute`. `inf` leaves a side open.
+    pub range: Option<(f64, f64)>,
 }
 
 /// `[query.*]`: which samples. Evaluated by `named-queries`.
@@ -262,7 +294,58 @@ pub struct ColumnSpec {
     pub template: Option<String>,
 }
 
-/// `[export.*]`: where it goes. Written by `exports`.
+/// `[export.*]`: a table or a figure, and where it goes.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Export {
+    Table(ExportTarget),
+    Figure(FigureExport),
+}
+
+impl Export {
+    pub fn name(&self) -> &str {
+        match self {
+            Export::Table(target) => &target.name,
+            Export::Figure(figure) => &figure.name,
+        }
+    }
+
+    /// The file it writes, as declared: from the configuration's folder.
+    pub fn output(&self) -> &Path {
+        match self {
+            Export::Table(target) => &target.output,
+            Export::Figure(figure) => &figure.output,
+        }
+    }
+
+    pub fn query(&self) -> Option<&str> {
+        match self {
+            Export::Table(target) => target.query.as_deref(),
+            Export::Figure(figure) => figure.query.as_deref(),
+        }
+    }
+}
+
+/// `[export.*]` naming a `figure`: drawn by `plotting` to `output`, as
+/// `plot -o` draws it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FigureExport {
+    pub name: String,
+    /// A `[figure.*]`, or a figure the model declares: the file loads
+    /// without knowing which, and `export` and `validate` judge it.
+    pub figure: String,
+    pub output: PathBuf,
+    pub query: Option<String>,
+    /// The style its labels use, as `plot --style` gives it.
+    pub style: Option<String>,
+}
+
+/// What matplotlib writes, by extension: a figure's file names its format.
+pub const FIGURE_FORMATS: [&str; 14] = [
+    "eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw", "rgba", "svg", "svgz", "tif", "tiff",
+    "webp",
+];
+
+/// `[export.*]` naming a `profile`: where a table goes. Written by `exports`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExportTarget {
     pub name: String,
@@ -276,7 +359,19 @@ pub struct ExportTarget {
     /// A declared query the export selects with, so that it can be run without
     /// remembering which selection it was written for.
     pub query: Option<String>,
+    /// The style its units are spelled in; `None`, as the files spell them
+    /// ([`FILES_STYLE`]): a program reading the file finds `degC`, whatever
+    /// the screen shows.
+    pub style: Option<String>,
 }
+
+/// How `[render] table` may draw a terminal table.
+pub const TABLE_STYLES: [&str; 2] = ["plain", "boxed"];
+
+/// The style a data export spells units in unless told otherwise: as the
+/// sample files write them, `degC` rather than `°C` — the spelling a program
+/// reads back and a person can type. It needs no declaration.
+pub const FILES_STYLE: &str = "files";
 
 /// `[figure.*]`: what a figure draws, and nothing about how it looks. Drawn by
 /// `plotting`, through Python.
@@ -309,6 +404,9 @@ pub struct FigureDeclaration {
     pub legend: Option<String>,
     /// Width and height in centimetres.
     pub figsize: Option<(f64, f64)>,
+    /// Its own `[matplotlib]` settings, over the section's, by matplotlib's
+    /// dotted names.
+    pub matplotlib: IndexMap<String, toml::Value>,
 }
 
 impl FigureDeclaration {
@@ -332,6 +430,7 @@ impl FigureDeclaration {
             aspect: None,
             legend: None,
             figsize: None,
+            matplotlib: IndexMap::new(),
         }
     }
 }
@@ -492,12 +591,224 @@ impl FigureKind {
     }
 }
 
-/// Named in the file, so refused at load when it is not one of the three.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// An export's `format`, refused at load when it is none of the three; one
+/// naming a style that writes documents, and no format, is `Text`.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Format {
     Csv,
     Tsv,
     Json,
+    /// A table written as a document, as a `[style.NAME]` says.
+    Text(Box<TextFormat>),
+}
+
+/// A style's document keys: how a table is written as text — a LaTeX
+/// tabular, a Markdown table. Each line is its cells joined by `cells` and placed
+/// where `{cells}` stands; `{align}`, in the text before and after, is each
+/// column's alignment; a brace that opens no such name is text, so that
+/// `\begin{tabular}{{align}}` is LaTeX around a placeholder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TextFormat {
+    pub name: String,
+    /// The file's extension, without its dot: the style's name unless said.
+    pub extension: String,
+    /// Before the table, and after it.
+    pub before: String,
+    pub after: String,
+    /// The header line, `{cells}` its cells; `None`, no header.
+    pub header: Option<String>,
+    /// Between two cells of the header line; `cells` where none is said:
+    /// HTML's `</th><th>` beside its rows' `</td><td>`.
+    pub header_cells: Option<String>,
+    /// A cell written for every column on a line of its own after the header:
+    /// Markdown's `---`.
+    pub rule: Option<String>,
+    /// A row's line, `{cells}` its cells.
+    pub row: String,
+    /// Between two cells of a line.
+    pub cells: String,
+    /// A line between two groups of a profile that groups.
+    pub between_groups: Option<String>,
+    /// A cell with no value.
+    pub missing: String,
+    /// How a text cell is made safe for the document.
+    pub escape: Escape,
+    /// A property's value and uncertainty in one cell, `{value}`,
+    /// `{uncertainty}` and `{unit}` placed; `None`, two columns, as a CSV
+    /// writes them.
+    pub property: Option<String>,
+    /// The piece `{uncertainty}` stands for, where there is one.
+    pub uncertainty: Option<String>,
+    /// The form of a property with no unit.
+    pub unitless: Option<String>,
+    /// After a header cell whose column has a unit, `{unit}` placed; `None`,
+    /// no unit in the header — each cell writes its own.
+    pub header_unit: Option<String>,
+    /// `{align}`'s letter for a column of text, and for one of numbers.
+    pub align_text: String,
+    pub align_number: String,
+}
+
+/// What a text cell is escaped for: a language given, a table of
+/// replacements a style declares, or nothing.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum Escape {
+    #[default]
+    None,
+    /// As LaTeX reads text: `v_latexescape`'s.
+    Latex,
+    /// As HTML reads text: `html-escape`'s.
+    Html,
+    /// `|`, which ends a Markdown table's cell.
+    Markdown,
+    /// Each text replaced by its replacement, in the order written.
+    Replace(Vec<(String, String)>),
+}
+
+impl Escape {
+    /// `text` made safe for the document this escapes for.
+    pub fn apply(&self, text: &str) -> String {
+        match self {
+            Escape::None => text.to_string(),
+            Escape::Markdown => text.replace('|', "\\|"),
+            Escape::Latex => v_latexescape::escape_fmt(text).to_string(),
+            Escape::Html => html_escape::encode_text(text).into_owned(),
+            Escape::Replace(replacements) => {
+                // Character by character, the first replacement matching where
+                // it stands: `&` replaced first never touches the `&` of an
+                // `&lt;`.
+                let mut out = String::with_capacity(text.len());
+                let mut rest = text;
+                'walk: while !rest.is_empty() {
+                    for (from, to) in replacements {
+                        if !from.is_empty() && rest.starts_with(from.as_str()) {
+                            out.push_str(to);
+                            rest = &rest[from.len()..];
+                            continue 'walk;
+                        }
+                    }
+                    let next = rest.chars().next().expect("not empty");
+                    out.push(next);
+                    rest = &rest[next.len_utf8()..];
+                }
+                out
+            }
+        }
+    }
+}
+
+impl TextFormat {
+    /// The documents SampleKit gives without a declaration, which a style of
+    /// the same name changes key by key.
+    pub fn given(name: &str) -> Option<TextFormat> {
+        match name {
+            "latex" => Some(TextFormat {
+                name: "latex".to_string(),
+                extension: "tex".to_string(),
+                before: "\\begin{tabular}{{align}}\n\\toprule".to_string(),
+                after: "\\bottomrule\n\\end{tabular}".to_string(),
+                header: Some("{cells} \\\\\n\\midrule".to_string()),
+                header_cells: None,
+                rule: None,
+                row: "{cells} \\\\".to_string(),
+                cells: " & ".to_string(),
+                between_groups: Some("\\midrule".to_string()),
+                missing: "--".to_string(),
+                escape: Escape::Latex,
+                property: Some("${value} \\pm {uncertainty}$".to_string()),
+                uncertainty: None,
+                unitless: None,
+                header_unit: Some(" ({unit})".to_string()),
+                align_text: "l".to_string(),
+                align_number: "r".to_string(),
+            }),
+            "markdown" => Some(TextFormat {
+                name: "markdown".to_string(),
+                extension: "md".to_string(),
+                before: String::new(),
+                after: String::new(),
+                header: Some("| {cells} |".to_string()),
+                header_cells: None,
+                rule: Some("---".to_string()),
+                row: "| {cells} |".to_string(),
+                cells: " | ".to_string(),
+                // Markdown has no rule between rows: a group is headed.
+                between_groups: Some("| **{group}** |".to_string()),
+                missing: String::new(),
+                escape: Escape::Markdown,
+                property: Some("{value} ± {uncertainty}".to_string()),
+                uncertainty: None,
+                unitless: None,
+                header_unit: Some(" ({unit})".to_string()),
+                align_text: "l".to_string(),
+                align_number: "r".to_string(),
+            }),
+            "html" => Some(TextFormat {
+                name: "html".to_string(),
+                extension: "html".to_string(),
+                before: "<table>".to_string(),
+                after: "</tbody>\n</table>".to_string(),
+                // Its rows in a body, a group's in one of their own.
+                header: Some("<thead><tr><th>{cells}</th></tr></thead>\n<tbody>".to_string()),
+                header_cells: Some("</th><th>".to_string()),
+                rule: None,
+                row: "<tr><td>{cells}</td></tr>".to_string(),
+                cells: "</td><td>".to_string(),
+                between_groups: Some("</tbody>\n<tbody>".to_string()),
+                missing: String::new(),
+                escape: Escape::Html,
+                property: Some("{value} ± {uncertainty}".to_string()),
+                uncertainty: None,
+                unitless: None,
+                header_unit: Some(" ({unit})".to_string()),
+                align_text: "l".to_string(),
+                align_number: "r".to_string(),
+            }),
+            _ => None,
+        }
+    }
+
+    /// The names given without a declaration.
+    pub const GIVEN: [&'static str; 3] = ["html", "latex", "markdown"];
+
+    /// A document a style declares from nothing given: a plain line of cells.
+    pub fn named(name: &str) -> TextFormat {
+        TextFormat {
+            name: name.to_string(),
+            extension: name.to_string(),
+            before: String::new(),
+            after: String::new(),
+            header: Some("{cells}".to_string()),
+            header_cells: None,
+            rule: None,
+            row: "{cells}".to_string(),
+            cells: " ".to_string(),
+            between_groups: None,
+            missing: String::new(),
+            escape: Escape::None,
+            property: Some("{value} ± {uncertainty}".to_string()),
+            uncertainty: None,
+            unitless: None,
+            header_unit: Some(" ({unit})".to_string()),
+            align_text: "l".to_string(),
+            align_number: "r".to_string(),
+        }
+    }
+}
+
+impl StyleSettings {
+    /// A style given without a declaration: its document's property and
+    /// escape, and the document.
+    fn given(name: &str) -> Option<StyleSettings> {
+        TextFormat::given(name).map(|document| StyleSettings {
+            property: document.property.clone(),
+            uncertainty: document.uncertainty.clone(),
+            unitless: document.unitless.clone(),
+            missing: Some(document.missing.clone()),
+            escape: document.escape.clone(),
+            document: Some(document),
+        })
+    }
 }
 
 /// Which kind of thing a name was looked up as, for the error that says so.
@@ -527,9 +838,10 @@ impl ProfileKind {
 #[serde(deny_unknown_fields)]
 struct Written {
     schema_version: Option<u32>,
-    /// The folder whose `.samplekitrc` this one takes.
+    /// The folders whose `.samplekitrc` this one takes, or the files: one or a
+    /// list, read by `gather`.
     #[serde(default)]
-    import: Option<String>,
+    import: Option<toml::Value>,
     #[serde(default)]
     model: Option<WrittenModel>,
     #[serde(default)]
@@ -552,25 +864,26 @@ struct Written {
     figure: IndexMap<String, WrittenFigure>,
     #[serde(default)]
     matplotlib: toml::Table,
-    /// `[tui.colors]`, and `[workbench.colors]`, its name before, still read so
-    /// that a project's colours survive the word's change.
+    /// `[colors]`.
     #[serde(default)]
-    tui: WrittenWorkbench,
+    colors: IndexMap<String, String>,
     #[serde(default)]
-    workbench: WrittenWorkbench,
+    history: WrittenHistory,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
-struct WrittenWorkbench {
-    #[serde(default)]
-    colors: IndexMap<String, String>,
+struct WrittenHistory {
+    /// Whether git carries the history with the samples.
+    shared: Option<bool>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WrittenModel {
-    path: String,
+    /// Absent in a file declaring only `python`, for the projects that import
+    /// it: a `[model]` without a path is no model.
+    path: Option<String>,
     class: Option<String>,
     python: Option<String>,
 }
@@ -594,10 +907,46 @@ struct WrittenCollection {
     files: Option<Vec<String>>,
 }
 
-#[derive(Deserialize, Default)]
+/// `[style.NAME]` as written: every key optional, what a style given of its
+/// name does not say taken from that one, else from a plain line of cells.
+#[derive(Deserialize, Default, Clone)]
 #[serde(deny_unknown_fields)]
 struct WrittenStyle {
-    separator: Option<String>,
+    property: Option<toml::Value>,
+    uncertainty: Option<String>,
+    unitless: Option<String>,
+    missing: Option<String>,
+    escape: Option<toml::Value>,
+    extension: Option<String>,
+    before: Option<String>,
+    after: Option<String>,
+    header: Option<toml::Value>,
+    header_cells: Option<String>,
+    rule: Option<String>,
+    row: Option<String>,
+    cells: Option<String>,
+    between_groups: Option<String>,
+    header_unit: Option<toml::Value>,
+    align_text: Option<String>,
+    align_number: Option<String>,
+}
+
+impl WrittenStyle {
+    /// Whether it says how a table is a document.
+    fn documents(&self) -> bool {
+        self.extension.is_some()
+            || self.before.is_some()
+            || self.after.is_some()
+            || self.header.is_some()
+            || self.header_cells.is_some()
+            || self.rule.is_some()
+            || self.row.is_some()
+            || self.cells.is_some()
+            || self.between_groups.is_some()
+            || self.header_unit.is_some()
+            || self.align_text.is_some()
+            || self.align_number.is_some()
+    }
 }
 
 /// `symbol` and `precision` are named; every other key is a style variant of
@@ -607,6 +956,7 @@ struct WrittenProperty {
     unit: Option<String>,
     symbol: Option<String>,
     precision: Option<PrecisionSchema>,
+    range: Option<Vec<f64>>,
     #[serde(flatten)]
     variants: IndexMap<String, String>,
 }
@@ -616,9 +966,6 @@ struct WrittenProperty {
 struct WrittenQuery {
     filter: String,
     directory: Option<String>,
-    /// The key `directory` replaced: read so that it can be refused by name,
-    /// with the migration that rewrites it.
-    base: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -665,20 +1012,155 @@ struct WrittenFigure {
     aspect: Option<String>,
     legend: Option<String>,
     figsize: Option<toml::Value>,
+    matplotlib: Option<toml::Table>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WrittenExport {
-    profile: String,
-    format: String,
+    profile: Option<String>,
+    figure: Option<String>,
+    format: Option<String>,
     output: String,
     filename: Option<bool>,
     path: Option<bool>,
     query: Option<String>,
+    style: Option<String>,
 }
 
 // ---------------------------------------------------------------- functions
+
+/// A `[style.NAME]` read: what it does not say taken from the style of that
+/// name SampleKit gives, else from nothing — a style of units and symbols
+/// alone, unless it says how a table is a document.
+fn style_settings(name: &str, written: &WrittenStyle) -> Result<StyleSettings, String> {
+    let given = StyleSettings::given(name);
+    // `header = false` and `property = false` say there is none; a text is
+    // the line or the cell.
+    let optional = |key: &str,
+                    value: &Option<toml::Value>,
+                    held: Option<String>|
+     -> Result<Option<String>, String> {
+        match value {
+            None => Ok(held),
+            Some(toml::Value::String(text)) => Ok(Some(text.clone())),
+            Some(toml::Value::Boolean(false)) => Ok(None),
+            Some(other) => Err(format!(
+                "{key} is a text, or false for none: {other} is neither"
+            )),
+        }
+    };
+    let escape = match &written.escape {
+        None => given
+            .as_ref()
+            .map(|given| given.escape.clone())
+            .unwrap_or_default(),
+        Some(toml::Value::Boolean(false)) => Escape::None,
+        Some(toml::Value::String(language)) => match language.as_str() {
+            "none" => Escape::None,
+            "latex" => Escape::Latex,
+            "html" => Escape::Html,
+            "markdown" => Escape::Markdown,
+            other => {
+                return Err(format!(
+                    "escape = '{other}' is none of latex, html or markdown: a table of \
+                     replacements escapes for any other language, escape = {{ \"<\" = \"&lt;\" }}"
+                ));
+            }
+        },
+        Some(toml::Value::Table(replacements)) => Escape::Replace(
+            replacements
+                .iter()
+                .map(|(text, by)| match by {
+                    toml::Value::String(by) => Ok((text.clone(), by.clone())),
+                    other => Err(format!(
+                        "escape: '{text}' is replaced by a text, and {other} is none"
+                    )),
+                })
+                .collect::<Result<_, _>>()?,
+        ),
+        Some(other) => {
+            return Err(format!(
+                "escape is a language — latex, html, markdown — a table of replacements, \
+                 or false: {other} is none"
+            ));
+        }
+    };
+    let property = optional(
+        "property",
+        &written.property,
+        given.as_ref().and_then(|given| given.property.clone()),
+    )?;
+    let uncertainty = written.uncertainty.clone();
+    let unitless = written.unitless.clone();
+    let missing = written
+        .missing
+        .clone()
+        .or_else(|| given.as_ref().and_then(|given| given.missing.clone()));
+    let document = match given.as_ref().and_then(|given| given.document.clone()) {
+        Some(base) => Some(base),
+        None if written.documents() => Some(TextFormat::named(name)),
+        None => None,
+    };
+    let document = match document {
+        None => None,
+        Some(base) => Some(TextFormat {
+            name: name.to_string(),
+            extension: written.extension.clone().unwrap_or(base.extension),
+            before: written.before.clone().unwrap_or(base.before),
+            after: written.after.clone().unwrap_or(base.after),
+            header: optional("header", &written.header, base.header)?,
+            header_cells: written.header_cells.clone().or(base.header_cells),
+            rule: written.rule.clone().or(base.rule),
+            row: written.row.clone().unwrap_or(base.row),
+            cells: written.cells.clone().unwrap_or(base.cells),
+            between_groups: written.between_groups.clone().or(base.between_groups),
+            missing: missing.clone().unwrap_or(base.missing),
+            escape: escape.clone(),
+            property: if written.property.is_some() {
+                property.clone()
+            } else {
+                base.property
+            },
+            uncertainty: uncertainty.clone().or(base.uncertainty),
+            unitless: unitless.clone().or(base.unitless),
+            header_unit: optional("header_unit", &written.header_unit, base.header_unit)?,
+            align_text: written.align_text.clone().unwrap_or(base.align_text),
+            align_number: written.align_number.clone().unwrap_or(base.align_number),
+        }),
+    };
+    Ok(StyleSettings {
+        property,
+        uncertainty,
+        unitless,
+        missing,
+        escape,
+        document,
+    })
+}
+
+/// Whether a style of this name is known: `plain` and `files` built in, one
+/// SampleKit gives, or one the file declares.
+fn style_known(declared: &IndexMap<String, WrittenStyle>, name: &str) -> bool {
+    name == "plain"
+        || name == FILES_STYLE
+        || TextFormat::GIVEN.contains(&name)
+        || declared.contains_key(name)
+}
+
+/// The styles a message names: those given, then those declared.
+fn style_names(declared: &IndexMap<String, WrittenStyle>) -> Vec<String> {
+    let mut names: Vec<String> = TextFormat::GIVEN
+        .iter()
+        .map(|name| name.to_string())
+        .collect();
+    for name in declared.keys() {
+        if !names.contains(name) {
+            names.push(name.clone());
+        }
+    }
+    names
+}
 
 /// The nearest `.samplekitrc`, searching upward from a file or directory. The
 /// nearest one wins and nothing else is merged but what it imports: a
@@ -690,7 +1172,32 @@ pub fn find(start: &Path) -> Option<PathBuf> {
     // `.` has no parent to pop: a relative start would stop at the first
     // directory, so `cd` into a sample directory and the project above it
     // becomes invisible.
-    let start = &dunce::canonicalize(start).unwrap_or_else(|_| start.to_path_buf());
+    //
+    // **By the path as written, then as resolved.** A folder linked into the
+    // project — data on another disk — is the project's: resolved first, its
+    // samples were found in no project, and written with no history.
+    let resolved = dunce::canonicalize(start).unwrap_or_else(|_| start.to_path_buf());
+    let written = std::path::absolute(start)
+        .ok()
+        .map(|path| lexically_normal(&path))
+        .filter(|path| *path != resolved);
+    if let Some(written) = written
+        && let Some(found) = find_from(&written)
+    {
+        // The one found by the resolved path where both find the same file.
+        return Some(match find_from(&resolved) {
+            Some(by_resolved)
+                if dunce::canonicalize(&by_resolved).ok() == dunce::canonicalize(&found).ok() =>
+            {
+                by_resolved
+            }
+            _ => found,
+        });
+    }
+    find_from(&resolved)
+}
+
+fn find_from(start: &Path) -> Option<PathBuf> {
     let mut at = if start.is_dir() {
         start.to_path_buf()
     } else {
@@ -707,6 +1214,21 @@ pub fn find(start: &Path) -> Option<PathBuf> {
     }
 }
 
+/// `a/b/../c` as `a/c`, `.` taken out, without reading the disk.
+fn lexically_normal(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        match part {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
 /// Absence is not an error: a bare directory of samples is a valid project
 /// with no configuration.
 pub fn load_for(start: &Path) -> Result<Option<ProjectConfig>, ConfigError> {
@@ -721,6 +1243,13 @@ pub fn load_for(start: &Path) -> Result<Option<ProjectConfig>, ConfigError> {
 pub fn load(path: &Path) -> Result<ProjectConfig, ConfigError> {
     let text = read(path)?;
     parse(path, &text)
+}
+
+/// The configuration of a project whose file cannot be read: its folder, and
+/// nothing declared. What the history is read with, so that a file broken by
+/// an edit can still be logged, compared and restored.
+pub fn unread(path: &Path) -> ProjectConfig {
+    parse(path, "schema_version = 1").expect("a bare configuration always parses")
 }
 
 fn read(path: &Path) -> Result<String, ConfigError> {
@@ -744,16 +1273,34 @@ fn parse_within(
     text: &str,
     importing: &mut Vec<PathBuf>,
 ) -> Result<ProjectConfig, ConfigError> {
+    // The project's folder was written `{collection}` until 1.0.0-rc.2: a
+    // path holding it would make a folder of that name.
+    if let Some(line) = text.lines().position(|line| line.contains("{collection}")) {
+        return Err(ConfigError::Parse {
+            path: path.to_path_buf(),
+            line: Some(line + 1),
+            message: "{collection} is written {project} now: the folder of the project a \
+                      sample follows"
+                .to_string(),
+        });
+    }
     let mut written = written_of(path, text)?;
+    // Every file says which version it was written for, one importing
+    // another too: the version it imports is the other file's.
+    if written.schema_version.is_none() {
+        return Err(ConfigError::MissingVersion {
+            path: path.to_path_buf(),
+        });
+    }
     let root = path
         .parent()
         .unwrap_or_else(|| Path::new("."))
         .to_path_buf();
     if written.import.is_none() {
-        // What this file says of its own collection, `{collection}` being
+        // What this file says of its own collection, `{project}` being
         // its own folder.
         place_collection_in_written(&mut written);
-        return build(path, root, written);
+        return build(path, root, written).map_err(|error| located(path, text, error));
     }
     let head = folder_of(path);
     let gathered = gather(path, text, &head, importing)?;
@@ -763,11 +1310,14 @@ fn parse_within(
             .map_err(|error: toml::de::Error| ConfigError::Parse {
                 path: path.to_path_buf(),
                 line: None,
-                message: format!("{}, with what it imports", withdrawn_key(error.message())),
+                message: format!("{}, with what it imports", error.message()),
             })?;
-    let mut config = build(path, root, merged)?;
+    let mut config = build(path, root, merged).map_err(|error| located(path, text, error))?;
     config.imports = gathered.imports;
     config.copies = gathered.copies;
+    config.files_declared = gathered
+        .files_declared
+        .filter(|(file, _)| *file != folder_of(path).join(FILENAME));
     config.origins = gathered
         .declared
         .into_iter()
@@ -781,7 +1331,10 @@ fn written_of(path: &Path, text: &str) -> Result<Written, ConfigError> {
     toml::from_str(text).map_err(|error| ConfigError::Parse {
         path: path.to_path_buf(),
         line: error.span().map(|span| line_of(text, span.start)),
-        message: withdrawn_key(error.message()),
+        message: said_of(
+            error.message(),
+            error.span().map(|span| line_text(text, span.start)),
+        ),
     })
 }
 
@@ -797,6 +1350,8 @@ struct Gathered {
     declared: IndexMap<(DeclarationKind, String), Vec<PathBuf>>,
     /// This file's declarations identical to what it imports.
     copies: Vec<ImportedCopy>,
+    /// The file whose `[collection] files` holds, and its entries as written.
+    files_declared: Option<(PathBuf, Vec<String>)>,
 }
 
 /// The folder a configuration file is in, absolute and resolved, so that two
@@ -811,7 +1366,7 @@ fn folder_of(path: &Path) -> PathBuf {
 }
 
 /// `path`'s declarations merged over what it imports, for the collection
-/// whose folder is `head`: `{collection}` is written from each file to it.
+/// whose folder is `head`: `{project}` is written from each file to it.
 fn gather(
     path: &Path,
     text: &str,
@@ -819,7 +1374,7 @@ fn gather(
     importing: &mut Vec<PathBuf>,
 ) -> Result<Gathered, ConfigError> {
     let here = folder_of(path);
-    let file = here.join(FILENAME);
+    let file = here.join(path.file_name().unwrap_or(FILENAME.as_ref()));
     if let Some(at) = importing.iter().position(|held| *held == file) {
         let mut files = importing[at..].to_vec();
         files.push(file);
@@ -831,6 +1386,21 @@ fn gather(
         message: error.message().to_string(),
     })?;
     let import = own.remove("import");
+    // As written, before `{project}` is placed: what a note about an
+    // entry quotes, in the file that wrote it.
+    let own_files: Option<(PathBuf, Vec<String>)> = own
+        .get("collection")
+        .and_then(|collection| collection.get("files"))
+        .and_then(toml::Value::as_array)
+        .map(|files| {
+            (
+                file.clone(),
+                files
+                    .iter()
+                    .filter_map(|entry| entry.as_str().map(str::to_string))
+                    .collect(),
+            )
+        });
     place_collection(&mut own, &relative_path(&here, head));
     let mut declared: IndexMap<(DeclarationKind, String), Vec<PathBuf>> = IndexMap::new();
     let Some(import) = import else {
@@ -842,56 +1412,112 @@ fn gather(
             imports: Vec::new(),
             declared,
             copies: Vec::new(),
+            files_declared: own_files,
         });
     };
-    let written = import.as_str().unwrap_or_default().to_string();
-    let imported = imported_file(path, &here, &written)?;
-    importing.push(file.clone());
-    // The file imported is a project for the samples beside it: valid on its
-    // own, its errors naming it.
-    let result = read(&imported).and_then(|text| {
-        parse_within(&imported, &text, importing)?;
-        gather(&imported, &text, head, importing)
-    });
-    importing.pop();
-    let mut inner = result?;
-    // The model is each file's own: its path and its class are not imported.
-    if let Some(toml::Value::Table(model)) = inner.table.get_mut("model") {
-        model.remove("path");
-        model.remove("class");
-        if model.is_empty() {
-            inner.table.remove("model");
+    // One or a list: each merged in order, a later one over an earlier one.
+    let listed: Vec<String> = match &import {
+        toml::Value::String(one) => vec![one.clone()],
+        toml::Value::Array(items) if items.iter().all(toml::Value::is_str) => items
+            .iter()
+            .filter_map(|item| item.as_str().map(str::to_string))
+            .collect(),
+        _ => {
+            return Err(ConfigError::Parse {
+                path: path.to_path_buf(),
+                line: None,
+                message: "import names a folder or a file, or a list of them: import = \
+                          [\"..\", \"figures.samplekitrc\"]"
+                    .to_string(),
+            });
         }
+    };
+    let mut table = toml::Table::new();
+    // Nearest first: the last listed and what it imports, then the one before.
+    let mut imports: Vec<PathBuf> = Vec::new();
+    let mut inner_declared: Vec<IndexMap<(DeclarationKind, String), Vec<PathBuf>>> = Vec::new();
+    let mut files_declared = None;
+    for written in listed {
+        let imported = imported_file(path, &here, &written)?;
+        // A file met twice is merged once, where it is first met.
+        if imports.contains(&imported) {
+            continue;
+        }
+        importing.push(file.clone());
+        // The file imported is a project for the samples beside it: valid on
+        // its own, its errors naming it.
+        let result = read(&imported).and_then(|text| {
+            parse_within(&imported, &text, importing)?;
+            gather(&imported, &text, head, importing)
+        });
+        importing.pop();
+        // Said as this file's too: the file read is set aside with the one it
+        // imports, and the message named only the one imported.
+        let mut inner = result.map_err(|error| match error {
+            ConfigError::ImportLoop { .. } => error,
+            error => ConfigError::Parse {
+                path: path.to_path_buf(),
+                line: None,
+                message: format!("it imports a configuration that is not read — {error}"),
+            },
+        })?;
+        // The model is each file's own: its path and its class are not
+        // imported.
+        if let Some(toml::Value::Table(model)) = inner.table.get_mut("model") {
+            model.remove("path");
+            model.remove("class");
+            if model.is_empty() {
+                inner.table.remove("model");
+            }
+        }
+        let there = folder_of(&imported);
+        rebase(&mut inner.table, &here, &there);
+        merge(&mut table, inner.table);
+        let mut chain = vec![imported];
+        chain.extend(inner.imports);
+        chain.retain(|file| !imports.contains(file));
+        imports.splice(0..0, chain);
+        inner_declared.push(inner.declared);
+        files_declared = inner.files_declared.or(files_declared);
     }
-    let there = folder_of(&imported);
-    rebase(&mut inner.table, &here, &there);
-    let copies = copies_of(&own, &inner.table, &imported);
+    let copies = copies_of(&own, &table, imports.first().map_or(path, PathBuf::as_path))
+        .into_iter()
+        .map(|copy| ImportedCopy {
+            from: declaring(&imports, &copy.key).unwrap_or(copy.from),
+            key: copy.key,
+        })
+        .collect();
     for key in declared_in(&own) {
         declared.entry(key).or_default().push(file.clone());
     }
-    for (key, files) in inner.declared {
-        declared.entry(key).or_default().extend(files);
+    // The nearer import's files first, as a nearer file is.
+    for inner in inner_declared.into_iter().rev() {
+        for (key, files) in inner {
+            declared.entry(key).or_default().extend(files);
+        }
     }
-    let mut table = inner.table;
     merge(&mut table, own);
-    // `[model] python` alone, its model not declared here, runs nothing.
-    if let Some(toml::Value::Table(model)) = table.get("model")
+    // `[model] python` alone, its model not declared here, runs no model; the
+    // interpreter it names still draws the project's figures.
+    if let Some(toml::Value::Table(model)) = table.get_mut("model")
         && !model.contains_key("path")
     {
-        table.remove("model");
+        model.retain(|key, _| key == "python");
+        if model.is_empty() {
+            table.remove("model");
+        }
     }
-    let mut imports = vec![imported];
-    imports.extend(inner.imports);
     Ok(Gathered {
         table,
         imports,
         declared,
         copies,
+        files_declared: own_files.or(files_declared),
     })
 }
 
-/// The `.samplekitrc` an `import` names: a folder, relative to the file
-/// importing it, absolute, or from the home folder.
+/// The file an `import` names: a folder's `.samplekitrc`, or a file of any
+/// name; relative to the file importing it, absolute, or from the home folder.
 fn imported_file(path: &Path, here: &Path, written: &str) -> Result<PathBuf, ConfigError> {
     let refused = |reason: String| ConfigError::ImportNotFound {
         path: path.to_path_buf(),
@@ -900,7 +1526,8 @@ fn imported_file(path: &Path, here: &Path, written: &str) -> Result<PathBuf, Con
     };
     if written.trim().is_empty() {
         return Err(refused(
-            "it names no folder: import = \"..\" takes the .samplekitrc of the folder above"
+            "it names no folder nor file: import = \"..\" takes the .samplekitrc of the folder \
+             above"
                 .to_string(),
         ));
     }
@@ -911,20 +1538,27 @@ fn imported_file(path: &Path, here: &Path, written: &str) -> Result<PathBuf, Con
     } else {
         here.join(written)
     };
+    // A file is taken as it is, whatever its name.
     if folder.is_file() {
-        let parent = Path::new(written)
-            .parent()
-            .filter(|parent| !parent.as_os_str().is_empty())
-            .map_or_else(|| ".".to_string(), |parent| parent.display().to_string());
-        return Err(refused(format!(
-            "it names a file, and import names the folder holding one: import = \"{parent}\""
-        )));
+        return Ok(dunce::canonicalize(&folder).unwrap_or(folder));
     }
     if !folder.is_dir() {
-        return Err(refused(format!("{} is no folder", folder.display())));
+        return Err(refused(format!(
+            "{} is no folder nor file",
+            folder.display()
+        )));
     }
     let file = folder.join(FILENAME);
     if !file.is_file() {
+        // A folder that cannot be read may hold one: said so, not *holds none*.
+        if let Err(error) = std::fs::read_dir(&folder)
+            && error.kind() == std::io::ErrorKind::PermissionDenied
+        {
+            return Err(refused(format!(
+                "{} cannot be read: {error}",
+                dunce::canonicalize(&folder).unwrap_or(folder).display()
+            )));
+        }
         return Err(refused(format!(
             "{} holds no {FILENAME}",
             dunce::canonicalize(&folder).unwrap_or(folder).display()
@@ -960,6 +1594,41 @@ fn merge(base: &mut toml::Table, over: toml::Table) {
 /// The keys `own` writes as `imported` already does: a table named whole
 /// where every key of it repeats, else each key that does. The sections of
 /// declarations — `[property]`, `[profile]` — are gone into, never named.
+/// The nearest file of an import chain that writes `key` itself — a copy's
+/// key as `copies_of` names it, `[property.volume]` or `[render] style`: the
+/// file imported may hold it only because it imports it in turn.
+fn declaring(chain: &[PathBuf], key: &str) -> Option<PathBuf> {
+    let (section, last) = match key.strip_prefix('[') {
+        Some(rest) => match rest.split_once(']') {
+            Some((section, "")) => (section.to_string(), None),
+            Some((section, key)) => (section.to_string(), Some(key.trim().to_string())),
+            None => return None,
+        },
+        None => (String::new(), Some(key.to_string())),
+    };
+    let mut segments: Vec<String> = section
+        .split('.')
+        .filter(|part| !part.is_empty())
+        .map(|part| part.trim_matches('"').to_string())
+        .collect();
+    segments.extend(last.map(|key| key.trim_matches('"').to_string()));
+    chain
+        .iter()
+        .find(|file| {
+            std::fs::read_to_string(file)
+                .ok()
+                .and_then(|text| text.parse::<toml::Table>().ok())
+                .is_some_and(|table| {
+                    let mut at = Some(&toml::Value::Table(table.clone()));
+                    for segment in &segments {
+                        at = at.and_then(|value| value.get(segment));
+                    }
+                    at.is_some()
+                })
+        })
+        .cloned()
+}
+
 fn copies_of(own: &toml::Table, imported: &toml::Table, from: &Path) -> Vec<ImportedCopy> {
     fn within(
         own: &toml::Table,
@@ -972,10 +1641,21 @@ fn copies_of(own: &toml::Table, imported: &toml::Table, from: &Path) -> Vec<Impo
             let Some(held) = imported.get(key) else {
                 continue;
             };
-            let named = if section.is_empty() {
-                key.clone()
+            // As the file writes it: a unit's spelling, and a name that is
+            // no bare key, quoted — `[unit."degC"]`.
+            let quoted = section == "unit"
+                || !key
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+            let key_written = if quoted {
+                format!("\"{key}\"")
             } else {
-                format!("{section}.{key}")
+                key.clone()
+            };
+            let named = if section.is_empty() {
+                key_written.clone()
+            } else {
+                format!("{section}.{key_written}")
             };
             match (value, held) {
                 (toml::Value::Table(value), toml::Value::Table(held)) => {
@@ -990,9 +1670,9 @@ fn copies_of(own: &toml::Table, imported: &toml::Table, from: &Path) -> Vec<Impo
                 }
                 (value, held) if value == held => found.push(ImportedCopy {
                     key: if section.is_empty() {
-                        key.clone()
+                        key_written.clone()
                     } else {
-                        format!("[{section}] {key}")
+                        format!("[{section}] {key_written}")
                     },
                     from: from.to_path_buf(),
                 }),
@@ -1028,9 +1708,10 @@ fn copies_of(own: &toml::Table, imported: &toml::Table, from: &Path) -> Vec<Impo
 }
 
 /// The paths a file declares, each read from the folder of the file declaring
-/// it: `[collection] files`, `[export.*] output`, `[query.*] directory` and
-/// `[model] python`. `include` and `exclude` are patterns on the collection's
-/// own files, not paths, and `[matplotlib]` is matplotlib's.
+/// it: `[collection] files`, `[export.*] output`, `[query.*] directory`,
+/// `[model] python`, and `[matplotlib]`'s style files and fonts. `include` and
+/// `exclude` are patterns on the collection's own files, not paths, and the
+/// rest of `[matplotlib]` is matplotlib's.
 fn path_values(table: &mut toml::Table, mut each: impl FnMut(&mut String, bool)) {
     if let Some(toml::Value::Table(collection)) = table.get_mut("collection")
         && let Some(toml::Value::Array(files)) = collection.get_mut("files")
@@ -1066,12 +1747,32 @@ fn path_values(table: &mut toml::Table, mut each: impl FnMut(&mut String, bool))
     {
         each(python, false);
     }
+    // `[matplotlib]`'s style sheets as files, and its fonts.
+    if let Some(toml::Value::Table(matplotlib)) = table.get_mut("matplotlib") {
+        for key in ["style", "fonts"] {
+            let file =
+                |entry: &str| key == "fonts" || entry.to_ascii_lowercase().ends_with(".mplstyle");
+            match matplotlib.get_mut(key) {
+                Some(toml::Value::String(entry)) if file(entry) => each(entry, false),
+                Some(toml::Value::Array(entries)) => {
+                    for entry in entries {
+                        if let toml::Value::String(entry) = entry
+                            && file(entry)
+                        {
+                            each(entry, false);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
-/// The placeholder for the collection's folder.
-const COLLECTION: &str = "{collection}";
+/// The placeholder for the project's folder.
+const COLLECTION: &str = "{project}";
 
-/// `{collection}` written as the collection's folder, seen from the file
+/// `{project}` written as the project's folder, seen from the file
 /// declaring it: `data/c1` from the root, `.` in the collection's own.
 fn place_collection(table: &mut toml::Table, collection: &Path) {
     let collection = slashed(collection);
@@ -1082,7 +1783,7 @@ fn place_collection(table: &mut toml::Table, collection: &Path) {
     });
 }
 
-/// The same, for a file that imports nothing: `{collection}` is its folder.
+/// The same, for a file that imports nothing: `{project}` is its folder.
 fn place_collection_in_written(written: &mut Written) {
     let place = |value: &mut String| {
         if value.contains(COLLECTION) {
@@ -1199,16 +1900,168 @@ fn normalised(written: &str) -> String {
     }
 }
 
-/// A key a later decision withdrew, said as withdrawn rather than listed
-/// against the keys that remain, which says what to delete and not why.
-fn withdrawn_key(message: &str) -> String {
-    if message.starts_with("unknown field `bounds`") {
-        return "[render] bounds was withdrawn: a declared precision is applied as written \
-                on every surface, and an uncertainty it rounds to zero is written so \
-                — delete the key; the upgrading guide lists what changed"
-            .to_string();
+/// The TOML reader's message in the words of the file: a nearer name for an
+/// unknown key, Rust's `u32` as a whole number, and where it names no key —
+/// *duplicate key*, *invalid type* — the line it read, so that the key is
+/// named.
+fn said_of(message: &str, line: Option<String>) -> String {
+    let mut said = message
+        .replace("expected u32", "expected a whole number")
+        .replace("expected u64", "expected a whole number")
+        .replace("expected i64", "expected a whole number")
+        .replace("expected f64", "expected a number");
+    if let Some(rest) = said.strip_prefix("unknown field `")
+        && let Some((unknown, expected)) = rest.split_once("`, expected ")
+    {
+        let candidates: Vec<&str> = expected
+            .split('`')
+            .enumerate()
+            .filter(|(at, _)| at % 2 == 1)
+            .map(|(_, name)| name)
+            .collect();
+        // One near a known key with it; the keys listed only where none is
+        // near.
+        said = match crate::core::identifier::nearest(unknown, candidates.clone()) {
+            Some(near) => format!("unknown key `{unknown}` — did you mean `{near}`?"),
+            None => format!(
+                "unknown key `{unknown}` — the keys are {}",
+                candidates.join(", ")
+            ),
+        };
     }
-    message.to_string()
+    let names_no_key = said.starts_with("duplicate key") || said.starts_with("invalid type");
+    let said = match line {
+        Some(line) if names_no_key && !line.trim().is_empty() => {
+            format!("{said}, in `{}`", line.trim())
+        }
+        _ => said,
+    };
+    crate::format::document::plain_type_error(&said)
+}
+
+/// The text of the line a byte offset falls on.
+fn line_text(text: &str, offset: usize) -> String {
+    let offset = offset.min(text.len());
+    let start = text[..offset].rfind('\n').map_or(0, |at| at + 1);
+    let end = text[offset..]
+        .find('\n')
+        .map_or(text.len(), |at| offset + at);
+    text[start..end].to_string()
+}
+
+/// An error of a declaration with its file and line where it has none: a
+/// message naming neither left the reader of three imports to guess which
+/// file to correct. The line is the key's where the message names a section
+/// and a key the file writes, else the section's; an error of what the file
+/// imports is the imported file's, and keeps no line of this one.
+fn located(path: &Path, text: &str, error: ConfigError) -> ConfigError {
+    let (message, section, key) = match error {
+        ConfigError::Parse {
+            path,
+            line: None,
+            message,
+        } => {
+            let (section, key) = named_in(&message);
+            let line = section.and_then(|section| line_of_key(text, &section, key.as_deref()));
+            return ConfigError::Parse {
+                path,
+                line,
+                message,
+            };
+        }
+        ConfigError::DuplicateField { ref profile, .. }
+        | ConfigError::DuplicateHeader { ref profile, .. }
+        | ConfigError::EmptyHeader { ref profile, .. } => {
+            let section = format!("profile.{profile}");
+            (error.to_string(), section, Some("columns".to_string()))
+        }
+        ConfigError::InvalidProfile {
+            path,
+            profile,
+            reason,
+        } => {
+            let line = if profile.contains('.') {
+                line_of_key(text, &profile, None)
+            } else {
+                line_of_key(text, &format!("profile.{profile}"), None)
+                    .or_else(|| line_of_key(text, &format!("export.{profile}"), None))
+            };
+            return match line {
+                Some(line) => ConfigError::Parse {
+                    path,
+                    line: Some(line),
+                    message: format!("'{profile}': {reason}"),
+                },
+                None => ConfigError::InvalidProfile {
+                    path,
+                    profile,
+                    reason,
+                },
+            };
+        }
+        ConfigError::UnknownStyle { .. } => {
+            let message = format!("[render] style: {error}");
+            (message, "render".to_string(), Some("style".to_string()))
+        }
+        error => return error,
+    };
+    ConfigError::Parse {
+        path: path.to_path_buf(),
+        line: line_of_key(text, &section, key.as_deref()),
+        message,
+    }
+}
+
+/// The section and key a message begins by naming — `[render] identify …`,
+/// `[matplotlib] font.size: …` — the section without its brackets.
+fn named_in(message: &str) -> (Option<String>, Option<String>) {
+    let Some(rest) = message.strip_prefix('[') else {
+        return (None, None);
+    };
+    let Some(end) = rest.find(']') else {
+        return (None, None);
+    };
+    let section = rest[..end].to_string();
+    let key = rest[end + 1..]
+        .trim_start()
+        .split(|c: char| c.is_whitespace() || c == ':' || c == '=')
+        .next()
+        .filter(|key| !key.is_empty())
+        .map(str::to_string);
+    (Some(section), key)
+}
+
+/// The line of `key` in `[section]` as the file writes it, else of the
+/// section's header; `None` where the file writes neither — a value it
+/// imports. A section is found written as a header, `[profile.p]` or
+/// `[unit."degC"]`, quotes aside.
+fn line_of_key(text: &str, section: &str, key: Option<&str>) -> Option<usize> {
+    let bare = |written: &str| written.replace(['"', '\'', ' '], "");
+    let wanted = bare(section);
+    let mut within = false;
+    let mut header = None;
+    for (at, line) in text.lines().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') {
+            let name = trimmed
+                .trim_start_matches('[')
+                .split(']')
+                .next()
+                .unwrap_or_default();
+            within = bare(name) == wanted;
+            if within && header.is_none() {
+                header = Some(at + 1);
+            }
+            continue;
+        }
+        if within
+            && let Some(key) = key
+            && bare(trimmed.split('=').next().unwrap_or_default()) == bare(key)
+        {
+            return Some(at + 1);
+        }
+    }
+    header
 }
 
 /// The line a byte offset falls on, one-based, so that a message points where
@@ -1239,14 +2092,23 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         });
     }
 
-    let model = written.model.map(|model| ModelDeclaration {
-        path: PathBuf::from(model.path),
-        class: model.class,
-        python: model.python.map(PathBuf::from),
+    let python = written
+        .model
+        .as_ref()
+        .and_then(|model| model.python.clone())
+        .map(PathBuf::from);
+    let model = written.model.and_then(|model| {
+        Some(ModelDeclaration {
+            path: PathBuf::from(model.path?),
+            class: model.class,
+            python: model.python.map(PathBuf::from),
+        })
     });
     let defaults = CollectionRules::default();
     let collection = CollectionRules {
-        recursive: written.collection.recursive.unwrap_or(defaults.recursive),
+        // A project is its folder and every folder below it, unless it says
+        // otherwise: its samples commonly sit in a folder of their own.
+        recursive: written.collection.recursive.unwrap_or(true),
         include: written.collection.include.unwrap_or(defaults.include),
         exclude: written.collection.exclude.unwrap_or(defaults.exclude),
         files: written.collection.files.unwrap_or_default(),
@@ -1269,10 +2131,37 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
             return Err(ConfigError::UnknownKey {
                 path: path.to_path_buf(),
                 section: format!("property.{name}"),
-                suggestion: crate::core::identifier::nearest(key, ["unit", "symbol", "precision"]),
+                suggestion: crate::core::identifier::nearest(
+                    key,
+                    ["unit", "symbol", "precision", "range"],
+                ),
                 key: key.clone(),
             });
         }
+        let range = match declared.range.as_deref() {
+            None => None,
+            Some(&[low, high]) if !low.is_nan() && !high.is_nan() && low <= high => {
+                Some((low, high))
+            }
+            Some(written) => {
+                return Err(ConfigError::InvalidRange {
+                    path: path.to_path_buf(),
+                    section: format!("property.{name}"),
+                    reason: if written.len() == 2 {
+                        format!(
+                            "{} is above {}: write the lower bound first",
+                            written[0], written[1]
+                        )
+                    } else {
+                        format!(
+                            "{} numbers, where it takes two, [lowest, highest] — inf leaves a \
+                             side open",
+                            written.len()
+                        )
+                    },
+                });
+            }
+        };
         properties.insert(
             name,
             PropertyDeclaration {
@@ -1280,22 +2169,13 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 symbol: declared.symbol,
                 symbol_variants: declared.variants,
                 precision: declared.precision,
+                range,
             },
         );
     }
 
     let mut queries = IndexMap::new();
     for (name, query) in written.query {
-        // A key that said the wrong thing is refused by name, with the way
-        // forward, rather than accepted as a spelling.
-        if query.base.is_some() {
-            return Err(ConfigError::RenamedKey {
-                path: path.to_path_buf(),
-                section: format!("query.{name}"),
-                old: "base",
-                new: "directory",
-            });
-        }
         queries.insert(
             name.clone(),
             NamedQuery {
@@ -1326,6 +2206,33 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 reason: "group names an empty field: group = [\"style\"] names one".to_string(),
             });
         }
+        // A field grouped by or sorted by twice — `sort = ["radius", "-radius"]` —
+        // is two answers to one question, and two columns of one label are
+        // two columns a reader cannot tell apart.
+        let refused = |reason: String| ConfigError::InvalidProfile {
+            path: path.to_path_buf(),
+            profile: name.clone(),
+            reason,
+        };
+        if let Some(field) = twice(profile.group.iter().map(|field| field.trim())) {
+            return Err(refused(format!("group names '{field}' twice")));
+        }
+        if let Some(field) = twice(
+            profile
+                .sort
+                .iter()
+                .map(|key| key.trim().trim_start_matches(['-', '+'])),
+        ) {
+            return Err(refused(format!(
+                "sort names '{field}' twice, and the first decides: name it once"
+            )));
+        }
+        if let Some(label) = twice(columns.iter().filter_map(|column| column.label.as_deref())) {
+            return Err(refused(format!(
+                "two columns are labelled '{label}', and a table would show two columns \
+                 nobody could tell apart"
+            )));
+        }
         profiles.insert(
             name.clone(),
             Profile {
@@ -1337,31 +2244,182 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         );
     }
 
+    // The styles: SampleKit's, then the file's, each changing the one of its
+    // name key by key.
+    let mut styles: IndexMap<String, StyleSettings> = TextFormat::GIVEN
+        .iter()
+        .filter_map(|name| StyleSettings::given(name).map(|style| (name.to_string(), style)))
+        .collect();
+    for (name, style) in &written.style {
+        let settings =
+            style_settings(name, style).map_err(|reason| ConfigError::InvalidProfile {
+                path: path.to_path_buf(),
+                profile: format!("style.{name}"),
+                reason,
+            })?;
+        styles.insert(name.clone(), settings);
+    }
+
     let mut exports = IndexMap::new();
     for (name, export) in written.export {
-        let format = match export.format.as_str() {
-            "csv" => Format::Csv,
-            "tsv" => Format::Tsv,
-            "json" => Format::Json,
-            other => {
+        let refused = |reason: String| ConfigError::InvalidProfile {
+            path: path.to_path_buf(),
+            profile: name.clone(),
+            reason,
+        };
+        // A table's export or a figure's: one of the two, named.
+        let profile = match (export.profile, &export.figure) {
+            (Some(_), Some(_)) => {
+                return Err(refused(
+                    "an export writes a profile or a figure, not both: profile = … for a \
+                     table, figure = … for a figure"
+                        .to_string(),
+                ));
+            }
+            (None, None) => {
+                return Err(refused(
+                    "an export names what it writes: profile = … for a table, figure = … \
+                     for a figure"
+                        .to_string(),
+                ));
+            }
+            (profile, _) => profile,
+        };
+        if let Some(figure) = export.figure {
+            let table_keys: Vec<&str> = [
+                ("format", export.format.is_some()),
+                ("filename", export.filename.is_some()),
+                ("path", export.path.is_some()),
+            ]
+            .into_iter()
+            .filter_map(|(key, given)| given.then_some(key))
+            .collect();
+            if !table_keys.is_empty() {
+                return Err(refused(format!(
+                    "{} {} a table's: a figure's file is in the format its output's \
+                     extension names, output = \"{name}.pdf\"",
+                    table_keys.join(", "),
+                    if table_keys.len() == 1 { "is" } else { "are" }
+                )));
+            }
+            let extension = Path::new(&export.output)
+                .extension()
+                .map(|extension| extension.to_string_lossy().to_ascii_lowercase());
+            if !extension
+                .as_deref()
+                .is_some_and(|extension| FIGURE_FORMATS.contains(&extension))
+            {
+                return Err(refused(format!(
+                    "output = \"{}\": a figure's file is one matplotlib writes, by its \
+                     extension: {}",
+                    export.output,
+                    FIGURE_FORMATS.map(|format| format!(".{format}")).join(", ")
+                )));
+            }
+            if let Some(query) = &export.query
+                && !queries.contains_key(query)
+            {
+                let available: Vec<String> = queries.keys().cloned().collect();
+                return Err(ConfigError::UnknownProfile {
+                    within: Some(format!("{} · 'export.{name}'", path.display())),
+                    kind: ProfileKind::Query,
+                    suggestion: crate::core::identifier::nearest(
+                        query,
+                        available.iter().map(String::as_str),
+                    ),
+                    name: query.clone(),
+                    available,
+                });
+            }
+            if let Some(style) = &export.style
+                && style != "plain"
+                && !style_known(&written.style, style)
+            {
+                return Err(ConfigError::Parse {
+                    path: path.to_path_buf(),
+                    line: None,
+                    message: format!(
+                        "[export.{name}] style: {}",
+                        ConfigError::UnknownStyle {
+                            name: style.clone(),
+                            available: style_names(&written.style),
+                        }
+                    ),
+                });
+            }
+            exports.insert(
+                name.clone(),
+                Export::Figure(FigureExport {
+                    name,
+                    figure,
+                    output: PathBuf::from(export.output),
+                    query: export.query,
+                    style: export.style,
+                }),
+            );
+            continue;
+        }
+        let profile = profile.expect("a table's export names its profile");
+        // A data format, or a style writing documents: `format = "latex"`
+        // was a text format's name, which a style says now.
+        let document = |style: &str| {
+            styles
+                .get(style)
+                .and_then(|settings| settings.document.clone())
+        };
+        let format = match (export.format.as_deref(), export.style.as_deref()) {
+            (Some("csv"), _) => Format::Csv,
+            (Some("tsv"), _) => Format::Tsv,
+            (Some("json"), _) => Format::Json,
+            (Some(other), _) if document(other).is_some() => {
                 return Err(ConfigError::InvalidProfile {
                     path: path.to_path_buf(),
                     profile: name.clone(),
-                    reason: format!("'{other}' is not a format: csv, tsv or json"),
+                    reason: format!(
+                        "format = \"{other}\" is written style = \"{other}\" now, with no format: \
+                         the style writes the document"
+                    ),
+                });
+            }
+            (Some(other), _) => {
+                let known = ["csv", "tsv", "json"];
+                return Err(ConfigError::InvalidProfile {
+                    path: path.to_path_buf(),
+                    profile: name.clone(),
+                    reason: format!(
+                        "'{other}' is not a format: {}{}",
+                        known.join(", "),
+                        crate::core::identifier::nearest(other, known.iter().copied())
+                            .map(|near| format!(" — did you mean {near}?"))
+                            .unwrap_or_default()
+                    ),
+                });
+            }
+            (None, Some(style)) if document(style).is_some() => {
+                Format::Text(Box::new(document(style).expect("just found")))
+            }
+            (None, _) => {
+                return Err(ConfigError::InvalidProfile {
+                    path: path.to_path_buf(),
+                    profile: name.clone(),
+                    reason: "an export names its format — csv, tsv or json — or a style \
+                             writing documents, style = \"latex\""
+                        .to_string(),
                 });
             }
         };
         // An export naming an undeclared profile is caught here, at load,
         // rather than on the day the export runs.
-        if !profiles.contains_key(&export.profile) {
+        if !profiles.contains_key(&profile) {
             let available: Vec<String> = profiles.keys().cloned().collect();
             return Err(ConfigError::UnknownProfile {
+                within: Some(format!("{} · 'export.{name}'", path.display())),
                 kind: ProfileKind::Profile,
                 suggestion: crate::core::identifier::nearest(
-                    &export.profile,
+                    &profile,
                     available.iter().map(String::as_str),
                 ),
-                name: export.profile.clone(),
+                name: profile.clone(),
                 available,
             });
         }
@@ -1371,6 +2429,7 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         {
             let available: Vec<String> = queries.keys().cloned().collect();
             return Err(ConfigError::UnknownProfile {
+                within: Some(format!("{} · 'export.{name}'", path.display())),
                 kind: ProfileKind::Query,
                 suggestion: crate::core::identifier::nearest(
                     query,
@@ -1380,17 +2439,37 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 available,
             });
         }
+        // A style naming nothing is refused as the file loads: resolved later,
+        // it fell back to the plain forms without a word.
+        if let Some(style) = &export.style
+            && style != "plain"
+            && style != FILES_STYLE
+            && !style_known(&written.style, style)
+        {
+            return Err(ConfigError::Parse {
+                path: path.to_path_buf(),
+                line: None,
+                message: format!(
+                    "[export.{name}] style: {}",
+                    ConfigError::UnknownStyle {
+                        name: style.clone(),
+                        available: style_names(&written.style),
+                    }
+                ),
+            });
+        }
         exports.insert(
             name.clone(),
-            ExportTarget {
+            Export::Table(ExportTarget {
                 name,
-                profile: export.profile,
+                profile,
                 format,
                 output: PathBuf::from(export.output),
                 filename: export.filename.unwrap_or(false),
                 path: export.path.unwrap_or(false),
                 query: export.query,
-            },
+                style: export.style,
+            }),
         );
     }
 
@@ -1414,6 +2493,7 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         {
             let available: Vec<String> = queries.keys().cloned().collect();
             return Err(ConfigError::UnknownProfile {
+                within: Some(format!("{} · 'figure.{name}'", path.display())),
                 kind: ProfileKind::Query,
                 suggestion: crate::core::identifier::nearest(
                     query,
@@ -1427,12 +2507,12 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         // style` is.
         if let Some(style) = &figure.style
             && style != "plain"
-            && !written.style.contains_key(style)
+            && !style_known(&written.style, style)
         {
             return Err(refused(
                 ConfigError::UnknownStyle {
                     name: style.clone(),
-                    available: written.style.keys().cloned().collect(),
+                    available: style_names(&written.style),
                 }
                 .to_string(),
             ));
@@ -1484,6 +2564,22 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 parse_figsize(written).map_err(|reason| refused(format!("figsize: {reason}")))
             })
             .transpose()?;
+        // Its own settings: matplotlib's, read as the section's are; the
+        // style sheets and the fonts are the project's.
+        let own = matplotlib_settings(
+            path,
+            figure.matplotlib.unwrap_or_default(),
+            &format!("[figure.{name}] matplotlib"),
+        )?;
+        if let Some(key) = ["style", "fonts"]
+            .into_iter()
+            .find(|key| own.contains_key(*key))
+        {
+            return Err(refused(format!(
+                "matplotlib: {key} is the project's, under [matplotlib]: a figure's own \
+                 settings are matplotlib's"
+            )));
+        }
         figures.insert(
             name.clone(),
             FigureDeclaration {
@@ -1504,6 +2600,7 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 aspect: figure.aspect,
                 legend: figure.legend,
                 figsize,
+                matplotlib: own,
             },
         );
     }
@@ -1513,23 +2610,41 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
     if let Some(style) = &written.render.style
         && !style.is_empty()
         && style != "plain"
-        && !written.style.contains_key(style)
+        && !style_known(&written.style, style)
     {
         // Named with its file, as every other error of a loading file is.
         return Err(ConfigError::Parse {
             path: path.to_path_buf(),
             line: None,
-            message: ConfigError::UnknownStyle {
-                name: style.clone(),
-                available: written.style.keys().cloned().collect(),
-            }
-            .to_string(),
+            message: format!(
+                "[render] style: {}",
+                ConfigError::UnknownStyle {
+                    name: style.clone(),
+                    available: style_names(&written.style),
+                }
+            ),
+        });
+    }
+
+    // A table's drawing, refused as the file loads: it stopped the first
+    // table drawn, named in the file importing it, while every other command
+    // used the configuration as valid.
+    if let Some(table) = &written.render.table
+        && !TABLE_STYLES.contains(&table.as_str())
+    {
+        return Err(ConfigError::Parse {
+            path: path.to_path_buf(),
+            line: None,
+            message: format!(
+                "[render] table is {}, not '{table}'",
+                TABLE_STYLES.join(" or ")
+            ),
         });
     }
 
     if let Some(style) = &written.render.figure_style
         && style != "plain"
-        && !written.style.contains_key(style)
+        && !style_known(&written.style, style)
     {
         return Err(ConfigError::Parse {
             path: path.to_path_buf(),
@@ -1538,7 +2653,7 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 "[render] figure_style: {}",
                 ConfigError::UnknownStyle {
                     name: style.clone(),
-                    available: written.style.keys().cloned().collect(),
+                    available: style_names(&written.style),
                 }
             ),
         });
@@ -1556,10 +2671,14 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
             });
         }
     };
+    if let Some(precision) = &written.render.precision {
+        check_precision(path, "render", None, precision)?;
+    }
     Ok(ProjectConfig {
         root,
         schema_version,
         model,
+        python,
         render: RenderSettings {
             style: written.render.style,
             precision: written.render.precision,
@@ -1570,54 +2689,28 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         collection,
         units: written.unit,
         properties,
-        styles: written
-            .style
-            .into_iter()
-            .map(|(name, style)| {
-                (
-                    name,
-                    StyleSettings {
-                        separator: style.separator,
-                    },
-                )
-            })
-            .collect(),
+        styles,
+        declared_styles: written.style.keys().cloned().collect(),
         queries,
         profiles,
         exports,
         figures,
-        matplotlib: matplotlib_settings(path, written.matplotlib)?,
-        workbench_colors: tui_colors(path, written.workbench.colors, written.tui.colors)?,
+        matplotlib: sheets_and_fonts(
+            path,
+            matplotlib_settings(path, written.matplotlib, "[matplotlib]")?,
+        )?,
+        colors: section_colors(path, "colors", written.colors)?,
+        history_shared: written.history.shared,
         imports: Vec::new(),
         origins: IndexMap::new(),
         copies: Vec::new(),
+        files_declared: None,
     })
-}
-
-/// The name `outdated` had as a role before it was renamed: still read, as the same
-/// colour, so that a project's colours survive the word's change.
-const OUTDATED_FORMERLY: &str = "stale";
-
-/// `[tui.colors]` over `[workbench.colors]`, the section's name before Each
-/// read as its own section, and a role both write taking the `[tui.colors]`
-/// colour. The file is not rewritten: a project's colours keep colouring under
-/// either name.
-fn tui_colors(
-    path: &Path,
-    former: IndexMap<String, String>,
-    written: IndexMap<String, String>,
-) -> Result<IndexMap<String, String>, ConfigError> {
-    let mut colors = section_colors(path, "workbench.colors", former)?;
-    for (role, color) in section_colors(path, "tui.colors", written)? {
-        colors.insert(role, color);
-    }
-    Ok(colors)
 }
 
 /// One colours section, each role one the TUI names and each colour one it
 /// can draw: refused at load, as any key a section does not have, naming the
-/// section it was written in. `stale` is read as `outdated`, which wins where
-/// both are written.
+/// section it was written in.
 fn section_colors(
     path: &Path,
     section: &str,
@@ -1629,30 +2722,28 @@ fn section_colors(
             line: None,
             message,
         };
-        if role != OUTDATED_FORMERLY && !WORKBENCH_COLORS.iter().any(|(known, _)| known == role) {
-            let roles: Vec<&str> = WORKBENCH_COLORS.iter().map(|(role, _)| *role).collect();
+        if !COLOR_ROLES.iter().any(|(known, _)| known == role) {
+            let roles: Vec<&str> = COLOR_ROLES.iter().map(|(role, _)| *role).collect();
+            let near = crate::core::identifier::nearest(role, roles.iter().copied())
+                .map(|near| format!(" — did you mean '{near}'?"))
+                .unwrap_or_default();
             return Err(refused(format!(
-                "[{section}] has no role '{role}'\n  the roles: {}",
+                "[{section}] has no role '{role}'{near}\n  the roles: {}",
                 roles.join(", ")
             )));
         }
         if !is_color(color) {
+            let near = crate::core::identifier::nearest(color, COLOR_NAMES.iter().copied())
+                .map(|near| format!(" — did you mean '{near}'?"))
+                .unwrap_or_default();
             return Err(refused(format!(
-                "[{section}] {role} = \"{color}\" is not a colour\n  \
+                "[{section}] {role} = \"{color}\" is not a colour{near}\n  \
                  one of {}, or #rrggbb",
                 COLOR_NAMES.join(", ")
             )));
         }
     }
-    let written_outdated = written.contains_key("outdated");
-    Ok(written
-        .into_iter()
-        .filter_map(|(role, color)| match role.as_str() {
-            OUTDATED_FORMERLY if written_outdated => None,
-            OUTDATED_FORMERLY => Some(("outdated".to_string(), color)),
-            _ => Some((role, color)),
-        })
-        .collect())
+    Ok(written)
 }
 
 /// `[matplotlib]` as matplotlib names its settings: a key written unquoted,
@@ -1661,6 +2752,7 @@ fn section_colors(
 fn matplotlib_settings(
     path: &Path,
     written: toml::Table,
+    within: &str,
 ) -> Result<IndexMap<String, toml::Value>, ConfigError> {
     fn flatten(
         prefix: &str,
@@ -1692,7 +2784,7 @@ fn matplotlib_settings(
             path: path.to_path_buf(),
             line: None,
             message: format!(
-                "[matplotlib] {name} is written twice, once dotted and once as a table: \
+                "{within} {name} is written twice, once dotted and once as a table: \
                  one of them would be dropped"
             ),
         });
@@ -1705,7 +2797,7 @@ fn matplotlib_settings(
             path: path.to_path_buf(),
             line: None,
             message: format!(
-                "[matplotlib] {name} is not a figure's: samplekit chooses between a window \
+                "{within} {name} is not a figure's: samplekit chooses between a window \
                  and a file, and MPLBACKEND chooses the window's backend"
             ),
         });
@@ -1717,8 +2809,66 @@ fn matplotlib_settings(
         return Err(ConfigError::Parse {
             path: path.to_path_buf(),
             line: None,
-            message: format!("[matplotlib] {name}: a date is not a matplotlib setting"),
+            message: format!("{within} {name}: a date is not a matplotlib setting"),
         });
+    }
+    Ok(settings)
+}
+
+/// `[matplotlib] style` and `fonts`, SampleKit's keys beside matplotlib's: a
+/// style sheet by name or as a `.mplstyle` file, one or a list; font files or
+/// patterns, one or a list. A path is read from the file declaring it, and
+/// held whole. Their existence is matplotlib's to judge, as it draws.
+fn sheets_and_fonts(
+    path: &Path,
+    mut settings: IndexMap<String, toml::Value>,
+) -> Result<IndexMap<String, toml::Value>, ConfigError> {
+    let folder = path.parent().unwrap_or(Path::new("."));
+    for key in ["style", "fonts"] {
+        let Some(value) = settings.get(key) else {
+            continue;
+        };
+        let written: Vec<String> = match value {
+            toml::Value::String(one) => vec![one.clone()],
+            toml::Value::Array(items) if items.iter().all(toml::Value::is_str) => items
+                .iter()
+                .filter_map(|item| item.as_str().map(str::to_string))
+                .collect(),
+            _ => {
+                return Err(ConfigError::Parse {
+                    path: path.to_path_buf(),
+                    line: None,
+                    message: format!(
+                        "[matplotlib] {key}: {}",
+                        if key == "style" {
+                            "a style sheet's name or a .mplstyle file, or a list of them: \
+                             style = [\"seaborn-v0_8-paper\", \"figures.mplstyle\"]"
+                        } else {
+                            "a font file or a pattern of them, or a list: fonts = \
+                             [\"fonts/*.otf\"]"
+                        }
+                    ),
+                });
+            }
+        };
+        let resolved: Vec<toml::Value> = written
+            .into_iter()
+            .map(|entry| {
+                let a_path = key == "fonts" || entry.to_ascii_lowercase().ends_with(".mplstyle");
+                if a_path && Path::new(&entry).is_relative() {
+                    // By the path's parts, which know Windows's separators:
+                    // by the words of `/`, `sub\../paper.mplstyle` kept its `..`.
+                    toml::Value::String(
+                        lexically_normal(&folder.join(&entry))
+                            .to_string_lossy()
+                            .into_owned(),
+                    )
+                } else {
+                    toml::Value::String(entry)
+                }
+            })
+            .collect();
+        settings.insert(key.to_string(), toml::Value::Array(resolved));
     }
     Ok(settings)
 }
@@ -1842,12 +2992,24 @@ fn columns(
     Ok(columns)
 }
 
+/// The first item written twice.
+fn twice<'a>(items: impl Iterator<Item = &'a str>) -> Option<&'a str> {
+    let mut seen: Vec<&str> = Vec::new();
+    for item in items {
+        if seen.contains(&item) {
+            return Some(item);
+        }
+        seen.push(item);
+    }
+    None
+}
+
 /// Two columns that would emit one header name collide in the exported file,
 /// where nothing could tell them apart afterwards.
 fn check_headers(profile: &str, columns: &[ColumnSpec]) -> Result<(), ConfigError> {
     // Compared **after flattening**, which is the only comparison that catches
-    // the real case: `malt` and `malt.u` declare different headers and emit
-    // `malt_uncertainty` twice.
+    // the real case: `diameter` and `diameter.u` declare different headers and emit
+    // `diameter_uncertainty` twice.
     let shape = Profile {
         name: profile.to_string(),
         columns: columns.to_vec(),
@@ -1883,6 +3045,11 @@ impl ProjectConfig {
 
     pub fn model(&self) -> Option<&ModelDeclaration> {
         self.model.as_ref()
+    }
+
+    /// `[model] python` as written, with a model declared or without one.
+    pub fn python(&self) -> Option<&Path> {
+        self.python.as_deref()
     }
 
     pub fn render(&self) -> &RenderSettings {
@@ -1928,7 +3095,7 @@ impl ProjectConfig {
 
     /// The literals for one quantity, in the style in force.
     ///
-    /// `quantity` is the address — `abv`, or `fermentation.gravity` —
+    /// `quantity` is the address — `modulus`, or `ageing.hardness` —
     /// which is the key into `[property.*]`. The presentation comes in **as the
     /// file wrote it**, already composed with any column override, and what the
     /// file omits is filled from the declaration: that is the whole point,
@@ -1959,8 +3126,9 @@ impl ProjectConfig {
             Some(name) => name,
         };
         // A style naming nothing declared is an error. `plain` is the
-        // exception, and needs no declaration: it is the absence of a style.
-        if style != "plain" && !self.styles.contains_key(style) {
+        // exception, and needs no declaration: it is the absence of a style;
+        // so is `files`, the files' own spelling.
+        if style != "plain" && style != FILES_STYLE && !self.styles.contains_key(style) {
             return Err(ConfigError::UnknownStyle {
                 name: style.to_string(),
                 available: self.styles.keys().cloned().collect(),
@@ -1975,23 +3143,28 @@ impl ProjectConfig {
             .symbol
             .clone()
             .or_else(|| declared.and_then(|d| d.symbol.clone()));
+        // The quantity's own declaration, then `[render] precision`, which
+        // is every number's that no declaration gives one.
         let precision = presentation.precision.clone().or_else(|| {
             declared
                 .and_then(|d| d.precision.as_ref())
+                .or(self.render.precision.as_ref())
                 .and_then(PrecisionSchema::precision)
         });
 
         // A lookup that finds nothing falls back to the spelling itself, which
         // is legible by construction.
         let unit = unit.map(|spelling| match self.units.get(&spelling) {
-            Some(variants) => variants.get(style).cloned().unwrap_or(spelling),
-            None => spelling,
+            Some(variants) if style != FILES_STYLE => {
+                variants.get(style).cloned().unwrap_or(spelling)
+            }
+            _ => spelling,
         });
         // A variant is keyed as it is written: `symbol_math` for the `math`
         // style, which is what makes adding a style a declaration rather than
         // a format change.
         let symbol = match (style, declared) {
-            ("plain", _) => symbol,
+            ("plain" | FILES_STYLE, _) => symbol,
             (_, Some(declaration)) => declaration
                 .symbol_variants
                 .get(&format!("symbol_{style}"))
@@ -1999,15 +3172,36 @@ impl ProjectConfig {
                 .or(symbol),
             _ => symbol,
         };
-        let separator = self
-            .styles
-            .get(style)
-            .and_then(|settings| settings.separator.clone())
-            .unwrap_or_else(|| "\u{b1}".to_string());
+        let settings = self.styles.get(style);
+        // A style that escapes its text writes a unit so: `%` began a LaTeX
+        // comment, beside a value as in `\SI{…}{%}`. A LaTeX form — `\percent`,
+        // `^\circ\mathrm{C}` — is written as it is in a form, and in math mode
+        // alone.
+        let escape = settings.map(|settings| &settings.escape);
+        let (unit_alone, unit_in_form) = match (&unit, escape) {
+            (Some(unit), Some(escape)) if *escape != Escape::None => {
+                let math = unit.contains(['\\', '^', '_', '{']);
+                let alone = match escape {
+                    Escape::Latex if math => format!("${unit}$"),
+                    _ => escape.apply(unit),
+                };
+                let in_form = if math {
+                    unit.clone()
+                } else {
+                    escape.apply(unit)
+                };
+                (Some(alone), Some(in_form))
+            }
+            _ => (None, None),
+        };
         Ok(Resolved {
             unit,
             symbol,
-            separator,
+            property: settings.and_then(|settings| settings.property.clone()),
+            uncertainty: settings.and_then(|settings| settings.uncertainty.clone()),
+            unitless: settings.and_then(|settings| settings.unitless.clone()),
+            unit_alone,
+            unit_in_form,
             precision,
         })
     }
@@ -2022,6 +3216,12 @@ impl ProjectConfig {
                     .filter(|name| *name != "plain"),
             )
             .collect()
+    }
+
+    /// The styles the project declares, in its order: a figure's to choose
+    /// from, where a document's given styles — `html` — draw nothing.
+    pub fn declared_style_names(&self) -> Vec<&str> {
+        self.declared_styles.iter().map(String::as_str).collect()
     }
 
     pub fn style(&self, name: &str) -> Option<&StyleSettings> {
@@ -2040,10 +3240,22 @@ impl ProjectConfig {
             .ok_or_else(|| self.unknown(ProfileKind::Profile, name, self.profile_names()))
     }
 
-    pub fn export(&self, name: &str) -> Result<&ExportTarget, ConfigError> {
+    /// A table's export or a figure's, by name.
+    pub fn export(&self, name: &str) -> Result<&Export, ConfigError> {
         self.exports
             .get(name)
             .ok_or_else(|| self.unknown(ProfileKind::Export, name, self.export_names()))
+    }
+
+    /// A table's export; a figure's is refused, saying so.
+    pub fn table_export(&self, name: &str) -> Result<&ExportTarget, ConfigError> {
+        match self.export(name)? {
+            Export::Table(target) => Ok(target),
+            Export::Figure(figure) => Err(ConfigError::FigureExport {
+                name: name.to_string(),
+                figure: figure.figure.clone(),
+            }),
+        }
     }
 
     pub fn query_names(&self) -> Vec<&str> {
@@ -2069,27 +3281,58 @@ impl ProjectConfig {
     }
 
     /// `[matplotlib]`, by matplotlib's dotted names, in declaration order.
+    /// A text format by its name: the project's declaration, else the one
+    /// SampleKit gives.
+    /// The document a style writes, where it writes one: given, or declared.
+    pub fn text_format(&self, name: &str) -> Option<&TextFormat> {
+        self.styles
+            .get(name)
+            .and_then(|settings| settings.document.as_ref())
+    }
+
+    /// Every style writing documents, by name: those given, then those
+    /// declared.
+    pub fn text_format_names(&self) -> Vec<&str> {
+        self.styles
+            .iter()
+            .filter(|(_, settings)| settings.document.is_some())
+            .map(|(name, _)| name.as_str())
+            .collect()
+    }
+
     pub fn matplotlib(&self) -> &IndexMap<String, toml::Value> {
         &self.matplotlib
     }
 
-    /// The colour of a workbench role: the project's, or the default
-    /// [`WORKBENCH_COLORS`] gives it.
-    pub fn workbench_color(&self, role: &str) -> Option<&str> {
-        self.workbench_colors
-            .get(role)
-            .map(String::as_str)
-            .or_else(|| {
-                WORKBENCH_COLORS
-                    .iter()
-                    .find(|(known, _)| *known == role)
-                    .map(|(_, color)| *color)
-            })
+    /// The colour of a role: the project's, or the default
+    /// [`COLOR_ROLES`] gives it.
+    pub fn color(&self, role: &str) -> Option<&str> {
+        self.colors.get(role).map(String::as_str).or_else(|| {
+            COLOR_ROLES
+                .iter()
+                .find(|(known, _)| *known == role)
+                .map(|(_, color)| *color)
+        })
     }
 
     /// The files imported, nearest first.
     pub fn imports(&self) -> &[PathBuf] {
         &self.imports
+    }
+
+    /// `[history] shared`, where this file or one it imports declares it:
+    /// the history's `.gitignore` written for git to carry it, or to hide it.
+    pub fn history_shared(&self) -> Option<bool> {
+        self.history_shared
+    }
+
+    /// Where `[collection] files` was declared, when an imported file
+    /// declares it, and its entries as that file writes them, in the order of
+    /// `collection().files`.
+    pub fn files_declared(&self) -> Option<(&Path, &[String])> {
+        self.files_declared
+            .as_ref()
+            .map(|(file, written)| (file.as_path(), written.as_slice()))
     }
 
     /// Where a query, a profile, an export or a figure comes from: `Local` for
@@ -2121,6 +3364,7 @@ impl ProjectConfig {
             ),
             name: name.to_string(),
             available,
+            within: None,
         }
     }
 }
@@ -2168,14 +3412,9 @@ pub enum ConfigError {
         name: String,
         available: Vec<String>,
         suggestion: Option<String>,
-    },
-    /// A key renamed to say what it is, refused naming the new one: no command
-    /// rewrites a configuration.
-    RenamedKey {
-        path: PathBuf,
-        section: String,
-        old: &'static str,
-        new: &'static str,
+        /// The file and the declaration naming it, where one does: *no profile
+        /// named 'nope'* alone left the reader to find which export wrote it.
+        within: Option<String>,
     },
     /// `import` naming no folder holding a `.samplekitrc`.
     ImportNotFound {
@@ -2197,8 +3436,20 @@ pub enum ConfigError {
         name: String,
         available: Vec<String>,
     },
+    /// A figure's export asked for where a table's is read: its profile,
+    /// its columns.
+    FigureExport {
+        name: String,
+        figure: String,
+    },
     /// A declared precision that is not a specifier.
     InvalidPrecision {
+        path: PathBuf,
+        section: String,
+        reason: String,
+    },
+    /// A `range` that is not two numbers, the lower first.
+    InvalidRange {
         path: PathBuf,
         section: String,
         reason: String,
@@ -2212,6 +3463,38 @@ pub enum ConfigError {
     },
 }
 
+/// A file and the line of `key` in its `[section]`, `.samplekitrc:4`, as a
+/// parse error names its line: a precision refused after the file was parsed
+/// was said without one. The file alone where the line is not found.
+fn at_line(path: &Path, section: &str, key: &str) -> String {
+    let found = std::fs::read_to_string(path).ok().and_then(|text| {
+        let mut inside = false;
+        text.lines().enumerate().find_map(|(at, line)| {
+            let line = line.trim();
+            if let Some(header) = line.strip_prefix('[') {
+                let header: String = header
+                    .split(']')
+                    .next()
+                    .unwrap_or_default()
+                    .chars()
+                    .filter(|c| !matches!(c, '"' | '\'' | ' '))
+                    .collect();
+                inside = header == section.replace(['"', '\'', ' '], "");
+                return None;
+            }
+            (inside
+                && line
+                    .strip_prefix(key)
+                    .is_some_and(|rest| rest.trim_start().starts_with('=')))
+            .then_some(at + 1)
+        })
+    });
+    match found {
+        Some(line) => format!("{}:{line}", path.display()),
+        None => path.display().to_string(),
+    }
+}
+
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -2219,7 +3502,20 @@ impl fmt::Display for ConfigError {
                 path,
                 section,
                 reason,
-            } => write!(f, "{}: [{section}] precision: {reason}", path.display()),
+            } => write!(
+                f,
+                "{}: [{section}] precision: {reason}",
+                at_line(path, section, "precision")
+            ),
+            ConfigError::InvalidRange {
+                path,
+                section,
+                reason,
+            } => write!(
+                f,
+                "{}: [{section}] range: {reason}",
+                at_line(path, section, "range")
+            ),
             ConfigError::UnknownKey {
                 path,
                 section,
@@ -2227,23 +3523,17 @@ impl fmt::Display for ConfigError {
                 suggestion,
             } => write!(
                 f,
-                "{}: [{section}] takes no key '{key}'{}\n  a declaration takes unit, symbol, precision and symbol_<style>",
+                "{}: [{section}] takes no key '{key}'{}\n  a declaration takes unit, symbol, precision, range and symbol_<style>",
                 path.display(),
                 suggestion
                     .as_ref()
                     .map(|name| format!(" — did you mean '{name}'?"))
                     .unwrap_or_default()
             ),
-            ConfigError::RenamedKey {
-                path,
-                section,
-                old,
-                new,
-            } => write!(
+            ConfigError::FigureExport { name, figure } => write!(
                 f,
-                "{}: [{section}] '{old}' is now '{new}' — it names a directory, not a parent query\n  \
-                 rename the key: no command rewrites a configuration",
-                path.display()
+                "'{name}' exports the figure '{figure}', not a table: it has no profile \
+                 nor columns"
             ),
             ConfigError::UnknownStyle { name, available } => write!(
                 f,
@@ -2275,7 +3565,7 @@ impl fmt::Display for ConfigError {
             ConfigError::MissingVersion { path } => write!(
                 f,
                 "{} has no schema_version: a configuration declares which \
-                 version it was written for",
+                 version it was written for — write schema_version = 1 on its first line",
                 path.display()
             ),
             ConfigError::InvalidProfile {
@@ -2308,7 +3598,11 @@ impl fmt::Display for ConfigError {
                 name,
                 available,
                 suggestion,
+                within,
             } => {
+                if let Some(within) = within {
+                    write!(f, "{within}: ")?;
+                }
                 write!(f, "no {} named '{name}'", kind.as_str())?;
                 if let Some(suggestion) = suggestion {
                     write!(f, "\n  did you mean: '{suggestion}'?")?;

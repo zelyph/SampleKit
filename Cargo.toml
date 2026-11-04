@@ -1,6 +1,6 @@
 [package]
 name = "samplekit"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 edition = "2024"
 description = "Sample data in plain Markdown: computed, current, tracked"
 repository = "https://github.com/zelyph/SampleKit"
@@ -17,7 +17,7 @@ include = [
     "/Cargo.lock",
     "/build.rs",
     "/src/",
-    "/examples/brewing/",
+    "/examples/tensile/",
     "/README.md",
     "/CHANGELOG.md",
     "/LICENSE",
@@ -45,6 +45,7 @@ serde_json = { version = "1", features = ["raw_value"] }
 toml = { version = "0.9", features = ["preserve_order"] }
 unicode-width = "0.2"
 unicode-segmentation = "1"
+unicode-normalization = "0.1.25"
 anstyle = "1.0"
 anstream = "1.0"
 anstyle-parse = "1.0"
@@ -57,6 +58,8 @@ ctrlc = { version = "3.5.2", features = ["termination"] }
 toml_edit = "0.25"
 ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
 gix = { version = "0.88", default-features = false, features = ["sha1"] }
+# Writes the history's pack when it is compacted: the versions gix uses, with
+# the features that write a pack and its index.
 crossterm = "0.29"
 tui-markdown = { version = "0.3.9", default-features = false }
 nucleo-matcher = "0.3.1"
@@ -73,6 +76,8 @@ shell-words = "1.1.1"
 gethostname = "1.1.0"
 rat-text = "3.1.0"
 rat-markdown = "0.7.3"
+v_latexescape = "0.16"
+html-escape = "0.2"
 
 [lints.clippy]
 all = { level = "deny", priority = -1 }

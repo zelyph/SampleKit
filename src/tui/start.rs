@@ -26,49 +26,38 @@ pub const GUIDE: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     "/index.html"
 );
-/// Where the tutorial is read: the demo's steps' own pages.
+/// Where the demo's steps are explained: the home page of the documentation,
+/// which walks through them.
 pub const TUTORIAL: &str = concat!(
     "https://zelyph.github.io/SampleKit/",
     env!("CARGO_PKG_VERSION"),
-    "/tutorial/index.html"
+    "/index.html"
 );
 /// The demo's steps: each folder, in order, and what it is about in a line.
 /// Each step's name is its README's heading (`demo_steps`).
-pub const STEPS: [(&str, &str); 8] = [
+pub const STEPS: [(&str, &str); 5] = [
     (
-        "01-first-brews",
-        "three brews written by hand, read with your first commands",
+        "01-measured",
+        "three specimens, their sizes written by hand",
     ),
     (
-        "02-measuring",
-        "uncertainties, units and tags; a change shown before it is written",
+        "02-readings",
+        "each size measured three times, a model taking their mean",
     ),
     (
-        "03-selecting",
-        "twelve brews filtered, shown and sorted; queries given a name",
+        "03-curve",
+        "the test's curve, a table in each specimen, its stress",
     ),
     (
-        "04-computing",
-        "a model computes values, and says which are not current",
+        "04-results",
+        "what the curve gives: tables, figures, scripts",
     ),
     (
-        "05-fermentation",
-        "a table in each brew: cells read, filtered, computed row by row",
-    ),
-    (
-        "06-figures",
-        "figures drawn by matplotlib, in a window or to a file",
-    ),
-    (
-        "07-two-brewers",
-        "two projects read as one, then the TUI with the keyboard",
-    ),
-    (
-        "08-python",
-        "the brews read, changed and computed from Python",
+        "05-projects",
+        "rolled and cast specimens, two projects read as one",
     ),
 ];
-/// `examples/brewing/`, embedded by `build.rs`: a module of its own, so that
+/// `examples/tensile/`, embedded by `build.rs`: a module of its own, so that
 /// the constants of its contents stay out of this one's names.
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/demo.rs"));
@@ -99,6 +88,8 @@ pub enum Effect {
     None,
     /// A web page, in the browser.
     Browse(&'static str),
+    /// A folder, in the file manager.
+    Show(PathBuf),
     Done(Outcome),
 }
 
@@ -148,12 +139,17 @@ pub enum Mode {
     Guide {
         cursor: usize,
     },
-    /// The demo's page: its steps, the tutorial, its reset.
+    /// The demo's page: its steps, the walkthrough, its reset.
     Demo {
         cursor: usize,
     },
     /// The demo's reset, asked first: what it loses is said.
     Reset,
+    /// A recent project forgotten, asked first: one key lost what took a
+    /// browse to find again.
+    Forget {
+        folder: PathBuf,
+    },
     /// `?`: the page's keys, and what each entry does; `back` the mode it was
     /// asked from, returned to as it was.
     Help {
@@ -169,10 +165,14 @@ pub const HELP: &[(&str, &str)] = &[
         "Enter",
         "open the project marked: the one SampleKit was started in comes first",
     ),
+    (
+        "",
+        "  started in a folder holding projects, those come first, then setting one up there",
+    ),
     ("1…9", "open that recent project"),
     (
         "x",
-        "forget the recent project marked: its state removed, the folder kept",
+        "forget the recent project marked, asked first: its state removed, the folder kept",
     ),
     ("j k ↑ ↓", "move; Home End to the first and the last"),
     (
@@ -220,12 +220,12 @@ pub const HELP: &[(&str, &str)] = &[
     ("", ""),
     ("", "The demo"),
     (
-        "1…8",
+        "1…5",
         "open that step; quitting it comes back to the demo's page",
     ),
     (
         "Enter",
-        "the step marked; the tutorial, the steps' own pages, in the browser; or Reset the demo, asked first",
+        "the step marked; the home page, which walks through the steps, in the browser; the demo's folder, in the file manager, to edit its files and try the command line there; or Reset the demo, asked first",
     ),
     ("Esc q", "back to the start page"),
     ("", ""),
@@ -261,6 +261,10 @@ pub struct Start {
     /// The project SampleKit was started in, if any: offered first, Enter
     /// opening it.
     pub current: Option<PathBuf>,
+    /// Where SampleKit was started in no project, the projects in the folders
+    /// below it: offered to open, setting one up here after them. The setup's
+    /// questions came first, and nothing said the projects were there.
+    pub inside: Vec<PathBuf>,
     /// The folders the workbench kept a state for, newest first, the current
     /// project left out.
     pub recent: Vec<PathBuf>,
@@ -288,7 +292,23 @@ pub struct Start {
 
 impl Start {
     pub fn new(here: &Path) -> Start {
-        Start::with_recent(here, recent_projects())
+        // Nine once the demo's steps and the projects inside are left out: cut
+        // before, a step of the demo took a place no line showed.
+        let mut start = Start::with_recent(here, recent_projects()).offering_inside();
+        start.recent.truncate(9);
+        start
+    }
+
+    /// The page offering the projects inside the folder it was started in,
+    /// where that is in no project: offered once, not again among the recent
+    /// ones.
+    pub fn offering_inside(mut self) -> Start {
+        if self.current.is_none() {
+            self.inside = projects_inside(&self.here);
+            let inside = &self.inside;
+            self.recent.retain(|folder| !inside.contains(folder));
+        }
+        self
     }
 
     pub fn with_recent(here: &Path, recent: Vec<PathBuf>) -> Start {
@@ -310,6 +330,7 @@ impl Start {
                 .filter(|folder| !demo_paths.iter().any(|demo| folder.starts_with(demo)))
                 .collect(),
             current,
+            inside: Vec::new(),
             cursor: 0,
             mode: Mode::Menu,
             message: String::new(),
@@ -321,9 +342,16 @@ impl Start {
         }
     }
 
-    /// The entries above the recent projects: the current one, if any.
+    /// The entries above the recent projects: the current one, if any; the
+    /// projects inside this folder, and setting one up here.
     fn lead(&self) -> usize {
-        usize::from(self.current.is_some())
+        self.above() + usize::from(!self.inside.is_empty())
+    }
+
+    /// The projects offered above the recent ones: the current one, or those
+    /// inside this folder.
+    fn above(&self) -> usize {
+        usize::from(self.current.is_some()) + self.inside.len()
     }
 
     /// The projects that are projects, the current one first: the ones to
@@ -331,6 +359,7 @@ impl Start {
     pub fn configurable(&self) -> Vec<PathBuf> {
         self.current
             .iter()
+            .chain(&self.inside)
             .chain(&self.recent)
             .filter(|folder| folder.join(".samplekitrc").is_file())
             .cloned()
@@ -536,7 +565,7 @@ impl Start {
             // Only `y` loses the demo's changes; any other key goes back.
             Mode::Reset => {
                 self.mode = Mode::Demo {
-                    cursor: STEPS.len() + 1,
+                    cursor: STEPS.len() + 2,
                 };
                 match (key, self.demo.clone()) {
                     (Key::Char('y'), Some(folder)) => {
@@ -548,6 +577,38 @@ impl Start {
                     }
                     _ => Effect::None,
                 }
+            }
+            // Only `y` forgets it; any other key goes back.
+            Mode::Forget { folder } => {
+                self.mode = Mode::Menu;
+                if key == Key::Char('y') {
+                    // Forgotten where its state is removed, and said where it
+                    // could not be: it came back at the next start.
+                    let removed = state_file(&folder).map_or(Ok(()), |file| {
+                        match std::fs::remove_file(&file) {
+                            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                                Err(format!("{}: {error}", file.display()))
+                            }
+                            _ => Ok(()),
+                        }
+                    });
+                    match removed {
+                        Ok(()) => {
+                            self.recent.retain(|recent| recent != &folder);
+                            self.message = format!(
+                                "{} is no longer among the recent projects",
+                                shown(&folder)
+                            );
+                        }
+                        Err(error) => {
+                            self.message =
+                                format!("{} could not be forgotten: {error}", shown(&folder));
+                        }
+                    }
+                    let lead = self.lead();
+                    self.cursor = self.cursor.min(lead + self.recent.len() + ITEMS.len() - 1);
+                }
+                Effect::None
             }
             Mode::Pick { cursor } => {
                 let projects = self.configurable();
@@ -636,12 +697,10 @@ impl Start {
                 let Some(index) = self.cursor.checked_sub(lead) else {
                     return Effect::None;
                 };
-                if index < self.recent.len() {
-                    let folder = self.recent.remove(index);
-                    let _ = state_file(&folder).map(std::fs::remove_file);
-                    self.message =
-                        format!("{} is no longer among the recent projects", shown(&folder));
-                    self.cursor = self.cursor.min(lead + self.recent.len() + ITEMS.len() - 1);
+                if let Some(folder) = self.recent.get(index) {
+                    self.mode = Mode::Forget {
+                        folder: folder.clone(),
+                    };
                 }
                 return Effect::None;
             }
@@ -659,7 +718,16 @@ impl Start {
             },
             _ => return Effect::None,
         };
-        if let Some(folder) = self.current.iter().chain(&self.recent).nth(chosen) {
+        if !self.inside.is_empty() && chosen == self.above() {
+            return Effect::Done(Outcome::Create(self.here.clone()));
+        }
+        if let Some(folder) = self
+            .current
+            .iter()
+            .chain(&self.inside)
+            .nth(chosen)
+            .or_else(|| self.recent.get(chosen.checked_sub(lead)?))
+        {
             return Effect::Done(Outcome::Open(folder.clone()));
         }
         match ITEMS[chosen - lead - self.recent.len()].0 {
@@ -844,10 +912,10 @@ impl Start {
     }
 
     /// A key on the demo's page: a step opened by `Enter` or its digit, the
-    /// tutorial in the browser, the reset asked; `Esc` `q` back to the start
+    /// home page in the browser, the reset asked; `Esc` `q` back to the start
     /// page.
     fn demo_key(&mut self, key: Key, cursor: usize) -> Effect {
-        let last = STEPS.len() + 1;
+        let last = STEPS.len() + 2;
         let chosen = match key {
             Key::Down | Key::Char('j') => {
                 self.mode = Mode::Demo {
@@ -880,6 +948,13 @@ impl Start {
         self.mode = Mode::Demo { cursor: chosen };
         if chosen == STEPS.len() {
             return Effect::Browse(TUTORIAL);
+        }
+        // Its files by hand, and the command line in it: its folder shown.
+        if chosen == STEPS.len() + 1
+            && let Some(folder) = self.demo.clone()
+            && written(&folder)
+        {
+            return Effect::Show(folder);
         }
         let Some(folder) = self.demo.clone() else {
             return self.open_demo();
@@ -1041,6 +1116,35 @@ pub fn project_at(here: &Path) -> Option<PathBuf> {
                 && crate::config::discovery::classify(&path).is_ok()
         })
         .then(|| here.to_path_buf())
+}
+
+/// The projects in the folders below `here`, two levels down at most, a
+/// project's own folders not searched: the folders holding a `.samplekitrc`,
+/// hidden folders and environments passed over.
+pub fn projects_inside(here: &Path) -> Vec<PathBuf> {
+    fn search(folder: &Path, depth: usize, found: &mut Vec<PathBuf>) {
+        let Ok(read) = std::fs::read_dir(folder) else {
+            return;
+        };
+        let mut folders: Vec<PathBuf> = read
+            .flatten()
+            .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+            .filter(|entry| !entry.file_name().to_string_lossy().starts_with('.'))
+            .map(|entry| entry.path())
+            .filter(|path| !path.join("pyvenv.cfg").is_file())
+            .collect();
+        folders.sort();
+        for path in folders {
+            if path.join(".samplekitrc").is_file() {
+                found.push(path);
+            } else if depth > 1 {
+                search(&path, depth - 1, found);
+            }
+        }
+    }
+    let mut found = Vec::new();
+    search(here, 2, &mut found);
+    found
 }
 
 /// The drives there are, on Windows — `A:\` to `Z:\` — where going up from
@@ -1214,12 +1318,34 @@ pub fn write_demo(folder: &Path) -> Result<(), String> {
             Some(parent) => std::fs::create_dir_all(parent),
             None => Ok(()),
         }
-        .and_then(|()| std::fs::write(&file, bytes));
+        .and_then(|()| std::fs::write(&file, versioned(name, bytes)));
         if let Err(error) = written {
             return Err(format!("{}: {error}", shown(&file)));
         }
     }
     Ok(())
+}
+
+/// A demo's page as it is written: its links to the documentation's latest
+/// version made this version's, as the workbench's own are — installed with
+/// one version, the demo pointed at whatever the next described.
+fn versioned(name: &str, bytes: &[u8]) -> Vec<u8> {
+    if !name.ends_with(".md") {
+        return bytes.to_vec();
+    }
+    match std::str::from_utf8(bytes) {
+        Ok(text) => text
+            .replace(
+                "https://zelyph.github.io/SampleKit/latest/",
+                concat!(
+                    "https://zelyph.github.io/SampleKit/",
+                    env!("CARGO_PKG_VERSION"),
+                    "/"
+                ),
+            )
+            .into_bytes(),
+        Err(_) => bytes.to_vec(),
+    }
 }
 
 /// A folder as it is said: from the home folder, with `~`.
@@ -1303,24 +1429,44 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             ));
             above.push(Line::raw(""));
             scrolled = Some(*scroll);
+            // Folded to the width, each line after the first under the text
+            // it continues: at 120 columns the help was cut by `…`.
+            let folded = |text: &str, indent: usize| -> Vec<String> {
+                textwrap::wrap(text, room.saturating_sub(indent).max(12))
+                    .into_iter()
+                    .map(|piece| piece.into_owned())
+                    .collect()
+            };
             for (pressed, what) in HELP {
                 // What each does may name another key: `Esc clears it`.
-                list.push(if pressed.is_empty() {
-                    if what.starts_with(' ') {
-                        let mut spans = vec![Span::raw("  ")];
-                        spans.extend(keyed(what, muted));
-                        Line::from(spans)
-                    } else {
-                        Line::styled(
-                            format!("  {what}"),
+                if pressed.is_empty() && !what.starts_with(' ') {
+                    for piece in folded(what, 2) {
+                        list.push(Line::styled(
+                            format!("  {piece}"),
                             Style::new().add_modifier(Modifier::BOLD),
-                        )
+                        ));
                     }
+                    continue;
+                }
+                // A line going on from the one above lines up with what the
+                // keys do: it was drawn a column in, left of them.
+                let (lead, indent) = if pressed.is_empty() {
+                    (Span::raw(" ".repeat(11)), 11)
                 } else {
-                    let mut spans = vec![Span::styled(format!("  {pressed:<9}"), key)];
-                    spans.extend(keyed(what, muted));
-                    Line::from(spans)
-                });
+                    (
+                        Span::styled(format!("  {pressed:<9}"), key),
+                        11 + pressed.chars().count().saturating_sub(9),
+                    )
+                };
+                for (at, piece) in folded(what.trim_start(), indent).into_iter().enumerate() {
+                    let mut spans = if at == 0 {
+                        vec![lead.clone()]
+                    } else {
+                        vec![Span::raw(" ".repeat(indent))]
+                    };
+                    spans.extend(keyed(&piece, muted));
+                    list.push(Line::from(spans));
+                }
             }
             vec![("j k ↑ ↓", "scroll"), ("Esc", "back")]
         }
@@ -1338,6 +1484,33 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
                     Span::styled(marker(on), on_style(on)),
                     Span::styled("↵  ", key),
                     Span::styled(path(folder, 5), on_style(on)),
+                ]));
+                list.push(Line::raw(""));
+            }
+            if !start.inside.is_empty() {
+                list.push(Line::styled("  Projects in this folder", muted));
+                for (index, folder) in start.inside.iter().enumerate() {
+                    let on = start.cursor == index;
+                    if on {
+                        cursor = list.len();
+                        if index == 0 {
+                            top = Some(cursor - 1);
+                        }
+                    }
+                    list.push(Line::from(vec![
+                        Span::styled(marker(on), on_style(on)),
+                        Span::styled("↵  ", key),
+                        Span::styled(path(folder, 5), on_style(on)),
+                    ]));
+                }
+                let on = start.cursor == start.inside.len();
+                if on {
+                    cursor = list.len();
+                }
+                list.push(Line::from(vec![
+                    Span::styled(marker(on), on_style(on)),
+                    Span::styled("↵  ", key),
+                    Span::styled("set a project up here", on_style(on)),
                 ]));
                 list.push(Line::raw(""));
             }
@@ -1374,7 +1547,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             vec![
                 ("j k ↑ ↓", "move"),
                 ("x", "forget a recent project"),
-                ("?", "help"),
+                ("?", "all keys"),
                 ("Esc", "quit"),
             ]
         }
@@ -1518,7 +1691,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             for (index, (entry, what)) in [
                 ("The guide, from installing to figures", "in the browser"),
                 (
-                    "The demo, a brewer's notebook in eight steps",
+                    "The demo, a tensile test in five steps",
                     if there {
                         "its steps"
                     } else {
@@ -1549,7 +1722,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
         Mode::Demo { cursor: on_demo } => {
             name = "demo";
             above.push(Line::styled(
-                "  The demo, a brewer's notebook in eight steps",
+                "  The demo, a tensile test in five steps",
                 Style::new().add_modifier(Modifier::BOLD),
             ));
             if let Some(folder) = &start.demo {
@@ -1560,7 +1733,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             let width = steps
                 .iter()
                 .map(|(_, title, _)| title.chars().count())
-                .chain(["Reset the demo".len()])
+                .chain(["The demo's folder".len()])
                 .max()
                 .unwrap_or(0)
                 + 2;
@@ -1578,7 +1751,14 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             }
             list.push(Line::raw(""));
             for (index, (entry, what)) in [
-                ("The tutorial", "these steps' pages, in the browser"),
+                (
+                    "The walkthrough",
+                    "the home page, which explains these steps, in the browser",
+                ),
+                (
+                    "The demo's folder",
+                    "in the file manager: its files by hand, the command line in it",
+                ),
                 ("Reset the demo", "as it came, asked first"),
             ]
             .iter()
@@ -1600,7 +1780,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             }
             vec![
                 ("j k ↑ ↓", "move"),
-                ("1…8", "a step"),
+                ("1…5", "a step"),
                 ("Enter", "open"),
                 ("Esc", "back"),
             ]
@@ -1622,6 +1802,18 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
                 above.push(Line::raw(lost));
             }
             vec![("y", "reset it"), ("Esc", "back")]
+        }
+        Mode::Forget { folder } => {
+            above.push(Line::styled(
+                "  Forget this recent project?",
+                Style::new().add_modifier(Modifier::BOLD),
+            ));
+            above.push(Line::styled(format!("  {}", path(folder, 2)), muted));
+            above.push(Line::raw(""));
+            above.push(Line::raw(
+                "  it leaves the list; its folder and files are left as they are",
+            ));
+            vec![("y", "forget it"), ("Esc", "back")]
         }
     };
     // The keys, those that choose and leave kept to the last.

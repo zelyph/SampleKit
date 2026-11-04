@@ -165,7 +165,7 @@ fn close(left: f64, right: f64) -> bool {
 fn a_record() -> Records {
     let mut computed = IndexMap::new();
     computed.insert(
-        InputName::Named(Identifier::new("malt").unwrap()),
+        InputName::Named(Identifier::new("diameter").unwrap()),
         InputRecord::Digest(Fingerprint::new("a91f42c8f0d1")),
     );
     Records {
@@ -225,6 +225,9 @@ fn readings_with_no_statistic_have_no_value() {
 fn a_declared_statistic_is_the_value_of_readings() {
     let mut property = Property::measured(readings(&[1.0, 2.0, 9.0]), None);
     property.declare_statistics(Some(Location::Mean), None);
+    // Owed until a computation takes it: reading computes nothing.
+    assert_eq!(property.value().unwrap(), Value::Absent);
+    property.take_statistic();
     assert_eq!(number(&property), 4.0);
     property.declare_statistics(Some(Location::Median), None);
     assert_eq!(number(&property), 2.0);
@@ -276,8 +279,9 @@ fn explicit_uncertainty_overrides_derived() {
     property.set_uncertainty(Some(Uncertainty::new(0.5).unwrap()));
     assert_eq!(property.uncertainty().unwrap().unwrap().magnitude(), 0.5);
     // And the value still comes from the readings, through the statistic the
-    // model declares for it.
+    // model declares for it, once taken.
     property.declare_statistics(Some(Location::Mean), None);
+    property.take_statistic();
     assert_eq!(number(&property), 5.0);
 }
 
@@ -309,8 +313,9 @@ fn assigning_observations_restores_derived_uncertainty() {
     assert_eq!(property.uncertainty().unwrap(), None);
     property.set_readings(reference(), Some(Convention::SampleStdev));
     assert!(property.uncertainty().unwrap().is_some());
-    // The value its readings give is the statistic declared for it.
+    // The value its readings give is the statistic declared for it, taken.
     property.declare_statistics(Some(Location::Mean), None);
+    property.take_statistic();
     assert_eq!(number(&property), 5.0);
 }
 
@@ -401,21 +406,21 @@ fn self_referential_formula_yields_cycle_not_overflow() {
 #[test]
 fn a_cycle_names_the_path_it_travelled() {
     // Empty where the cycle is found, complete where it surfaces.
-    let (_formula, property) = SelfReferential::build(Some("plato"));
+    let (_formula, property) = SelfReferential::build(Some("ductility"));
     let error = property.borrow().value().unwrap_err();
-    let plato = Identifier::new("plato").unwrap();
+    let ductility = Identifier::new("ductility").unwrap();
     assert_eq!(
         error,
         ComputeError::Cycle {
-            path: vec![plato.clone()]
+            path: vec![ductility.clone()]
         }
     );
     // Each further frame that knows a name prepends its own.
-    let haze = Identifier::new("haze").unwrap();
+    let roughness = Identifier::new("roughness").unwrap();
     assert_eq!(
-        error.within(&haze),
+        error.within(&roughness),
         ComputeError::Cycle {
-            path: vec![haze, plato]
+            path: vec![roughness, ductility]
         }
     );
 }
@@ -928,6 +933,7 @@ fn a_written_value_outranks_the_statistic_its_readings_declare() {
     let mut measured = Property::measured(readings(&[1.0, 2.0, 9.0]), None);
     assert_eq!(measured.value().unwrap(), Value::Absent);
     measured.declare_statistics(Some(Location::Median), Some(Convention::SampleStdev));
+    measured.take_statistic();
     assert_eq!(number(&measured), 2.0);
     assert!(measured.uncertainty().unwrap().is_some());
     measured.set_written_value(Some(Value::number(2.5).unwrap()));
@@ -946,6 +952,8 @@ fn setting_a_value_beside_readings_keeps_them() {
     // stand, and a derived uncertainty goes on following them.
     let mut measured = Property::measured(readings(&[1.0, 2.0, 9.0]), None);
     measured.declare_statistics(Some(Location::Mean), Some(Convention::SampleStdev));
+    // Taken: a statistic nothing took gives no spread either.
+    measured.take_statistic();
     let derived = measured
         .uncertainty()
         .unwrap()
@@ -1086,7 +1094,7 @@ fn holding_an_uncertainty_a_formula_gives_makes_it_an_override() {
 
 #[test]
 fn a_value_not_applicable_beside_readings_has_no_uncertainty() {
-    // `fg=n/a` over readings whose standard error gave the uncertainty went on
+    // `notch=n/a` over readings whose standard error gave the uncertainty went on
     // giving one: a value that does not apply has no spread.
     let mut property = Property::measured(
         readings(&[1.011, 1.009, 1.010]),
@@ -1097,4 +1105,15 @@ fn a_value_not_applicable_beside_readings_has_no_uncertainty() {
     assert_eq!(property.uncertainty().unwrap(), None);
     assert_eq!(property.peek_uncertainty(), Some(None));
     assert!(property.readings().is_some(), "the readings stay");
+}
+
+#[test]
+fn readings_given_alone_keep_the_spread_declared_for_them() {
+    // Python's `notch.readings = […]` names no convention: the standard error
+    // the model declares was lost, and the uncertainty stayed `None`.
+    let mut property = Property::measured(reference(), None);
+    property.declare_statistics(Some(Location::Mean), Some(Convention::StandardError));
+    property.set_readings(reference(), None);
+    property.take_statistic();
+    assert!(property.uncertainty().unwrap().is_some());
 }

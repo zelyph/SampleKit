@@ -11,7 +11,7 @@ use crate::config::project_config::{ColumnSpec, ExportTarget, Format, Profile, P
 use crate::core::formatting::{self, Precision, Resolved};
 use crate::core::value::Value;
 use crate::format::fingerprint::{self, Freshness};
-use crate::presentation::export_formats::{Cell, Dataset, QuantityColumns};
+use crate::presentation::export_formats::{Cell, Dataset, QuantityColumns, Templated};
 use crate::presentation::terminal_rendering;
 use crate::query::field_addressing::{self as fields, FieldError, Resolution, Subject, Vocabulary};
 
@@ -64,21 +64,67 @@ pub fn run_as_stored(
 }
 
 /// What a selection holds that is not current, as an export says before it is
-/// written: counted and named. A failed value is left out of the file, so it is
-/// neither.
+/// written: counted and named.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Behind {
     /// Outdated or broken, by the cells they fill.
     pub stale: usize,
     /// Edited by hand, or without a record.
     pub held: usize,
+    /// Never computed, which the file writes empty.
+    pub never: usize,
+    /// Failed, by the cells they fill, written as their last number.
+    pub failed: usize,
     /// The samples holding any of them.
     pub samples: usize,
     /// `BR-01 flatness`, each value not current.
     pub named: Vec<String>,
+    /// The names of the values edited, which `--accept edited:NAME` names.
+    pub edited_values: Vec<String>,
 }
 
-pub fn behind(selected: &SampleList, profile: &Profile) -> Behind {
+impl Behind {
+    /// Another selection's, counted with this one: a table over several
+    /// projects is written from them all.
+    pub fn add(&mut self, other: &Behind) {
+        self.stale += other.stale;
+        self.held += other.held;
+        self.never += other.never;
+        self.failed += other.failed;
+        self.samples += other.samples;
+        self.named.extend(other.named.iter().cloned());
+        for value in &other.edited_values {
+            if !self.edited_values.contains(value) {
+                self.edited_values.push(value.clone());
+            }
+        }
+    }
+
+    /// Whether the file holds a value that is not current.
+    pub fn any(&self) -> bool {
+        self.stale + self.held + self.never + self.failed > 0
+    }
+
+    /// The kinds there are, each counted, as every surface says them: `0
+    /// outdated` counted nothing. A failed value was said by none — the
+    /// preview of `-o` said nothing of a column that had failed.
+    pub fn kinds(&self) -> Vec<String> {
+        [
+            (self.stale, "outdated"),
+            (self.held, "edited or without a record"),
+            (self.never, "never computed, written empty"),
+            (self.failed, "failed"),
+        ]
+        .iter()
+        .filter(|(count, _)| *count > 0)
+        .map(|(count, kind)| format!("{count} {kind}"))
+        .collect()
+    }
+}
+
+/// `config` is the project's, where the selection carries none: a list
+/// grouped for its profile holds the samples without their configuration.
+pub fn behind(selected: &SampleList, profile: &Profile, config: Option<&ProjectConfig>) -> Behind {
     // What the file holds, only: a column the profile does not write is no
     // part of what the export is written from.
     let written: Vec<String> = profile
@@ -103,31 +149,113 @@ pub fn behind(selected: &SampleList, profile: &Profile) -> Behind {
     let mut behind = Behind::default();
     for entry in selected.iter() {
         let sample = entry.sample.borrow();
+        // A value waiting for an input emptied since is no outdated one: its
+        // number is the one computed before, as `status` says — counted
+        // outdated, a waiting recovery was sent to `compute`.
         let late: Vec<_> = crate::collection::editing::not_current(&sample)
             .into_iter()
             .filter(|value| exported(&value.name))
+            .filter(|value| {
+                !matches!(
+                    value.state,
+                    Freshness::Stale { .. } | Freshness::Broken { .. }
+                ) || crate::collection::editing::emptied_inputs(&sample, &value.state).is_empty()
+            })
             .collect();
-        // A sample whose only late values failed is in neither tally.
-        if late
-            .iter()
-            .any(|value| !matches!(value.state, Freshness::Failed { .. }))
-        {
+        let tallied = !late.is_empty();
+        if tallied {
             behind.samples += 1;
         }
+        let counted: Vec<String> = late.iter().map(|value| value.name.clone()).collect();
         for value in late {
-            if !matches!(value.state, Freshness::Failed { .. }) {
-                behind.named.push(format!(
-                    "{} {}",
-                    sample.name().unwrap_or("(unnamed)"),
-                    value.name
-                ));
+            let failed = matches!(value.state, Freshness::Failed { .. });
+            // A column whose cells stand in two states is one value named.
+            let named = format!(
+                "{} {}{}",
+                sample.name().unwrap_or("(unnamed)"),
+                value.name,
+                if failed { ", failed" } else { "" }
+            );
+            if !behind.named.contains(&named) {
+                behind.named.push(named);
             }
-            let cells = value.rows.max(1);
+            // The cells the file holds of it: a column written whole is its
+            // rows, `curve.stress[10]` alone is one.
+            let whole = profile
+                .columns()
+                .iter()
+                .any(|column| column.field == value.name);
+            let addressed = profile
+                .columns()
+                .iter()
+                .filter(|column| column.field.starts_with(&format!("{}[", value.name)))
+                .count();
+            let cells = if whole || addressed == 0 {
+                value.rows.max(1)
+            } else {
+                addressed
+            };
             match value.state {
                 Freshness::Stale { .. } | Freshness::Broken { .. } => behind.stale += cells,
-                Freshness::Failed { .. } => {}
-                _ => behind.held += cells,
+                Freshness::Failed { .. } => behind.failed += cells,
+                _ => {
+                    behind.held += cells;
+                    if !behind.edited_values.contains(&value.name) {
+                        behind.edited_values.push(value.name.clone());
+                    }
+                }
             }
+        }
+        // What the model owes, as `status` plans it: a formula changed since
+        // it computed a value is an outdated one — the file was written from
+        // it and the export exited 0 — and a value never computed is written
+        // empty.
+        let Some(path) = entry.path.as_deref() else {
+            continue;
+        };
+        let planned = crate::collection::computation::planned_states(
+            selected.config_for(path).or(selected.config()).or(config),
+            path,
+            &sample,
+        )
+        .unwrap_or_default();
+        let mut owed = false;
+        for (value, said) in &planned {
+            if !exported(value) || counted.contains(value) {
+                continue;
+            }
+            // A value entered whose uncertainty a formula owes is written,
+            // and its uncertainty empty: said so, where the value was said
+            // never computed beside its number in the file.
+            let mut owing = value.to_string();
+            match crate::collection::computation::planned_word(said) {
+                Some("outdated") => behind.stale += 1,
+                Some(NEVER_COMPUTED) => {
+                    behind.never += 1;
+                    let entered = crate::core::identifier::Identifier::new(value)
+                        .ok()
+                        .and_then(|name| sample.property(&name).ok())
+                        // Readings alone are no value entered: their statistic
+                        // is owed too, and the file writes both empty.
+                        .is_some_and(|handle| {
+                            handle.peek(|property| match property.readings() {
+                                Some(_) => property.written_value().is_some(),
+                                None => property.peek_value().is_some(),
+                            })
+                        });
+                    if entered {
+                        owing = format!("{value}'s uncertainty");
+                    }
+                }
+                _ => continue,
+            }
+            owed = true;
+            behind
+                .named
+                .push(format!("{} {owing}", sample.name().unwrap_or("(unnamed)")));
+        }
+        if owed && !tallied {
+            behind.samples += 1;
         }
     }
     behind
@@ -153,7 +281,7 @@ pub fn prepare(
     described: &SampleList,
 ) -> Result<Prepared, String> {
     let target = config
-        .export(name)
+        .table_export(name)
         .map_err(|error| error.to_string())?
         .clone();
     let profile = config
@@ -183,7 +311,7 @@ pub fn prepare(
     };
     let (profile, selected) =
         grouped(&profile, &selected, order).map_err(|error| error.to_string())?;
-    let behind = behind(&selected, &profile);
+    let behind = behind(&selected, &profile, Some(config));
     let dataset = run_within(&target, &profile, &selected, Some(config), described)
         .map_err(|error| error.to_string())?;
     Ok(Prepared {
@@ -228,6 +356,81 @@ pub fn run_within(
     build(target, profile, list, config, described, Numbers::AsWritten)
 }
 
+/// A sample's table `name` as rows of a file: each row of each sample's
+/// table one row, its cells as a table of samples writes them, its index
+/// first; over several samples, a column `name` first. With the profile of
+/// every cell written, which says what is not current among them. A sample
+/// without the table gives no row.
+pub fn table_rows(
+    name: &crate::core::identifier::Identifier,
+    list: &SampleList,
+    config: Option<&ProjectConfig>,
+    format: &Format,
+    precision: Option<&crate::format::schema::PrecisionSchema>,
+    style: Option<String>,
+) -> Result<(Dataset, Profile), ExportError> {
+    let several = list.len() > 1;
+    let mut stacked: Vec<Dataset> = Vec::new();
+    let mut every_cell: Vec<ColumnSpec> = Vec::new();
+    let column = |field: String, header: Option<String>| ColumnSpec {
+        field,
+        label: header.clone(),
+        header,
+        precision: precision.cloned(),
+        template: None,
+    };
+    for entry in list.iter() {
+        let one = list.holding(vec![entry.clone()]);
+        let (columns, rows) = {
+            let sample = entry.sample.borrow();
+            let Ok(found) = sample.table(name) else {
+                continue;
+            };
+            let columns: Vec<crate::core::identifier::Identifier> =
+                found.column_names().into_iter().cloned().collect();
+            (columns, found.rows().count())
+        };
+        for row in 0..rows {
+            let mut specs = Vec::new();
+            if several {
+                specs.push(ColumnSpec {
+                    field: "name".to_string(),
+                    label: None,
+                    header: None,
+                    precision: None,
+                    template: None,
+                });
+            }
+            for held in &columns {
+                let field = fields::describe(&fields::Field::Cell {
+                    table: name.clone(),
+                    column: held.clone(),
+                    row: crate::core::table::RowAddress::ordinal(row),
+                    channel: fields::Channel::Value,
+                });
+                every_cell.push(column(field.clone(), None));
+                specs.push(column(field, Some(held.to_string())));
+            }
+            let profile = crate::config::profiles::anonymous(specs);
+            let target = ExportTarget {
+                name: profile.name.clone(),
+                profile: profile.name.clone(),
+                format: format.clone(),
+                output: PathBuf::from("-"),
+                filename: false,
+                path: false,
+                query: None,
+                style: style.clone(),
+            };
+            stacked.push(run_within(&target, &profile, &one, config, &one)?);
+        }
+    }
+    Ok((
+        crate::presentation::export_formats::stacked(&stacked),
+        crate::config::profiles::anonymous(every_cell),
+    ))
+}
+
 fn build(
     target: &ExportTarget,
     profile: &Profile,
@@ -244,7 +447,7 @@ fn build(
         headers.push("path".to_string());
     }
     // What exists is what the collection holds: a selection narrowed to
-    // samples that all lack `brix` has not made `brix` a misspelling.
+    // samples that all lack `porosity` has not made `porosity` a misspelling.
     let vocabulary = described.vocabulary();
     // The emitted names, which is the profile's business: a label renames a
     // terminal column and never a file's. Whether a column flattens into two
@@ -279,6 +482,8 @@ fn build(
     let mut quantities = Vec::new();
     let mut quantity_fields = Vec::new();
     let mut plan: Vec<(&ColumnSpec, Vec<String>)> = Vec::new();
+    // The columns a template writes, and the dataset's columns each stands for.
+    let mut templated_columns: Vec<(&ColumnSpec, Vec<usize>)> = Vec::new();
     let unmade = NeverComputed::of(described, config);
     // Over several projects each may spell a unit its own way, and the first
     // target's spelling headed every row: the files' own spelling instead,
@@ -288,12 +493,54 @@ fn build(
     } else {
         config
     };
+    // **Two units in one column are refused**, as a table refuses them: written,
+    // the file held litres and millilitres under a header naming neither.
+    // Units as the files spell them in a data file; in a document, as the
+    // style writing it spells them.
+    let spelled_in = match (&target.format, target.style.as_deref()) {
+        (_, Some(style)) => Some(style),
+        (crate::config::project_config::Format::Text(text), None) => Some(text.name.as_str()),
+        (_, None) => Some(crate::config::project_config::FILES_STYLE),
+    };
+    // A template is written for a document: in the project's style, as the
+    // terminal writes it, unless the export or its format says another.
+    let templated_in = match (&target.format, target.style.as_deref()) {
+        (_, Some(style)) => Some(style),
+        (crate::config::project_config::Format::Text(text), None) => Some(text.name.as_str()),
+        (_, None) => None,
+    };
+    let mut labels: Vec<String> = headers.clone();
+    let mut group_columns: Vec<usize> = Vec::new();
+    let mut json_keys = std::collections::BTreeMap::new();
+    let mixed = terminal_rendering::disagreeing_units(profile, &subjects, spelled_by, spelled_in);
+    if !mixed.is_empty() {
+        return Err(ExportError::MixedUnits { columns: mixed });
+    }
     for column in profile.columns() {
         let emitted = profile.headers_for(column, has_uncertainty(column, described)?);
-        // Plain, whatever style the project renders in: a file's header is read
-        // by programs.
-        let unit =
-            terminal_rendering::column_unit(column, &subjects, profile, spelled_by, Some("plain"))
+        // As the files spell it, whatever style the project renders in: a
+        // file's header is read by programs.
+        // Over several projects, each row's unit is its own project's: one
+        // every project declares alike heads the column.
+        let unit = if spelled_by.is_none() && config.is_some() {
+            terminal_rendering::column_unit_each(
+                column,
+                &subjects,
+                profile,
+                &configs_of(list),
+                spelled_in,
+            )
+            .or_else(|| {
+                terminal_rendering::column_unit_each(
+                    column,
+                    &described_subjects,
+                    profile,
+                    &configs_of(described),
+                    spelled_in,
+                )
+            })
+        } else {
+            terminal_rendering::column_unit(column, &subjects, profile, spelled_by, spelled_in)
                 // No selected row writes one: the collection's, so that a header
                 // does not lose its unit with its last row.
                 .or_else(|| {
@@ -302,16 +549,25 @@ fn build(
                         &described_subjects,
                         profile,
                         spelled_by,
-                        Some("plain"),
+                        spelled_in,
                     )
-                });
+                })
+        };
         // A value a formula gives is a quantity before it holds an
         // uncertainty, or any value: its state is said from the first.
-        let formula_gives = matches!(
-            fields::parse(&column.field),
-            Ok(fields::Field::Named { ref name, channel: fields::Channel::Value })
-                if unmade.gives(name.as_str())
-        );
+        let formula_gives = match fields::parse(&column.field) {
+            Ok(fields::Field::Named {
+                ref name,
+                channel: fields::Channel::Value,
+            }) => unmade.gives(name.as_str()),
+            Ok(fields::Field::Cell {
+                ref table,
+                ref column,
+                channel: fields::Channel::Value,
+                ..
+            }) => unmade.gives(&format!("{table}.{column}")),
+            _ => false,
+        };
         if emitted.len() == 2 || formula_gives {
             quantities.push(QuantityColumns {
                 key: column
@@ -334,10 +590,55 @@ fn build(
                 });
             }
         }
+        if profile.group.contains(&column.field) {
+            group_columns.push(headers.len());
+        }
+        labels.extend(
+            emitted
+                .iter()
+                .map(|_| profile.label_for(column).to_string()),
+        );
+        if column.template.is_some() {
+            templated_columns.push((
+                column,
+                (headers.len()..headers.len() + emitted.len()).collect(),
+            ));
+        }
+        // A channel named alone keys JSON as it is named, its header
+        // declared aside.
+        if let [header] = emitted.as_slice()
+            && column.header.is_none()
+            && *header != column.field
+        {
+            json_keys.insert(header.clone(), column.field.clone());
+        }
         units.extend(emitted.iter().map(|_| unit.clone()));
         headers.extend(emitted.iter().cloned());
         plan.push((column, emitted));
     }
+    // Each row's text of each template, as the screen writes it.
+    let templated: Vec<Templated> = templated_columns
+        .iter()
+        .map(|(column, columns)| Templated {
+            columns: columns.clone(),
+            header: column
+                .header
+                .clone()
+                .unwrap_or_else(|| column.field.clone()),
+            texts: subjects
+                .iter()
+                .map(|subject| {
+                    terminal_rendering::templated(
+                        column,
+                        subject,
+                        terminal_rendering::Declaration::Profile(profile),
+                        config,
+                        templated_in,
+                    )
+                })
+                .collect(),
+        })
+        .collect();
     drop(subjects);
     drop(borrowed);
 
@@ -368,6 +669,20 @@ fn build(
     for entry in list.iter() {
         let sample = entry.sample.borrow();
         let states = fingerprint::check(&sample).unwrap_or_default();
+        // What the model owes, as `status` plans it: a formula changed is
+        // outdated and a value waiting is waiting, on this surface as on every
+        // other — read, they were `current`.
+        // Planned under its own project's, as its precision is: under the
+        // first project's, a formula changed in the other was `current`.
+        let own = match entry.path.as_deref() {
+            Some(path) if described.spans_configurations() => described.config_for(path).or(config),
+            Some(path) if list.spans_configurations() => list.config_for(path).or(config),
+            _ => config,
+        };
+        let planned = entry
+            .path
+            .as_deref()
+            .and_then(|path| crate::collection::computation::planned_states(own, path, &sample));
         for (quantity, field) in quantities.iter_mut().zip(&quantity_fields) {
             let state = match field {
                 fields::Field::Named { name, .. } => states.get(name).cloned(),
@@ -391,6 +706,20 @@ fn build(
                 (None, fields::Field::Named { name, .. }) if !present => {
                     unmade.holds(described, entry.path.as_deref(), name.as_str())
                 }
+                // A row's cell its column derives and no formula has filled.
+                (
+                    None | Some(Freshness::Source),
+                    fields::Field::Cell {
+                        table, column, row, ..
+                    },
+                ) if !present => {
+                    sample.table(table).is_ok_and(|held| held.row(row).is_ok())
+                        && unmade.holds(
+                            described,
+                            entry.path.as_deref(),
+                            &format!("{table}.{column}"),
+                        )
+                }
                 _ => false,
             };
             let not_applicable = matches!(
@@ -398,13 +727,42 @@ fn build(
                 Some(Cell::Scalar(Some(value)) | Cell::Written { value, .. })
                     if value.is_not_applicable()
             );
-            quantity.states.push(if never {
+            let owed = match field {
+                fields::Field::Named { name, .. } => planned
+                    .as_ref()
+                    .and_then(|planned| planned.get(name.as_str()))
+                    .and_then(|said| crate::collection::computation::planned_word(said)),
+                // A cell's column whose formula changed: every cell of it was
+                // computed by the formula before, and was said current.
+                fields::Field::Cell { table, column, .. } => planned
+                    .as_ref()
+                    .and_then(|planned| planned.get(&format!("{table}.{column}")))
+                    .and_then(|said| crate::collection::computation::planned_word(said))
+                    .filter(|word| *word == "outdated"),
+                _ => None,
+            };
+            quantity.states.push(if let Some(word) = owed {
+                Some(word.to_string())
+            } else if never {
                 Some(NEVER_COMPUTED.to_string())
             } else if not_applicable {
                 // Not absent: an answer.
                 Some("not applicable".to_string())
             } else {
                 match (state, field) {
+                    // Outdated for want of an input emptied since: it waits,
+                    // its number the one computed before, as `status` says.
+                    (Some(state), fields::Field::Named { .. } | fields::Field::Cell { .. })
+                        if matches!(
+                            state,
+                            Freshness::Stale { .. }
+                                | Freshness::Broken { .. }
+                                | Freshness::Unjudged { .. }
+                        ) && !crate::collection::editing::emptied_inputs(&sample, &state)
+                            .is_empty() =>
+                    {
+                        Some("waiting".to_string())
+                    }
                     (Some(state), _) => Some(state_name(&state, present).to_string()),
                     // A row the sample does not have holds no cell: absent,
                     // as a quantity no file holds is.
@@ -419,6 +777,10 @@ fn build(
         rows,
         units,
         quantities,
+        templated,
+        labels,
+        group_columns,
+        json_keys,
     })
 }
 
@@ -442,10 +804,40 @@ pub fn state_name(state: &Freshness, present: bool) -> &'static str {
 /// asking for two would emit a column that can never hold anything.
 ///
 /// Answered by the collection the selection was made from — never by the
-/// selection. `cold_crashed` and `malt` are spelled identically and only the data
+/// selection. `cold_crashed` and `diameter` are spelled identically and only the data
 /// says which; but the *first selected sample* is not the data: a filter
 /// keeping nothing wrote flat headers, and a first sample lacking an attribute
 /// would have given it two columns.
+/// A sample's path as a declared export writes it: from its project's
+/// folder, `/` between its parts, so that the file is the same whichever
+/// folder the export runs from; absolute where it lies outside.
+fn from_project(path: &Path, base: Option<&Path>) -> String {
+    let resolved = dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let relative = base
+        .and_then(|base| dunce::canonicalize(base).ok())
+        .and_then(|base| resolved.strip_prefix(base).ok().map(Path::to_path_buf));
+    match relative {
+        Some(relative) => relative
+            .components()
+            .map(|part| part.as_os_str().to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("/"),
+        None => resolved.to_string_lossy().into_owned(),
+    }
+}
+
+/// Each entry's configuration, in the list's order: its own project's.
+fn configs_of(list: &SampleList) -> Vec<Option<&ProjectConfig>> {
+    list.iter()
+        .map(|entry| {
+            entry
+                .path
+                .as_deref()
+                .map_or(list.config(), |path| list.config_for(path))
+        })
+        .collect()
+}
+
 fn has_uncertainty(column: &ColumnSpec, described: &SampleList) -> Result<bool, ExportError> {
     let parsed = fields::parse(&column.field).map_err(ExportError::Field)?;
     // A path that already names a channel is one column by construction.
@@ -498,21 +890,14 @@ fn row_of(
         ));
     }
     if target.path {
-        row.push(Cell::from(
-            entry
-                .path
-                .as_deref()
-                .map(|path| Value::text(path.to_string_lossy().into_owned())),
-        ));
+        row.push(Cell::from(entry.path.as_deref().map(|path| {
+            Value::text(from_project(path, config.map(ProjectConfig::root)))
+        })));
     }
     for (column, emitted) in plan {
         let parsed = fields::parse(&column.field).map_err(ExportError::Field)?;
-        // A failed value stays out while it is failed, though its file keeps
-        // the last one its formula gave.
-        if failed(&parsed, &sample) {
-            row.extend(emitted.iter().map(|_| Cell::from(None::<Value>)));
-            continue;
-        }
+        // A failed value is written as the screen shows it, its last number,
+        // its state saying not to trust it.
         let resolved = fields::resolve(&parsed, &subject).map_err(ExportError::Field)?;
         // The precision the project declares for this column, resolved the way
         // every other surface resolves it. The screen showed `12.22` and the
@@ -539,10 +924,9 @@ fn row_of(
             }
             _ => row.push(match resolved {
                 // An uncertainty on its own is written as the quantity writes
-                // its uncertainty: a split precision's second half.
-                Resolution::Scalar(value)
-                    if channel_of(&parsed) == fields::Channel::Uncertainty =>
-                {
+                // its uncertainty: a split precision's second half, rounded up;
+                // a statistic of spread, the standard error, alike.
+                Resolution::Scalar(value) if fields::is_spread(channel_of(&parsed)) => {
                     at_declared_precision(value, &of_uncertainty(&shown), numbers)
                 }
                 // A count is a whole number whatever the quantity's
@@ -562,26 +946,6 @@ fn row_of(
         }
     }
     Ok(row)
-}
-
-/// Whether a field reads a number of a value whose formula failed: in a session
-/// its cache says so, and in a file read without its model, its record.
-fn failed(field: &fields::Field, sample: &crate::core::sample::Sample) -> bool {
-    let fields::Field::Named { name, channel } = field else {
-        return false;
-    };
-    if matches!(channel, fields::Channel::Unit | fields::Channel::Symbol) {
-        return false;
-    }
-    sample.property(name).is_ok_and(|handle| {
-        handle.peek(|property| {
-            if property.is_computed() || property.has_uncertainty_formula() {
-                property.has_failed()
-            } else {
-                property.records().failure.is_some()
-            }
-        })
-    })
 }
 
 /// The header of the column `--status` adds.
@@ -611,6 +975,10 @@ pub fn with_states(dataset: Dataset) -> Option<Dataset> {
         mut rows,
         mut units,
         quantities,
+        templated,
+        mut labels,
+        group_columns,
+        json_keys,
     } = dataset;
     for (index, row) in rows.iter_mut().enumerate() {
         let said = row_state(quantities.iter().map(|quantity| {
@@ -626,17 +994,24 @@ pub fn with_states(dataset: Dataset) -> Option<Dataset> {
     }
     headers.push(STATE_HEADER.to_string());
     units.push(None);
+    if !labels.is_empty() {
+        labels.push(STATE_HEADER.to_string());
+    }
     Some(Dataset {
         headers,
         rows,
         units,
         quantities,
+        templated,
+        labels,
+        group_columns,
+        json_keys,
     })
 }
 
 /// A value its configuration's formula gives elsewhere, which this sample has
 /// never been given: said, as `status` says it, never counted `current`.
-pub const NEVER_COMPUTED: &str = "never computed";
+pub const NEVER_COMPUTED: &str = "never_computed";
 
 /// What each configuration's formulas give: the properties its model's source
 /// declares, and those a sample of it holds with a formula's record — the
@@ -662,11 +1037,45 @@ impl NeverComputed {
             let root = root_of(entry.path.as_deref());
             if !read.contains(&root) {
                 let config = config_of(entry.path.as_deref());
-                for name in config
-                    .map(crate::config::model_runtime::declared_properties)
-                    .unwrap_or_default()
-                {
+                // What a formula gives: a value its readings give, the model
+                // declaring their statistic, waits for readings nobody
+                // entered, as `status` says it, and is never *never computed*.
+                let described = config.and_then(crate::config::model_runtime::current_description);
+                let names: Vec<String> = match &described {
+                    Some(description) => description
+                        .properties
+                        .iter()
+                        .filter(|(_, property)| {
+                            use crate::config::model_runtime::Origin;
+                            !matches!(property.value, Origin::Entered | Origin::Statistic { .. })
+                                || matches!(
+                                    property.uncertainty,
+                                    Some(Origin::Formula { .. } | Origin::Quantity { .. })
+                                )
+                        })
+                        .map(|(name, _)| name.clone())
+                        .collect(),
+                    None => config
+                        .map(crate::config::model_runtime::declared_properties)
+                        .unwrap_or_default(),
+                };
+                for name in names {
                     given.insert((root.clone(), name));
+                }
+                // And the columns its tables derive, `ageing.nominal`:
+                // a new row's cell was said current, or absent.
+                if let Some(description) =
+                    config.and_then(crate::config::model_runtime::current_description)
+                {
+                    for (table, described) in &description.tables {
+                        for column in described
+                            .columns
+                            .iter()
+                            .filter(|column| column.formula.is_some())
+                        {
+                            given.insert((root.clone(), format!("{table}.{}", column.name)));
+                        }
+                    }
                 }
                 read.push(root.clone());
             }
@@ -704,13 +1113,15 @@ impl NeverComputed {
 
 /// What a row's `state` column says: `current` when nothing in it needs
 /// attention, and otherwise each state that does with the quantities in it,
-/// worst first — `failed: brix; edited: malt`. `; ` between states and `, `
+/// worst first — `failed: porosity; edited: diameter`. `; ` between states and `, `
 /// between quantities, so that a script splits it without guessing.
 ///
 /// Entered, absent and current values need nothing; a quantity with no state
 /// is not a derived value and is left out.
 pub fn row_state<'a>(states: impl IntoIterator<Item = (&'a str, Option<&'a str>)>) -> String {
-    const WORST_FIRST: [&str; 7] = [
+    // `waiting` last: not *not current*, but never `current` either — a row
+    // whose value waits for an input nobody entered was said current.
+    const WORST_FIRST: [&str; 8] = [
         "failed",
         "unjudged",
         NEVER_COMPUTED,
@@ -718,6 +1129,7 @@ pub fn row_state<'a>(states: impl IntoIterator<Item = (&'a str, Option<&'a str>)
         "outdated",
         "record missing",
         "edited",
+        "waiting",
     ];
     let mut named: Vec<Vec<&str>> = vec![Vec::new(); WORST_FIRST.len()];
     for (quantity, state) in states {
@@ -828,6 +1240,14 @@ pub fn write_replacing(
     path: &Path,
     expected: Option<&[u8]>,
 ) -> Result<(), ExportError> {
+    // Judged as named too: a link inside the model's environment led the
+    // write to the system's interpreter, judged only where it led.
+    if let Some(what) = project_file(path) {
+        return Err(ExportError::ProjectFile {
+            path: path.to_path_buf(),
+            what,
+        });
+    }
     let path = &destination_of(path)?;
     refuse_protected(path)?;
     make_folder(path)?;
@@ -836,6 +1256,9 @@ pub fn write_replacing(
             crate::format::document::DocumentError::Io { source, .. } => ExportError::Io {
                 path: path.to_path_buf(),
                 source,
+            },
+            crate::format::document::DocumentError::Locked { .. } => ExportError::Busy {
+                path: path.to_path_buf(),
             },
             _ => ExportError::ChangedSince {
                 path: path.to_path_buf(),
@@ -900,6 +1323,16 @@ fn destination_of(path: &Path) -> Result<PathBuf, ExportError> {
 /// destination mistyped into the collection replaced a sample's frontmatter,
 /// tags and note with a table, exit 0.
 fn refuse_protected(path: &Path) -> Result<(), ExportError> {
+    // **A file the project runs on**, whether or not it exists yet: its
+    // configuration, SampleKit's own folder — the history, the description —
+    // and the model's sources. Written over by `-o`, the history could only be
+    // repaired by hand with git.
+    if let Some(what) = project_file(path) {
+        return Err(ExportError::ProjectFile {
+            path: path.to_path_buf(),
+            what,
+        });
+    }
     let Ok(metadata) = std::fs::metadata(path) else {
         return Ok(());
     };
@@ -914,6 +1347,134 @@ fn refuse_protected(path: &Path) -> Result<(), ExportError> {
         });
     }
     Ok(())
+}
+
+/// What of the project `path` is, where it is one of the files the project
+/// runs on: `None` for any other.
+fn project_file(path: &Path) -> Option<&'static str> {
+    use crate::config::{model_runtime, project_config};
+    if path.file_name().is_some_and(|name| {
+        crate::collection::sample_list::file_key(Path::new(name))
+            == crate::collection::sample_list::file_key(Path::new(project_config::FILENAME))
+    }) {
+        return Some("the project's configuration");
+    }
+    // A lock SampleKit takes, whatever it locks: written as an export, a
+    // sample's lock was never taken back, and every save of it refused.
+    if path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("lock"))
+    {
+        return Some("a lock SampleKit takes while it writes");
+    }
+    let absolute = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    if absolute.components().any(|part| {
+        crate::collection::sample_list::file_key(Path::new(part.as_os_str()))
+            == crate::collection::sample_list::file_key(Path::new(".samplekit"))
+    }) {
+        return Some("in SampleKit's own folder");
+    }
+    let canonical = |path: &Path| dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    // A file not there yet resolves through its folder: `-o link/x`, the link
+    // set in the project, lands where the link leads.
+    let wanted = match (
+        dunce::canonicalize(&absolute),
+        absolute.parent(),
+        absolute.file_name(),
+    ) {
+        (Ok(resolved), _, _) => resolved,
+        (Err(_), Some(parent), Some(name)) => canonical(parent).join(name),
+        _ => absolute.clone(),
+    };
+    // The model of the project the file lies in, and of the project the
+    // command runs in: a model kept beside the projects that use it,
+    // `../shared/piece.py`, lies in none of them, and was written over.
+    let places = [
+        absolute.parent().map(Path::to_path_buf),
+        std::env::current_dir().ok(),
+    ];
+    let configs: Vec<project_config::ProjectConfig> = places
+        .into_iter()
+        .flatten()
+        .filter_map(|place| {
+            project_config::find(&place).and_then(|found| project_config::load(&found).ok())
+        })
+        .collect();
+    if configs.iter().any(|config| {
+        model_runtime::template_of(config)
+            .and_then(|template| model_runtime::template_files(&template).ok())
+            .is_some_and(|sources| sources.iter().any(|source| canonical(source) == wanted))
+    }) {
+        return Some("the project's model");
+    }
+    // **The environment the model runs in**, named or reached through a
+    // link: `-o .venv/pyvenv.cfg` wrote over it, exit 0, and a link to the
+    // system's interpreter led the write there.
+    configs
+        .iter()
+        .any(|config| {
+            let Some(python) = config.python() else {
+                return false;
+            };
+            let named = config.resolve(&python.to_string_lossy());
+            let environment = if named.is_dir() {
+                named.clone()
+            } else {
+                match named.parent() {
+                    Some(bin)
+                        if bin
+                            .file_name()
+                            .is_some_and(|name| name == "bin" || name == "Scripts") =>
+                    {
+                        bin.parent()
+                            .map_or_else(|| named.clone(), Path::to_path_buf)
+                    }
+                    _ => named.clone(),
+                }
+            };
+            // The environment the interpreter really is in, where the one
+            // named links elsewhere — pyenv's, conda's.
+            let interpreter = if named.is_dir() {
+                ["bin/python", "Scripts/python.exe"]
+                    .iter()
+                    .map(|inside| named.join(inside))
+                    .find(|path| path.exists())
+                    .unwrap_or_else(|| named.clone())
+            } else {
+                named.clone()
+            };
+            let resolved = canonical(&interpreter);
+            // Each link on the way to the interpreter, and the environment
+            // each lies in: a venv's `python` leads to pyenv's or conda's,
+            // which may lead further.
+            let mut hops = vec![interpreter.clone()];
+            while hops.len() < 16 {
+                let last = hops.last().expect("one hop at least");
+                let Ok(target) = std::fs::read_link(last) else {
+                    break;
+                };
+                let next = match last.parent() {
+                    Some(parent) if target.is_relative() => parent.join(target),
+                    _ => target,
+                };
+                hops.push(next);
+            }
+            let environments: Vec<PathBuf> = hops
+                .iter()
+                .filter_map(|hop| {
+                    let bin = canonical(hop.parent()?);
+                    bin.file_name()
+                        .is_some_and(|name| name == "bin" || name == "Scripts")
+                        .then(|| bin.parent().map(Path::to_path_buf))
+                        .flatten()
+                })
+                .collect();
+            absolute.starts_with(&environment)
+                || wanted.starts_with(canonical(&environment))
+                || named.is_file() && resolved == wanted
+                || environments.iter().any(|real| wanted.starts_with(real))
+        })
+        .then_some("the environment the model runs in")
 }
 
 /// Whether a file may be a sample: it opens with a frontmatter line. Judged
@@ -945,6 +1506,11 @@ fn is_a_sample(path: &Path) -> bool {
 #[derive(Debug)]
 pub enum ExportError {
     Field(FieldError),
+    /// A column whose samples write it in two units: numbers written under no
+    /// unit that do not compare.
+    MixedUnits {
+        columns: Vec<(String, Vec<String>)>,
+    },
     /// Two columns that would write one header.
     DuplicateHeader {
         header: String,
@@ -963,6 +1529,12 @@ pub enum ExportError {
     IsASample {
         path: PathBuf,
     },
+    /// A destination that is a file the project runs on — its configuration,
+    /// SampleKit's own folder, its model's sources.
+    ProjectFile {
+        path: PathBuf,
+        what: &'static str,
+    },
     /// A symbolic link to nothing: there is no file to write through it to.
     DanglingLink {
         path: PathBuf,
@@ -974,6 +1546,10 @@ pub enum ExportError {
     },
     /// The destination changed since the command read it: another writer's file
     /// is not replaced.
+    /// Another process was writing the destination at that moment.
+    Busy {
+        path: PathBuf,
+    },
     ChangedSince {
         path: PathBuf,
     },
@@ -983,6 +1559,19 @@ impl fmt::Display for ExportError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ExportError::Field(error) => write!(f, "{error}"),
+            ExportError::MixedUnits { columns } => {
+                let said: Vec<String> = columns
+                    .iter()
+                    .map(|(field, units)| format!("{field} is in {}", units.join(" and ")))
+                    .collect();
+                write!(
+                    f,
+                    "a column cannot say which unit it is in: {} — a file of two units \
+                     compares numbers that do not compare; narrow the selection, or \
+                     samplekit validate says which files disagree",
+                    said.join("; ")
+                )
+            }
             ExportError::DuplicateHeader { header, fields } => {
                 let [first, second] = fields;
                 if first == second {
@@ -990,12 +1579,29 @@ impl fmt::Display for ExportError {
                         f,
                         "'{first}' is asked for twice, and would write '{header}' twice"
                     )
+                } else if second
+                    .strip_suffix(".u")
+                    .or_else(|| second.strip_suffix(".uncertainty"))
+                    == Some(first.as_str())
+                    || first
+                        .strip_suffix(".u")
+                        .or_else(|| first.strip_suffix(".uncertainty"))
+                        == Some(second.as_str())
+                {
+                    // A quantity writes its uncertainty already: the channel
+                    // beside it is that column again.
+                    let quantity = if first.contains('.') { second } else { first };
+                    write!(
+                        f,
+                        "'{quantity}' writes its uncertainty already, as '{header}': drop \
+                         '{quantity}.u', or name '{quantity}.v' for the value alone"
+                    )
                 } else {
                     write!(
                         f,
                         "'{first}' and '{second}' would both write a column '{header}', and \
-                         nothing could tell them apart: drop one, or give one a header in a \
-                         declared profile"
+                         nothing could tell them apart: drop one, or name one — `-c \
+                         {second}=NAME`, or a header in a declared profile"
                     )
                 }
             }
@@ -1008,6 +1614,12 @@ impl fmt::Display for ExportError {
             ExportError::ReadOnly { path } => write!(
                 f,
                 "{} is read-only, and nothing was written: make it writable to replace it",
+                path.display()
+            ),
+            ExportError::ProjectFile { path, what } => write!(
+                f,
+                "{} is {what}, and nothing was written: an export never replaces a file the \
+                 project runs on — choose another destination",
                 path.display()
             ),
             ExportError::IsASample { path } => write!(
@@ -1023,6 +1635,15 @@ impl fmt::Display for ExportError {
                 target.display()
             ),
             ExportError::Io { path, source } => write!(f, "{}: {source}", path.display()),
+            ExportError::Busy { path } => write!(
+                f,
+                "{} is being written by another process, and nothing was written: \
+                 run the export again in a moment. A lock left by a process that was \
+                 stopped is taken back by the next write; one that persists while no \
+                 SampleKit runs is {}.lock, which can then be removed",
+                path.display(),
+                path.display()
+            ),
             ExportError::ChangedSince { path } => write!(
                 f,
                 "{} changed since this command read it, and nothing was written: \

@@ -52,11 +52,13 @@ pub fn write(schema: &SampleSchema) -> String {
         out.push_str("properties:\n");
         out.push_str(&properties);
     }
-    // A table without a row is not written, as an empty property is not.
+    // A table without a row is not written, as an empty property is not —
+    // unless its file held it so, prepared: a write dropped its title, its
+    // index and its units, and the next row added had no table to go in.
     let tables: String = schema
         .tables
         .iter()
-        .filter(|(_, table)| !table.rows.is_empty())
+        .filter(|(_, table)| !table.rows.is_empty() || table.prepared.0)
         .map(|(name, table)| table_form(name, table))
         .collect();
     if !tables.is_empty() {
@@ -130,12 +132,11 @@ pub fn value_form(property: &PropertySchema) -> String {
 
 /// The eight fields, in the one order they are ever written.
 ///
-/// **`v` and `u`, not `value` and `uncertainty`**. Both spellings are read,
-/// here and as field addresses, and always were; this is the one that is
-/// written, and it is 5.87 % of a real collection. The digest's pre-image in
-/// `value_form` keeps the long spelling deliberately: it is never written
-/// anywhere, so shortening it would save nothing and restamp every fingerprint
-/// in every file.
+/// **`v` and `u`, not `value` and `uncertainty`**: the one spelling a file
+/// holds, and 5.87 % of a real collection; the long one is refused. The
+/// digest's pre-image in `value_form` keeps the long spelling deliberately:
+/// it is never written anywhere, so shortening it would save nothing and
+/// restamp every fingerprint in every file.
 ///
 /// `computed` is last but one because it is the longest field and the least
 /// often read: placing it between the value and its unit would push the unit
@@ -311,6 +312,11 @@ fn table_form(name: &Identifier, table: &TableSchema) -> String {
     for (column, meta) in &table.columns {
         out.push_str(&column_form(column, meta));
     }
+    // A table prepared without a row says so, as its file did.
+    if table.rows.is_empty() {
+        out.push_str("    rows: []\n");
+        return out;
+    }
     out.push_str("    rows:\n");
     for row in &table.rows {
         let mut first = true;
@@ -329,7 +335,20 @@ fn table_form(name: &Identifier, table: &TableSchema) -> String {
                     .filter(|(column, _)| !table.columns.contains_key(*column)),
             );
         for (column, cell) in ordered {
-            let body = cell_form(column, cell);
+            // A cell's unit its column declares is the column's: written
+            // again on the cell, a day set by hand read `{v: 12, unit: d}`
+            // among rows of `14`.
+            let declared = table
+                .columns
+                .get(column)
+                .and_then(|meta| meta.unit.as_ref());
+            let body = if cell.unit.is_some() && cell.unit.as_ref() == declared {
+                let mut bare = cell.clone();
+                bare.unit = None;
+                cell_form(column, &bare)
+            } else {
+                cell_form(column, cell)
+            };
             if first {
                 // `- ` opens the row, and the first cell sits on that line;
                 // the eight-space indent of a cell is what the dash replaces.

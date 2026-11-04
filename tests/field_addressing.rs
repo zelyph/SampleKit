@@ -36,26 +36,26 @@ fn columns(names: &[&str]) -> IndexMap<Identifier, ColumnMeta> {
         .collect()
 }
 
-/// A cask with a dosed malt, an attribute, tags and a mashing boil.
-fn cask() -> Sample {
+/// A slab with a doped diameter, an attribute, tags and a preheating soak.
+fn slab() -> Sample {
     let mut sample = Sample::new();
-    sample.set_name(Some("Keg 42".to_string()));
+    sample.set_name(Some("Billet 42".to_string()));
     sample.set_tags(vec![id("reference"), id("cold_crashed")]);
 
-    let mut malt = Property::stored(number(12.5));
-    malt.set_uncertainty(Some(Uncertainty::new(0.05).unwrap()));
-    malt.set_presentation(Presentation {
+    let mut diameter = Property::stored(number(12.5));
+    diameter.set_uncertainty(Some(Uncertainty::new(0.05).unwrap()));
+    diameter.set_presentation(Presentation {
         unit: Some("g".to_string()),
         symbol: Some("m".to_string()),
         precision: None,
     });
-    sample.set_property(id("malt"), malt).unwrap();
+    sample.set_property(id("diameter"), diameter).unwrap();
 
-    let foam = Property::measured(
+    let wear = Property::measured(
         Readings::new(vec![2.011, 2.017, 2.013, 2.015]).unwrap(),
         None,
     );
-    sample.set_property(id("foam"), foam).unwrap();
+    sample.set_property(id("wear"), wear).unwrap();
     sample
         .set_property(id("volume"), Property::stored(Value::absent()))
         .unwrap();
@@ -64,9 +64,9 @@ fn cask() -> Sample {
         .unwrap();
 
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort"]),
+        columns(&["temperature", "tension"]),
         Vec::new(),
     )
     .unwrap();
@@ -81,11 +81,11 @@ fn cask() -> Sample {
         table
             .add_row(vec![
                 (id("temperature"), Property::stored(number(t))),
-                (id("wort"), cell),
+                (id("tension"), cell),
             ])
             .unwrap();
     }
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     sample
 }
 
@@ -93,9 +93,9 @@ fn cask() -> Sample {
 fn wide() -> Sample {
     let mut sample = Sample::new();
     let mut table = Table::new(
-        id("mashing"),
-        vec![id("temperature"), id("dextrin")],
-        columns(&["temperature", "dextrin", "wort"]),
+        id("preheating"),
+        vec![id("temperature"), id("ferrite")],
+        columns(&["temperature", "ferrite", "tension"]),
         Vec::new(),
     )
     .unwrap();
@@ -103,12 +103,12 @@ fn wide() -> Sample {
         table
             .add_row(vec![
                 (id("temperature"), Property::stored(number(t))),
-                (id("dextrin"), Property::stored(number(f))),
-                (id("wort"), Property::stored(number(r))),
+                (id("ferrite"), Property::stored(number(f))),
+                (id("tension"), Property::stored(number(r))),
             ])
             .unwrap();
     }
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
 
     let mut process = Table::new(
         id("process"),
@@ -154,38 +154,44 @@ fn scalar(path: &str, sample: &Sample) -> Option<Value> {
 #[test]
 fn short_form_equals_value_channel() {
     assert_eq!(
-        fields::parse("malt").unwrap(),
-        fields::parse("malt.v").unwrap()
+        fields::parse("diameter").unwrap(),
+        fields::parse("diameter.v").unwrap()
     );
 }
 
 #[test]
 fn an_explicit_value_channel_is_detectable() {
-    assert!(!fields::has_explicit_channel("malt"));
-    assert!(fields::has_explicit_channel("malt.v"));
-    assert!(fields::has_explicit_channel("malt.v"));
-    assert!(!fields::has_explicit_channel("mashing.wort[65]"));
-    assert!(fields::has_explicit_channel("mashing.wort[65].u"));
+    assert!(!fields::has_explicit_channel("diameter"));
+    assert!(fields::has_explicit_channel("diameter.v"));
+    assert!(fields::has_explicit_channel("diameter.v"));
+    assert!(!fields::has_explicit_channel("preheating.tension[65]"));
+    assert!(fields::has_explicit_channel("preheating.tension[65].u"));
 }
 
 #[test]
 fn uncertainty_channel_resolves() {
-    assert_eq!(scalar("malt.u", &cask()), Some(number(0.05)));
+    assert_eq!(scalar("diameter.u", &slab()), Some(number(0.05)));
 }
 
 #[test]
 fn unit_channel_resolves_as_text() {
-    assert_eq!(scalar("malt.unit", &cask()), Some(Value::text("g")));
+    assert_eq!(scalar("diameter.unit", &slab()), Some(Value::text("g")));
 }
 
 #[test]
 fn cell_path_resolves_by_index() {
-    assert_eq!(scalar("mashing.wort[78.5]", &cask()), Some(number(20.0)));
+    assert_eq!(
+        scalar("preheating.tension[78.5]", &slab()),
+        Some(number(20.0))
+    );
 }
 
 #[test]
 fn cell_path_with_channel_resolves() {
-    assert_eq!(scalar("mashing.wort[65].u", &cask()), Some(number(0.2)));
+    assert_eq!(
+        scalar("preheating.tension[65].u", &slab()),
+        Some(number(0.2))
+    );
 }
 
 #[test]
@@ -199,7 +205,7 @@ fn quoted_textual_index_with_space() {
 #[test]
 fn a_composite_index_parses_and_resolves() {
     assert_eq!(
-        scalar("mashing.wort[65, 4.0e9]", &wide()),
+        scalar("preheating.tension[65, 4.0e9]", &wide()),
         Some(number(13.0))
     );
 }
@@ -207,7 +213,7 @@ fn a_composite_index_parses_and_resolves() {
 #[test]
 fn the_wrong_component_count_is_its_own_error() {
     // Count the columns is a different fix from that row does not exist.
-    let error = resolve("mashing.wort[65]", &wide()).unwrap_err();
+    let error = resolve("preheating.tension[65]", &wide()).unwrap_err();
     let message = error.to_string();
     assert!(message.contains('2') && message.contains('1'), "{message}");
 }
@@ -215,56 +221,68 @@ fn the_wrong_component_count_is_its_own_error() {
 #[test]
 fn an_ordinal_path_parses_and_resolves() {
     // `[#1]` is the second row; `[78.5]` is the row indexed 78.5.
-    let sample = cask();
-    assert_eq!(scalar("mashing.wort[#1]", &sample), Some(number(20.0)));
-    assert_eq!(scalar("mashing.wort[65]", &sample), Some(number(12.5)));
+    let sample = slab();
+    assert_eq!(
+        scalar("preheating.tension[#1]", &sample),
+        Some(number(20.0))
+    );
+    assert_eq!(
+        scalar("preheating.tension[65]", &sample),
+        Some(number(12.5))
+    );
 }
 
 #[test]
 fn a_row_is_counted_from_the_end() {
     // `#-1` the last row, `#-2` the one before.
-    let sample = cask();
+    let sample = slab();
     let rows = sample
-        .table(&samplekit::core::identifier::Identifier::new("mashing").unwrap())
+        .table(&samplekit::core::identifier::Identifier::new("preheating").unwrap())
         .unwrap()
         .rows()
         .count();
     assert_eq!(
-        scalar("mashing.wort[#-1]", &sample),
-        scalar(&format!("mashing.wort[#{}]", rows - 1), &sample)
+        scalar("preheating.tension[#-1]", &sample),
+        scalar(&format!("preheating.tension[#{}]", rows - 1), &sample)
     );
     assert_eq!(
-        scalar("mashing.wort[#-2]", &sample),
-        scalar(&format!("mashing.wort[#{}]", rows - 2), &sample)
+        scalar("preheating.tension[#-2]", &sample),
+        scalar(&format!("preheating.tension[#{}]", rows - 2), &sample)
     );
     // Past the first row, as past the last with `#99`, the sample has no row:
     // absent in it, as a row another sample may hold is (a filter over
     // samples of unequal tables ran on the others), and a mistake only where
     // no sample holds it.
     assert!(matches!(
-        resolve("mashing.wort[#-99]", &sample),
+        resolve("preheating.tension[#-99]", &sample),
         Ok(Resolution::Scalar(None))
     ));
-    let past = fields::held_nowhere(&fields::parse("mashing.wort[#-99]").unwrap(), &[&sample])
-        .expect("no sample holds it");
+    let past = fields::held_nowhere(
+        &fields::parse("preheating.tension[#-99]").unwrap(),
+        &[&sample],
+    )
+    .expect("no sample holds it");
     assert!(past.to_string().contains("no row #-99"), "{past}");
-    assert!(fields::parse("mashing.wort[#-0]").is_err());
+    assert!(fields::parse("preheating.tension[#-0]").is_err());
 }
 
 #[test]
 fn an_ordinal_path_cannot_be_serialized() {
     // A position names a different row as soon as one is inserted, and this is
     // the one place field paths are written.
-    let field = fields::parse("mashing.wort[#3]").unwrap();
+    let field = fields::parse("preheating.tension[#3]").unwrap();
     assert!(fields::serialize(&field).is_err());
-    let by_index = fields::parse("mashing.wort[78.5]").unwrap();
-    assert_eq!(fields::serialize(&by_index).unwrap(), "mashing.wort[78.5]");
+    let by_index = fields::parse("preheating.tension[78.5]").unwrap();
+    assert_eq!(
+        fields::serialize(&by_index).unwrap(),
+        "preheating.tension[78.5]"
+    );
 }
 
 #[test]
 fn column_without_index_is_an_error() {
     // Not the first row.
-    let error = fields::parse("mashing.wort").unwrap_err();
+    let error = fields::parse("preheating.tension").unwrap_err();
     assert!(
         matches!(error, FieldError::MissingIndex { .. }),
         "{error:?}"
@@ -273,15 +291,18 @@ fn column_without_index_is_an_error() {
 
 #[test]
 fn a_table_name_needs_a_column_and_index() {
-    let error = resolve("mashing", &cask()).unwrap_err();
+    let error = resolve("preheating", &slab()).unwrap_err();
     let FieldError::TableNeedsCell { table, columns } = &error else {
         panic!("{error:?}");
     };
-    assert_eq!(table.as_str(), "mashing");
-    assert!(columns.iter().any(|column| column == "wort"));
+    assert_eq!(table.as_str(), "preheating");
+    assert!(columns.iter().any(|column| column == "tension"));
     let message = error.to_string();
     assert!(message.contains("names a table"), "{message}");
-    assert!(message.contains("mashing.<column>[<index>]"), "{message}");
+    assert!(
+        message.contains("preheating.<column>[<index>]"),
+        "{message}"
+    );
 }
 
 // -------------------------------------------------- absent against unknown
@@ -289,15 +310,15 @@ fn a_table_name_needs_a_column_and_index() {
 #[test]
 fn absent_property_resolves_to_none() {
     // When other samples have it: absent is data, and a query may ask about it.
-    let dosed = cask();
+    let doped = slab();
     let mut undosed = Sample::new();
     undosed
-        .set_property(id("foam"), Property::stored(number(2.0)))
+        .set_property(id("wear"), Property::stored(number(2.0)))
         .unwrap();
-    let collection = [dosed, undosed];
+    let collection = [doped, undosed];
     let vocabulary = fields::vocabulary_of(&refs(&collection));
 
-    let field = fields::parse("malt").unwrap();
+    let field = fields::parse("diameter").unwrap();
     let resolved = fields::resolve(&field, &subject(&collection[1], &vocabulary)).unwrap();
     assert_eq!(resolved, Resolution::Scalar(None));
 }
@@ -306,7 +327,7 @@ fn absent_property_resolves_to_none() {
 fn unknown_property_is_an_error() {
     // When no sample has it. An empty result is a legitimate answer to a
     // well-formed question and a dangerous one to a malformed question.
-    let error = resolve("nonexistent", &cask()).unwrap_err();
+    let error = resolve("nonexistent", &slab()).unwrap_err();
     assert!(
         matches!(error, FieldError::UnknownProperty { .. }),
         "{error:?}"
@@ -320,17 +341,17 @@ fn absent_and_unknown_are_decided_by_the_vocabulary() {
     let bare = || {
         let mut sample = Sample::new();
         sample
-            .set_property(id("foam"), Property::stored(number(2.0)))
+            .set_property(id("wear"), Property::stored(number(2.0)))
             .unwrap();
         sample
     };
 
     let alone = [bare()];
     let vocabulary = fields::vocabulary_of(&refs(&alone));
-    let field = fields::parse("malt").unwrap();
+    let field = fields::parse("diameter").unwrap();
     assert!(fields::resolve(&field, &subject(&alone[0], &vocabulary)).is_err());
 
-    let among = [bare(), cask()];
+    let among = [bare(), slab()];
     let vocabulary = fields::vocabulary_of(&refs(&among));
     let resolved = fields::resolve(&field, &subject(&among[0], &vocabulary)).unwrap();
     assert_eq!(resolved, Resolution::Scalar(None));
@@ -338,15 +359,15 @@ fn absent_and_unknown_are_decided_by_the_vocabulary() {
 
 #[test]
 fn unknown_property_suggests_nearest() {
-    let mut sample = cask();
+    let mut sample = slab();
     sample
-        .set_property(id("plato"), Property::stored(number(2.8)))
+        .set_property(id("ductility"), Property::stored(number(2.8)))
         .unwrap();
-    let error = resolve("plto", &sample).unwrap_err();
+    let error = resolve("dutility", &sample).unwrap_err();
     let FieldError::UnknownProperty { suggestion, .. } = &error else {
         panic!("{error:?}");
     };
-    assert_eq!(suggestion.as_deref(), Some("plato"));
+    assert_eq!(suggestion.as_deref(), Some("ductility"));
 }
 
 #[test]
@@ -356,7 +377,7 @@ fn unknown_column_lists_available_columns() {
     let mut table = Table::new(
         id("measurements"),
         vec![id("temperature")],
-        columns(&["temperature", "ph", "srm", "wort"]),
+        columns(&["temperature", "ph", "hrc", "tension"]),
         Vec::new(),
     )
     .unwrap();
@@ -365,7 +386,7 @@ fn unknown_column_lists_available_columns() {
         .unwrap();
     sample.set_table(id("measurements"), table).unwrap();
 
-    let error = resolve("measurements.carbonation_level[20]", &sample).unwrap_err();
+    let error = resolve("measurements.nitridation_level[20]", &sample).unwrap_err();
     let FieldError::UnknownColumn {
         available,
         suggestion,
@@ -374,11 +395,11 @@ fn unknown_column_lists_available_columns() {
     else {
         panic!("{error:?}");
     };
-    assert_eq!(available, &["temperature", "ph", "srm", "wort"]);
+    assert_eq!(available, &["temperature", "ph", "hrc", "tension"]);
     assert_eq!(suggestion.as_deref(), None, "nothing is near enough");
     let message = error.to_string();
     assert!(
-        message.contains("unknown column 'carbonation_level'"),
+        message.contains("unknown column 'nitridation_level'"),
         "{message}"
     );
     assert!(message.contains("in table 'measurements'"), "{message}");
@@ -387,7 +408,7 @@ fn unknown_column_lists_available_columns() {
 #[test]
 fn unknown_channel_lists_the_channels() {
     // Caught at parse: a channel is grammar, and needs no sample.
-    let error = fields::parse("malt.unt").unwrap_err();
+    let error = fields::parse("diameter.unt").unwrap_err();
     let FieldError::UnknownChannel { available, .. } = &error else {
         panic!("{error:?}");
     };
@@ -401,31 +422,15 @@ fn unknown_channel_lists_the_channels() {
 
 /// A spelling that **was** a channel is told what it is called now.
 ///
-/// Read as a table's column instead, `malt.value` answered *a column has one
+/// Read as a table's column instead, `diameter.value` answered *a column has one
 /// cell per row, address one* — nonsense to someone typing what the
 /// documentation said last week. And `uncertainty` is too far from `u` for a
 /// nearest-name suggestion to reach.
-#[test]
-fn a_retired_spelling_is_told_what_it_is_called_now() {
-    for (was, now) in [("value", "v"), ("uncertainty", "u")] {
-        let error = fields::parse(&format!("malt.{was}")).unwrap_err();
-        assert!(
-            matches!(error, FieldError::UnknownChannel { .. }),
-            "{was}: {error:?}"
-        );
-        let said = error.to_string();
-        assert!(
-            said.contains(&format!("'{was}' was renamed '{now}'")),
-            "{said}"
-        );
-    }
-}
-
 // ------------------------------------------------------ statistics and tags
 
 #[test]
 fn a_statistic_resolves_under_stats() {
-    let mean = scalar("foam.stats.mean", &cask()).unwrap();
+    let mean = scalar("wear.stats.mean", &slab()).unwrap();
     let Value::Number(mean) = mean else {
         panic!("{mean:?}")
     };
@@ -435,7 +440,7 @@ fn a_statistic_resolves_under_stats() {
 #[test]
 fn stats_exposes_every_summary_field() {
     // All ten of them, under their own names, unabbreviated.
-    let sample = cask();
+    let sample = slab();
     for name in [
         "count",
         "minimum",
@@ -448,7 +453,7 @@ fn stats_exposes_every_summary_field() {
         "population_stdev",
         "standard_error",
     ] {
-        let path = format!("foam.stats.{name}");
+        let path = format!("wear.stats.{name}");
         assert!(
             scalar(&path, &sample).is_some(),
             "{path} resolved to nothing"
@@ -459,7 +464,7 @@ fn stats_exposes_every_summary_field() {
 #[test]
 fn stats_alone_is_an_error_listing_its_fields() {
     // It names a group, not a value a filter could compare.
-    let error = fields::parse("foam.stats").unwrap_err();
+    let error = fields::parse("wear.stats").unwrap_err();
     let FieldError::UnknownChannel { available, .. } = &error else {
         panic!("{error:?}");
     };
@@ -473,7 +478,7 @@ fn stats_alone_is_an_error_listing_its_fields() {
 #[test]
 fn an_unknown_statistic_is_caught() {
     // `stdev` does not say whether it divides by n or n - 1.
-    let error = fields::parse("foam.stats.stdev").unwrap_err();
+    let error = fields::parse("wear.stats.stdev").unwrap_err();
     let message = error.to_string();
     assert!(message.contains("sample_stdev"), "{message}");
     assert!(message.contains("population_stdev"), "{message}");
@@ -483,13 +488,13 @@ fn an_unknown_statistic_is_caught() {
 fn stats_is_absent_without_observations() {
     // A single stored value has nothing to summarize: absent, distinct from a
     // misspelled channel.
-    assert_eq!(scalar("malt.stats.median", &cask()), None);
+    assert_eq!(scalar("diameter.stats.median", &slab()), None);
 }
 
 #[test]
 fn a_failing_formula_is_an_error_not_an_absence() {
     // Discarding it would make a broken model look like a collection of
-    // unmeasured casks.
+    // unmeasured slabs.
     struct Raising;
     impl Compute for Raising {
         fn compute(&self) -> Result<Value, ComputeError> {
@@ -507,19 +512,19 @@ fn a_failing_formula_is_an_error_not_an_absence() {
 
     let mut sample = Sample::new();
     sample
-        .set_property(id("plato"), Property::computed(Rc::new(Raising)))
+        .set_property(id("ductility"), Property::computed(Rc::new(Raising)))
         .unwrap();
     let vocabulary = Vocabulary::of(&sample);
-    let field = fields::parse("plato").unwrap();
+    let field = fields::parse("ductility").unwrap();
     let error = fields::resolve(&field, &subject(&sample, &vocabulary)).unwrap_err();
     assert!(matches!(error, FieldError::Compute { .. }), "{error:?}");
-    assert!(error.to_string().contains("plato"), "{error}");
+    assert!(error.to_string().contains("ductility"), "{error}");
 }
 
 #[test]
 fn tags_resolve_to_their_own_shape() {
     // Not a joined string, and not a refusal.
-    let resolved = resolve("tags", &cask()).unwrap();
+    let resolved = resolve("tags", &slab()).unwrap();
     assert_eq!(
         resolved,
         Resolution::Tags(vec![id("reference"), id("cold_crashed")])
@@ -529,7 +534,7 @@ fn tags_resolve_to_their_own_shape() {
 #[test]
 fn an_attribute_takes_no_channel() {
     // Refused at resolution, where the kind is known, saying what `cold_crashed` is.
-    let sample = cask();
+    let sample = slab();
     let field = fields::parse("cold_crashed.u").unwrap();
     let vocabulary = Vocabulary::of(&sample);
     let error = fields::resolve(&field, &subject(&sample, &vocabulary)).unwrap_err();
@@ -540,22 +545,15 @@ fn an_attribute_takes_no_channel() {
 
 /// A channel has one spelling, and the long one is not read.
 ///
-/// `malt.value` and `malt.v` used to be the same address. Two ways of writing
+/// `diameter.value` and `diameter.v` used to be the same address. Two ways of writing
 /// one thing is what the file format and the grammar both stopped doing.
 #[test]
 fn a_channel_has_one_spelling() {
-    let sample = cask();
-    assert_eq!(scalar("malt.v", &sample), Some(number(12.5)));
-    assert_eq!(scalar("malt.u", &sample), Some(number(0.05)));
-    for refused in ["malt.value", "malt.uncertainty"] {
-        let error = fields::parse(refused).unwrap_err();
-        let FieldError::UnknownChannel { available, .. } = &error else {
-            panic!("{refused}: {error:?}");
-        };
-        // And what it offers instead is what it accepts.
-        assert!(available.iter().any(|c| c == "v"), "{available:?}");
-        assert!(available.iter().any(|c| c == "u"), "{available:?}");
-        assert!(!available.iter().any(|c| c == "value"), "{available:?}");
+    let sample = slab();
+    assert_eq!(scalar("diameter.v", &sample), Some(number(12.5)));
+    assert_eq!(scalar("diameter.u", &sample), Some(number(0.05)));
+    for refused in ["diameter.value", "diameter.uncertainty"] {
+        assert!(fields::parse(refused).is_err(), "{refused}");
     }
 }
 
@@ -563,16 +561,19 @@ fn a_channel_has_one_spelling() {
 fn unit_has_no_single_letter_alias() {
     // `u` is the first letter of both, and it goes to uncertainty, following
     // the GUM's u(x).
-    let sample = cask();
-    assert_eq!(scalar("malt.u", &sample), Some(number(0.05)));
-    assert_ne!(scalar("malt.u", &sample), scalar("malt.unit", &sample));
+    let sample = slab();
+    assert_eq!(scalar("diameter.u", &sample), Some(number(0.05)));
+    assert_ne!(
+        scalar("diameter.u", &sample),
+        scalar("diameter.unit", &sample)
+    );
 }
 
 #[test]
 fn reserved_fields_resolve() {
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
-    let path = PathBuf::from("/data/samples/keg-42.md");
+    let path = PathBuf::from("/data/samples/billet-42.md");
     let located = Subject {
         sample: &sample,
         path: Some(&path),
@@ -584,15 +585,18 @@ fn reserved_fields_resolve() {
         Resolution::Scalar(value) => value,
         other => panic!("{other:?}"),
     };
-    assert_eq!(read("name"), Some(Value::text("Keg 42")));
-    assert_eq!(read("path"), Some(Value::text("/data/samples/keg-42.md")));
-    assert_eq!(read("filename"), Some(Value::text("keg-42.md")));
+    assert_eq!(read("name"), Some(Value::text("Billet 42")));
+    assert_eq!(
+        read("path"),
+        Some(Value::text("/data/samples/billet-42.md"))
+    );
+    assert_eq!(read("filename"), Some(Value::text("billet-42.md")));
 }
 
 #[test]
 fn path_and_filename_come_from_the_subject() {
     // A sample never written has no path: absent, not an invented empty string.
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let unwritten = subject(&sample, &vocabulary);
     let read = |text: &str| fields::resolve(&fields::parse(text).unwrap(), &unwritten).unwrap();
@@ -607,9 +611,9 @@ fn available_enumerates_every_cell() {
     // Eleven indexes by four columns yields forty-four fields.
     let mut sample = Sample::new();
     let mut table = Table::new(
-        id("boil"),
+        id("soak"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity", "ph"]),
+        columns(&["temperature", "tension", "rigidity", "ph"]),
         Vec::new(),
     )
     .unwrap();
@@ -621,7 +625,7 @@ fn available_enumerates_every_cell() {
             )])
             .unwrap();
     }
-    sample.set_table(id("boil"), table).unwrap();
+    sample.set_table(id("soak"), table).unwrap();
 
     let cells = fields::available(&sample)
         .into_iter()
@@ -653,7 +657,7 @@ fn the_vocabulary_knows_the_tags_in_use() {
     // this" is answered — the same question as "nobody has this name".
     let mut other = Sample::new();
     other.set_tags(vec![id("cold_crashed"), id("broken")]);
-    let collection = [cask(), other];
+    let collection = [slab(), other];
     let vocabulary = fields::vocabulary_of(&refs(&collection));
     assert_eq!(
         vocabulary.tags(),
@@ -670,7 +674,7 @@ fn the_vocabulary_knows_the_tags_in_use() {
 #[test]
 fn tags_is_enumerated_once_without_channels() {
     // It is an attribute, not a quantity.
-    let listed: Vec<Field> = fields::available(&cask())
+    let listed: Vec<Field> = fields::available(&slab())
         .into_iter()
         .filter(|field| matches!(field, Field::Named { name, .. } if name.as_str() == "tags"))
         .collect();
@@ -688,15 +692,15 @@ fn tags_is_enumerated_once_without_channels() {
 fn with_channel_keeps_the_quantity() {
     // An export reads one column on two channels; re-parsing a string would
     // mean building a path in order to take it apart again.
-    let malt = fields::parse("malt").unwrap();
+    let diameter = fields::parse("diameter").unwrap();
     assert_eq!(
-        fields::with_channel(&malt, Channel::Uncertainty),
-        fields::parse("malt.u").unwrap()
+        fields::with_channel(&diameter, Channel::Uncertainty),
+        fields::parse("diameter.u").unwrap()
     );
-    let cell = fields::parse("mashing.wort[65]").unwrap();
+    let cell = fields::parse("preheating.tension[65]").unwrap();
     assert_eq!(
         fields::with_channel(&cell, Channel::Unit),
-        fields::parse("mashing.wort[65].unit").unwrap()
+        fields::parse("preheating.tension[65].unit").unwrap()
     );
     // A reserved field has no channel to set.
     let name = fields::parse("name").unwrap();
@@ -707,9 +711,9 @@ fn with_channel_keeps_the_quantity() {
 fn a_parsed_field_equals_an_enumerated_one() {
     // One has seen a sample and the other has not; the same name is the same
     // field, or the two property tests below compare nothing.
-    let sample = cask();
+    let sample = slab();
     let listed = fields::available(&sample);
-    for path in ["cold_crashed", "malt", "tags", "name"] {
+    for path in ["cold_crashed", "diameter", "tags", "name"] {
         let parsed = fields::parse(path).unwrap();
         assert!(
             listed.contains(&parsed),
@@ -720,7 +724,7 @@ fn a_parsed_field_equals_an_enumerated_one() {
 
 #[test]
 fn enumeration_order_is_deterministic() {
-    let sample = cask();
+    let sample = slab();
     let first: Vec<String> = fields::available(&sample)
         .iter()
         .map(fields::describe)
@@ -731,16 +735,16 @@ fn enumeration_order_is_deterministic() {
         .collect();
     assert_eq!(first, again);
     // Declaration order: properties before attributes before cells.
-    let malt = first.iter().position(|f| f == "malt").unwrap();
+    let diameter = first.iter().position(|f| f == "diameter").unwrap();
     let cold_crashed = first.iter().position(|f| f == "cold_crashed").unwrap();
     let cell = first.iter().position(|f| f.contains('[')).unwrap();
-    assert!(malt < cold_crashed && cold_crashed < cell, "{first:?}");
+    assert!(diameter < cold_crashed && cold_crashed < cell, "{first:?}");
 }
 
 #[test]
 fn every_available_field_resolves() {
     // One direction of the pair: nothing is advertised and broken.
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     // `state` resolves where its reader read the states, as every caller that
     // offers it does.
@@ -762,7 +766,7 @@ fn every_available_field_resolves() {
 fn every_resolvable_field_is_available() {
     // The other direction: nothing is reachable and undiscoverable. Every
     // enumerated path is re-parsed and must come back as the same field.
-    let sample = cask();
+    let sample = slab();
     let listed = fields::available(&sample);
     for field in &listed {
         let described = fields::describe(field);
@@ -779,57 +783,57 @@ fn every_resolvable_field_is_available() {
 
 #[test]
 fn completion_offers_channels_after_the_separator() {
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let here = subject(&sample, &vocabulary);
 
-    let channels = fields::complete("malt.", &here);
-    assert!(channels.contains(&"malt.v".to_string()), "{channels:?}");
-    assert!(channels.contains(&"malt.u".to_string()), "{channels:?}");
+    let channels = fields::complete("diameter.", &here);
+    assert!(channels.contains(&"diameter.v".to_string()), "{channels:?}");
+    assert!(channels.contains(&"diameter.u".to_string()), "{channels:?}");
     assert!(
-        channels.contains(&"malt.symbol".to_string()),
+        channels.contains(&"diameter.symbol".to_string()),
         "{channels:?}"
     );
 }
 
 #[test]
 fn an_exact_quantity_completion_opens_its_channels() {
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let here = subject(&sample, &vocabulary);
 
-    let channels = fields::complete("malt", &here);
-    assert!(channels.contains(&"malt.v".to_string()), "{channels:?}");
-    assert!(channels.contains(&"malt.u".to_string()), "{channels:?}");
+    let channels = fields::complete("diameter", &here);
+    assert!(channels.contains(&"diameter.v".to_string()), "{channels:?}");
+    assert!(channels.contains(&"diameter.u".to_string()), "{channels:?}");
     assert!(
-        !channels.contains(&"malt.stats.".to_string()),
+        !channels.contains(&"diameter.stats.".to_string()),
         "{channels:?}"
     );
 }
 
 #[test]
 fn completion_walks_a_table_path_segment_by_segment() {
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let here = subject(&sample, &vocabulary);
 
     assert_eq!(
-        fields::complete("mash", &here),
-        vec!["mashing.".to_string()]
+        fields::complete("preheat", &here),
+        vec!["preheating.".to_string()]
     );
-    let columns = fields::complete("mashing.", &here);
+    let columns = fields::complete("preheating.", &here);
     assert!(
-        columns.contains(&"mashing.wort[".to_string()),
+        columns.contains(&"preheating.tension[".to_string()),
         "{columns:?}"
     );
-    let indexes = fields::complete("mashing.wort[", &here);
+    let indexes = fields::complete("preheating.tension[", &here);
     assert!(
-        indexes.contains(&"mashing.wort[65]".to_string()),
+        indexes.contains(&"preheating.tension[65]".to_string()),
         "{indexes:?}"
     );
-    let channels = fields::complete("mashing.wort[65].", &here);
+    let channels = fields::complete("preheating.tension[65].", &here);
     assert!(
-        channels.contains(&"mashing.wort[65].u".to_string()),
+        channels.contains(&"preheating.tension[65].u".to_string()),
         "{channels:?}"
     );
 }
@@ -838,10 +842,10 @@ fn completion_walks_a_table_path_segment_by_segment() {
 fn a_strong_single_match_is_offered_directly() {
     // Without waiting for the separator: the point is to shorten the path to a
     // name, not to enforce a ceremony.
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let here = subject(&sample, &vocabulary);
-    assert_eq!(fields::complete("fo", &here), vec!["foam".to_string()]);
+    assert_eq!(fields::complete("we", &here), vec!["wear".to_string()]);
 }
 
 #[test]
@@ -868,52 +872,55 @@ fn an_exact_completion_match_wins_over_longer_prefixes() {
 
 #[test]
 fn completion_expands_stats_one_level_at_a_time() {
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let here = subject(&sample, &vocabulary);
 
     assert_eq!(
-        fields::complete("foam.stats", &here),
-        vec!["foam.stats.".to_string()]
+        fields::complete("wear.stats", &here),
+        vec!["wear.stats.".to_string()]
     );
-    let statistics = fields::complete("foam.stats.", &here);
+    let statistics = fields::complete("wear.stats.", &here);
     assert_eq!(statistics.len(), 10, "{statistics:?}");
-    assert!(statistics.contains(&"foam.stats.mean".to_string()));
+    assert!(statistics.contains(&"wear.stats.mean".to_string()));
     assert!(!statistics.iter().any(|name| name.contains('<')));
 }
 
 #[test]
 fn completion_offers_stats_only_for_readings() {
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let here = subject(&sample, &vocabulary);
 
-    let stored = fields::complete("malt", &here);
-    assert!(!stored.contains(&"malt.stats.".to_string()), "{stored:?}");
-    assert!(fields::complete("malt.stats", &here).is_empty());
-
-    let measured = fields::complete("foam", &here);
+    let stored = fields::complete("diameter", &here);
     assert!(
-        measured.contains(&"foam.stats.".to_string()),
+        !stored.contains(&"diameter.stats.".to_string()),
+        "{stored:?}"
+    );
+    assert!(fields::complete("diameter.stats", &here).is_empty());
+
+    let measured = fields::complete("wear", &here);
+    assert!(
+        measured.contains(&"wear.stats.".to_string()),
         "{measured:?}"
     );
 }
 
 #[test]
 fn completion_finds_table_cells_by_unqualified_column() {
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     let here = subject(&sample, &vocabulary);
 
     let folded = fields::complete("", &here);
     assert!(!folded.iter().any(|name| name.contains('[')), "{folded:?}");
 
-    let cells = fields::complete("wo", &here);
+    let cells = fields::complete("tens", &here);
     assert_eq!(
         cells,
         vec![
-            "mashing.wort[65]".to_string(),
-            "mashing.wort[78.5]".to_string(),
+            "preheating.tension[65]".to_string(),
+            "preheating.tension[78.5]".to_string(),
         ]
     );
 }
@@ -923,7 +930,7 @@ fn the_vocabulary_holds_every_available_name() {
     // `available` lists a field, so the vocabulary knows its name: otherwise a
     // column a caller *can* ask for is reported as a name nobody has, which
     // produced "unknown field 'tags'; did you mean 'tags'?".
-    let sample = cask();
+    let sample = slab();
     let vocabulary = Vocabulary::of(&sample);
     for field in fields::available(&sample) {
         if let Field::Named { name, .. } = &field {
@@ -977,22 +984,22 @@ fn completion_offers_list_positions_after_the_bracket() {
 #[test]
 fn an_index_a_sample_lacks_is_absent() {
     assert_eq!(
-        resolve("mashing.wort[300]", &cask()).unwrap(),
+        resolve("preheating.tension[300]", &slab()).unwrap(),
         Resolution::Scalar(None)
     );
 }
 
 #[test]
 fn an_index_no_sample_holds_names_the_nearest() {
-    let sample = cask();
-    let missed = fields::parse("mashing.wort[80]").unwrap();
+    let sample = slab();
+    let missed = fields::parse("preheating.tension[80]").unwrap();
     let error = fields::held_nowhere(&missed, &[&sample]).unwrap();
     let FieldError::UnknownIndex { per_column, .. } = &error else {
         panic!("{error:?}");
     };
     assert_eq!(per_column[0].nearest, Some(number(78.5)));
     assert!(error.to_string().contains("78.5"), "{error}");
-    let held = fields::parse("mashing.wort[78.5]").unwrap();
+    let held = fields::parse("preheating.tension[78.5]").unwrap();
     assert!(fields::held_nowhere(&held, &[&sample]).is_none());
 }
 
@@ -1044,12 +1051,12 @@ fn a_list_position_no_sample_holds_is_named() {
 fn readings_resolve_as_the_list_they_are() {
     // The evidence itself, where `stats` answers its summary. Answering the
     // mean here would be the tool replying to a question nobody put to it.
-    let sample = cask();
-    let Resolution::List(values) = resolve("foam.readings", &sample).unwrap() else {
+    let sample = slab();
+    let Resolution::List(values) = resolve("wear.readings", &sample).unwrap() else {
         panic!("readings are a list");
     };
     assert!(values.len() > 1, "{values:?}");
-    let mean = scalar("foam.stats.mean", &sample).unwrap();
+    let mean = scalar("wear.stats.mean", &sample).unwrap();
     assert!(
         !values
             .iter()
@@ -1062,7 +1069,7 @@ fn readings_resolve_as_the_list_they_are() {
 fn readings_are_empty_on_a_stored_value() {
     // Absence, as `stats` answers there — not an error, and above all not the
     // "column missing its index" this used to be diagnosed as.
-    let Resolution::List(values) = resolve("malt.readings", &cask()).unwrap() else {
+    let Resolution::List(values) = resolve("diameter.readings", &slab()).unwrap() else {
         panic!("readings are a list even when there are none");
     };
     assert!(values.is_empty(), "{values:?}");
@@ -1077,7 +1084,7 @@ fn a_cell_unit_is_its_column_unit_unless_it_overrides() {
     let mut declared = columns(&["temperature", "f"]);
     declared[&id("f")] = ColumnMeta {
         presentation: Presentation {
-            unit: Some("brix".to_string()),
+            unit: Some("porosity".to_string()),
             symbol: None,
             precision: None,
         },
@@ -1103,17 +1110,20 @@ fn a_cell_unit_is_its_column_unit_unless_it_overrides() {
         ])
         .unwrap();
     sample.set_table(id("m"), table).unwrap();
-    assert_eq!(scalar("m.f[20].unit", &sample), Some(Value::text("brix")));
+    assert_eq!(
+        scalar("m.f[20].unit", &sample),
+        Some(Value::text("porosity"))
+    );
     assert_eq!(scalar("m.f[30].unit", &sample), Some(Value::text("ppm")));
 }
 
 #[test]
 fn a_name_and_a_word_are_no_channel_or_a_column_without_its_row() {
-    // `abv.x` was told it named a column, beside a quantity `abv`.
-    let error = fields::parse("abv.x").unwrap_err().to_string();
+    // `modulus.x` was told it named a column, beside a quantity `modulus`.
+    let error = fields::parse("modulus.x").unwrap_err().to_string();
     assert!(
-        error.contains("if abv is a quantity, x is no channel of it")
-            && error.contains("abv.x[<index>]"),
+        error.contains("if modulus is a property, x is no channel of it")
+            && error.contains("modulus.x[<index>]"),
         "{error}"
     );
 }

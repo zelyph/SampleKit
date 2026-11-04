@@ -121,7 +121,7 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
     let unloadable_said = "\n  .samplekitrc does not load as it stands, and is kept as it is: \
                            repair it,\n  or every command reads the project without it";
     if missing.is_empty() && environment.is_none() {
-        outln!("this project is already set up — every file init writes is here\n");
+        outln!("nothing to change — this project is set up, every file init writes is here\n");
         for (path, what, note) in &present {
             outln!("  {:<26} {what}", shown_step(path, &root));
             if let Some(note) = note {
@@ -137,28 +137,43 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
         if unloadable {
             outln!("{unloadable_said}");
         }
-        outln!("\n  {:<26} {bridge}", "completion");
-        outln!(
-            "\n  samplekit status {}/    what is not current, and why",
-            display_relative(&root.join("samples"), &root)
-        );
+        outln!("\n  {:<26} {bridge}", "completion, by hand");
+        // Where this project's samples are: `samples/` was named in a project
+        // keeping them elsewhere.
+        let folder = samplekit::config::project_config::load_for(&root)
+            .ok()
+            .flatten()
+            .and_then(|config| samplekit::config::discovery::samples_of_project(&config).ok())
+            .and_then(|paths| {
+                paths
+                    .first()
+                    .and_then(|path| path.parent())
+                    .map(Path::to_path_buf)
+            })
+            .unwrap_or_else(|| root.clone());
+        let canonical =
+            |path: &Path| dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        let named = canonical(&folder)
+            .strip_prefix(canonical(&root))
+            .map(|relative| relative.display().to_string())
+            .unwrap_or_else(|_| display_relative(&folder, &root));
+        let named = if named.is_empty() || named == "." {
+            ".".to_string()
+        } else {
+            folder_said(&named)
+        };
+        outln!("\n  samplekit {named} status    what is not current, and why");
         return Ok(());
     }
 
+    // What and where, as every preview's first line says it.
     outln!(
-        "{}{} {}\n",
+        "{}init · {}\n",
         if asking { "\n" } else { "" },
-        if options.write {
-            "setting up"
-        } else if asking {
-            "will set up"
-        } else {
-            "would set up"
-        },
         if root == Path::new(".") {
             "here".to_string()
         } else {
-            root.display().to_string()
+            relative_to_here(&root)
         }
     );
     for (path, what, _) in &missing {
@@ -175,8 +190,9 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
     if let Some(step) = &environment {
         outln!("  {:<26} {}", ".venv/", step.what());
     }
-    // A step like the others, so a preview says everything `init` will do.
-    outln!("  {:<26} {bridge}", "completion");
+    // Said with the preview, so that it says everything setting up takes, and
+    // apart from what is written: listed among the files, it read as one.
+    outln!("\n  {:<26} {bridge}", "completion, by hand");
     // What --write would refuse is said in the preview, not found by it.
     if let Some(directory) = &plan.blocked {
         outln!(
@@ -188,29 +204,22 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
         outln!("{unloadable_said}");
     }
 
-    // At a terminal the answer is the consent `--write` otherwise gives.
-    let write = if asking {
-        plan.blocked.is_none() && confirm("\nset it up? [Y/n] ")
-    } else {
-        options.write
-    };
+    // Asked as every preview asks, off a terminal too — `yes |` answers — and
+    // `--write` answers beforehand.
+    let write = options.write
+        || (plan.blocked.is_none() && {
+            outln!();
+            super::ask("apply these changes?")
+        });
     if !write {
-        if asking {
-            outln!("\nnothing written");
-        } else {
-            outln!("\n{}", advice("nothing written — pass --write to apply"));
-            outln!(
-                "{}",
-                advice("samplekit --help lists the commands that work on what this writes")
-            );
-        }
+        outln!("nothing written");
         return Ok(());
     }
 
     // A write is a snapshot in the project's history. The command line takes
     // one where `--write` is typed; a yes at the terminal is the same consent
     // without the word, and wrote a project with no history.
-    let history = asking.then(|| {
+    let history = (!options.write).then(|| {
         let (writing, failures) =
             samplekit::config::version_control::before_writing(std::slice::from_ref(&root));
         history_failures(failures);
@@ -248,14 +257,17 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
             }
         })
     })?;
-    outln!(
-        "\n{} written",
-        counted_as(
-            applied.written.iter().filter(|path| !path.is_dir()).count(),
-            "file",
-            "files"
-        )
-    );
+    // In the words every command that writes uses: the count, then the paths.
+    let files: Vec<String> = applied
+        .written
+        .iter()
+        .filter(|path| !path.is_dir())
+        .map(|path| display_relative(path, &root))
+        .collect();
+    outln!();
+    for line in written_lines(&files) {
+        outln!("{line}");
+    }
     // The environment last: it takes a minute, and everything else is written
     // whatever it gives.
     if let Some(step) = &applied.environment {
@@ -277,10 +289,18 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
     if root != Path::new(".") {
         first.push(format!("cd {}", root.display()));
     }
-    if !matches!(
-        project_setup::environment(&root),
-        project_setup::Environment::Ready(_)
-    ) {
+    // Without a model nothing is computed, and reading and writing samples
+    // need no environment: none is asked for first.
+    let computes = samplekit::config::project_config::load_for(&root)
+        .ok()
+        .flatten()
+        .is_none_or(|config| config.model().is_some());
+    if computes
+        && !matches!(
+            project_setup::environment(&root),
+            project_setup::Environment::Ready(_)
+        )
+    {
         first.push(format!(
             "an environment with samplekit {} in it, where computing runs — samplekit init offers it",
             project_setup::python_spelling(env!("CARGO_PKG_VERSION"))
@@ -330,22 +350,22 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
                 },
             ),
             (
-                format!("samplekit new S-01 --into {samples} --write"),
+                format!("samplekit {samples} new S-01 --write"),
                 "a first sample, named by its file",
             ),
             (
-                format!("samplekit set {samples}S-01.md malt=12.4 --write"),
-                "a value, written as a quantity once the project declares it",
+                format!("samplekit {samples}S-01.md set width=12.5 --write"),
+                "a value, written as a property once the project declares it",
             ),
             (
-                format!("samplekit compute {samples} --write"),
+                format!("samplekit {samples} compute --write"),
                 "run the model, once it derives something",
             ),
         ];
         // Without a model, a value is typed: nothing is declared or computed.
         if !answers.has_model() {
             tried.retain(|(command, _)| {
-                !command.starts_with("$EDITOR") && !command.starts_with("samplekit compute")
+                !command.starts_with("$EDITOR") && !command.ends_with(" compute --write")
             });
             tried[0].1 = "the TUI: N a first sample, P the configuration";
         }
@@ -355,12 +375,20 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
             .max()
             .unwrap_or(0)
             + 3;
-        outln!("\nthen, in this order");
+        // *then* follows a *first*; alone, the steps are simply in order.
+        outln!(
+            "\n{}",
+            if first.is_empty() {
+                "in this order"
+            } else {
+                "then, in this order"
+            }
+        );
         for (command, what) in &tried {
             outln!("  {command:<width$}{what}");
         }
         outln!(
-            "\n  samplekit init --example ANOTHER-FOLDER   the example project, one formula of every kind, to read beside yours"
+            "\n  samplekit ANOTHER-FOLDER init --example   the example project, one formula of every kind, to read beside yours"
         );
         return Ok(());
     }
@@ -368,7 +396,7 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
     let tried = [
         (format!("samplekit {samples}"), "what the example holds"),
         (
-            format!("samplekit compute {samples} --write"),
+            format!("samplekit {samples} compute --write"),
             "run the model, and write what it gives",
         ),
         (
@@ -376,7 +404,7 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
             "a declared table, now that it has values",
         ),
         (
-            format!("samplekit status {samples}"),
+            format!("samplekit {samples} status"),
             "what is not current, and why",
         ),
     ];
@@ -386,15 +414,15 @@ pub(super) fn init_project(directory: Option<&Path>, told: &Told, options: &Opti
             "add a sample, from what the project knows",
         ),
         (
-            "samplekit set PATH field=value".to_string(),
+            "samplekit PATH set field=value".to_string(),
             "change a value, previewed before it writes",
         ),
         (
-            "samplekit tag add TAG PATH".to_string(),
+            "samplekit PATH tag add TAG".to_string(),
             "tag a selection, and filter on it after",
         ),
         (
-            format!("samplekit validate {samples}"),
+            format!("samplekit {samples} validate"),
             "what is wrong, before it reaches a figure",
         ),
         (
@@ -514,17 +542,6 @@ fn ask_model_path(root: &Path) -> Option<PathBuf> {
             Ok(path) => return Some(path),
             Err(reason) => outln!("  {reason}"),
         }
-    }
-}
-
-/// A yes or no at the terminal, yes by default.
-fn confirm(asked: &str) -> bool {
-    print!("{asked}");
-    let _ = io::stdout().flush();
-    let mut line = String::new();
-    match io::stdin().read_line(&mut line) {
-        Ok(0) | Err(_) => false,
-        Ok(_) => matches!(line.trim().to_lowercase().as_str(), "" | "y" | "yes"),
     }
 }
 

@@ -6,7 +6,7 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use crate::config::model_runtime::find_interpreter;
+use crate::config::model_runtime::venv_python;
 use crate::config::project_config;
 use crate::format::document::{DocumentError, replace_if_unchanged};
 
@@ -28,9 +28,9 @@ pub const TEMPLATE: [Template; 5] = [
         what: "the project: units, precisions, a query, a profile, an export",
     },
     Template {
-        path: "model/brew.py",
-        contents: include_str!("project_template/brew.py"),
-        what: "the model of a brew: 9 quantities, a table, one of each kind of formula",
+        path: "model/specimen.py",
+        contents: include_str!("project_template/specimen.py"),
+        what: "the model of a tensile specimen: 7 properties, a table, one of each kind of formula",
     },
     Template {
         path: "model/helpers/__init__.py",
@@ -38,14 +38,14 @@ pub const TEMPLATE: [Template; 5] = [
         what: "the helpers package, so the model imports one name from one place",
     },
     Template {
-        path: "model/helpers/hydrometer.py",
-        contents: include_str!("project_template/helpers_hydrometer.py"),
-        what: "what a hydrometer gives, and least squares, with nothing to install",
+        path: "model/helpers/measuring.py",
+        contents: include_str!("project_template/helpers_measuring.py"),
+        what: "what a calliper gives, and least squares, with nothing to install",
     },
     Template {
         path: "samples/EXAMPLE.md",
         contents: include_str!("project_template/sample.md"),
-        what: "one brew, measured values only",
+        what: "one specimen, measured values only",
     },
 ];
 
@@ -163,35 +163,40 @@ pub enum Environment {
     Missing,
     /// `root/.venv/`, without samplekit.
     WithoutSamplekit,
-    /// One with samplekit, here or above: nothing to do.
+    /// `root/.venv/`, with samplekit: nothing to do.
     Ready(PathBuf),
 }
 
-/// The environment `root` would compute in.
+/// The environment `root` would compute in: its own `.venv/`, the one the
+/// configuration `init` writes names. One in a folder above is not looked at.
 pub fn environment(root: &Path) -> Environment {
-    let Some(python) = find_interpreter(root) else {
+    let venv = root.join(".venv");
+    if !venv_python(&venv).is_file() {
         return Environment::Missing;
-    };
-    // `.venv/bin/python`: the environment is two levels up.
-    let Some(venv) = python.parent().and_then(Path::parent) else {
-        return Environment::Missing;
-    };
-    if has_samplekit(venv) {
-        return Environment::Ready(venv.to_path_buf());
     }
-    let here = dunce::canonicalize(root.join(".venv")).ok();
-    if here.as_deref() == Some(venv) {
-        Environment::WithoutSamplekit
+    let venv = dunce::canonicalize(&venv).unwrap_or(venv);
+    if has_samplekit(&venv) {
+        Environment::Ready(venv)
     } else {
-        // One above without samplekit is not this project's to change.
-        Environment::Missing
+        Environment::WithoutSamplekit
     }
 }
 
 /// Whether the environment at `venv` holds the samplekit package, read from
 /// its `site-packages` rather than by starting its Python.
 fn has_samplekit(venv: &Path) -> bool {
-    let holds = |site: PathBuf| site.join("samplekit").join("__init__.py").is_file();
+    // The package's folder, or its record: an editable install, `maturin
+    // develop`'s or `pip install -e`'s, has no folder there, and was said
+    // missing just after `init` installed it.
+    let holds = |site: PathBuf| {
+        site.join("samplekit").join("__init__.py").is_file()
+            || std::fs::read_dir(&site).is_ok_and(|entries| {
+                entries.flatten().any(|entry| {
+                    let name = entry.file_name().to_string_lossy().to_lowercase();
+                    name.starts_with("samplekit-") && name.ends_with(".dist-info")
+                })
+            })
+    };
     if holds(venv.join("Lib").join("site-packages")) {
         return true;
     }
@@ -243,7 +248,7 @@ impl Question {
                 ),
                 (
                     "the example project",
-                    "a working project to learn from, a brew as in the demo: a model with \
+                    "a working project to learn from, a tensile test as in the demo: a model with \
                      one formula of each kind, and a sample it computes"
                         .to_string(),
                 ),
@@ -764,10 +769,57 @@ pub fn make_environment(root: &Path, step: &Step) -> Result<String, String> {
             &package,
         ])
         .output();
+    // From the folder the command runs in, where that is the project; whole
+    // otherwise: the demo's environment, said `.venv/bin/python` beside a
+    // step of it, was no file there.
+    let here = std::env::current_dir().ok();
+    let shown = match here.as_deref() {
+        Some(here)
+            if root.as_os_str().is_empty()
+                || root == Path::new(".")
+                || std::fs::canonicalize(root).ok().as_deref() == Some(here) =>
+        {
+            python.strip_prefix(root).unwrap_or(&python).to_path_buf()
+        }
+        _ => std::path::absolute(&python).unwrap_or_else(|_| python.clone()),
+    };
     let by_hand = format!(
         "install it by hand: {} -m pip install {package}",
-        python.strip_prefix(root).unwrap_or(&python).display()
+        shown.display()
     );
+    // An environment uv made holds no pip: uv installs into it, where it is.
+    let without_pip = matches!(&installed, Ok(output)
+        if !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("No module named pip"));
+    if without_pip {
+        let by_uv = format!("uv pip install --python {} {package}", shown.display());
+        let Some(uv) = on_path("uv") else {
+            return Err(format!(
+                "samplekit was not installed: .venv/ holds no pip, as an environment uv made \
+                 does not\n  install it by hand: {by_uv}"
+            ));
+        };
+        let installed = std::process::Command::new(uv)
+            .args(["pip", "install", "--quiet", "--python"])
+            .arg(&python)
+            .arg(&package)
+            .output();
+        return match installed {
+            Ok(output) if output.status.success() => Ok(format!(
+                "samplekit {} installed in .venv/ by uv",
+                python_spelling(env!("CARGO_PKG_VERSION"))
+            )),
+            Ok(output) => {
+                let reason = last_line(&output.stderr).unwrap_or_else(|| "uv failed".to_string());
+                Err(format!(
+                    "samplekit was not installed: {reason}\n  install it by hand: {by_uv}"
+                ))
+            }
+            Err(error) => Err(format!(
+                "samplekit was not installed: {error}\n  install it by hand: {by_uv}"
+            )),
+        };
+    }
     match installed {
         Ok(output) if output.status.success() => Ok(format!(
             "samplekit {} installed in .venv/",
@@ -781,6 +833,18 @@ pub fn make_environment(root: &Path, step: &Step) -> Result<String, String> {
         }
         Err(error) => Err(format!("samplekit was not installed: {error}\n  {by_hand}")),
     }
+}
+
+/// A program on the `PATH`, by its name: `uv`, or `uv.exe` on Windows.
+fn on_path(program: &str) -> Option<PathBuf> {
+    let file = if cfg!(windows) {
+        format!("{program}.exe")
+    } else {
+        program.to_string()
+    };
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|folder| folder.join(&file))
+        .find(|path| path.is_file())
 }
 
 /// A version as Python spells it, as pip and a user installing the package

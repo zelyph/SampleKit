@@ -12,7 +12,7 @@ use samplekit::collection::computation;
 pub(super) const WAITS_FOR_ITSELF: &str = "waits for its value, which nobody entered";
 
 /// What the model's plan says of a value, as every command says it: a value
-/// waiting for itself as the run says it — `fg waits for fg` read as a riddle
+/// waiting for itself as the run says it — `notch waits for notch` read as a riddle
 /// — and an entered value whose uncertainty was never computed as `status`
 /// says it, where the plan said *never computed* of a value that is there.
 pub(super) fn said_of_plan(
@@ -34,6 +34,14 @@ pub(super) fn said_of_plan(
     {
         return "uncertainty never computed".to_string();
     }
+    // Outdated, said with what it moved on from, as `status` says it.
+    if said == "outdated"
+        && let Ok(name) = Identifier::new(value)
+        && let Ok(state) = samplekit::format::fingerprint::check_property(sample, &name)
+        && matches!(state, Freshness::Stale { .. })
+    {
+        return state_of(sample, &state, 0);
+    }
     said.to_string()
 }
 
@@ -43,16 +51,21 @@ pub(super) fn interrupted() -> bool {
 
 pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
     // What the model prints is kept, and shown only when asked.
+    let (root, _) = target_and_extra(options)?;
     if !flags.dry_run {
-        *run_log() = Some(RunLog::new(flags.show_output));
+        // One log a project, the last run's: its project is the
+        // configuration's folder, else the folder computed.
+        let project = samplekit::config::project_config::find(&root)
+            .and_then(|file| file.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| root.clone());
+        *run_log() = Some(RunLog::new(flags.show_output, &project));
         runtime::relay_output_through(relay_model_output);
     }
-    let (root, _) = target_and_extra(options)?;
     let collection = loaded(&root)?;
     warn_skipped(&collection, options);
     let selected = select(&collection, options, &root)?;
     if selected.is_empty() {
-        outln!("no sample is selected: nothing to compute");
+        outln!("nothing to change — no sample is selected");
         return Ok(());
     }
 
@@ -64,8 +77,13 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             INTERRUPTED.store(true, std::sync::atomic::Ordering::SeqCst);
             if let Ok(pids) = WORKER_PIDS.lock() {
                 for pid in pids.iter() {
+                    // Silent, as every other signal passed on: a worker the
+                    // watchdog stopped already made the shell's `kill` say,
+                    // in the machine's language, that no such process is.
                     let _ = std::process::Command::new("kill")
                         .args(["-INT", &pid.to_string()])
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
                         .status();
                 }
             }
@@ -73,22 +91,12 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
     }
 
     let mut workers: Vec<Worker> = Vec::new();
-    // Each model's digest as its run began, for the record of what computed
-    // what.
-    let mut digests: Vec<(Template, runtime::TemplateDigest)> = Vec::new();
     let mut totals = Totals::default();
     // Over several projects, one that cannot run stops only itself: said,
     // naming it, and the others computed; its code is the command's.
     let mut stopped: Option<Fail> = None;
     for group in &groups {
-        if let Err(error) = compute_group(
-            &selected,
-            group,
-            flags,
-            &mut workers,
-            &mut digests,
-            &mut totals,
-        ) {
+        if let Err(error) = compute_group(&selected, group, flags, &mut workers, &mut totals) {
             if groups.len() == 1 || error.code == 130 {
                 // A run an error stops still says where its log is.
                 say_run_log();
@@ -105,6 +113,11 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
         }
     }
 
+    // What was written is kept in each project's trace, a run interrupted
+    // included: what it wrote was computed.
+    if flags.write {
+        trace_failures(std::mem::take(&mut totals.tracing).keep());
+    }
     if interrupted() {
         // Said once: *nothing was written; the value in progress was not
         // written* said the second half twice.
@@ -167,7 +180,7 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             );
         } else if totals.planned.is_empty() {
             outln!(
-                "nothing to compute in {}",
+                "nothing to change — nothing to compute in {}",
                 counted_as(selected.len(), "sample", "samples")
             );
         } else {
@@ -189,23 +202,46 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
                         .iter()
                         .map(|name| name.to_string())
                         .collect(),
-                    totals.planned.clone(),
+                    // Each state in its colour, once its words have been read.
+                    totals
+                        .planned
+                        .iter()
+                        .map(|row| {
+                            let mut row = row.clone();
+                            if let Some(state) = row.get_mut(2) {
+                                *state = render::painted_state(state);
+                            }
+                            row
+                        })
+                        .collect(),
                     output_target(options),
                     style,
                     3
                 )
             );
             // What will wait is not what would be computed.
-            let waits = totals.planned.iter().filter(|row| waiting(row)).count();
-            let computed = totals.planned.len() - waits;
+            // By cells, as what is computed is counted.
+            let cells = |at: usize| totals.planned_cells.get(at).copied().unwrap_or(1);
+            let waits: usize = totals
+                .planned
+                .iter()
+                .enumerate()
+                .filter(|(_, row)| waiting(row))
+                .map(|(at, _)| cells(at))
+                .sum();
+            let computed: usize = (0..totals.planned.len()).map(cells).sum::<usize>() - waits;
             let wait = counted_as(waits, "waits", "wait");
             // Without its model nothing can be computed: the flags that would
             // compute are not offered where they could only fail.
             let how = if totals.unread_models.is_empty() {
-                "--try computes without writing, --write writes"
+                "--write computes and writes without asking"
             } else {
-                "once the model is found, --try computes without writing"
+                "once the model is found, it can be computed"
             };
+            // Asked once the command has said all it has to say.
+            if totals.unread_models.is_empty() && computed > 0 {
+                TO_COMPUTE.store(computed, AtomicOrdering::Relaxed);
+            }
             outln!(
                 "\n{}",
                 advice(&if computed == 0 {
@@ -228,7 +264,6 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             );
         }
         say_kept(&selected, flags);
-        say_model_changed(&selected);
         // The model that could not be read, after what the files say: the
         // listing is given, and the failure is the command's.
         if !totals.unread_models.is_empty() {
@@ -254,7 +289,7 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
         }
         return left_out(&totals);
     }
-    if totals.computed == 0 && totals.failed == 0 {
+    if totals.computed == 0 && totals.failed == 0 && totals.not_saved.is_empty() {
         if totals.waiting > 0 {
             let first = to_fill(&totals);
             outln!(
@@ -267,7 +302,7 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             return Ok(());
         }
         outln!(
-            "nothing to compute in {}",
+            "nothing to change — nothing to compute in {}",
             counted_as(selected.len(), "sample", "samples")
         );
         say_kept(&selected, flags);
@@ -293,15 +328,32 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             fill.join(", ")
         ),
     };
+    // By cells, as what is computed is counted.
+    let cells = |at: usize| totals.change_cells.get(at).copied().unwrap_or(1);
     let same: usize = totals
         .changes
         .iter()
-        .filter(|change| unchanged(&change[2], &change[3]))
+        .enumerate()
+        .filter(|(_, change)| unchanged(&change[2], &change[3]) && !gave_nothing(&change[3]))
+        .map(|(at, _)| cells(at))
+        .sum();
+    let nothing: usize = totals
+        .changes
+        .iter()
+        .filter(|change| gave_nothing(&change[3]))
         .count();
-    let same = if same > 0 {
-        format!(", {same} unchanged")
-    } else {
-        String::new()
+    let same = match (same, nothing) {
+        (0, 0) => String::new(),
+        (same, 0) if same >= totals.computed => ", all unchanged".to_string(),
+        (same, 0) => format!(", {same} unchanged"),
+        (0, nothing) => format!(
+            ", {} no value",
+            counted_as(nothing, "formula gave", "formulas gave")
+        ),
+        (same, nothing) => format!(
+            ", {same} unchanged, {} no value",
+            counted_as(nothing, "formula gave", "formulas gave")
+        ),
     };
     outln!(
         "\ncomputed {} in {}{same}{failures}",
@@ -310,10 +362,9 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
     );
     // In the words every command that writes a file says it.
     if flags.write && totals.computed > 0 {
-        outln!(
-            "written: {}",
-            counted_as(totals.written, "sample", "samples")
-        );
+        for line in written_lines(&totals.written_paths) {
+            outln!("{line}");
+        }
     }
     // What a narrowed run left outdated is said, not computed.
     if totals.pending > 0 {
@@ -323,7 +374,6 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
         );
     }
     say_kept(&selected, flags);
-    say_model_changed(&selected);
     say_run_log();
     // What a write of these values would lose.
     if !flags.write && totals.computed > 0 {
@@ -331,7 +381,7 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             .tried
             .iter()
             .filter_map(|(_, sample, _)| std::fs::read_to_string(sample).ok())
-            .map(|text| migration::comments_in(&text))
+            .map(|text| samplekit::format::document::comments_in(&text))
             .sum();
         if comments > 0 {
             outln!(
@@ -340,14 +390,11 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             );
         }
     }
-    // --try: computed and not written, and in a terminal, offered.
+    // Computed and not written: asked whether to write it.
     if !flags.write && totals.computed > 0 {
-        if io::stdin().is_terminal() && io::stderr().is_terminal() {
-            eprint!("write these values? [y/N] ");
-            let _ = io::stderr().flush();
-            let mut answer = String::new();
-            let _ = io::stdin().read_line(&mut answer);
-            if matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
+        outln!();
+        {
+            if ask("apply these changes?") {
                 // A write like `--write`'s: recorded as computed by the model
                 // the run began with, and one snapshot in the history, which
                 // the command line takes only of `--write`.
@@ -359,8 +406,7 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
                 let (writing, failures) =
                     samplekit::config::version_control::before_writing(&places);
                 history_failures(failures);
-                let computed = runtime::ComputedStore::user();
-                let mut written = 0usize;
+                let mut written_paths: Vec<String> = Vec::new();
                 let mut refused = None;
                 for (position, sample, template) in &totals.tried {
                     let request = Request {
@@ -369,20 +415,21 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
                         names: Vec::new(),
                         rerun: false,
                         force: false,
+                        timeout: flags.timeout,
                         refused: Vec::new(),
+                        overran: Vec::new(),
                         recorded: Default::default(),
                     };
                     match workers[*position].write(&request) {
                         Ok(report) if !report.saved => {}
                         Ok(report) => {
-                            written += 1;
-                            let digest = digests
-                                .iter()
-                                .find(|(held, _)| held == template)
-                                .map(|(_, digest)| digest);
-                            if let (Some(store), Some(digest)) = (computed.as_ref(), digest) {
-                                let _ = store.record(sample, digest, &report.formulas);
-                            }
+                            written_paths.push(relative_to_here(sample));
+                            totals.tracing.wrote(
+                                totals.configurations.get(sample).and_then(Option::as_ref),
+                                totals.before.get(sample).map_or(&[][..], Vec::as_slice),
+                                sample,
+                                &report,
+                            );
                         }
                         Err(error) => {
                             refused = Some(model_failure(error));
@@ -392,19 +439,20 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
                 }
                 // Taken whatever the writes answered: when one is refused,
                 // those before it were written.
+                trace_failures(std::mem::take(&mut totals.tracing).keep());
                 let said = COMMAND_LINE
                     .get()
                     .map_or("samplekit compute", String::as_str);
-                history_after(writing, &format!("{said} (written at the prompt)"));
+                history_after(writing, &answered_yes(said));
                 if let Some(refused) = refused {
                     return Err(refused);
                 }
-                outln!("written: {}", counted_as(written, "sample", "samples"));
+                for line in written_lines(&written_paths) {
+                    outln!("{line}");
+                }
             } else {
                 outln!("nothing written");
             }
-        } else {
-            outln!("nothing written — --write writes");
         }
     }
     if let Some(error) = stopped {
@@ -412,6 +460,34 @@ pub(super) fn compute(options: &Options, flags: &ComputeFlags) -> Outcome {
             code: error.code,
             message: "a project was not computed, said above; the others were".to_string(),
         });
+    }
+    if !totals.not_saved.is_empty() {
+        return Err(Fail::data(format!(
+            "{} changed while {} computed, and {} not saved: samplekit {} compute --write \
+             computes {} again from what {} now",
+            totals.not_saved.join(", "),
+            if totals.not_saved.len() == 1 {
+                "it was"
+            } else {
+                "they were"
+            },
+            if totals.not_saved.len() == 1 {
+                "was"
+            } else {
+                "were"
+            },
+            totals.not_saved.join(" "),
+            if totals.not_saved.len() == 1 {
+                "it"
+            } else {
+                "them"
+            },
+            if totals.not_saved.len() == 1 {
+                "it holds"
+            } else {
+                "they hold"
+            },
+        )));
     }
     if totals.failed > 0 {
         return Err(Fail::data(format!(
@@ -443,6 +519,7 @@ fn list_from_files(entries: &[&list::Entry], totals: &mut Totals) {
         }
         for (quantity, state, rows) in behind {
             if state != Freshness::Edited {
+                totals.planned_cells.push(rows.max(1));
                 totals.planned.push(vec![
                     label.clone(),
                     quantity,
@@ -451,6 +528,32 @@ fn list_from_files(entries: &[&list::Entry], totals: &mut Totals) {
             }
         }
     }
+}
+
+/// The cells a planned value counts: a table's column its rows; a value and
+/// its uncertainty of two formulas two; else one.
+fn planned_cells(sample: &samplekit::core::sample::Sample, value: &str) -> usize {
+    if let Some((table, column)) = value.split_once('.') {
+        if column.contains(['.', '[']) {
+            return 1;
+        }
+        return Identifier::new(table)
+            .ok()
+            .and_then(|table| {
+                sample
+                    .table(&table)
+                    .ok()
+                    .map(|held| held.index_tuples().len())
+            })
+            .unwrap_or(1)
+            .max(1);
+    }
+    let two = Identifier::new(value).ok().is_some_and(|name| {
+        sample
+            .property(&name)
+            .is_ok_and(|handle| handle.peek(samplekit::core::property::Property::has_two_formulas))
+    });
+    if two { 2 } else { 1 }
 }
 
 pub(super) fn left_out(totals: &Totals) -> Outcome {
@@ -469,45 +572,7 @@ pub(super) fn say_kept(selected: &SampleList, flags: &ComputeFlags) {
     if flags.force {
         return;
     }
-    let kept: usize = selected
-        .iter()
-        .map(|entry| {
-            let sample = entry.sample.borrow();
-            let named = |name: &str| {
-                flags.names.is_empty() || flags.names.iter().any(|written| written == name)
-            };
-            let properties = fingerprint::check(&sample)
-                .map(|states| {
-                    states
-                        .iter()
-                        .filter(|(name, state)| {
-                            matches!(state, Freshness::Edited) && named(name.as_str())
-                        })
-                        .count()
-                })
-                .unwrap_or(0);
-            // A column holding a cell edited by hand is kept too.
-            let cells: usize = sample
-                .table_names()
-                .into_iter()
-                .map(|table| {
-                    fingerprint::check_table(&sample, table)
-                        .map(|columns| {
-                            columns
-                                .into_iter()
-                                .filter(|(column, rows)| {
-                                    rows.iter()
-                                        .any(|(_, state)| matches!(state, Freshness::Edited))
-                                        && named(&format!("{table}.{column}"))
-                                })
-                                .count()
-                        })
-                        .unwrap_or(0)
-                })
-                .sum();
-            properties + cells
-        })
-        .sum();
+    let kept = computation::edited_kept(selected, &flags.names);
     if kept > 0 {
         outln!("{}", overrides_kept(kept));
     }
@@ -519,6 +584,13 @@ pub(super) fn say_kept(selected: &SampleList, flags: &ComputeFlags) {
 /// was.
 pub(super) fn unchanged(before: &str, after: &str) -> bool {
     before == after || after == "0 changed"
+}
+
+/// A value computed that came out as nothing: its formula returned `None` —
+/// a `return` forgotten — which read *unchanged* beside a value never there,
+/// and `status` then called it never computed.
+pub(super) fn gave_nothing(after: &str) -> bool {
+    after == render::ABSENT
 }
 
 pub(super) fn show_changes(totals: &Totals, collection: &SampleList, options: &Options) -> Outcome {
@@ -542,16 +614,43 @@ pub(super) fn show_changes(totals: &Totals, collection: &SampleList, options: &O
         totals.changes.iter().map(|change| &change[1]).collect();
     // Before, and after — or `unchanged` where after would repeat before.
     let row = |first: &str, change: &[String; 4]| {
-        let after = if unchanged(&change[2], &change[3]) {
+        let after = if gave_nothing(&change[3]) {
+            format!("{} its formula gave no value", render::ABSENT)
+        } else if unchanged(&change[2], &change[3]) {
             "unchanged".to_string()
         } else {
             change[3].clone()
         };
+        // Two values said with every digit, because their precision writes
+        // them alike, are said with the fewest that tell them apart.
+        if samplekit::presentation::changes::every_digit(&change[2])
+            || samplekit::presentation::changes::every_digit(&after)
+        {
+            let (before, after) = samplekit::presentation::changes::apart(&change[2], &after);
+            return vec![first.to_string(), before, after];
+        }
         vec![first.to_string(), change[2].clone(), after]
     };
     // After is what a computation is read for: before gives way first.
     let draw = |first: &str, rows: Vec<Vec<String>>| {
         let headers = |names: &[&str]| names.iter().map(|name| name.to_string()).collect();
+        // Before and after, each value's number bold and its unit coloured,
+        // where a terminal reads them.
+        let rows: Vec<Vec<String>> = rows
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .enumerate()
+                    .map(|(at, cell)| {
+                        if at == 0 {
+                            cell
+                        } else {
+                            render::painted_said(&cell)
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
         let full = render::table(
             headers(&[first, "before", "after"]),
             rows.clone(),
@@ -625,7 +724,6 @@ pub(super) fn compute_group(
     group: &Group,
     flags: &ComputeFlags,
     workers: &mut Vec<Worker>,
-    digests: &mut Vec<(Template, runtime::TemplateDigest)>,
     totals: &mut Totals,
 ) -> Outcome {
     let entries: Vec<&list::Entry> = group
@@ -633,14 +731,32 @@ pub(super) fn compute_group(
         .iter()
         .filter_map(|position| selected.get(*position))
         .collect();
-    // What runs is always named before it runs: nothing is asked before the
-    // model runs, and this line is how a first computation says which file it
-    // runs, as every one after it does.
-    match &group.file {
-        Some(file) => errln!("configuration  {}", file.display()),
-        None => errln!("configuration  none found"),
+    // The model is named before it runs, nothing being asked: from here, in
+    // one line. Its configuration, and their whole paths, under -v as every
+    // command says them. **Once**: computed after its question, it was named
+    // again before the second.
+    thread_local! {
+        static NAMED: std::cell::RefCell<Vec<Option<PathBuf>>> =
+            const { std::cell::RefCell::new(Vec::new()) };
     }
-    errln!("model          {}", model_of(group.config.as_ref()));
+    let first = NAMED.with(|named| {
+        let mut named = named.borrow_mut();
+        let first = !named.contains(&group.file);
+        if first {
+            named.push(group.file.clone());
+        }
+        first
+    });
+    if !first {
+    } else if VERBOSE.load(AtomicOrdering::Relaxed) {
+        match &group.file {
+            Some(file) => errln!("configuration  {}", super::as_here(file).display()),
+            None => errln!("configuration  none found"),
+        }
+        errln!("model          {}", model_of(group.config.as_ref()));
+    } else if let Some(template) = group.config.as_ref().and_then(runtime::template_of) {
+        errln!("model  {}", relative_to_here(template.path()));
+    }
 
     let from = entries
         .first()
@@ -649,8 +765,8 @@ pub(super) fn compute_group(
     let unavailable = match runtime::availability(group.config.as_ref(), &from) {
         Ok(Availability::NoTemplate) => {
             outln!(
-                "{} no model declared: nothing to compute",
-                counted_as(entries.len(), "sample has", "samples have")
+                "nothing to change — no model is declared for {}",
+                counted_as(entries.len(), "sample", "samples")
             );
             return Ok(());
         }
@@ -672,14 +788,6 @@ pub(super) fn compute_group(
         }
         Err(fail) => return Err(fail),
     };
-
-    // Taken once, before the worker starts: what is recorded as having computed
-    // is the model as the run began, not as it was left — by the user, or by a
-    // formula writing beside it — once the run was over.
-    let digest = runtime::digest_of(&template).map_err(model_failure)?;
-    if !digests.iter().any(|(held, _)| *held == template) {
-        digests.push((template.clone(), digest.clone()));
-    }
 
     // One worker per interpreter, started at the first computation that needs
     // it and kept for the rest.
@@ -711,6 +819,7 @@ pub(super) fn compute_group(
             names: flags.names.clone(),
             rerun: flags.rerun,
             force: flags.force,
+            timeout: flags.timeout,
         },
     );
     let label_of = |path: &Path| {
@@ -720,6 +829,18 @@ pub(super) fn compute_group(
             .map(|entry| labelled(&counts, Some(path), &entry.sample.borrow()))
             .unwrap_or_else(|| path.display().to_string())
     };
+    if let Some(error) = &planned.unread_trace {
+        warn(&format!(
+            "the trace of the formulas could not be read ({error}): each value is judged \
+             by its inputs alone"
+        ));
+    }
+    for (path, before) in &planned.before {
+        totals.before.insert(path.clone(), before.clone());
+        totals
+            .configurations
+            .insert(path.clone(), group.config.clone());
+    }
     for (path, reason) in &planned.unplannable {
         totals
             .unplannable
@@ -741,6 +862,12 @@ pub(super) fn compute_group(
                     let entry = entries
                         .iter()
                         .find(|entry| entry.path.as_deref() == Some(request.sample.as_path()));
+                    totals
+                        .planned_cells
+                        .extend(plan.iter().map(|planned| match entry {
+                            Some(entry) => planned_cells(&entry.sample.borrow(), &planned.value),
+                            None => 1,
+                        }));
                     totals.planned.extend(plan.into_iter().map(|planned| {
                         let said = match entry {
                             Some(entry) => {
@@ -760,7 +887,7 @@ pub(super) fn compute_group(
                     totals.unloaded += 1;
                     let last = traceback.trim_end().lines().last().unwrap_or_default();
                     if totals.tracebacks.insert(last.to_string()) {
-                        eprint!("{traceback}");
+                        errp!("{traceback}");
                     }
                 }
                 Err(ModelError::UnknownValue { message }) => {
@@ -775,12 +902,19 @@ pub(super) fn compute_group(
         return Ok(());
     }
 
+    // The model's change kept before anything runs, its formulas named: a
+    // command writing during a long computation kept it first, unnamed.
+    if flags.write
+        && !requests.is_empty()
+        && let Some(config) = &group.config
+    {
+        samplekit::collection::computation::keep_model_change_ahead(config);
+    }
     let width = requests
         .iter()
         .map(|(label, _)| label.chars().count())
         .max()
         .unwrap_or(0);
-    let computed = runtime::ComputedStore::user();
     let progress = Progress::new(requests.len());
     for (label, request) in &requests {
         if interrupted() {
@@ -803,6 +937,7 @@ pub(super) fn compute_group(
                 progress.above(|| outln!("{line}"));
             }
         };
+        let finished_from = totals.changes.len();
         let mut on = |event: &Event| match event {
             Event::Planned { count } => progress.planned(*count),
             Event::Started { value } => {
@@ -837,7 +972,16 @@ pub(super) fn compute_group(
             } => {
                 let at = logged.clone().unwrap_or_default();
                 let _ = run_log_record(label, &at, level, message);
-                if matches!(level.as_str(), "WARNING" | "ERROR" | "CRITICAL") {
+                // Under `--show-output`, what the model logs is shown as what
+                // it prints is: its `logging` lines went to the run log alone.
+                let shown = run_log().as_ref().is_some_and(|log| log.show);
+                if shown {
+                    progress.above(|| {
+                        for line in message.lines() {
+                            errln!("{level} {line}");
+                        }
+                    });
+                } else if matches!(level.as_str(), "WARNING" | "ERROR" | "CRITICAL") {
                     let first = message.lines().next().unwrap_or_default();
                     let text = if at.is_empty() {
                         format!("{label}: {first}")
@@ -860,10 +1004,23 @@ pub(super) fn compute_group(
                 seconds,
                 before,
                 after,
+                cells,
             } => {
+                // Finished again by the fresh worker that took the sample over
+                // after a --timeout: said once, counted once, its last value
+                // kept.
+                let from = finished_from.min(totals.changes.len());
+                if let Some(at) = totals.changes[from..]
+                    .iter()
+                    .position(|change| change[1] == *value)
+                {
+                    totals.changes[from + at][3] = after.clone();
+                    return;
+                }
                 totals
                     .changes
                     .push([label.clone(), value.clone(), before.clone(), after.clone()]);
+                totals.change_cells.push(*cells);
                 progress.finished();
                 match value.split_once('.') {
                     Some((table, column)) => {
@@ -929,23 +1086,25 @@ pub(super) fn compute_group(
             Event::Failed { value, traceback } => {
                 flush(&progress);
                 progress.finished();
-                let last = traceback
-                    .trim_end()
-                    .lines()
-                    .last()
-                    .unwrap_or_default()
-                    .to_string();
+                // The error's line, not the note a failure carries after it.
+                let last = samplekit::presentation::changes::error_line(traceback);
                 // Said once per traceback, whole: two failures ending on one
                 // line can differ above it, and were collapsed.
-                let first = totals.tracebacks.insert(traceback.trim_end().to_string());
+                let whole = traceback.trim_end().to_string();
+                let first = totals.tracebacks.insert(whole.clone());
+                let whose = totals
+                    .traced_by
+                    .entry(whole)
+                    .or_insert_with(|| format!("{label} {value}"))
+                    .clone();
                 // What it wrote arrived before the failure, on the protocol.
                 let recent = run_log_recent();
                 progress.above(|| {
                     outln!("  ✗ {label:<width$}  {value:<24}  {last}");
                     if first {
-                        eprint!("{traceback}");
+                        errp!("{traceback}");
                     } else {
-                        errln!("{label} {value}: {last} — the same error as above");
+                        errln!("{label} {value}: {last} — the same error as {whose}'s above");
                     }
                     if !recent.is_empty() {
                         errln!("  the last lines {value} printed:");
@@ -957,23 +1116,78 @@ pub(super) fn compute_group(
             }
         };
         let before = flags.write.then(|| std::fs::read(&request.sample).ok());
-        let outcome = worker.compute(request, flags.write, &mut on);
+        let computed_path = request.sample.clone();
+        // A formula past `--timeout` that did not stop takes its worker down
+        // with it: a fresh one takes the same sample again, that value failed
+        // `TimedOut` and never run again, and the others computed. Its
+        // failure is said by the fresh worker, as any failure is.
+        let mut asked = request.clone();
+        let mut resumed = false;
+        let outcome = loop {
+            let outcome = worker.compute(&asked, flags.write, &mut on);
+            match &outcome {
+                Err(ModelError::TimedOut {
+                    value: Some(value), ..
+                }) if !asked.overran.contains(value) => {
+                    let fresh = Worker::start(&python).map_err(model_failure)?;
+                    if let Ok(mut pids) = WORKER_PIDS.lock() {
+                        pids.push(fresh.id());
+                    }
+                    *worker = fresh;
+                    asked.overran.push(value.clone());
+                    resumed = true;
+                }
+                _ => break outcome,
+            }
+        };
+        // What this sample's run wrote, outside the range its project declares:
+        // written, and said.
+        if flags.write && outcome.is_ok() {
+            let names: Vec<String> = totals.changes[finished_from.min(totals.changes.len())..]
+                .iter()
+                .map(|[_, value, _, _]| value.clone())
+                .collect();
+            let config = totals
+                .configurations
+                .get(&request.sample)
+                .cloned()
+                .flatten();
+            warn_outside_ranges(&request.sample, config.as_ref(), label, &names);
+        }
         if let Some(before) = before
             && std::fs::read(&request.sample).ok() != before
         {
             totals.written += 1;
+            totals.written_paths.push(relative_to_here(&request.sample));
         }
         flush(&progress);
         match outcome {
             Ok(report) => {
-                totals.computed += report.computed;
+                // Resumed after a worker stopped, what the stopped one finished
+                // counts too: each finished value was said, and written.
+                totals.computed += if resumed {
+                    report
+                        .computed
+                        .max(totals.changes.len().saturating_sub(finished_before))
+                } else {
+                    report.computed
+                };
                 totals.pending += report.pending;
                 totals.waiting += report.waiting;
-                // Which model computed what was written.
-                if flags.write
-                    && let Some(computed) = &computed
-                {
-                    computation::record_computed(computed, request, &report, &digest);
+                // Which formula computed what was written.
+                if flags.write {
+                    totals.tracing.wrote(
+                        totals
+                            .configurations
+                            .get(&request.sample)
+                            .and_then(Option::as_ref),
+                        totals
+                            .before
+                            .get(&request.sample)
+                            .map_or(&[][..], Vec::as_slice),
+                        &request.sample,
+                        &report,
+                    );
                 }
                 if !flags.write && report.computed > 0 {
                     totals
@@ -992,13 +1206,18 @@ pub(super) fn compute_group(
                     .push(unknown_value_line(label, &message));
             }
             Err(ModelError::NotSaved { message }) => {
-                progress.above(|| {
-                    outln!(
-                        "  ✗ {label:<width$}  not saved: {}",
-                        message.lines().next().unwrap_or_default()
-                    )
-                });
-                totals.failed += 1;
+                // Said in the command line's words: Python's
+                // `save(overwrite=True)` is no command here.
+                let why = message
+                    .lines()
+                    .next()
+                    .unwrap_or_default()
+                    .split(": save(overwrite=True)")
+                    .next()
+                    .unwrap_or_default()
+                    .to_string();
+                progress.above(|| outln!("  ✗ {label:<width$}  not saved: {why}"));
+                totals.not_saved.push(shell_path(&computed_path));
                 totals.samples += 1;
             }
             Err(ModelError::TemplateFailed { traceback }) => {
@@ -1012,12 +1231,24 @@ pub(super) fn compute_group(
                 progress.above(|| {
                     outln!("  ✗ {label:<width$}  the model raised while loading it");
                     if first {
-                        eprint!("{traceback}");
+                        errp!("{traceback}");
                     }
                 });
                 totals.unloaded += 1;
                 totals.failed += 1;
                 totals.samples += 1;
+            }
+            // Stopped past `--timeout`: that value failed, and a new worker
+            // takes the samples after it.
+            Err(error @ ModelError::TimedOut { .. }) => {
+                progress.above(|| outln!("  ✗ {label:<width$}  {error}"));
+                totals.failed += 1;
+                totals.samples += 1;
+                let fresh = Worker::start(&python).map_err(model_failure)?;
+                if let Ok(mut pids) = WORKER_PIDS.lock() {
+                    pids.push(fresh.id());
+                }
+                *worker = fresh;
             }
             Err(other) => {
                 // A worker interrupted with the command is not a failure to report;
@@ -1061,32 +1292,6 @@ pub(super) fn run_log() -> std::sync::MutexGuard<'static, Option<RunLog>> {
     RUN_LOG
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-/// `2026-09-15T16-40-12Z`: a UTC time a file name holds and a listing sorts.
-pub(super) fn utc_stamp(seconds: u64) -> String {
-    let days = (seconds / 86_400) as i64;
-    let rest = seconds % 86_400;
-    // Days to a civil date, as Howard Hinnant's algorithm has it.
-    let shifted = days + 719_468;
-    let era = shifted.div_euclid(146_097);
-    let of_era = shifted.rem_euclid(146_097);
-    let year_of_era = (of_era - of_era / 1_460 + of_era / 36_524 - of_era / 146_096) / 365;
-    let of_year = of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let shifted_month = (5 * of_year + 2) / 153;
-    let day = of_year - (153 * shifted_month + 2) / 5 + 1;
-    let month = if shifted_month < 10 {
-        shifted_month + 3
-    } else {
-        shifted_month - 9
-    };
-    let year = year_of_era + era * 400 + i64::from(month <= 2);
-    format!(
-        "{year:04}-{month:02}-{day:02}T{:02}-{:02}-{:02}Z",
-        rest / 3600,
-        rest % 3600 / 60,
-        rest % 60
-    )
 }
 
 /// A line the model wrote, as the worker sent it with its value: kept in the
@@ -1256,4 +1461,53 @@ fn to_fill(totals: &Totals) -> Vec<String> {
         .filter(|input| !totals.waiting_values.contains(input) || totals.own.contains(input))
         .cloned()
         .collect()
+}
+
+/// A trace of the formulas not kept is a warning, as a history not kept is,
+/// never the command's failure.
+fn trace_failures(failures: Vec<(PathBuf, samplekit::config::version_control::VcsError)>) {
+    for (root, error) in failures {
+        warn(&format!(
+            "the trace of the formulas in {} was not kept: {error}",
+            root.display()
+        ));
+    }
+}
+
+/// The values a run wrote into `sample` that its project's `[property.*]
+/// range` leaves out, each said as a warning.
+fn warn_outside_ranges(
+    sample: &Path,
+    config: Option<&ProjectConfig>,
+    label: &str,
+    names: &[String],
+) {
+    if names.is_empty() || config.is_none() {
+        return;
+    }
+    let Ok((read, _)) = samplekit::format::document::load_sample(sample) else {
+        return;
+    };
+    for name in names {
+        let Ok(id) = samplekit::core::identifier::Identifier::new(name) else {
+            continue;
+        };
+        let Ok(handle) = read.property(&id) else {
+            continue;
+        };
+        let said = handle.with(|property| {
+            let unit = property.presentation().unit.clone();
+            property.peek_value().and_then(|value| {
+                samplekit::collection::validation::outside_range(
+                    config,
+                    name,
+                    &value,
+                    unit.as_deref(),
+                )
+            })
+        });
+        if let Some(said) = said {
+            warn(&format!("{label}: {said}"));
+        }
+    }
 }

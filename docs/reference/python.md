@@ -29,7 +29,7 @@ one snapshot of the project's history.
 
 ## Values
 
-A sample's quantities are `Property` objects: a value, an uncertainty, a unit,
+A sample's properties are `Property` objects: a value, an uncertainty, a unit,
 readings. A value that does not apply to a sample is `NA`. An attribute that
 holds a list is a `BoundList`, which writes its changes through to the
 sample.
@@ -49,15 +49,18 @@ sample.
 
 ## Tables
 
-A table of a sample holds rows of measurements, by column. `Column` declares
-one column of a new `Table`: its unit and the statistics of its readings;
-its symbol, like any symbol, is the project's. `ColumnView` and `RowView` read a table by column and by row.
+A table of a sample holds rows of measurements, by column. Each column of a
+new `Table` is declared with `Property`, as a property is: its unit, the
+statistics of its cells' readings, or the formula that computes its cells;
+its symbol, like any symbol, is the project's. `ComputedColumns` fills several
+columns with one formula. `ColumnView` and `RowView` read a table by column
+and by row.
 
 ```{eval-rst}
 .. autoclass:: samplekit.Table
    :members:
 
-.. autoclass:: samplekit.Column
+.. autoclass:: samplekit.ComputedColumns
    :members:
 
 .. autoclass:: samplekit.ColumnView
@@ -71,7 +74,7 @@ its symbol, like any symbol, is the project's. `ColumnView` and `RowView` read a
 
 `stats` names the statistics a model can choose for readings: which one is
 the value, which one the uncertainty. `Summary` is the statistics of a set of
-readings.
+values: a property's readings, or a field over a list of samples.
 
 ```{eval-rst}
 .. autoclass:: samplekit.stats
@@ -95,10 +98,20 @@ readings.
 .. autofunction:: samplekit.figure
 ```
 
+## Scripts
+
+`script` marks a model's method as a script, which `samplekit … run NAME`
+and `p` in the TUI run on each sample selected, or on the selection: see
+[Run a script of the model](../guides/run-a-script.md).
+
+```{eval-rst}
+.. autofunction:: samplekit.script
+```
+
 ## The project
 
 What a project declares in its `.samplekitrc`, as a script reads it: its
-model, its queries, profiles, exports and figures, its units and quantities.
+model, its queries, profiles, exports and figures, its units and properties.
 `project`, on a sample or a list of samples, gives it.
 
 ```{eval-rst}

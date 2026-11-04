@@ -22,6 +22,53 @@ struct Reached {
 
 impl Reached {
     fn holds(&self, name: &str) -> bool {
+        self.elsewhere(name).is_none() && self.named(name)
+    }
+
+    /// The folder of the project that keeps a file a snapshot of this one
+    /// holds, where it is another now: a folder below made a project of its
+    /// own since, with its own history. Said so, its files were said
+    /// *removed* — and `restore` named a command that found no history.
+    fn elsewhere(&self, name: &str) -> Option<PathBuf> {
+        if name.starts_with('@') || name == samplekit::config::project_config::FILENAME {
+            return None;
+        }
+        let path = self.config.root().join(name);
+        if !path.is_file() {
+            return None;
+        }
+        let rc = samplekit::config::project_config::find(path.parent()?)?;
+        let theirs = dunce::canonicalize(rc.parent()?).ok()?;
+        let ours = dunce::canonicalize(self.config.root()).ok()?;
+        (theirs != ours).then_some(theirs)
+    }
+
+    /// The projects below that keep files this one's snapshots `names`
+    /// hold, from this project's folder, with how many.
+    fn kept_elsewhere<'a>(
+        &self,
+        names: impl IntoIterator<Item = &'a String>,
+    ) -> Vec<(String, usize)> {
+        let ours = dunce::canonicalize(self.config.root()).unwrap_or_default();
+        let mut found: std::collections::BTreeMap<String, usize> =
+            std::collections::BTreeMap::new();
+        for name in names {
+            if !self.named(name) {
+                continue;
+            }
+            if let Some(theirs) = self.elsewhere(name) {
+                let shown = theirs.strip_prefix(&ours).map_or_else(
+                    |_| theirs.display().to_string(),
+                    |below| below.display().to_string(),
+                );
+                *found.entry(shown).or_default() += 1;
+            }
+        }
+        found.into_iter().collect()
+    }
+
+    /// Whether a target names the file, whoever keeps it now.
+    fn named(&self, name: &str) -> bool {
         self.within.is_empty()
             || self.within.iter().any(|within| {
                 within.is_empty()
@@ -79,8 +126,13 @@ fn reached(targets: &[PathBuf]) -> Result<Vec<Reached>, Fail> {
                 place.display()
             )));
         };
-        let config = samplekit::config::project_config::load(&rc)
-            .map_err(|error| Fail::usage(error.to_string()))?;
+        // A configuration that cannot be read is what a restore may be
+        // there to mend: the history is read from its folder regardless.
+        let config = samplekit::config::project_config::load(&rc).unwrap_or_else(|error| {
+            errln!("warning: {error}; the history is read with the configuration it last kept");
+            kept_configuration(&rc)
+        });
+        super::bring_history_from_above(&config)?;
         let root = dunce::canonicalize(config.root()).unwrap_or_default();
         let here = if exists {
             dunce::canonicalize(place).unwrap_or_default()
@@ -135,6 +187,41 @@ fn reached(targets: &[PathBuf]) -> Result<Vec<Reached>, Fail> {
             }),
         }
     }
+    // **A folder above several projects answers for each**: named
+    // whole, its projects below are reached too, each with its own history,
+    // as `status` reads them; the folder's own, where it kept none, is left
+    // out rather than said empty above theirs.
+    let mut below: Vec<Reached> = Vec::new();
+    for project in &found {
+        if !project.within.iter().any(String::is_empty) {
+            continue;
+        }
+        for config in projects_below(project.config.root()) {
+            let root = dunce::canonicalize(config.root()).unwrap_or_default();
+            let known = found
+                .iter()
+                .chain(&below)
+                .any(|other| dunce::canonicalize(other.config.root()).unwrap_or_default() == root);
+            // Its snapshots from before it was a project brought first, as
+            // for a project named; one with no history yet is left out.
+            if !known
+                && super::bring_history_from_above(&config).is_ok()
+                && history::entries(&config).is_ok_and(|entries| !entries.is_empty())
+            {
+                below.push(Reached {
+                    config,
+                    within: vec![String::new()],
+                });
+            }
+        }
+    }
+    if !below.is_empty() {
+        found.retain(|project| {
+            !project.within.iter().any(String::is_empty)
+                || history::entries(&project.config).is_ok_and(|entries| !entries.is_empty())
+        });
+        found.extend(below);
+    }
     Ok(found)
 }
 
@@ -167,14 +254,41 @@ fn pending(project: &Reached) -> Result<Vec<String>, Fail> {
 /// `samplekit log`: the snapshots, newest first, numbered over the whole
 /// history; a target keeps those that changed it, and `--at` starts the list at
 /// the snapshot it names.
+/// A state named over several projects refused before anything is said: a
+/// snapshot's number, or an instant, names one project's history.
+fn one_project(projects: &[Reached], option: &str, again: &str) -> Outcome {
+    if projects.len() < 2 {
+        return Ok(());
+    }
+    let folders: Vec<String> = projects
+        .iter()
+        .map(|project| super::relative_to_here(project.config.root()))
+        .collect();
+    Err(Fail::usage(format!(
+        "{option} names a snapshot of one project's history, and here are {}: {} — name one, \
+         samplekit {} {again}",
+        folders.len(),
+        folders.join(", "),
+        // A folder below names its project alone: `.` would name them all
+        // again.
+        folders
+            .iter()
+            .find(|folder| *folder != ".")
+            .unwrap_or(&folders[0])
+    )))
+}
+
 pub(super) fn log(targets: &[PathBuf], since: Option<&str>, options: &Options) -> Outcome {
     let projects = reached(targets)?;
+    if let Some(named) = since {
+        one_project(&projects, "--at", &format!("log --at {named}"))?;
+    }
     for (at, project) in projects.iter().enumerate() {
         if projects.len() > 1 {
             if at > 0 {
                 outln!();
             }
-            outln!("{}", project.config.root().display());
+            outln!("{}", super::relative_to_here(project.config.root()));
         }
         let entries =
             history::entries(&project.config).map_err(|error| Fail::io(error.to_string()))?;
@@ -193,9 +307,14 @@ pub(super) fn log(targets: &[PathBuf], since: Option<&str>, options: &Options) -
         }
         let mut rows: Vec<Vec<String>> = Vec::new();
         let one_file = project.one_file(&entries);
-        // Where more than one machine wrote the history, each snapshot's is
-        // named, after *when*.
-        let machines = machines_of(&entries).len() > 1;
+        // Where another machine than this one wrote a snapshot, each
+        // snapshot's is named, after *when*: a fresh clone's history, all
+        // another's, read as if this machine had written it.
+        let machines = machines_of(&entries).len() > 1
+            || entries.iter().any(|entry| {
+                !entry.machine.is_empty()
+                    && entry.machine != samplekit::config::version_control::YOU
+            });
         // What differs from the last snapshot, not yet kept.
         let pending = pending(project)?;
         let pending: Vec<&String> = pending.iter().collect();
@@ -205,7 +324,8 @@ pub(super) fn log(targets: &[PathBuf], since: Option<&str>, options: &Options) -
             rows.push(vec![
                 String::new(),
                 "now".to_string(),
-                history::machine(),
+                // This computer, as each of its snapshots is named.
+                history::YOU.to_string(),
                 "changed outside SampleKit, not yet kept".to_string(),
                 changed_said(&pending),
             ]);
@@ -230,7 +350,28 @@ pub(super) fn log(targets: &[PathBuf], since: Option<&str>, options: &Options) -
                 machine_said(entry),
                 entry.message.clone(),
                 if script_only {
-                    format!("no kept file · log --script {}", number + 1)
+                    // What it wrote, named: *no kept file* read as though the
+                    // figure it made were not recorded.
+                    let written: Vec<String> = history::made_from(&project.config, &entry.id)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|made| {
+                            Path::new(&made.written)
+                                .file_name()
+                                .map_or(made.written.clone(), |name| {
+                                    name.to_string_lossy().into_owned()
+                                })
+                        })
+                        .collect();
+                    if written.is_empty() {
+                        format!("no sample changed · log --script {}", number + 1)
+                    } else {
+                        format!(
+                            "wrote {}, no sample · log --script {}",
+                            written.join(", "),
+                            number + 1
+                        )
+                    }
                 } else {
                     changed_said(&changed)
                 },
@@ -312,7 +453,18 @@ pub(super) fn log_export(targets: &[PathBuf], since: Option<&str>, options: &Opt
             continue;
         }
         let one_file = project.one_file(&entries);
-        let machines = machines_of(&entries);
+        // An account is read away from this machine: each machine by its host,
+        // this one's too.
+        let mut machines: Vec<(&str, &str)> = entries
+            .iter()
+            .map(|entry| (entry.host.as_str(), entry.machine_id.as_str()))
+            .collect();
+        machines.sort();
+        machines.dedup();
+        let machines: Vec<String> = machines
+            .into_iter()
+            .map(|(host, _)| host.to_string())
+            .collect();
         let mut sections: Vec<String> = Vec::new();
         // What is not kept yet comes first, as `log` puts `now`.
         if first.is_none() {
@@ -344,7 +496,7 @@ pub(super) fn log_export(targets: &[PathBuf], since: Option<&str>, options: &Opt
                     "## #{} · {} · {}\n\n{}\n",
                     number + 1,
                     when(entry),
-                    markdown_text(&entry.machine),
+                    markdown_text(&entry.host),
                     markdown_text(&entry.message)
                 )
             } else {
@@ -450,13 +602,13 @@ fn nothing_changed(targets: &[PathBuf], config: &ProjectConfig) -> String {
         [] => "no snapshot changed what is named here".to_string(),
         [only] => format!(
             "{} is a file SampleKit wrote, which no snapshot keeps as it keeps a sample — \
-             samplekit explain {} says where it came from",
+             samplekit {} explain says where it came from",
             only.display(),
             shell_path(only)
         ),
         many => format!(
             "{} are files SampleKit wrote, which no snapshot keeps as it keeps a sample — \
-             samplekit explain FILE says where each came from",
+             samplekit FILE explain says where each came from",
             many.iter()
                 .map(|path| path.display().to_string())
                 .collect::<Vec<_>>()
@@ -489,7 +641,7 @@ fn short(id: &str) -> &str {
 /// Each file's lines, one after the other; a file said in one line — new,
 /// removed, restored, changed by its lines — has its word set in one column
 /// with the others'.
-fn files_said(said: Vec<(String, Vec<String>)>) -> Vec<String> {
+pub(super) fn files_said(said: Vec<(String, Vec<String>)>) -> Vec<String> {
     let one_line = |name: &str, lines: &[String]| -> Option<String> {
         match lines {
             [line] => line
@@ -519,19 +671,7 @@ fn files_said(said: Vec<(String, Vec<String>)>) -> Vec<String> {
 }
 
 fn project_table_style(config: &ProjectConfig, options: &Options) -> Result<Style, Fail> {
-    match options
-        .table_style
-        .clone()
-        .or_else(|| config.render().table.clone())
-    {
-        None => Ok(Style::default()),
-        Some(name) => Style::parse(&name).ok_or_else(|| {
-            Fail::usage(format!(
-                "'{name}' is not a table style\n  available: {}",
-                Style::names().join(", ")
-            ))
-        }),
-    }
+    style_of(options, Some(config))
 }
 
 /// A state of the project a `diff` compares: a snapshot, or the files now.
@@ -631,12 +771,17 @@ pub(super) fn state_at(named: &str, entries: &[Entry]) -> Result<Option<usize>, 
 /// field by field, as values.
 pub(super) fn diff(targets: &[PathBuf], from: Option<&str>, to: Option<&str>) -> Outcome {
     let projects = reached(targets)?;
+    match (from, to) {
+        (Some(named), _) => one_project(&projects, "--from", &format!("diff --from {named}"))?,
+        (None, Some(named)) => one_project(&projects, "--to", &format!("diff --to {named}"))?,
+        (None, None) => {}
+    }
     for (at, project) in projects.iter().enumerate() {
         if projects.len() > 1 {
             if at > 0 {
                 outln!();
             }
-            outln!("{}", project.config.root().display());
+            outln!("{}", super::relative_to_here(project.config.root()));
         }
         let config = &project.config;
         let entries = history::entries(config).map_err(|error| Fail::io(error.to_string()))?;
@@ -713,6 +858,57 @@ pub(super) fn diff(targets: &[PathBuf], from: Option<&str>, to: Option<&str>) ->
                 }
             }
         };
+        // A join, shown alone: compared with this machine's last snapshot,
+        // what came from the others listed apart.
+        if let (State::Before(at), State::Kept(same)) = (&from, &to)
+            && at == same
+            && let Some(join) =
+                samplekit::presentation::changes::of_join(config, &entries, *at, &|name: &str| {
+                    project.holds(name)
+                })
+                .map_err(|error| Fail::io(error.to_string()))?
+        {
+            // One that changed only files a project below keeps now is one
+            // this project's `log` does not show: said, where `#6` was looked
+            // for in vain.
+            let elsewhere = !entries[join.first]
+                .changed
+                .iter()
+                .any(|name| project.holds(name));
+            outln!(
+                "from  {}, this machine's last{}",
+                kept_said(join.first),
+                if elsewhere {
+                    " — of files a project below keeps now, whose log shows it"
+                } else {
+                    ""
+                }
+            );
+            outln!("to    {}", kept_said(*at));
+            outln!();
+            if join.own.is_empty() {
+                outln!(
+                    "{}",
+                    if join.came.is_empty() {
+                        "the files hold what this machine last kept"
+                    } else {
+                        "nothing changed here but what the join brought"
+                    }
+                );
+            } else {
+                for line in files_said(join.own) {
+                    outln!("{line}");
+                }
+            }
+            if !join.came.is_empty() {
+                outln!();
+                outln!("came with the join, from {}:", join.from.join(", "));
+                for line in files_said(join.came) {
+                    outln!("  {line}");
+                }
+            }
+            continue;
+        }
         let before = files(&from).map_err(|error| Fail::io(error.to_string()))?;
         let after = files(&to).map_err(|error| Fail::io(error.to_string()))?;
         outln!("from  {}", said(&from));
@@ -739,7 +935,16 @@ pub(super) fn diff(targets: &[PathBuf], from: Option<&str>, to: Option<&str>) ->
         for line in files_said(said) {
             outln!("{line}");
         }
-        if !any {
+        // What another project keeps now, said once rather than *removed*.
+        let elsewhere =
+            project.kept_elsewhere(before.keys().filter(|name| !after.contains_key(*name)));
+        if !elsewhere.is_empty() {
+            outln!();
+            for (folder, count) in &elsewhere {
+                outln!("{}", kept_by_another(*count, folder));
+            }
+        }
+        if !any && elsewhere.is_empty() {
             outln!();
             match (&from, &to) {
                 (State::Kept(0), State::Now) => outln!(
@@ -764,9 +969,165 @@ pub(super) fn diff(targets: &[PathBuf], from: Option<&str>, to: Option<&str>) ->
     Ok(())
 }
 
-/// `samplekit explain FILE`: a file SampleKit wrote, found by its hash — or by
-/// the snapshot a figure carries — and what changed since it was made.
-pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
+/// Files a snapshot holds that a project below keeps now, said with that
+/// project: they are not removed, and neither shown nor restored here.
+fn kept_by_another(count: usize, folder: &str) -> String {
+    let files = if count == 1 {
+        "1 file".to_string()
+    } else {
+        format!("{count} files")
+    };
+    format!(
+        "{files} the project in {folder} keeps now, in a history of its own — samplekit \
+         {folder} log reads it"
+    )
+}
+
+/// The files of the samples a selection keeps among `targets`, read as the
+/// history kept them at `named`: what `restore --at` puts back, a sample
+/// deleted since among them. `None` where `named` is no snapshot kept.
+pub(super) fn selected_at(
+    targets: &[PathBuf],
+    narrowing: &super::FilterArgs,
+    named: &str,
+) -> Result<Option<Vec<PathBuf>>, Fail> {
+    let failed = |error: history::VcsError| Fail::io(error.to_string());
+    let mut files = Vec::new();
+    for project in reached(targets)? {
+        let config = &project.config;
+        let entries = history::entries(config).map_err(failed)?;
+        // A state naming no snapshot is the caller's to say.
+        let State::Kept(at) = state_named(named, &entries)? else {
+            return Ok(None);
+        };
+        let held = tempfile::Builder::new()
+            .prefix("samplekit-at-")
+            .tempdir()
+            .map_err(|error| Fail::io(format!("a temporary folder: {error}")))?;
+        let past = history::materialize(config, &entries[at].id, &held.path().join("project"))
+            .map_err(failed)?;
+        let past = dunce::canonicalize(&past).unwrap_or(past);
+        let root = dunce::canonicalize(config.root()).unwrap_or_default();
+        let mut places: Vec<PathBuf> = project
+            .within
+            .iter()
+            .map(|within| past.join(within.trim_end_matches('/')))
+            .collect();
+        if places.is_empty() {
+            places.push(past.clone());
+        }
+        // How a sample stands is asked of today's history and model: the
+        // copy of the past has neither.
+        let options = super::Options::default().narrowing(narrowing.clone());
+        if super::states_wanted(&super::loaded(&past)?, &options).is_some() {
+            return Err(Fail::usage(
+                "restore --at reads the samples as the snapshot kept them, and state is how \
+                 they stand today: select by what the files held"
+                    .to_string(),
+            ));
+        }
+        for file in super::sample_files(places, narrowing.clone())? {
+            let file = dunce::canonicalize(&file).unwrap_or(file);
+            if let Ok(relative) = file.strip_prefix(&past) {
+                files.push(super::relative_to_here_path(&root).join(relative));
+            }
+        }
+    }
+    Ok(Some(files))
+}
+
+/// `samplekit explain FILE`: a file SampleKit wrote, looked for in the
+/// projects around it — the one holding it, the current folder's, those below
+/// the current folder, those the workbench opened last — the first step
+/// finding a project that keeps it ending the search.
+pub(super) fn explain_output(file: &Path) -> Outcome {
+    if !file.is_file() {
+        return Err(Fail::io(format!(
+            "{}: no such file or directory",
+            file.display()
+        )));
+    }
+    let Ok(hash) = history::file_hash(file) else {
+        return explain_output_in(file, None);
+    };
+    let carried = history::carried_snapshot(file);
+    let keeps = |config: &ProjectConfig| {
+        !history::made_all(config, &hash)
+            .unwrap_or_default()
+            .is_empty()
+            || carried.as_ref().is_some_and(|snapshot| {
+                !history::made_from(config, snapshot)
+                    .unwrap_or_default()
+                    .is_empty()
+            })
+    };
+    let around = |place: &Path| {
+        let mut configs = history::projects_of(&[place.to_path_buf()]);
+        if let Some(config) = configs.first() {
+            configs.extend(projects_below(config.root()));
+        }
+        configs
+    };
+    let own = if samplekit::config::project_config::find(file).is_some() {
+        around(file)
+    } else {
+        Vec::new()
+    };
+    let here = around(Path::new("."));
+    let steps: [Box<dyn Fn() -> Vec<ProjectConfig>>; 4] = [
+        Box::new(|| own.clone()),
+        Box::new(|| here.clone()),
+        Box::new(|| projects_below(Path::new("."))),
+        Box::new(|| {
+            samplekit::tui::model::recent_projects()
+                .iter()
+                .flat_map(|folder| history::projects_of(std::slice::from_ref(folder)))
+                .collect()
+        }),
+    ];
+    for (step_at, step) in steps.iter().enumerate() {
+        let mut found: Vec<ProjectConfig> = Vec::new();
+        for config in step() {
+            let root = dunce::canonicalize(config.root()).unwrap_or_default();
+            let seen = found
+                .iter()
+                .any(|held| dunce::canonicalize(held.root()).unwrap_or_default() == root);
+            if !seen && keeps(&config) {
+                found.push(config);
+            }
+        }
+        if !found.is_empty() {
+            for (at, config) in found.iter().enumerate() {
+                if at > 0 {
+                    outln!();
+                }
+                // Found away from the file: the project is said.
+                if step_at > 0 {
+                    outln!(
+                        "{} is kept by the project in {}",
+                        file.display(),
+                        super::relative_to_here(config.root())
+                    );
+                }
+                explain_output_in(file, Some(config.root()))?;
+            }
+            return Ok(());
+        }
+    }
+    // Kept nowhere: the project holding it, or this folder's, says why.
+    if !own.is_empty() || !here.is_empty() {
+        return explain_output_in(file, None);
+    }
+    Err(Fail::usage(format!(
+        "no project here or below keeps {}: run explain from the project that wrote it",
+        file.display()
+    )))
+}
+
+/// A file SampleKit wrote, found by its hash — or by the snapshot a figure
+/// carries — in the project named, else its own or the current folder's, and
+/// what changed since it was made.
+fn explain_output_in(file: &Path, project: Option<&Path>) -> Outcome {
     if !file.is_file() {
         return Err(Fail::io(format!(
             "{}: no such file or directory",
@@ -787,9 +1148,7 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
         .next()
     else {
         return Err(Fail::usage(format!(
-            "no project here keeps a history to look {} up in: name one, as samplekit explain \
-             {} FOLDER",
-            file.display(),
+            "no project here or below keeps {}: run explain from the project that wrote it",
             file.display()
         )));
     };
@@ -818,17 +1177,33 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
     );
     // The same contents may have been written more than once — from a
     // snapshot `--at`, and from today's project holding the same values:
-    // the record of the write that went where the file is, else the newest.
+    // the record of the write that went where the file is, else the newest
+    // made from the project of its day. A copy — the paper's table — was said
+    // *made on purpose with --at* by the newest, a remake of a table since
+    // gone stale, and its staleness went unsaid.
     let chosen = |records: Vec<history::Made>| {
         records
             .iter()
             .find(|made| made.written == written_here)
+            .or_else(|| records.iter().find(|made| !made.said.contains(" --at ")))
             .or(records.first())
             .cloned()
     };
     let made = match chosen(history::made_all(&config, &hash).map_err(failed)?) {
         Some(made) => made,
         None => {
+            // Written over the projects below a root that has a history of
+            // its own: kept in theirs, and read from the first that holds it.
+            if project.is_none() {
+                for below in projects_below(config.root()) {
+                    if !history::made_all(&below, &hash)
+                        .unwrap_or_default()
+                        .is_empty()
+                    {
+                        return explain_output_in(file, Some(below.root()));
+                    }
+                }
+            }
             // A figure changed since keeps the snapshot in its metadata, and
             // is one of the figures made from it — never an export.
             let carried = history::carried_snapshot(file);
@@ -881,12 +1256,15 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
         message: String::new(),
         changed: Vec::new(),
         machine: String::new(),
+        machine_id: String::new(),
+        host: String::new(),
         parents: Vec::new(),
         joined: Vec::new(),
+        clock_went_back: false,
     };
     outln!("{}", file.display());
     outln!("  made      {}, by {}", when(&taken), made.said);
-    outln!("  written   {}", made.written);
+    outln!("  written   {}", native(&made.written));
     outln!(
         "  from      snapshot {}, {}",
         number(&made.snapshot),
@@ -894,10 +1272,20 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
     );
     let then = history::files_at(&config, &made.snapshot).map_err(failed)?;
     let now = history::files_now(&config).map_err(failed)?;
+    // Whose fields can be told, it was made from its samples' files and the
+    // configuration: a table, an export or a declared figure runs no code of
+    // the model, whose change reaches it only through values written since.
+    let model = if fields_written(&made, &config).is_some() {
+        history::model_names(&config)
+    } else {
+        std::collections::BTreeSet::new()
+    };
     // What it was made from: its samples, the configuration and the model.
     let concerned = |name: &str| {
         made.samples.iter().any(|sample| sample == name)
             || !(name.ends_with(".md") && name != ".samplekitrc")
+                && !model.contains(name)
+                && !(!model.is_empty() && name.starts_with("@model/"))
     };
     let mut names: Vec<&String> = then
         .keys()
@@ -907,8 +1295,8 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
     names.sort();
     names.dedup();
     // A file is current or not by the fields it writes and by what they are
-    // computed from: `set grain_mass=6.2` made an overview holding no
-    // grain_mass *not current*. Where its fields cannot be told — a script, the
+    // computed from: `set ore_mass=6.2` made an overview holding no
+    // ore_mass *not current*. Where its fields cannot be told — a script, the
     // workbench — every field of its samples counts, as before.
     let read = fields_written(&made, &config).map(|written| {
         let samples: Vec<&Vec<u8>> = made
@@ -919,6 +1307,29 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
             .collect();
         read_through(written, &samples)
     });
+    // A configuration changed only where the file reads nothing — another
+    // export, a figure, the workbench's colours — leaves it current: said
+    // aside, it no longer made every export *not current*.
+    let reads = sections_read(&made, &config);
+    let mut aside: Vec<String> = Vec::new();
+    let names: Vec<&String> = names
+        .into_iter()
+        .filter(|name| {
+            let unread = name.as_str() == ".samplekitrc"
+                && reads.as_ref().is_some_and(|reads| {
+                    !configuration_read_changed(
+                        then.get(name.as_str()),
+                        now.get(name.as_str()),
+                        reads,
+                    )
+                })
+                && then.get(name.as_str()) != now.get(name.as_str());
+            if unread {
+                aside.push(format!("{name}  changed, in nothing it reads"));
+            }
+            !unread
+        })
+        .collect();
     let lines = files_said(
         names
             .into_iter()
@@ -979,9 +1390,9 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
             !again.taken.is_empty() || !again.dropped.is_empty() || again.declaration.is_some()
         });
     outln!();
-    if !lines.is_empty() {
+    if !lines.is_empty() || !aside.is_empty() {
         outln!("since then");
-        for line in &lines {
+        for line in lines.iter().chain(&aside) {
             outln!("  {line}");
         }
         outln!();
@@ -992,7 +1403,45 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
     if !selection.is_empty() {
         outln!();
     }
-    if !differs {
+    // Nothing changed since is not current where it was written from values
+    // not current then, and still: an export over outdated values was said
+    // up to date.
+    let behind: Vec<String> = if differs {
+        Vec::new()
+    } else {
+        let written = fields_written(&made, &config);
+        let mut behind: Vec<String> = made
+            .samples
+            .iter()
+            .filter_map(|name| {
+                samplekit::format::document::load_sample(&config.root().join(name))
+                    .ok()
+                    .map(|(sample, _)| sample)
+            })
+            .flat_map(|sample| samplekit::collection::editing::not_current(&sample))
+            .filter(|value| {
+                written.as_ref().is_none_or(|written| {
+                    written.iter().any(|field| {
+                        field == &value.name
+                            || field.starts_with(&format!("{}.", value.name))
+                            || field.starts_with(&format!("{}[", value.name))
+                    })
+                })
+            })
+            .map(|value| value.name)
+            .collect();
+        behind.sort();
+        behind.dedup();
+        behind
+    };
+    if !differs && !behind.is_empty() {
+        outln!(
+            "nothing it was made from has changed since, but it was written from values not \
+             current: {} — samplekit status says why; computed, {} makes it again",
+            behind.join(", "),
+            made.said
+        );
+    } else if !differs {
         if selection.is_empty() {
             outln!("nothing it was made from has changed since: it is up to date");
         } else {
@@ -1011,11 +1460,258 @@ pub(super) fn explain_output(file: &Path, project: Option<&Path>) -> Outcome {
             made.said
         );
     }
-    // The command that made it, run on the project as it was then.
+    // The command that made it, run on the project as it was then — where
+    // one project's history holds it: `--at` reads one, and a file written
+    // over several was made from a snapshot of each.
     if made.said.starts_with("samplekit ") {
-        outln!("{}", made_again(&made));
+        let spanned = projects_spanned(&made, &root);
+        if spanned.len() > 1 {
+            outln!(
+                "written over {} projects, {}: no one snapshot holds them all, and --at reads \
+                 one project's history, so it is not made again as it was; {} makes it from \
+                 today's",
+                spanned.len(),
+                spanned.join(", "),
+                made.said
+            );
+        } else {
+            outln!("{}", made_again(&made, &root));
+        }
     }
     Ok(())
+}
+
+/// The projects in the folders below `root`, nearest first: each folder
+/// holding a `.samplekitrc`, hidden folders and environments passed over.
+pub(super) fn projects_below(root: &Path) -> Vec<samplekit::config::project_config::ProjectConfig> {
+    let mut found = Vec::new();
+    let mut folders = vec![(root.to_path_buf(), 0usize)];
+    while let Some((folder, depth)) = folders.pop() {
+        let Ok(entries) = std::fs::read_dir(&folder) else {
+            continue;
+        };
+        let mut below: Vec<PathBuf> = entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| !name.starts_with('.') && name != "node_modules")
+            })
+            .collect();
+        below.sort();
+        for path in below {
+            if path.join("pyvenv.cfg").is_file() {
+                continue;
+            }
+            if path
+                .join(samplekit::config::project_config::FILENAME)
+                .is_file()
+            {
+                found.extend(history::projects_of(std::slice::from_ref(&path)));
+            }
+            if depth < 4 {
+                folders.push((path, depth + 1));
+            }
+        }
+    }
+    found
+}
+
+/// The projects a record's command read, by their folders as the command
+/// names them: each word naming a file or folder from where it ran, an
+/// output left out.
+fn projects_spanned(made: &history::Made, root: &Path) -> Vec<String> {
+    let Ok(words) = shell_words::split(&made.said) else {
+        return Vec::new();
+    };
+    let ran_in = Path::new(made.ran_in.trim_end_matches('/'));
+    let base = if ran_in.is_absolute() {
+        ran_in.to_path_buf()
+    } else {
+        root.join(ran_in)
+    };
+    let mut places: Vec<PathBuf> = Vec::new();
+    let mut output = false;
+    for word in words.iter().skip(1) {
+        if output {
+            output = false;
+            continue;
+        }
+        if word == "-o" || word == "--output" {
+            output = true;
+            continue;
+        }
+        if word.starts_with('-') {
+            continue;
+        }
+        let place = base.join(word);
+        if place.exists() {
+            places.push(place);
+        }
+    }
+    let mut roots: Vec<String> = Vec::new();
+    for config in history::projects_of(&places) {
+        let root =
+            dunce::canonicalize(config.root()).unwrap_or_else(|_| config.root().to_path_buf());
+        let shown = root
+            .strip_prefix(dunce::canonicalize(&base).unwrap_or_else(|_| base.clone()))
+            .ok()
+            .filter(|below| !below.as_os_str().is_empty())
+            .map_or_else(
+                || root.display().to_string(),
+                |below| below.display().to_string(),
+            );
+        if !roots.contains(&shown) {
+            roots.push(shown);
+        }
+    }
+    roots
+}
+
+/// The command a snapshot says, read as the command line reads it, in
+/// whatever order it was typed.
+fn said_parsed(said: &str) -> Option<Cli> {
+    let words = shell_words::split(said).ok()?;
+    let (program, rest) = words.split_first()?;
+    let rest = super::path_first(rest).map_or_else(|| rest.to_vec(), |(moved, _, _)| moved);
+    Cli::try_parse_from(std::iter::once(program.clone()).chain(rest)).ok()
+}
+
+/// The declarations of `.samplekitrc` a file SampleKit wrote reads, as
+/// `(section, name)`: its export, profile, queries and style. `None` where
+/// they cannot be told — a figure, a script, the workbench — and every
+/// change then counts.
+fn sections_read(made: &history::Made, config: &ProjectConfig) -> Option<Vec<(String, String)>> {
+    if !made.said.starts_with("samplekit ") {
+        return None;
+    }
+    let cli = said_parsed(&made.said)?;
+    let declared =
+        samplekit::config::project_config::load(&config.root().join(".samplekitrc")).ok();
+    let mut read: Vec<(String, String)> = Vec::new();
+    let mut add = |section: &str, name: &str| read.push((section.to_string(), name.to_string()));
+    match cli.command {
+        None => {
+            let query = cli.query;
+            for name in &query.selection.narrowing.queries {
+                add("query", name);
+            }
+            if let Some(profile) = &query.profile {
+                add("profile", profile);
+            }
+            if let Some(style) = &query.presentation.style {
+                add("style", style);
+            }
+            // A document's format is its style's, by the file's extension.
+            if let Some(extension) = query
+                .output
+                .as_deref()
+                .and_then(Path::extension)
+                .and_then(|extension| extension.to_str())
+            {
+                add("style", extension);
+                if let Some(config) = &declared {
+                    for name in config.text_format_names() {
+                        if config
+                            .text_format(name)
+                            .is_some_and(|text| text.extension == extension)
+                        {
+                            add("style", name);
+                        }
+                    }
+                }
+            }
+        }
+        Some(Commands::Export(args)) => {
+            for name in &args.selection.narrowing.queries {
+                add("query", name);
+            }
+            if let Some(style) = &args.style {
+                add("style", style);
+            }
+            add("export", &args.export);
+            match declared.as_ref()?.export(&args.export).ok()? {
+                Export::Table(export) => {
+                    add("profile", &export.profile);
+                    if let Some(query) = &export.query {
+                        add("query", query);
+                    }
+                    if let Some(style) = &export.style {
+                        add("style", style);
+                    }
+                    if let Format::Text(text) = &export.format {
+                        add("style", &text.name);
+                    }
+                }
+                // A figure's: the figure it draws, its query and the style
+                // its labels use.
+                Export::Figure(export) => {
+                    add("figure", &export.figure);
+                    if let Some(query) = &export.query {
+                        add("query", query);
+                    }
+                    if let Some(style) = &export.style {
+                        add("style", style);
+                    }
+                }
+            }
+        }
+        _ => return None,
+    }
+    Some(read)
+}
+
+/// Whether `.samplekitrc` changed in what a file reads: a declaration it
+/// names, or anything outside the declarations by name — the units, the
+/// properties, the collection — which every file may read. The workbench's
+/// colours and the declarations it does not name are not.
+fn configuration_read_changed(
+    before: Option<&Vec<u8>>,
+    after: Option<&Vec<u8>>,
+    reads: &[(String, String)],
+) -> bool {
+    let table = |bytes: Option<&Vec<u8>>| {
+        bytes.and_then(|bytes| String::from_utf8_lossy(bytes).parse::<toml::Table>().ok())
+    };
+    let (Some(before), Some(after)) = (table(before), table(after)) else {
+        return true;
+    };
+    const NAMED: [&str; 5] = ["export", "profile", "query", "figure", "style"];
+    const UNREAD: [&str; 1] = ["colors"];
+    let mut keys: Vec<&String> = before.keys().chain(after.keys()).collect();
+    keys.sort();
+    keys.dedup();
+    keys.into_iter().any(|key| {
+        let (was, is) = (before.get(key), after.get(key));
+        if was == is || UNREAD.contains(&key.as_str()) {
+            return false;
+        }
+        if !NAMED.contains(&key.as_str()) {
+            return true;
+        }
+        let names = |value: Option<&toml::Value>| -> Vec<String> {
+            value
+                .and_then(toml::Value::as_table)
+                .map(|table| table.keys().cloned().collect())
+                .unwrap_or_default()
+        };
+        let mut all = names(was);
+        all.extend(names(is));
+        all.into_iter().any(|name| {
+            let entry = |value: Option<&toml::Value>| {
+                value
+                    .and_then(toml::Value::as_table)
+                    .and_then(|table| table.get(&name))
+                    .cloned()
+            };
+            entry(was) != entry(is)
+                && reads
+                    .iter()
+                    .any(|(section, read)| section == key && *read == name)
+        })
+    })
 }
 
 /// The names a file SampleKit wrote holds values of — its columns, its sort
@@ -1027,8 +1723,7 @@ fn fields_written(made: &history::Made, config: &ProjectConfig) -> Option<Vec<St
     if !made.said.starts_with("samplekit ") {
         return None;
     }
-    let words = shell_words::split(&made.said).ok()?;
-    let cli = Cli::try_parse_from(&words).ok()?;
+    let cli = said_parsed(&made.said)?;
     let declared =
         samplekit::config::project_config::load(&config.root().join(".samplekitrc")).ok();
     let mut fields: Vec<String> = Vec::new();
@@ -1069,8 +1764,16 @@ fn fields_written(made: &history::Made, config: &ProjectConfig) -> Option<Vec<St
             sorted(&query.selection, &mut fields);
         }
         Some(Commands::Export(args)) => {
-            let export = declared.as_ref()?.export(&args.export).ok()?;
-            of_profile(&export.profile.clone(), &mut fields)?;
+            match declared.as_ref()?.export(&args.export).ok()? {
+                Export::Table(export) => of_profile(&export.profile.clone(), &mut fields)?,
+                // A figure's export draws its figure's axes and group; the
+                // model's figure may draw from what it names alone.
+                Export::Figure(export) => {
+                    let figure = declared.as_ref()?.figure(&export.figure)?;
+                    fields.extend([figure.x.clone(), figure.y.clone()]);
+                    fields.extend(figure.group.iter().cloned());
+                }
+            }
             sorted(&args.selection, &mut fields);
         }
         Some(Commands::Plot(args)) => {
@@ -1096,7 +1799,7 @@ fn fields_written(made: &history::Made, config: &ProjectConfig) -> Option<Vec<St
 }
 
 /// `written`, and what each is computed from, as the records of `samples`
-/// say it — through every step: an export of `abv` reads `og` through it.
+/// say it — through every step: an export of `modulus` reads `radius` through it.
 fn read_through(written: Vec<String>, samples: &[&Vec<u8>]) -> std::collections::BTreeSet<String> {
     let edges: Vec<(String, String)> = samples
         .iter()
@@ -1122,22 +1825,58 @@ fn read_through(written: Vec<String>, samples: &[&Vec<u8>]) -> std::collections:
 /// The command that makes a file again as it was, from the folder it was
 /// run in, with `--at` and the snapshot's id. An export `--at` a snapshot
 /// writes only where `-o` says, so one written to its declared file is given
-/// `-o` and where it was written.
-fn made_again(made: &history::Made) -> String {
+/// `-o` and where it was written. Where that file holds something else now —
+/// a later export, the copy explained being an old one — the command writes
+/// beside it, named with the snapshot's id: run as it is said, it replaced the
+/// file as it is now with the file as it was.
+fn made_again(made: &history::Made, root: &Path) -> String {
     let words = shell_words::split(&made.said)
         .unwrap_or_else(|_| made.said.split(' ').map(str::to_string).collect());
+    let there = root.join(&made.written);
+    let replaced =
+        there.exists() && history::file_hash(&there).map_or(true, |hash| hash != made.hash);
+    let beside = |written: &str| -> String {
+        if !replaced {
+            return written.to_string();
+        }
+        let path = Path::new(written);
+        let stem = path
+            .file_stem()
+            .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned());
+        let named = match path.extension() {
+            Some(extension) => format!(
+                "{stem}-{}.{}",
+                short(&made.snapshot),
+                extension.to_string_lossy()
+            ),
+            None => format!("{stem}-{}", short(&made.snapshot)),
+        };
+        path.with_file_name(named).to_string_lossy().into_owned()
+    };
     let mut kept: Vec<String> = Vec::new();
     let mut skip = false;
+    let mut destination = false;
     for word in &words {
         if skip {
             skip = false;
+        } else if destination {
+            kept.push(beside(word));
+            destination = false;
         } else if word == "--at" {
             skip = true;
+        } else if word == "-o" || word == "--output" {
+            kept.push(word.clone());
+            destination = true;
+        } else if let Some(path) = word.strip_prefix("--output=") {
+            kept.push(format!("--output={}", beside(path)));
         } else if !word.starts_with("--at=") {
             kept.push(word.clone());
         }
     }
-    let export = kept.get(1).is_some_and(|word| word == "export");
+    // `export` as the command, written first or after its paths.
+    let export = kept.get(1).is_some_and(|word| word == "export")
+        || super::path_first(&kept[1.min(kept.len())..])
+            .is_some_and(|(moved, _, _)| moved.first().is_some_and(|word| word == "export"));
     let output = kept
         .iter()
         .any(|word| word == "-o" || word == "--output" || word.starts_with("--output="));
@@ -1145,32 +1884,39 @@ fn made_again(made: &history::Made) -> String {
         // `written` is from the project's folder, the command from the
         // folder it ran in.
         let ran_in = made.ran_in.trim_end_matches('/');
-        let written =
-            if ran_in.is_empty() || ran_in == "." || Path::new(&made.written).is_absolute() {
-                made.written.clone()
-            } else {
-                made.written
-                    .strip_prefix(&format!("{ran_in}/"))
-                    .map_or_else(
-                        || {
-                            let ups = ran_in.split('/').count();
-                            format!("{}{}", "../".repeat(ups), made.written)
-                        },
-                        str::to_string,
-                    )
-            };
+        let written = if Path::new(ran_in).is_absolute() {
+            // Run from a folder outside the project, kept whole: the file
+            // from there, where it lies below it, else whole too. Its
+            // components were counted as steps up from the project.
+            let file = root.join(&made.written);
+            let from = dunce::canonicalize(ran_in).unwrap_or_else(|_| PathBuf::from(ran_in));
+            let file = dunce::canonicalize(&file).unwrap_or(file);
+            file.strip_prefix(&from)
+                .map(|below| below.to_string_lossy().into_owned())
+                .unwrap_or_else(|_| file.to_string_lossy().into_owned())
+        } else if ran_in.is_empty() || ran_in == "." || Path::new(&made.written).is_absolute() {
+            made.written.clone()
+        } else {
+            made.written
+                .strip_prefix(&format!("{ran_in}/"))
+                .map_or_else(
+                    || {
+                        let ups = ran_in.split('/').count();
+                        format!("{}{}", "../".repeat(ups), made.written)
+                    },
+                    str::to_string,
+                )
+        };
         kept.push("-o".to_string());
-        kept.push(written);
+        // As the system writes a path: the history keeps it with `/`.
+        kept.push(native(&beside(&written)));
     }
     let place = if made.ran_in.is_empty() || made.ran_in == "." {
         "from the project's folder".to_string()
     } else {
         format!("from {}", made.ran_in)
     };
-    let quoted: Vec<String> = kept
-        .iter()
-        .map(|word| shell_words::quote(word).into_owned())
-        .collect();
+    let quoted: Vec<String> = kept.iter().map(|word| shell_word(word)).collect();
     format!(
         "made again as it was, {place}: {} --at {}",
         quoted.join(" "),
@@ -1229,8 +1975,8 @@ pub(super) fn explain_at(options: &Options, named: &str) -> Outcome {
             })
             .unwrap_or_else(|| "FIELD".to_string());
         return Err(Fail::usage(format!(
-            "explain --at shows one value as it was, and wants its field: samplekit explain \
-             {first} {field} --at {named}"
+            "explain --at shows one value as it was, and wants its field: samplekit {first} \
+             explain {field} --at {named}"
         )));
     }
     let Some(at) = at else {
@@ -1243,22 +1989,25 @@ pub(super) fn explain_at(options: &Options, named: &str) -> Outcome {
             when(&entries[at])
         )));
     };
-    // The file as it was, read beside nothing, under the project's
-    // configuration as it is: a value's states are its records' then. A folder
+    let _ = bytes;
+    // The project as the snapshot kept it — its configuration and its model
+    // then — and the history it has: a value is judged by the formula that
+    // computed it then, against the model then. The sample alone, under
+    // today's model, called a value of its day's formula outdated. A folder
     // of its own name, removed when it is dropped.
     let held = tempfile::Builder::new()
         .prefix("samplekit-at-")
         .tempdir()
         .map_err(|error| Fail::io(format!("a temporary folder: {error}")))?;
-    let directory = held.path().to_path_buf();
-    let copy = directory.join(
-        Path::new(&name)
-            .file_name()
-            .map_or_else(|| "sample.md".into(), |name| name.to_os_string()),
-    );
-    std::fs::write(&copy, bytes)
-        .map_err(|error| Fail::io(format!("{}: {error}", copy.display())))?;
-    force_configuration(&config.root().join(".samplekitrc"))?;
+    let written = history::materialize(&config, &entries[at].id, &held.path().join("project"))
+        .map_err(failed)?;
+    let copy = written.join(&name);
+    // Nothing read from the past writes history of its own.
+    // SAFETY: set before any thread is started, and read by the children.
+    unsafe { std::env::set_var("SAMPLEKIT_HISTORY", "off") };
+    history::read_history_of(&written, config.root());
+    super::PAST.store(true, std::sync::atomic::Ordering::SeqCst);
+    let _ = super::PAST_TYPED.set(first.clone());
     outln!(
         "as kept at #{} · {} · {}\n",
         at + 1,
@@ -1279,6 +2028,11 @@ pub(super) fn explain_at(options: &Options, named: &str) -> Outcome {
 /// never put back.
 pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Outcome {
     let projects = reached(targets)?;
+    // A snapshot is one project's: its number names another moment in each
+    //.
+    if let Some(named) = at {
+        one_project(&projects, "--at", &format!("restore --at {named}"))?;
+    }
     // Whether anything would be written: the advice to pass --write is
     // given only then.
     let mut to_restore = false;
@@ -1287,7 +2041,7 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
             if index > 0 {
                 outln!();
             }
-            outln!("{}", project.config.root().display());
+            outln!("{}", super::relative_to_here(project.config.root()));
         }
         let config = &project.config;
         let entries = history::entries(config).map_err(|error| Fail::io(error.to_string()))?;
@@ -1307,9 +2061,9 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
             },
             None => None,
         };
-        // Nothing to do is said *unchanged*, and exits 0.
+        // Nothing to do is said so, and exits 0.
         if entries.is_empty() {
-            outln!("{NO_HISTORY} — unchanged");
+            outln!("nothing to change — {NO_HISTORY}");
             continue;
         }
         let now = history::files_now(config).map_err(|error| Fail::io(error.to_string()))?;
@@ -1318,18 +2072,57 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
         // holds: its last content kept is what comes back, taking back only
         // what was done outside. The snapshot before the last change kept of it
         // was the one before its last edit, which lost that edit too.
-        let files: Vec<&String> = project
+        let named_files: Vec<String> = project
             .within
             .iter()
             .filter(|within| !within.is_empty() && !within.ends_with('/'))
+            .cloned()
             .collect();
         // As the history last kept them: this machine's last snapshot, with
         // what the other machines' it would join changed.
-        let kept = if files.is_empty() || named.is_some() {
+        let kept = if named.is_some() {
             None
         } else {
             history::last_kept(config).map_err(|error| Fail::io(error.to_string()))?
         };
+        // A sample deleted or changed outside SampleKit since the last
+        // snapshot comes back where it is named; otherwise it stays, and is
+        // said, the last change SampleKit wrote taken back field by field
+        // around it. A file made by hand is no change of a kept one, and a
+        // configuration edited by hand stays.
+        let by_hand: Vec<String> = match &kept {
+            Some(kept) if named.is_none() && named_files.is_empty() => {
+                let mut differing: Vec<String> = kept
+                    .files
+                    .keys()
+                    .filter(|name| {
+                        !name.starts_with('@')
+                            && !name.ends_with(samplekit::config::project_config::FILENAME)
+                            && project.holds(name)
+                            && kept.files.get(*name) != now.get(*name)
+                    })
+                    .cloned()
+                    .collect();
+                differing.sort();
+                differing
+            }
+            _ => Vec::new(),
+        };
+        // Each said, and how it comes back: naming it.
+        let say_by_hand = || {
+            for name in &by_hand {
+                outln!(
+                    "  {name}, {} since, stays — samplekit {name} restore brings back its last \
+                     content kept",
+                    if now.contains_key(name) {
+                        "changed outside SampleKit"
+                    } else {
+                        "deleted"
+                    }
+                );
+            }
+        };
+        let files: Vec<&String> = named_files.iter().collect();
         let (gone, outside): (Vec<&String>, Vec<&String>) = match &kept {
             Some(kept) => files
                 .iter()
@@ -1358,6 +2151,9 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
                 (at, kept.files.clone())
             });
         let has_latest = latest.is_some();
+        // Without a state named, the last change is taken back rather than a
+        // state put back.
+        let mut taking_back = false;
         let (source, then) = match (named, latest) {
             (Some(at), _) => (
                 at,
@@ -1366,33 +2162,116 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
             ),
             (None, Some(latest)) => latest,
             (None, None) => {
-                let Some(last) = entries
+                // The last change SampleKit wrote here, taken back field by
+                // field: what a colleague or an editor changed since stays.
+                // A file named that no change SampleKit wrote touched, and that
+                // was changed by hand since: that change, kept, is taken back.
+                let last =
+                    history::last_own_change(&entries, |name| project.holds(name)).or_else(|| {
+                        (!named_files.is_empty())
+                            .then(|| {
+                                history::last_outside_change(&entries, |name| {
+                                    named_files.iter().any(|named| named == name)
+                                })
+                            })
+                            .flatten()
+                    });
+                let Some(last) = last else {
+                    outln!(
+                        "nothing to change — no change SampleKit wrote on this machine touched \
+                         what is named here"
+                    );
+                    say_by_hand();
+                    continue;
+                };
+                let failed = |error: history::VcsError| Fail::io(error.to_string());
+                let before = history::files_before(config, &entries[last].id).map_err(failed)?;
+                let after = history::files_at(config, &entries[last].id).map_err(failed)?;
+                let mut then = now.clone();
+                let mut conflicts = Vec::new();
+                for name in entries[last]
+                    .changed
                     .iter()
-                    .position(|entry| entry.changed.iter().any(|name| project.holds(name)))
-                else {
-                    outln!(
-                        "no snapshot changed what is named here: nothing to take back — unchanged"
+                    .filter(|name| !name.starts_with("@model/") && project.holds(name))
+                {
+                    match history::taken_back(
+                        name,
+                        before.get(name).map(Vec::as_slice),
+                        after.get(name).map(Vec::as_slice),
+                        now.get(name).map(Vec::as_slice),
+                    ) {
+                        Ok(Some(bytes)) => {
+                            then.insert(name.clone(), bytes);
+                        }
+                        Ok(None) => {
+                            then.remove(name);
+                        }
+                        Err(found) => conflicts.extend(found),
+                    }
+                }
+                if !conflicts.is_empty() {
+                    // The snapshot that holds the project as it was before
+                    // this change: the parent whose files are those. A change
+                    // that joined another computer's work has none, and its
+                    // own line's last state takes that work back too — the
+                    // advice said otherwise, and undid a colleague's formula.
+                    let parents: Vec<usize> = entries[last]
+                        .parents
+                        .iter()
+                        .filter_map(|id| entries.iter().position(|entry| entry.id == *id))
+                        .collect();
+                    let held_before = |at: usize| {
+                        history::files_at(config, &entries[at].id).is_ok_and(|files| {
+                            files
+                                .iter()
+                                .filter(|(name, _)| project.holds(name))
+                                .eq(before.iter().filter(|(name, _)| project.holds(name)))
+                        })
+                    };
+                    // What it set first, by hand: `diff` shows what the
+                    // change made of each value, and `restore --at` is said
+                    // for what it reaches — the files named, or the project —
+                    // and for what it takes back with them.
+                    let shown = format!(
+                        "set those values again by hand: samplekit diff --from {} --to {} shows \
+                         what this change made of them",
+                        last + 2,
+                        last + 1
                     );
-                    continue;
-                };
-                // The state it was taken over, named by its parent on its own
-                // machine's branch.
-                let Some(parent) = entries[last]
-                    .parents
-                    .first()
-                    .and_then(|id| entries.iter().position(|entry| entry.id == *id))
-                else {
-                    outln!(
-                        "the last change kept of what is named here is the project as SampleKit \
-                         first kept it: there is nothing before it to go back to — unchanged"
-                    );
-                    continue;
-                };
-                (
-                    parent,
-                    history::files_before(config, &entries[last].id)
-                        .map_err(|error| Fail::io(error.to_string()))?,
-                )
+                    let reach = if named_files.is_empty() {
+                        "the project".to_string()
+                    } else {
+                        named_files.join(", ")
+                    };
+                    let advice = match parents.iter().copied().find(|at| held_before(*at)) {
+                        Some(parent) => format!(
+                            "{shown}; samplekit restore --at {} puts {reach} back as it was \
+                             before it, and takes back with it what was changed there since",
+                            parent + 1
+                        ),
+                        None => match parents.first() {
+                            Some(parent) if parents.len() > 1 => format!(
+                                "set those values again by hand: it joined another computer's \
+                                 work, and samplekit restore --at {} — this computer's state before \
+                                 it — takes that work back too",
+                                parent + 1
+                            ),
+                            _ => shown.clone(),
+                        },
+                    };
+                    return Err(Fail::data(format!(
+                        "restore cannot take back {}: what it changed was changed since\n{}\n  {}",
+                        snapshot_said(&entries, last),
+                        conflicts
+                            .iter()
+                            .map(|conflict| format!("  {conflict}"))
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                        advice
+                    )));
+                }
+                taking_back = true;
+                (last, then)
             }
         };
         let mut names: Vec<&String> = then
@@ -1405,16 +2284,13 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
         names.dedup();
         // Its number moves on as soon as the restore is itself a snapshot:
         // its id does not.
-        if write {
-            outln!(
-                "restored to {} (#{} until now) · {} · {}",
-                short(&entries[source].id),
-                source + 1,
-                when(&entries[source]),
-                entries[source].message
-            );
+        // What and where, as every preview's first line says it: the change
+        // taken back, or the state gone back to.
+        if taking_back {
+            outln!("restore · take back {}", snapshot_said(&entries, source));
+            say_by_hand();
         } else {
-            outln!("would restore to {}", snapshot_said(&entries, source));
+            outln!("restore · back to {}", snapshot_said(&entries, source));
         }
         if has_latest {
             let joined = |names: &[&String]| {
@@ -1437,8 +2313,12 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
                 );
             }
         }
+        let elsewhere = project.kept_elsewhere(then.keys().filter(|name| !now.contains_key(*name)));
+        for (folder, count) in &elsewhere {
+            outln!("  {}", kept_by_another(*count, folder));
+        }
         if names.is_empty() {
-            outln!("\nthe files are already as it kept them — unchanged");
+            outln!("\nnothing to change — the files are already as it kept them");
             continue;
         }
         to_restore = true;
@@ -1447,8 +2327,20 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
             .iter()
             .map(|name| {
                 // A file gone that the state held is brought back, not new.
+                // Its values said too: `restored` alone hid what came back.
                 let lines = if !now.contains_key(*name) {
-                    vec![format!("{name}   restored")]
+                    let mut lines = vec![format!("{name}   restored")];
+                    lines.extend(
+                        changes_of(
+                            name,
+                            Some(&b"---\nschema_version: 1\n---\n".to_vec()),
+                            then.get(*name),
+                            config,
+                        )
+                        .into_iter()
+                        .filter(|line| line.starts_with(' ')),
+                    );
+                    lines
                 } else {
                     changes_of(name, now.get(*name), then.get(*name), config)
                 };
@@ -1458,6 +2350,41 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
         for line in files_said(said) {
             outln!("{line}");
         }
+        // What the files put back make not current, as a `set`'s preview says
+        // it: readings kept new under a value put back made three values
+        // outdated, and nothing said so.
+        let mut newly: Vec<(String, String)> = Vec::new();
+        for name in names.iter().filter(|name| name.ends_with(".md")) {
+            let (Some(after), before) = (
+                then.get(*name)
+                    .and_then(|bytes| samplekit::presentation::changes::sample_of(bytes)),
+                now.get(*name)
+                    .and_then(|bytes| samplekit::presentation::changes::sample_of(bytes)),
+            ) else {
+                continue;
+            };
+            let was = before
+                .as_ref()
+                .map(samplekit::collection::editing::not_current)
+                .unwrap_or_default();
+            for value in samplekit::collection::editing::newly_not_current(
+                &was,
+                &samplekit::collection::editing::not_current(&after),
+            ) {
+                // Each in its file, its state in its colour, said as `set`
+                // says them: the names padded to the longest.
+                newly.push((
+                    format!("{name}  {}", value.name),
+                    render::painted_state(&super::state_of(&after, &value.state, value.rows)),
+                ));
+            }
+        }
+        if !newly.is_empty() {
+            outln!();
+            for line in samplekit::presentation::changes::not_current_lines(&newly, 0) {
+                outln!("{line}");
+            }
+        }
         if !write {
             continue;
         }
@@ -1465,6 +2392,10 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
         // as the history's own snapshot of this restore will keep them.
         let mut done: Vec<&String> = Vec::new();
         for name in &names {
+            if super::STOP.load(std::sync::atomic::Ordering::SeqCst) {
+                let done: Vec<String> = done.iter().map(|name| name.to_string()).collect();
+                return Err(super::stopped(&done));
+            }
             let path = config.root().join(name);
             // Each file as it was read above, or not at all: another writer's
             // change since is refused, not lost, and a file is replaced
@@ -1512,10 +2443,18 @@ pub(super) fn restore(targets: &[PathBuf], at: Option<&str>, write: bool) -> Out
         }
         // The heading said to what state; this says what the disk holds now, in
         // the words every command that writes a file uses.
-        outln!("\nwritten: {}", counted_as(done.len(), "file", "files"));
+        outln!();
+        let done: Vec<String> = done.iter().map(|name| name.to_string()).collect();
+        for line in super::written_lines(&done) {
+            outln!("{line}");
+        }
     }
     if !write && to_restore {
-        outln!("\n{}", advice("nothing written — pass --write to restore"));
+        outln!();
+        offer_to_apply(
+            "restore these files?",
+            "nothing written — pass --write to restore",
+        );
     }
     Ok(())
 }
@@ -1591,8 +2530,7 @@ fn reselect(
     if !made.said.starts_with("samplekit ") || made.said.contains(" --at ") {
         return None;
     }
-    let words = shell_words::split(&made.said).ok()?;
-    let cli = Cli::try_parse_from(&words).ok()?;
+    let cli = said_parsed(&made.said)?;
     let (targets, selection, declared) = match cli.command {
         None => (cli.query.targets, cli.query.selection, None),
         Some(Commands::Export(args)) => {
@@ -1614,13 +2552,13 @@ fn reselect(
     };
     let now_config =
         samplekit::config::project_config::load(&config.root().join(".samplekitrc")).ok();
-    let mut queries = selection.queries;
+    let mut queries = selection.narrowing.queries;
     if let Some((kind, name)) = &declared {
         let query = match *kind {
             "export" => now_config
                 .as_ref()
                 .and_then(|config| config.export(name).ok())
-                .and_then(|export| export.query.clone()),
+                .and_then(|export| export.query().map(str::to_string)),
             _ => now_config
                 .as_ref()
                 .and_then(|config| config.figure(name))
@@ -1638,7 +2576,7 @@ fn reselect(
             .map(|target| target.to_string_lossy().into_owned())
             .collect()
     };
-    for filter in selection.filters {
+    for filter in selection.narrowing.filters {
         arguments.extend(["--filter".to_string(), filter]);
     }
     for query in queries {
@@ -1709,4 +2647,10 @@ fn reselect(
         dropped,
         declaration,
     })
+}
+
+/// The configuration as the newest snapshot kept it, for a project whose file
+/// cannot be read now; nothing declared where none was kept that reads.
+fn kept_configuration(rc: &Path) -> samplekit::config::project_config::ProjectConfig {
+    history::kept_configuration(rc)
 }

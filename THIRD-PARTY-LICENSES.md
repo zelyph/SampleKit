@@ -12,7 +12,7 @@ The source of every one of them, those under the Mozilla Public License
 
 | Licence | Crates |
 | --- | --- |
-| MIT | 276 |
+| MIT | 279 |
 | Unicode-3.0 | 18 |
 | Apache-2.0 | 9 |
 | Zlib | 2 |
@@ -217,6 +217,8 @@ Used by:
 - unsafe-libyaml 0.2.11
 - utf8_iter 1.0.4 — Copyright Mozilla Foundation
 - utf8parse 0.2.2 — Copyright (c) 2016 Joe Wilm
+- v_escape-base 0.1.0 — Copyright (c) 2019 Rust-iendo Barcelona
+- v_latexescape 0.16.0 — Copyright (c) 2019 Rust-iendo Barcelona
 - wasi 0.11.1+wasi-snapshot-preview1
 - wasm-bindgen 0.2.129 — Copyright (c) 2014 Alex Crichton
 - wasm-bindgen-macro 0.2.129 — Copyright (c) 2014 Alex Crichton
@@ -329,6 +331,7 @@ Used by:
 - darling_macro 0.24.1 — Copyright (c) 2017 Ted Driggs
 - diff 0.1.13 — Copyright (c) 2015 Utkarsh Kukreti
 - faster-hex 0.10.1 — Copyright (c) 2018 Nervos Foundation
+- html-escape 0.2.15 — Copyright (c) 2020 magiclen.org (Ron Li)
 - ident_case 1.0.1
 - iset 0.3.3 — Copyright (c) 2020 Timofey Prodanov
 - line-clipping 0.3.8 — Copyright (c) 2024 Josh McKinney
@@ -382,7 +385,7 @@ Used by:
 - tinystr 0.8.4 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.
 - writeable 0.6.4 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.
 - yoke 0.8.3 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.
-- yoke-derive 0.8.3 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.
+- yoke-derive 0.8.4 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.
 - zerofrom 0.1.8 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.
 - zerofrom-derive 0.1.8 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.
 - zerotrie 0.2.5 — COPYRIGHT AND PERMISSION NOTICE; Copyright © 2020-2024 Unicode, Inc.

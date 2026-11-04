@@ -67,6 +67,18 @@ pub enum Statistic {
     StandardError,
 }
 
+/// Whether a channel is a spread, an uncertainty or a statistic of spread,
+/// which is rounded up, never understated.
+pub fn is_spread(channel: Channel) -> bool {
+    matches!(
+        channel,
+        Channel::Uncertainty
+            | Channel::Stat(
+                Statistic::StandardError | Statistic::SampleStdev | Statistic::PopulationStdev
+            )
+    )
+}
+
 /// What SampleKit supplies rather than the file: `name` is the sample's own,
 /// `path` and `filename` come from the subject.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,23 +170,27 @@ impl StateWord {
         })
     }
 
-    /// The word to suggest for one that is not a state: the nearest, and
-    /// `outdated` for `stale`, the word it replaced, which no edit distance
-    /// would find.
+    /// The word to suggest for one that is not a state: the nearest.
     pub fn suggestion(written: &str) -> Option<String> {
-        if written == "stale" {
-            return Some("outdated".to_string());
-        }
         crate::core::identifier::nearest(written, StateWord::WORDS)
     }
 
     /// Whether the model could make this word true where the files do not:
-    /// what a caller reads the model's plan for, and nothing else.
+    /// what a caller reads the model's plan for, and nothing else. `edited`
+    /// too: a value with no record of its formula is the model's to call
+    /// *record missing*, which the column said `edited` and the filter, from
+    /// the files alone, did not find.
     pub fn needs_the_model(self) -> bool {
         matches!(
             self,
             StateWord::NotCurrent
-                | StateWord::Is(State::Current | State::NeverComputed | State::Waiting)
+                | StateWord::Is(
+                    State::Current
+                        | State::NeverComputed
+                        | State::Waiting
+                        | State::Stale
+                        | State::Edited
+                )
         )
     }
 }
@@ -304,7 +320,7 @@ fn parse_named(source: &str, text: &str) -> Result<Field, FieldError> {
         }
         return Ok(Field::Reserved(reserved));
     }
-    // `malt.uncertanty` and `mashing.wort` have one shape and two
+    // `diameter.uncertanty` and `preheating.tension` have one shape and two
     // diagnoses: a misspelled channel, and a column that needs its brackets.
     // Nearness decides, because *count the columns* is a different fix from
     // *correct the spelling* and neither message helps with the other mistake.
@@ -321,7 +337,6 @@ fn parse_named(source: &str, text: &str) -> Result<Field, FieldError> {
             // column, so neither of those falls through to here.
             let looks_like_a_column = segments.len() == 2
                 && written != "stats"
-                && !RETIRED_CHANNELS.contains(&written.as_str())
                 && nearest(&written, &available).is_none()
                 && Identifier::new(&written).is_ok();
             if looks_like_a_column {
@@ -577,21 +592,6 @@ fn reserved_of(name: &str) -> Option<ReservedField> {
     }
 }
 
-/// Spellings a channel used to have. They are refused, and they are refused
-/// **as channels**: read as a table's column instead, `malt.value` answers *a
-/// column has one cell per row, address one* — which is nonsense to someone
-/// typing what the documentation said last week.
-const RETIRED_CHANNELS: [&str; 2] = ["value", "uncertainty"];
-
-/// What a retired spelling is called now.
-fn retired_as(name: &str) -> Option<&'static str> {
-    match name {
-        "value" => Some("v"),
-        "uncertainty" => Some("u"),
-        _ => None,
-    }
-}
-
 /// The channels a path may end with, for a message that lists them.
 ///
 /// One spelling each: a message that offered `value` while the parser refused
@@ -752,6 +752,28 @@ impl Vocabulary {
     /// The same, knowing `names` too: what a model declares before any sample
     /// holds it, so that a profile or a sort naming one reads it as absent
     /// rather than as a misspelling.
+    /// This vocabulary and `other`'s: their names, their tables' columns and
+    /// their tags, each once.
+    pub fn with(mut self, other: &Vocabulary) -> Vocabulary {
+        for name in &other.names {
+            push_once(&mut self.names, name);
+        }
+        for (table, columns) in &other.tables {
+            match self.tables.iter_mut().find(|(held, _)| held == table) {
+                Some((_, held)) => {
+                    for column in columns {
+                        push_once(held, column);
+                    }
+                }
+                None => self.tables.push((table.clone(), columns.clone())),
+            }
+        }
+        for tag in &other.tags {
+            push_once(&mut self.tags, tag);
+        }
+        self
+    }
+
     pub fn with_names(mut self, names: impl IntoIterator<Item = Identifier>) -> Vocabulary {
         for name in names {
             push_once(&mut self.names, &name);
@@ -918,14 +940,41 @@ pub fn held_nowhere(field: &Field, samples: &[&Sample]) -> Option<FieldError> {
     }
 }
 
+/// A sample's path as the field `path` holds it: from the current folder
+/// where it lies below it, without `.`, its parts joined by `/`.
+pub fn path_as_named(path: &Path) -> String {
+    let here = std::env::current_dir().ok();
+    let relative = match (&here, path.is_absolute()) {
+        (Some(here), true) => path
+            .strip_prefix(here)
+            .or_else(|_| {
+                let real = dunce::canonicalize(here).unwrap_or_else(|_| here.clone());
+                path.strip_prefix(real)
+            })
+            .unwrap_or(path),
+        _ => path,
+    };
+    let parts: Vec<String> = relative
+        .components()
+        .filter(|part| !matches!(part, std::path::Component::CurDir))
+        .map(|part| match part {
+            std::path::Component::RootDir => String::new(),
+            other => other.as_os_str().to_string_lossy().into_owned(),
+        })
+        .collect();
+    parts.join("/")
+}
+
 fn reserved_value(reserved: &ReservedField, subject: &Subject) -> Option<Value> {
     match reserved {
         ReservedField::Name => subject.sample.name().map(Value::text),
         // A sample that was never written has no path, which is absence rather
         // than an invented empty string.
-        ReservedField::Path => subject
-            .path
-            .map(|path| Value::text(path.to_string_lossy().into_owned())),
+        // One form however the target was typed — `pieces`, `./pieces/`, the
+        // whole path — and on every system: from the folder the command runs
+        // in, its parts joined by `/`. A saved query asking `path starts_with
+        // pieces` answered one way and the other.
+        ReservedField::Path => subject.path.map(|path| Value::text(path_as_named(path))),
         ReservedField::Filename => subject
             .path
             .and_then(|path| path.file_name())
@@ -1033,9 +1082,11 @@ fn channel_of_property(
         return Ok(Resolution::List(values));
     }
     // Where reads do not compute, a failure is an earlier run's, recorded and
-    // said by `status`: read as the file would hold it — no value — as the
-    // command line reads it, rather than failing every sort and filter over the
-    // list the sample is in.
+    // said by `status`: read as the file holds it — the last value its
+    // formula gave, or none — as the command line reads it, rather than
+    // failing every sort and filter over the list the sample is in. Read as
+    // no value, Python's `to_text` wrote `—` where `view` wrote `70 %`.
+    let last = property.last_good();
     let recorded = |error: &crate::core::property::ComputeError| {
         matches!(error, crate::core::property::ComputeError::Failed { .. })
             && !crate::core::property::reads_compute()
@@ -1047,12 +1098,16 @@ fn channel_of_property(
             // Not applicable answers as itself, which a table says `n/a` and
             // every use of a value reads as none.
             Ok(value) => Some(value).filter(|v| !matches!(v, Value::Absent)),
-            Err(error) if recorded(&error) => None,
+            Err(error) if recorded(&error) => last
+                .map(|last| last.value.clone())
+                .filter(|v| !matches!(v, Value::Absent)),
             Err(error) => return Err(failed(error)),
         },
         Channel::Uncertainty => match property.uncertainty() {
             Ok(uncertainty) => uncertainty.and_then(|u| Value::number(u.magnitude()).ok()),
-            Err(error) if recorded(&error) => None,
+            Err(error) if recorded(&error) => last
+                .and_then(|last| last.uncertainty)
+                .and_then(|u| Value::number(u.magnitude()).ok()),
             Err(error) => return Err(failed(error)),
         },
         Channel::Unit => property.presentation().unit.clone().map(Value::text),
@@ -1136,7 +1191,7 @@ fn resolve_cell(
     // A cell's unit and symbol are its column's unless it says otherwise: the
     // composition `presentation_of` owns, which a cell alone does not know.
     // Read from the cell, `measurements.f[20].unit` was empty where the
-    // table's header said brix.
+    // table's header said porosity.
     if matches!(channel, Channel::Unit | Channel::Symbol) {
         let composed = table
             .presentation_of(column, row)
@@ -1352,12 +1407,13 @@ impl fmt::Display for FieldError {
             }
             // Two names read as a column without its row — or as a quantity
             // and a channel it does not have: parsing cannot tell which, and
-            // `og.x` beside a quantity `og` was told it named a column.
+            // `radius.x` beside a quantity `radius` was told it named a column.
             FieldError::MissingIndex { table, column } => write!(
                 f,
                 "'{table}.{column}' names a column without its row — {table}.{column}[<index>], \
-                 or {table}.{column}[#0] by position — or, if {table} is a quantity, {column} \
-                 is no channel of it: v, u, unit, symbol, readings, stats.*"
+                 or {table}.{column}[#0] by position; in a filter, {table}.{column} has X asks \
+                 every row, and {table} where ({column} > X) one row — or, if {table} is a \
+                 property, {column} is no channel of it: v, u, unit, symbol, readings, stats.*"
             ),
             FieldError::TableNeedsCell { table, columns } => {
                 write!(
@@ -1451,16 +1507,6 @@ impl fmt::Display for FieldError {
                 available,
             } => {
                 write!(f, "'{name}' is not a channel of {on}")?;
-                // A spelling that *was* one gets told so outright: the edit
-                // distance from `uncertainty` to `u` is too far for a
-                // suggestion to find, and it is the one answer that is certain.
-                if let Some(now) = retired_as(name) {
-                    write!(
-                        f,
-                        "\n  '{name}' was renamed '{now}': one spelling for one channel"
-                    )?;
-                    return Ok(());
-                }
                 if !available.is_empty() {
                     write!(f, "\n  available: {}", available.join(", "))?;
                     if let Some(suggestion) = nearest(name, available) {
@@ -1613,7 +1659,7 @@ fn quantity_has_readings(source: &str, subject: &Subject) -> bool {
 
 /// Whether the spelling asks for one channel rather than relying on the value
 /// default. Parsed equality deliberately forgets this distinction; a renderer
-/// or exporter still needs it to tell a whole quantity from `malt.value`.
+/// or exporter still needs it to tell a whole quantity from `diameter.value`.
 pub fn has_explicit_channel(source: &str) -> bool {
     let text = source.trim();
     let Ok(field) = parse(text) else {
@@ -1741,8 +1787,8 @@ pub fn serialize(field: &Field) -> Result<String, FieldError> {
 
 /// The same quantity, read on another channel.
 ///
-/// An export needs both halves of every column — `malt_value` and
-/// `malt_uncertainty` — and re-parsing `"malt.uncertainty"` from a string would
+/// An export needs both halves of every column — `diameter_value` and
+/// `diameter_uncertainty` — and re-parsing `"diameter.uncertainty"` from a string would
 /// mean building a path in order to take it apart again. A reserved field has
 /// no channel to set and comes back unchanged.
 pub fn with_channel(field: &Field, channel: Channel) -> Field {

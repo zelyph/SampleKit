@@ -43,6 +43,9 @@ pub fn supports(version: u32) -> bool {
 /// carry meaning that changes how known fields should be read, and a plausible
 /// misreading of someone's records is worse than a refusal to open it.
 pub fn check_version(version: u32) -> Result<(), SchemaError> {
+    if version == 0 {
+        return Err(SchemaError::MissingVersion);
+    }
     if supports(version) {
         Ok(())
     } else {
@@ -109,19 +112,29 @@ impl<'de> Deserialize<'de> for Tag {
     }
 }
 
+/// `tags: ~`, written empty: none, as the key left out is. It made the
+/// whole file unreadable, in serde's words.
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct SampleSchema {
-    /// A file without it is read as the current version, and the next write
-    /// adds it.
-    #[serde(default = "version")]
+    /// A file without it is no sample: read as `0`, which no build reads,
+    /// and refused as `MissingVersion`.
+    #[serde(default)]
     pub schema_version: u32,
     #[serde(default)]
     pub name: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     pub tags: Vec<Tag>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     pub properties: IndexMap<Identifier, PropertySchema>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     pub tables: IndexMap<Identifier, TableSchema>,
     /// Unknown top-level keys are attributes, which is why the root cannot deny
     /// them. What keeps an unknown field refused there is the **shape**: an
@@ -231,10 +244,10 @@ pub type Inputs = IndexMap<InputName, Recorded>;
 
 /// What a formula produced, and from what.
 ///
-/// A record naming **no channel** — `computed: {malt: 1bfc…}` — means the
+/// A record naming **no channel** — `computed: {diameter: 1bfc…}` — means the
 /// quantity as a whole, and that one shape serves three cases that share one
 /// meaning: a file written before this record had channels, a
-/// `compute_quantity` that returns a pair from one call and therefore cannot
+/// `compute` that returns a pair from one call and therefore cannot
 /// be recomputed by halves, and *not known*.
 ///
 /// A record naming channels — `computed: {v: {…}, u: {…}}` — says which number
@@ -275,8 +288,8 @@ impl<'de> Deserialize<'de> for Computed {
     /// Both shapes, told apart by what a key holds rather than by what it is
     /// called.
     ///
-    /// `{v: {malt: 1bfc…}}` names a channel: its value is a *map of inputs*.
-    /// `{malt: 1bfc…}` names an input: its value is a digest, or the
+    /// `{v: {diameter: 1bfc…}}` names a channel: its value is a *map of inputs*.
+    /// `{diameter: 1bfc…}` names an input: its value is a digest, or the
     /// `{edited: …}` mark of an override. So a record whose every key is `v`
     /// or `u` **and** whose every value is an input map is the keyed form, and
     /// everything else is the quantity's.
@@ -310,9 +323,6 @@ impl<'de> Deserialize<'de> for Computed {
                     common.insert(InputName::parse(&key).map_err(D::Error::custom)?, record);
                 }
                 (_, Entry::Inputs(_)) => {
-                    // `value` and `uncertainty` were a channel's names once:
-                    // said as such rather than as a misplaced map.
-                    retired_spelling::<D::Error>(&key)?;
                     return Err(D::Error::custom(format!(
                         "'{key}' holds a map of inputs, which only a channel does: \
                          name it 'v' or 'u', or record a digest"
@@ -521,153 +531,11 @@ struct PropertyFields {
     #[serde(default)]
     symbol: Option<String>,
     #[serde(default)]
-    statistics: Option<OneSpelling<StatisticsFields>>,
+    statistics: Option<StatisticsFields>,
     #[serde(default)]
     computed: Option<Computed>,
     #[serde(default)]
     fingerprint: Option<WrittenFingerprint>,
-}
-
-/// A mapping read in the one spelling of a channel.
-///
-/// `value:` and `uncertainty:` are not read, and a file holding them is
-/// refused — but not as any unknown field is. Serde would list what is
-/// accepted, where `uncertainty` is four edits from `u` and no nearest name
-/// reaches it; the key is named with what it is written now instead.
-struct OneSpelling<T>(T);
-
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for OneSpelling<T> {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        struct Mapping<T>(std::marker::PhantomData<T>);
-        impl<'de, T: Deserialize<'de>> Visitor<'de> for Mapping<T> {
-            type Value = OneSpelling<T>;
-            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("a mapping")
-            }
-            fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<OneSpelling<T>, A::Error> {
-                T::deserialize(MapAccessDeserializer::new(RetiredKeys(map))).map(OneSpelling)
-            }
-        }
-        d.deserialize_map(Mapping(std::marker::PhantomData))
-    }
-}
-
-/// The key a channel was once written with, refused naming the one it is
-/// written with now.
-fn retired_spelling<E: de::Error>(key: &str) -> Result<(), E> {
-    let now = match key {
-        "value" => "v",
-        "uncertainty" => "u",
-        _ => return Ok(()),
-    };
-    Err(E::custom(format!(
-        "'{key}' is written '{now}' since schema 1: rename it"
-    )))
-}
-
-/// A map whose every key is checked for a retired spelling before the shape
-/// reading it sees it.
-struct RetiredKeys<A>(A);
-
-impl<'de, A: MapAccess<'de>> MapAccess<'de> for RetiredKeys<A> {
-    type Error = A::Error;
-
-    fn next_key_seed<K: de::DeserializeSeed<'de>>(
-        &mut self,
-        seed: K,
-    ) -> Result<Option<K::Value>, A::Error> {
-        self.0.next_key_seed(KeySeed(seed))
-    }
-
-    fn next_value_seed<V: de::DeserializeSeed<'de>>(
-        &mut self,
-        seed: V,
-    ) -> Result<V::Value, A::Error> {
-        self.0.next_value_seed(seed)
-    }
-
-    fn size_hint(&self) -> Option<usize> {
-        self.0.size_hint()
-    }
-}
-
-struct KeySeed<K>(K);
-
-impl<'de, K: de::DeserializeSeed<'de>> de::DeserializeSeed<'de> for KeySeed<K> {
-    type Value = K::Value;
-
-    fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<K::Value, D::Error> {
-        self.0.deserialize(KeyDeserializer(d))
-    }
-}
-
-struct KeyDeserializer<D>(D);
-
-impl<'de, D: serde::Deserializer<'de>> serde::Deserializer<'de> for KeyDeserializer<D> {
-    type Error = D::Error;
-
-    fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, D::Error> {
-        self.0.deserialize_any(KeyVisitor(visitor))
-    }
-
-    fn deserialize_identifier<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, D::Error> {
-        self.0.deserialize_identifier(KeyVisitor(visitor))
-    }
-
-    serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum ignored_any
-    }
-}
-
-struct KeyVisitor<V>(V);
-
-impl<'de, V: Visitor<'de>> Visitor<'de> for KeyVisitor<V> {
-    type Value = V::Value;
-
-    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.expecting(f)
-    }
-
-    fn visit_str<E: de::Error>(self, key: &str) -> Result<V::Value, E> {
-        retired_spelling(key)?;
-        self.0.visit_str(key)
-    }
-
-    fn visit_borrowed_str<E: de::Error>(self, key: &'de str) -> Result<V::Value, E> {
-        retired_spelling(key)?;
-        self.0.visit_borrowed_str(key)
-    }
-
-    fn visit_string<E: de::Error>(self, key: String) -> Result<V::Value, E> {
-        retired_spelling(&key)?;
-        self.0.visit_string(key)
-    }
-
-    fn visit_bool<E: de::Error>(self, v: bool) -> Result<V::Value, E> {
-        self.0.visit_bool(v)
-    }
-
-    fn visit_i64<E: de::Error>(self, v: i64) -> Result<V::Value, E> {
-        self.0.visit_i64(v)
-    }
-
-    fn visit_u64<E: de::Error>(self, v: u64) -> Result<V::Value, E> {
-        self.0.visit_u64(v)
-    }
-
-    fn visit_f64<E: de::Error>(self, v: f64) -> Result<V::Value, E> {
-        self.0.visit_f64(v)
-    }
-
-    fn visit_bytes<E: de::Error>(self, v: &[u8]) -> Result<V::Value, E> {
-        self.0.visit_bytes(v)
-    }
-
-    fn visit_unit<E: de::Error>(self) -> Result<V::Value, E> {
-        self.0.visit_unit()
-    }
 }
 
 /// A digest, marked edited or not, or a failure in its place.
@@ -692,7 +560,7 @@ impl From<PropertyFields> for PropertySchema {
             None => (None, None),
         };
         PropertySchema {
-            statistics: f.statistics.map(|OneSpelling(s)| Statistics {
+            statistics: f.statistics.map(|s| Statistics {
                 value: s.value.map(|name| name.0),
                 uncertainty: s.uncertainty.map(|name| name.0),
             }),
@@ -720,16 +588,13 @@ impl<'de> Visitor<'de> for PropertyVisitor {
     type Value = PropertySchema;
 
     fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("a value, or a mapping of the fields a quantity carries")
+        f.write_str("a value, or a mapping of the fields a property carries")
     }
 
     /// A mapping goes through the derived shape, so an unknown field is refused
-    /// there with serde's own message rather than a reconstruction — but for
-    /// the two long spellings of a channel, which are named with what they are
-    /// written now.
+    /// there with serde's own message rather than a reconstruction.
     fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<PropertySchema, A::Error> {
-        PropertyFields::deserialize(MapAccessDeserializer::new(RetiredKeys(map)))
-            .map(PropertySchema::from)
+        PropertyFields::deserialize(MapAccessDeserializer::new(map)).map(PropertySchema::from)
     }
 
     fn visit_bool<E: de::Error>(self, v: bool) -> Result<PropertySchema, E> {
@@ -750,6 +615,16 @@ impl<'de> Visitor<'de> for PropertyVisitor {
         Value::number(v).map(scalar).map_err(de::Error::custom)
     }
 
+    /// A whole number wider than a sample holds, said in words: serde's
+    /// *invalid type: integer … as u128* was the message.
+    fn visit_u128<E: de::Error>(self, v: u128) -> Result<PropertySchema, E> {
+        Err(E::custom(too_large(&v.to_string())))
+    }
+
+    fn visit_i128<E: de::Error>(self, v: i128) -> Result<PropertySchema, E> {
+        Err(E::custom(too_large(&v.to_string())))
+    }
+
     fn visit_str<E: de::Error>(self, v: &str) -> Result<PropertySchema, E> {
         recognize_text(v).map(scalar).map_err(E::custom)
     }
@@ -757,6 +632,14 @@ impl<'de> Visitor<'de> for PropertyVisitor {
     fn visit_unit<E: de::Error>(self) -> Result<PropertySchema, E> {
         Ok(PropertySchema::default())
     }
+}
+
+/// A whole number wider than 64 bits, refused with what to write.
+fn too_large(written: &str) -> String {
+    format!(
+        "{written} is too large a whole number for a sample, which holds 64 bits: write it with \
+         a decimal point, {written}.0, where a measurement is meant"
+    )
 }
 
 fn scalar(value: Value) -> PropertySchema {
@@ -774,9 +657,28 @@ pub struct TableSchema {
     pub title: Option<String>,
     #[serde(deserialize_with = "one_or_more")]
     pub index: Vec<Identifier>,
+    /// Optional in a file written by hand: its index and its rows' keys, in
+    /// the order they come, stand for it — the model declares them, and a
+    /// write puts them in the file.
+    #[serde(default)]
     pub columns: IndexMap<Identifier, ColumnSchema>,
     #[serde(default)]
     pub rows: Vec<IndexMap<Identifier, PropertySchema>>,
+    /// Held by its file without a row, and written so: never read from YAML,
+    /// and no part of what makes two tables equal.
+    #[serde(skip)]
+    pub prepared: Prepared,
+}
+
+/// Whether a table is prepared, as [`TableSchema::prepared`] holds it: equal
+/// to any other, so that a table read back compares as the one written.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Prepared(pub bool);
+
+impl PartialEq for Prepared {
+    fn eq(&self, _: &Prepared) -> bool {
+        true
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
@@ -799,7 +701,7 @@ struct ColumnFields {
     #[serde(default)]
     symbol: Option<String>,
     #[serde(default)]
-    statistics: Option<OneSpelling<StatisticsFields>>,
+    statistics: Option<StatisticsFields>,
 }
 
 impl From<Option<ColumnFields>> for ColumnSchema {
@@ -808,7 +710,7 @@ impl From<Option<ColumnFields>> for ColumnSchema {
             Some(f) => ColumnSchema {
                 unit: f.unit,
                 symbol: f.symbol,
-                statistics: f.statistics.map(|OneSpelling(s)| Statistics {
+                statistics: f.statistics.map(|s| Statistics {
                     value: s.value.map(|name| name.0),
                     uncertainty: s.uncertainty.map(|name| name.0),
                 }),
@@ -871,7 +773,7 @@ impl<'de> Deserialize<'de> for PrecisionSchema {
     }
 }
 
-/// `index: temperature` and `index: [temperature, dextrin]` are the same
+/// `index: temperature` and `index: [temperature, ferrite]` are the same
 /// field at two lengths, not two shapes.
 fn one_or_more<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
@@ -909,11 +811,22 @@ fn statistics_of(property: &Property) -> Option<Statistics> {
     // What the file already states, else what the model declared — so a save
     // states it and a round trip keeps it. The *judging* side reads the records,
     // never this.
+    //
+    // **The model's only once it was taken.** A statistic stated in a file is
+    // read as it stands, so stating one nothing took made the next read take
+    // it: readings saved from Python before any computation came back with a
+    // mean, where the command line wrote them owed.
     let declared = match property.records().statistics {
         Some(stated) => Statistics {
             value: stated.value,
             uncertainty: stated.uncertainty,
         },
+        None if property.declared_location().is_some()
+            && !property.statistic_taken()
+            && property.written_value().is_none() =>
+        {
+            return None;
+        }
         None => Statistics {
             value: property.declared_location(),
             uncertainty: property.declared_convention(),
@@ -940,19 +853,35 @@ pub fn property_from(property: &Property) -> Result<PropertySchema, SchemaError>
         })?;
     let presentation = property.presentation();
     let records = property.records();
+    // **A statistic of readings is written only where a computation took it**,
+    // with the record that says so. A save that computed nothing — a tag, a
+    // note, another value set — writes readings as the file held them: writing
+    // the statistic it stands for here, with no record, turned it into a value
+    // typed by hand, which no corrected reading would ever move again.
+    let untaken = property.readings().is_some() && records.computed.is_none();
+    let value = if untaken {
+        property.written_value().cloned()
+    } else {
+        Some(value)
+    };
+    let uncertainty = property
+        .uncertainty()
+        .map_err(|error| SchemaError::Uncertainty {
+            property: Identifier::new("_").expect("a placeholder is a name"),
+            reason: error.to_string(),
+        })?;
+    let uncertainty = if untaken && property.convention().is_some() {
+        None
+    } else {
+        uncertainty
+    };
     Ok(PropertySchema {
         // Not applicable is written, as the answer it is.
-        value: (!matches!(value, Value::Absent)).then_some(value),
+        value: value.filter(|value| !matches!(value, Value::Absent)),
         readings: property.readings().map(|r| r.as_slice().to_vec()),
         // A failed uncertainty is an error, never an absence: discarding it
         // writes a quantity with no uncertainty and no complaint.
-        uncertainty: property
-            .uncertainty()
-            .map_err(|error| SchemaError::Uncertainty {
-                property: Identifier::new("_").expect("a placeholder is a name"),
-                reason: error.to_string(),
-            })?
-            .map(|u| u.magnitude()),
+        uncertainty: uncertainty.map(|u| u.magnitude()),
         unit: presentation.unit.clone(),
         symbol: presentation.symbol.clone(),
         statistics: statistics_of(property),
@@ -1123,13 +1052,14 @@ fn schema_of(sample: &Sample, as_is: bool) -> Result<SampleSchema, SchemaError> 
     Ok(SampleSchema {
         schema_version: version(),
         name: sample.written_name().map(str::to_string),
-        tags: sample
-            .tags()
-            .iter()
-            .cloned()
-            .map(Tag::Usable)
-            .chain(sample.unusable_tags().iter().cloned().map(Tag::Unusable))
-            .collect(),
+        tags: {
+            // Each unusable tag back where the file wrote it.
+            let mut tags: Vec<Tag> = sample.tags().iter().cloned().map(Tag::Usable).collect();
+            for (at, tag) in sample.unusable_at().iter().zip(sample.unusable_tags()) {
+                tags.insert((*at).min(tags.len()), Tag::Unusable(tag.clone()));
+            }
+            tags
+        },
         attributes: sample
             .attribute_names()
             .into_iter()
@@ -1182,8 +1112,21 @@ fn table_from(name: &Identifier, table: &Table, as_is: bool) -> Result<TableSche
                 named_property_from(column, cell)?
             };
             // Its column states them for every cell: repeated on each, they
-            // would be one declaration written forty times over.
-            shape.statistics = None;
+            // would be one declaration written forty times over. A cell's own,
+            // other than its column's, is kept: dropped, it took the value
+            // with it, readings with no statistic having none.
+            let column_declares = table
+                .column(column)
+                .map(|view| view.statistics())
+                .ok()
+                .map(|declared| (declared.value, declared.uncertainty));
+            if shape
+                .statistics
+                .as_ref()
+                .is_none_or(|own| column_declares == Some((own.value, own.uncertainty)))
+            {
+                shape.statistics = None;
+            }
             cells.insert(column.clone(), shape);
         }
         rows.push(cells);
@@ -1194,6 +1137,7 @@ fn table_from(name: &Identifier, table: &Table, as_is: bool) -> Result<TableSche
         index: table.index_columns().to_vec(),
         columns,
         rows,
+        prepared: Prepared(table.is_prepared()),
     })
 }
 
@@ -1211,14 +1155,14 @@ pub fn into_sample(schema: SampleSchema) -> Result<Sample, SchemaError> {
     // A tag that is no identifier is kept aside, reported, and written back.
     let mut usable = Vec::new();
     let mut unusable = Vec::new();
-    for tag in schema.tags {
+    for (at, tag) in schema.tags.into_iter().enumerate() {
         match tag {
             Tag::Usable(tag) => usable.push(tag),
-            Tag::Unusable(text) => unusable.push(text),
+            Tag::Unusable(text) => unusable.push((at, text)),
         }
     }
     sample.set_tags(usable);
-    sample.set_unusable_tags(unusable);
+    sample.set_unusable_tags_at(unusable);
 
     // Attributes first: a record resolves against the namespace, so it has to
     // exist before a property that names one is built.
@@ -1247,8 +1191,13 @@ pub fn into_sample(schema: SampleSchema) -> Result<Sample, SchemaError> {
     }
 
     for (name, shape) in schema.tables {
+        // A table the file holds without a row is prepared: written so.
+        let prepared = shape.rows.is_empty();
         match table_into(&name, shape, &attributes, &list_attributes) {
-            Ok(table) => sample.set_table(name, table).map_err(SchemaError::Sample)?,
+            Ok(mut table) => {
+                table.set_prepared(prepared);
+                sample.set_table(name, table).map_err(SchemaError::Sample)?
+            }
             // A repeated index sets the table aside, and the rest is read.
             Err(SchemaError::DuplicateIndex { table, reason }) => {
                 sample.set_aside_table(table, reason)
@@ -1310,6 +1259,7 @@ fn property_into(
     // number the file holds.
     if let Some(statistics) = shape.statistics {
         property.declare_statistics(statistics.value, statistics.uncertainty);
+        property.take_statistic();
     }
     // Held as the file's own testimony as well, which is what `validation`
     // judges against: a convention a model declares in a session says what a
@@ -1349,14 +1299,11 @@ fn property_into(
     Ok(property)
 }
 
-/// A digest a record holds, whatever a reader made of it unquoted.
+/// A digest a record holds: text, as every write quotes it. One read as
+/// something else matches no digest, and its value reads stale.
 fn digest_text(raw: Value) -> String {
     match raw {
         Value::Text(text) => text,
-        Value::Integer(number) => u64::try_from(number)
-            .map(crate::core::property::digits)
-            .unwrap_or_else(|_| number.to_string()),
-        Value::Number(number) => number.to_string(),
         other => format!("{other:?}"),
     }
 }
@@ -1377,11 +1324,11 @@ fn record_into(
     };
     let is_attribute = match name {
         InputName::Named(name) => attributes.contains(name),
-        InputName::Cell(_) | InputName::Column { .. } => false,
+        InputName::Cell(_) | InputName::CellValue(_) | InputName::Column { .. } => false,
     };
     let is_list = match name {
         InputName::Named(name) => list_attributes.contains(name),
-        InputName::Cell(_) | InputName::Column { .. } => false,
+        InputName::Cell(_) | InputName::CellValue(_) | InputName::Column { .. } => false,
     };
     if is_list {
         InputRecord::Digest(Fingerprint::new(digest_text(raw)))
@@ -1402,8 +1349,24 @@ fn table_into(
         table: name.clone(),
         reason,
     };
-    let columns: IndexMap<Identifier, ColumnMeta> = shape
-        .columns
+    // No `columns:`: the index, then each key its rows hold, in the order
+    // they come.
+    let declared = if shape.columns.is_empty() {
+        let mut named: IndexMap<Identifier, ColumnSchema> = shape
+            .index
+            .iter()
+            .map(|column| (column.clone(), ColumnSchema::default()))
+            .collect();
+        for row in &shape.rows {
+            for key in row.keys() {
+                named.entry(key.clone()).or_default();
+            }
+        }
+        named
+    } else {
+        shape.columns
+    };
+    let columns: IndexMap<Identifier, ColumnMeta> = declared
         .into_iter()
         .map(|(column, meta)| {
             Ok((
@@ -1565,8 +1528,7 @@ impl fmt::Display for SchemaError {
             SchemaError::DuplicateIndex { table, reason } => write!(f, "table {table}: {reason}"),
             SchemaError::MissingVersion => write!(
                 f,
-                "no schema_version: a sample must declare which shape it is. A \
-                 hand-written file needs 'schema_version: 1'"
+                "no schema_version: a sample says which shape it is, 'schema_version: 1'"
             ),
             SchemaError::Sample(error) => write!(f, "{error}"),
             SchemaError::Format(error) => write!(f, "{error}"),

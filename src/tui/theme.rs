@@ -1,5 +1,5 @@
 //! The workbench's colours, one for each role project config names in
-//! `[workbench.colors]`: the terminal's sixteen unless the project says
+//! `[colors]`: the terminal's sixteen unless the project says
 //! otherwise, so that the terminal's theme decides the shades.
 
 use std::cell::Cell;
@@ -7,7 +7,7 @@ use std::cell::Cell;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Span;
 
-use crate::config::project_config::{ProjectConfig, WORKBENCH_COLORS};
+use crate::config::project_config::{COLOR_ROLES, ProjectConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
@@ -17,6 +17,11 @@ pub struct Theme {
     pub current: Color,
     pub selected: Color,
     pub attribute: Color,
+    /// A link, underlined in this colour.
+    pub link: Color,
+    /// A value and its uncertainty, drawn bold in this colour.
+    pub value: Color,
+    pub unit: Color,
     pub table: Color,
     pub index: Color,
     pub key: Color,
@@ -32,9 +37,9 @@ impl Theme {
     pub fn of(config: Option<&ProjectConfig>) -> Theme {
         let role = |name: &str| {
             let written = config
-                .and_then(|config| config.workbench_color(name))
+                .and_then(|config| config.color(name))
                 .or_else(|| {
-                    WORKBENCH_COLORS
+                    COLOR_ROLES
                         .iter()
                         .find(|(role, _)| *role == name)
                         .map(|(_, color)| *color)
@@ -49,6 +54,9 @@ impl Theme {
             current: role("current"),
             selected: role("selected"),
             attribute: role("attribute"),
+            link: role("link"),
+            value: role("value"),
+            unit: role("unit"),
             table: role("table"),
             index: role("index"),
             key: role("key"),
@@ -66,7 +74,7 @@ impl Default for Theme {
     }
 }
 
-/// A colour as `[workbench.colors]` writes it, which the configuration has
+/// A colour as `[colors]` writes it, which the configuration has
 /// already checked: a name, `default`, or `#rrggbb`.
 pub fn color(written: &str) -> Color {
     if let Some(hex) = written.strip_prefix('#') {
@@ -113,6 +121,36 @@ pub fn colors() -> Theme {
 /// bold. The one style every surface draws a key in.
 pub fn key_style(theme: &Theme) -> Style {
     Style::new().fg(theme.key).add_modifier(Modifier::BOLD)
+}
+
+/// A value and its uncertainty, wherever one is drawn: bold, in the theme's
+/// `value` colour, as the command line draws it.
+pub fn value_style(theme: &Theme) -> Style {
+    Style::new().fg(theme.value).add_modifier(Modifier::BOLD)
+}
+
+/// A value as a line shows it, `12.513 ± 0.010 mm`: its number in the value's
+/// style and the unit after it in the unit's colour; text that is no number in
+/// `other`.
+pub fn value_spans(shown: &str, other: Style) -> Vec<Span<'static>> {
+    let theme = colors();
+    let number = |word: &str| word.trim_start_matches('(').parse::<f64>().is_ok();
+    // A value aligned on its decimal point begins with spaces: its first
+    // word is the number after them, not the empty one before.
+    let words: Vec<&str> = shown.trim_start().split(' ').collect();
+    if !words.first().is_some_and(|first| number(first)) {
+        return vec![Span::styled(shown.to_string(), other)];
+    }
+    match words.as_slice() {
+        [.., last] if words.len() > 1 && !number(last) && *last != "±" => {
+            let cut = shown.len() - last.len();
+            vec![
+                Span::styled(shown[..cut].to_string(), value_style(&theme)),
+                Span::styled((*last).to_string(), Style::new().fg(theme.unit)),
+            ]
+        }
+        _ => vec![Span::styled(shown.to_string(), value_style(&theme))],
+    }
 }
 
 /// What is selected in a line typed or the note: reversed, readable whatever

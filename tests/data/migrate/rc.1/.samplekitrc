@@ -1,0 +1,23 @@
+schema_version = 1
+
+[collection]
+files = ["photos/{collection}-*"]
+
+[model]
+path = "model/specimen.py"
+class = "Specimen"
+
+[property."curve.stress"]
+precision = ".1f"
+
+[property.yield_strength]
+precision = ".0f"
+
+[style.paper]
+separator = '\pm'
+
+[workbench.colors]
+stale = "yellow"
+
+[query.ductile]
+filter = "elongation > 20"

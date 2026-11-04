@@ -212,8 +212,8 @@ fn numpy_scalar(object: &Bound<'_, PyAny>) -> PyResult<Option<Value>> {
         }
         let shape = object.getattr("shape")?.str()?.to_string();
         return Err(PyTypeError::new_err(format!(
-            "a formula returned an array of shape {shape}, and a value is one number: \
-             return one element, or .item() of a one-element array"
+            "an array of shape {shape} was given where a value is one number: \
+             give one element, or .item() of a one-element array"
         )));
     }
     if object.hasattr("__index__")? {
@@ -306,7 +306,44 @@ pub fn repr(object: &Bound<'_, PyAny>) -> String {
 /// A Python exception raised inside a formula, carried through the core as the
 /// source of a `ComputeError` and handed back unchanged: the traceback is how a
 /// scientist debugs a formula.
-pub struct PythonException(pub PyErr);
+///
+/// **Beside it, the exception as it stood when this formula failed**: its
+/// traceback and its notes, copied. The exception itself goes on: a formula
+/// reading this value raises it again, and it gathers that formula's frames
+/// and its note, `while computing 'yield_strength'`, which the log of this
+/// value then showed as its own.
+pub struct PythonException(pub PyErr, pub Option<Py<PyAny>>);
+
+impl PythonException {
+    fn caught(py: Python<'_>, error: PyErr) -> PythonException {
+        let frozen = frozen(py, &error).ok();
+        PythonException(error, frozen)
+    }
+
+    /// The exception as this formula raised it: its own frames and notes.
+    pub fn as_raised<'py>(&self, py: Python<'py>) -> Bound<'py, PyAny> {
+        match &self.1 {
+            Some(frozen) => frozen.bind(py).clone(),
+            None => self.0.value(py).clone().into_any(),
+        }
+    }
+}
+
+/// A copy of `error` holding its traceback and its notes as they are now.
+fn frozen(py: Python<'_>, error: &PyErr) -> PyResult<Py<PyAny>> {
+    let value = error.value(py);
+    let copy = py.import("copy")?.call_method1("copy", (value,))?;
+    copy.setattr("__traceback__", error.traceback(py))?;
+    // A list of its own: a shallow copy shares the one a later note extends.
+    if let Ok(notes) = value.getattr("__notes__") {
+        let own = pyo3::types::PyList::empty(py);
+        for note in notes.try_iter()? {
+            own.append(note?)?;
+        }
+        copy.setattr("__notes__", own)?;
+    }
+    Ok(copy.unbind())
+}
 
 impl fmt::Debug for PythonException {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -395,9 +432,9 @@ pub fn formula_failed(py: Python<'_>, error: PyErr) -> ComputeError {
     // Ctrl-C inside a formula stops it; it is not something the formula got
     // wrong, and it must never be recorded as the value's failure.
     if error.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
-        return ComputeError::interrupted(PythonException(error));
+        return ComputeError::interrupted(PythonException(error, None));
     }
-    ComputeError::failed(PythonException(error))
+    ComputeError::failed(PythonException::caught(py, error))
 }
 
 /// Forgets a kept exception, before an operation whose failure may carry one
@@ -631,7 +668,11 @@ impl IntoPyErr for TableError {
             TableError::UnknownColumn { .. }
             | TableError::UnknownIndex { .. }
             | TableError::IndexArity { .. } => key_error(message),
-            TableError::OrdinalOutOfRange { .. } => PyIndexError::new_err(message),
+            // From the end too: `#-1` of an empty table raised ValueError where `#0`
+            // raised IndexError.
+            TableError::OrdinalOutOfRange { .. } | TableError::FromEndOutOfRange { .. } => {
+                PyIndexError::new_err(message)
+            }
             TableError::Compute { source, .. } => compute_or(py, source, message),
             _ => PyValueError::new_err(message),
         }
@@ -716,9 +757,11 @@ impl IntoPyErr for FilterError {
         let message = self.to_string();
         match self {
             FilterError::Field(error) => error.into_py_err(py),
-            FilterError::TypeConflict(_) | FilterError::WrongOperator { .. } => {
-                PyTypeError::new_err(message)
-            }
+            // Two units compared are a comparison the values do not allow,
+            // as `filter`'s docstring says of TypeError: it raised ValueError.
+            FilterError::TypeConflict(_)
+            | FilterError::WrongOperator { .. }
+            | FilterError::UnitsDiffer { .. } => PyTypeError::new_err(message),
             _ => PyValueError::new_err(message),
         }
     }
@@ -757,6 +800,7 @@ impl IntoPyErr for ListError {
             ListError::Compute { .. } => raised_or(PyValueError::new_err(message)),
             ListError::AlreadyExists { .. } => PyFileExistsError::new_err(message),
             ListError::NonScalar { .. }
+            | ListError::MixedUnits { .. }
             | ListError::MissingPath { .. }
             | ListError::SameDestination { .. } => PyValueError::new_err(message),
         }
@@ -785,19 +829,25 @@ impl IntoPyErr for ExportError {
         let message = self.to_string();
         match self {
             ExportError::Field(error) => error.into_py_err(py),
-            ExportError::DuplicateHeader { .. } => PyValueError::new_err(message),
+            ExportError::DuplicateHeader { .. } | ExportError::MixedUnits { .. } => {
+                PyValueError::new_err(message)
+            }
             // In the words every refusal to replace a file uses in Python.
             ExportError::AlreadyExists { path } => PyFileExistsError::new_err(format!(
                 "{} already exists, and nothing was written: overwrite=True replaces it",
                 path.display()
             )),
             ExportError::ReadOnly { .. } => pyo3::exceptions::PyPermissionError::new_err(message),
-            ExportError::IsASample { .. } => PyFileExistsError::new_err(message),
+            ExportError::IsASample { .. } | ExportError::ProjectFile { .. } => {
+                PyFileExistsError::new_err(message)
+            }
             ExportError::DanglingLink { .. } => {
                 pyo3::exceptions::PyFileNotFoundError::new_err(message)
             }
             ExportError::Io { source, .. } => os_error(&source, message),
-            ExportError::ChangedSince { .. } => PyOSError::new_err(message),
+            ExportError::ChangedSince { .. } | ExportError::Busy { .. } => {
+                PyOSError::new_err(message)
+            }
         }
     }
 }
@@ -859,19 +909,81 @@ impl Formula {
 /// `Rc<dyn Compute>` and never sees the interpreter.
 pub struct PythonCompute {
     pub callable: Formula,
+    /// A value's formula, which must give one; an uncertainty's may give
+    /// none.
+    pub gives_value: bool,
 }
 
 impl Compute for PythonCompute {
     fn compute(&self) -> Result<Value, ComputeError> {
         let _running = Running::start();
         Python::attach(|py| {
-            let result = self
+            let callable = self
                 .callable
                 .bind(py)
-                .and_then(|callable| callable.call0())
                 .map_err(|error| formula_failed(py, error))?;
-            one_value(&result).map_err(|error| formula_failed(py, error))
+            let result = callable
+                .call0()
+                .map_err(|error| formula_failed(py, error))?;
+            // What it returned, refused naming the formula: a script's
+            // traceback named no line of the model. A pair is a value and
+            // its uncertainty, which `compute` returns: said so,
+            // where *a list is not one cell* spoke of tables.
+            let pair = self.gives_value
+                && result.is_instance_of::<PyTuple>()
+                && result.len().is_ok_and(|length| length == 2);
+            if pair {
+                let error = PyTypeError::new_err(format!(
+                    "a formula of compute_value= returns one value, and this one returned {}: a \
+                     value and its uncertainty are returned by a formula of compute=",
+                    a_type(&result)
+                ));
+                return Err(formula_failed(py, at_the_formula(&callable, error)));
+            }
+            one_value(&result)
+                .and_then(|value| {
+                    if self.gives_value {
+                        a_value(value)
+                    } else {
+                        a_number_or_none(value)
+                    }
+                })
+                .map_err(|error| formula_failed(py, at_the_formula(&callable, error)))
         })
+    }
+}
+
+/// What a value's formula gave, refused where it is nothing: `None` was
+/// written as no value and said *never computed* after every run, which it
+/// was not. What does not apply is `sk.NA`.
+fn a_value(value: Value) -> PyResult<Value> {
+    if matches!(value, Value::Absent) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "the formula returned None: a formula gives a value — return sk.NA where the value \
+             does not apply to this sample",
+        ));
+    }
+    a_number_or_none(value)
+}
+
+/// What a quantity's formula gave, refused where it is text or true/false: a
+/// quantity holds a number, and one a formula wrote as text was then written in
+/// the file and read by every formula after it.
+fn a_number_or_none(value: Value) -> PyResult<Value> {
+    match &value {
+        Value::Text(text) => Err(PyTypeError::new_err(format!(
+            "the formula returned the text \"{text}\": a computed property holds a number"
+        ))),
+        Value::Boolean(held) => Err(PyTypeError::new_err(format!(
+            "the formula returned {}: a computed property holds a number, and true or false is none",
+            if *held { "True" } else { "False" }
+        ))),
+        // A date written where a number stands was accepted, and `validate`
+        // then called it a defect.
+        Value::Date(_) | Value::DateTime(_) => Err(PyTypeError::new_err(
+            "the formula returned a date: a computed property holds a number",
+        )),
+        _ => Ok(value),
     }
 }
 
@@ -889,7 +1001,15 @@ impl ComputeQuantity for PythonQuantityCompute {
                 .bind(py)
                 .and_then(|callable| callable.call0())
                 .map_err(|error| formula_failed(py, error))?;
-            quantity_of(&result).map_err(|error| formula_failed(py, error))
+            quantity_of(&result)
+                .and_then(|(value, uncertainty)| Ok((a_value(value)?, uncertainty)))
+                .map_err(|error| {
+                    let error = match self.callable.bind(py) {
+                        Ok(callable) => at_the_formula(&callable, error),
+                        Err(_) => error,
+                    };
+                    formula_failed(py, error)
+                })
         })
     }
 }
@@ -898,6 +1018,17 @@ impl ComputeQuantity for PythonQuantityCompute {
 pub struct PythonRowCompute {
     pub callable: Formula,
     pub outputs: Vec<Identifier>,
+    /// What of each cell it gives: the whole, or one half beside the other.
+    pub half: Half,
+}
+
+/// What of a cell a formula gives: `compute`'s whole, `compute_value`'s value
+/// alone, `compute_uncertainty`'s uncertainty alone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Half {
+    Whole,
+    Value,
+    Uncertainty,
 }
 
 impl ComputeRow for PythonRowCompute {
@@ -912,10 +1043,96 @@ impl ComputeRow for PythonRowCompute {
                 let view = python_api::row_snapshot(py, row)?;
                 let callable = self.callable.bind(py)?;
                 let result = callable.call1((view,))?;
-                outputs_of(&result, &self.outputs, cell_output)
+                let convert = match self.half {
+                    Half::Whole => cell_output,
+                    Half::Value => value_output,
+                    Half::Uncertainty => uncertainty_output,
+                };
+                outputs_of(&result, &self.outputs, convert)
                     .map_err(|error| at_the_formula(&callable, error))
             };
-            run().map_err(|error| formula_failed(py, error))
+            run().map_err(|error| {
+                // The row it failed on, as its cells are addressed: a table
+                // of twelve rows failing said no more than its column.
+                let index: Vec<String> = row
+                    .index()
+                    .into_iter()
+                    .map(crate::collection::editing::shown_value)
+                    .collect();
+                let _ = error
+                    .value(py)
+                    .call_method1("add_note", (format!("in the row [{}]", index.join(", ")),));
+                formula_failed(py, error)
+            })
+        })
+    }
+
+    fn produces(&self) -> Option<crate::core::property::Produced> {
+        match self.half {
+            Half::Whole => None,
+            Half::Value => Some(crate::core::property::Produced::Value),
+            Half::Uncertainty => Some(crate::core::property::Produced::Uncertainty),
+        }
+    }
+}
+
+/// A column's two formulas, `compute_value` then `compute_uncertainty`, on
+/// each row: the uncertainty's is given the row with the value just computed,
+/// as a property's two run in order. The cell they give is whole, each number
+/// its formula's.
+pub struct PythonHalvesCompute {
+    pub value: Formula,
+    pub uncertainty: Formula,
+    pub output: Identifier,
+}
+
+impl ComputeRow for PythonHalvesCompute {
+    fn compute(
+        &self,
+        row: &RowView,
+        _: &dyn Scope,
+    ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
+        let _running = Running::start();
+        Python::attach(|py| {
+            let run = || -> PyResult<IndexMap<Identifier, CellOutput>> {
+                let view = python_api::row_snapshot(py, row)?;
+                let value = self.value.bind(py)?;
+                let given = value.call1((view.clone_ref(py),))?;
+                let CellOutput::Value(value) =
+                    outputs_of(&given, std::slice::from_ref(&self.output), value_output)
+                        .map_err(|error| at_the_formula(&value, error))?
+                        .shift_remove(&self.output)
+                        .unwrap_or(CellOutput::Value(Value::absent()))
+                else {
+                    unreachable!("value_output gives a value")
+                };
+                python_api::set_snapshot_value(py, &view, &self.output, value.clone())?;
+                let uncertainty = self.uncertainty.bind(py)?;
+                let given = uncertainty.call1((view,))?;
+                let uncertainty = if given.is_none() {
+                    None
+                } else {
+                    uncertainty_from_python(&given)
+                        .map_err(|error| at_the_formula(&uncertainty, error))?
+                };
+                Ok([(
+                    self.output.clone(),
+                    CellOutput::Quantity(value, uncertainty),
+                )]
+                .into_iter()
+                .collect())
+            };
+            run().map_err(|error| {
+                let index: Vec<String> = row
+                    .index()
+                    .into_iter()
+                    .map(crate::collection::editing::shown_value)
+                    .collect();
+                let _ = error
+                    .value(py)
+                    .call_method1("add_note", (format!("in the row [{}]", index.join(", ")),));
+                formula_failed(py, error)
+            })
         })
     }
 }
@@ -970,38 +1187,54 @@ pub fn one_value(result: &Bound<'_, PyAny>) -> PyResult<Value> {
     from_python(result)
 }
 
-/// A joint formula's `(value, uncertainty)`, or a `Property` carrying both.
+/// What a formula of `compute=` gave: a value alone, `(value, uncertainty)`, or
+/// a `Property` carrying both.
 pub fn quantity_of(result: &Bound<'_, PyAny>) -> PyResult<(Value, Option<Uncertainty>)> {
     if let Some(pair) = python_api::property_quantity(result)? {
         return Ok(pair);
     }
-    let pair = result
-        .cast::<PyTuple>()
-        .ok()
-        .filter(|tuple| tuple.len() == 2)
-        .ok_or_else(|| {
-            PyTypeError::new_err(format!(
-                "a joint formula returns (value, uncertainty), and this one returned {}",
+    // A number alone is the property without an uncertainty; a list, or a
+    // tuple of another length, is neither form.
+    let Ok(pair) = result.cast::<PyTuple>() else {
+        if result.is_instance_of::<PyList>() {
+            return Err(PyTypeError::new_err(format!(
+                "a formula of compute= returns a value or (value, uncertainty), and this one \
+                 returned {}",
                 a_type(result)
-            ))
-        })?;
+            )));
+        }
+        return Ok((one_value(result)?, None));
+    };
+    if pair.len() != 2 {
+        return Err(PyTypeError::new_err(format!(
+            "a formula of compute= returns a value or (value, uncertainty), and this one \
+             returned {}",
+            a_type(result)
+        )));
+    }
     Ok((
         one_value(&pair.get_item(0)?)?,
         uncertainty_from_python(&pair.get_item(1)?)?,
     ))
 }
 
-/// One cell a formula gave. A pair is refused naming the form that carries
-/// an uncertainty, since `(value, uncertainty)` is what a property's joint
-/// formula returns and the natural thing to try here.
+/// One cell a formula gave: a number, or `(value, uncertainty)`, as a
+/// property's formula gives one; a `Property` carrying both is taken too.
 fn cell_output_of(object: &Bound<'_, PyAny>, formula: &str) -> PyResult<CellOutput> {
     if let Some((value, uncertainty)) = python_api::property_quantity(object)? {
         return Ok(CellOutput::Quantity(value, uncertainty));
     }
+    if let Ok(pair) = object.cast::<PyTuple>()
+        && pair.len() == 2
+    {
+        return Ok(CellOutput::Quantity(
+            one_value(&pair.get_item(0)?)?,
+            uncertainty_from_python(&pair.get_item(1)?)?,
+        ));
+    }
     if object.is_instance_of::<PyList>() || object.is_instance_of::<PyTuple>() {
         return Err(PyTypeError::new_err(format!(
-            "{formula}, or sk.Property(value=…, uncertainty=…) for a value with its \
-             uncertainty, and this one returned {}",
+            "{formula}: a number, or (value, uncertainty), and this one returned {}",
             a_type(object)
         )));
     }
@@ -1010,6 +1243,23 @@ fn cell_output_of(object: &Bound<'_, PyAny>, formula: &str) -> PyResult<CellOutp
 
 fn cell_output(object: &Bound<'_, PyAny>) -> PyResult<CellOutput> {
     cell_output_of(object, "a row formula returns one value")
+}
+
+/// A cell's value alone, `compute_value`'s: its uncertainty is another's.
+fn value_output(object: &Bound<'_, PyAny>) -> PyResult<CellOutput> {
+    if object.cast::<PyTuple>().is_ok_and(|pair| pair.len() == 2) {
+        return Err(PyTypeError::new_err(
+            "a formula of compute_value= returns the value alone, and this one returned a pair: \
+             a value and its uncertainty are returned by a formula of compute=",
+        ));
+    }
+    Ok(CellOutput::Value(one_value(object)?))
+}
+
+/// A cell's uncertainty alone, `compute_uncertainty`'s: a number, or `None`
+/// for none, as a property's.
+fn uncertainty_output(object: &Bound<'_, PyAny>) -> PyResult<CellOutput> {
+    Ok(CellOutput::Uncertainty(uncertainty_from_python(object)?))
 }
 
 fn column_output(object: &Bound<'_, PyAny>) -> PyResult<Vec<CellOutput>> {
@@ -1045,7 +1295,7 @@ fn at_the_formula(callable: &Bound<'_, PyAny>, error: PyErr) -> PyErr {
     }
 }
 
-/// `Brew._apparent (model/brew.py, line 122)`, where the callable says.
+/// `Piece._nominal (model/piece.py, line 122)`, where the callable says.
 fn formula_place(callable: &Bound<'_, PyAny>) -> Option<String> {
     let function = callable
         .getattr("__func__")
@@ -1095,6 +1345,11 @@ pub struct SharedSample {
     pub inner: Rc<RefCell<Sample>>,
     epochs: Rc<RefCell<HashMap<Identifier, u64>>>,
     snapshot: Rc<RefCell<Option<Rc<Snapshot>>>>,
+    /// The fields a script or a computation changed since the sample was
+    /// read or last saved — a property, a table or an attribute by its name,
+    /// `tags`, `name`, `note`: what a save writes of it, the file as read
+    /// standing for the rest.
+    touched: Rc<RefCell<std::collections::BTreeSet<String>>>,
 }
 
 /// What a formula reads of its sample while the sample is borrowed to write
@@ -1170,7 +1425,23 @@ impl SharedSample {
             inner,
             epochs: Rc::new(RefCell::new(HashMap::new())),
             snapshot: Rc::new(RefCell::new(None)),
+            touched: Rc::new(RefCell::new(std::collections::BTreeSet::new())),
         }
+    }
+
+    /// `field` changed by a script or a computation: a save writes it.
+    pub fn touch(&self, field: &str) {
+        self.touched.borrow_mut().insert(field.to_string());
+    }
+
+    /// What was changed since the sample was read or last saved.
+    pub fn touched(&self) -> std::collections::BTreeSet<String> {
+        self.touched.borrow().clone()
+    }
+
+    /// Written: nothing is changed since.
+    pub fn forget_touched(&self) {
+        self.touched.borrow_mut().clear();
     }
 
     pub fn same(&self, other: &SharedSample) -> bool {
@@ -1368,8 +1639,8 @@ pub fn load_model_at(
     class: Option<&str>,
     root: &Path,
 ) -> PyResult<Py<PyAny>> {
-    // One file, one key, however it was reached: `ana/brews` and
-    // `tom/brews` both naming `../../models/brew.py` imported the
+    // One file, one key, however it was reached: `ana/pieces` and
+    // `tom/pieces` both naming `../../models/piece.py` imported the
     // model twice, two classes where one is promised.
     let canonical = dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     let key = (canonical, class.map(str::to_string));
@@ -1388,6 +1659,10 @@ pub fn load_model_at(
     }
     let module = import_file(py, path, root)?;
     let found = class_of(py, &module, path, class)?;
+    // Its digests taken now, as it was imported: before any formula runs.
+    if let Ok(class) = found.bind(py).cast::<pyo3::types::PyType>() {
+        crate::python::python_api::prime_model(class);
+    }
     models()
         .lock()
         .expect("the model cache is never poisoned")
@@ -1451,7 +1726,7 @@ fn same_origin(module: &Bound<'_, PyAny>, path: &Path) -> PyResult<bool> {
     )
 }
 
-/// `scripts/brew_model.py` under the root is `scripts.brew_model`, when
+/// `scripts/piece_model.py` under the root is `scripts.piece_model`, when
 /// every part is a Python name.
 fn module_name(path: &Path, root: &Path) -> Option<String> {
     let relative = path.strip_prefix(root).ok()?.with_extension("");

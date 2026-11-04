@@ -23,7 +23,7 @@ fn number(x: f64) -> Value {
     Value::number(x).unwrap()
 }
 
-/// Three casks: one approved and heavy, one reviewed and light, one
+/// Three slabs: one approved and heavy, one reviewed and light, one
 /// unweighed. Enough for absence, for text and for a table cell.
 fn collection() -> Vec<Sample> {
     let mut samples = Vec::new();
@@ -31,63 +31,64 @@ fn collection() -> Vec<Sample> {
     let mut a = Sample::new();
     a.set_name(Some("A".to_string()));
     a.set_tags(vec![id("reference")]);
-    a.set_property(id("malt"), Property::stored(number(12.5)))
+    a.set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     a.set_attribute(id("status"), Value::text("approved"))
         .unwrap();
-    a.set_attribute(id("beer"), Value::text("Dunkel 57"))
+    a.set_attribute(id("alloy"), Value::text("Duplex 57"))
         .unwrap();
     a.set_attribute(id("cold_crashed"), Value::boolean(true))
         .unwrap();
     a.set_attribute(id("batch"), Value::integer(7)).unwrap();
     a.set_attribute(
-        id("brewed_on"),
+        id("poured_on"),
         Value::date(Date::parse("2026-03-14").unwrap()),
     )
     .unwrap();
-    let mut mashing = Table::new(
-        id("mashing"),
+    let mut preheating = Table::new(
+        id("preheating"),
         vec![id("temperature")],
-        ["temperature", "wort"]
+        ["temperature", "tension"]
             .iter()
             .map(|n| (id(n), ColumnMeta::default()))
             .collect::<IndexMap<_, _>>(),
         Vec::new(),
     )
     .unwrap();
-    mashing
+    preheating
         .add_row(vec![
             (id("temperature"), Property::stored(number(78.5))),
-            (id("wort"), Property::stored(number(104.2))),
+            (id("tension"), Property::stored(number(104.2))),
         ])
         .unwrap();
-    a.set_table(id("mashing"), mashing).unwrap();
+    a.set_table(id("preheating"), preheating).unwrap();
     samples.push(a);
 
     let mut b = Sample::new();
     b.set_name(Some("B".to_string()));
     b.set_tags(vec![id("reference"), id("broken")]);
-    b.set_property(id("malt"), Property::stored(number(2.0)))
+    b.set_property(id("diameter"), Property::stored(number(2.0)))
         .unwrap();
     b.set_attribute(id("status"), Value::text("reviewed"))
         .unwrap();
-    b.set_attribute(id("beer"), Value::text("altbier")).unwrap();
+    b.set_attribute(id("alloy"), Value::text("alumina"))
+        .unwrap();
     b.set_attribute(id("cold_crashed"), Value::boolean(false))
         .unwrap();
     b.set_attribute(id("batch"), number(7.0)).unwrap();
     b.set_attribute(
-        id("brewed_on"),
+        id("poured_on"),
         Value::date(Date::parse("2025-01-01").unwrap()),
     )
     .unwrap();
     samples.push(b);
 
-    // Unweighed: `malt` is absent here and present in the others.
+    // Unweighed: `diameter` is absent here and present in the others.
     let mut c = Sample::new();
     c.set_name(Some("C".to_string()));
     c.set_attribute(id("status"), Value::text("approved"))
         .unwrap();
-    c.set_attribute(id("beer"), Value::text("Dunkel 57"))
+    c.set_attribute(id("alloy"), Value::text("Duplex 57"))
         .unwrap();
     samples.push(c);
 
@@ -133,7 +134,7 @@ fn truth(source: &str, which: usize) -> Truth {
 
 #[test]
 fn equality_on_text() {
-    assert_eq!(selects("beer == \"Dunkel 57\""), ["A", "C"]);
+    assert_eq!(selects("alloy == \"Duplex 57\""), ["A", "C"]);
 }
 
 #[test]
@@ -143,26 +144,26 @@ fn bare_word_operand_is_text() {
 
 #[test]
 fn quoted_operand_with_space() {
-    // `"Dunkel 57"` survives tokenization, which whitespace splitting broke.
-    assert_eq!(selects("beer == \"Dunkel 57\""), ["A", "C"]);
+    // `"Duplex 57"` survives tokenization, which whitespace splitting broke.
+    assert_eq!(selects("alloy == \"Duplex 57\""), ["A", "C"]);
 }
 
 #[test]
 fn numeric_comparison() {
-    assert_eq!(selects("malt > 3"), ["A"]);
-    assert_eq!(selects("malt >= 2"), ["A", "B"]);
-    assert_eq!(selects("malt < 3"), ["B"]);
-    assert_eq!(selects("malt <= 2"), ["B"]);
+    assert_eq!(selects("diameter > 3"), ["A"]);
+    assert_eq!(selects("diameter >= 2"), ["A", "B"]);
+    assert_eq!(selects("diameter < 3"), ["B"]);
+    assert_eq!(selects("diameter <= 2"), ["B"]);
 }
 
 #[test]
 fn contains_is_case_insensitive() {
-    assert_eq!(selects("beer contains \"dunk\""), ["A", "C"]);
+    assert_eq!(selects("alloy contains \"dupl\""), ["A", "C"]);
 }
 
 #[test]
 fn equality_is_case_sensitive() {
-    assert!(selects("beer == \"dc 57\"").is_empty());
+    assert!(selects("alloy == \"dc 57\"").is_empty());
 }
 
 #[test]
@@ -175,7 +176,7 @@ fn in_operator() {
 fn and_binds_tighter_than_or() {
     // `a and b or c` groups as `(a and b) or c`.
     assert_eq!(
-        selects("malt > 100 && status == approved || status == reviewed"),
+        selects("diameter > 100 && status == approved || status == reviewed"),
         ["B"]
     );
 }
@@ -183,7 +184,7 @@ fn and_binds_tighter_than_or() {
 #[test]
 fn parentheses_override_precedence() {
     assert_eq!(
-        selects("malt > 1 && (status == reviewed || status == approved)"),
+        selects("diameter > 1 && (status == reviewed || status == approved)"),
         ["A", "B"]
     );
 }
@@ -191,12 +192,12 @@ fn parentheses_override_precedence() {
 #[test]
 fn not_negates_one_predicate() {
     // And binds tighter than `and`.
-    assert_eq!(selects("!status == approved && malt > 1"), ["B"]);
+    assert_eq!(selects("!status == approved && diameter > 1"), ["B"]);
 }
 
 #[test]
 fn table_cell_field_in_a_filter() {
-    assert_eq!(selects("mashing.wort[78.5] > 100"), ["A"]);
+    assert_eq!(selects("preheating.tension[78.5] > 100"), ["A"]);
 }
 
 #[test]
@@ -251,7 +252,7 @@ fn boolean_literal_is_not_a_bare_word() {
 
 #[test]
 fn date_literal_parses_unquoted() {
-    assert_eq!(selects("brewed_on > 2026-01-01"), ["A"]);
+    assert_eq!(selects("poured_on > 2026-01-01"), ["A"]);
 }
 
 #[test]
@@ -268,7 +269,7 @@ fn integer_literal_matches_either_numeric_form() {
 
 #[test]
 fn attribute_and_property_filter_alike() {
-    assert_eq!(selects("cold_crashed == true && malt > 12"), ["A"]);
+    assert_eq!(selects("cold_crashed == true && diameter > 12"), ["A"]);
 }
 
 // ------------------------------------------------------ three-valued logic
@@ -276,42 +277,42 @@ fn attribute_and_property_filter_alike() {
 #[test]
 fn absent_value_yields_unknown_not_false() {
     // `Truth::Unknown`, distinct from `False`, and the sample is excluded.
-    assert_eq!(truth("malt > 3", 2), Truth::Unknown);
-    assert_eq!(truth("malt > 3", 1), Truth::False);
-    assert_eq!(selects("malt > 3"), ["A"]);
+    assert_eq!(truth("diameter > 3", 2), Truth::Unknown);
+    assert_eq!(truth("diameter > 3", 1), Truth::False);
+    assert_eq!(selects("diameter > 3"), ["A"]);
 }
 
 #[test]
 fn negated_unknown_stays_excluded() {
-    // A sample whose malt is unknown is not known to be light. Deciding
-    // otherwise means one cask satisfies a predicate and its negation.
-    assert_eq!(truth("!(malt > 3)", 2), Truth::Unknown);
-    assert_eq!(selects("!(malt > 3)"), ["B"]);
+    // A sample whose diameter is unknown is not known to be light. Deciding
+    // otherwise means one slab satisfies a predicate and its negation.
+    assert_eq!(truth("!(diameter > 3)", 2), Truth::Unknown);
+    assert_eq!(selects("!(diameter > 3)"), ["B"]);
 }
 
 #[test]
 fn unknown_in_or_can_still_select() {
     // The other branch decides.
-    assert_eq!(truth("malt > 3 || status == approved", 2), Truth::True);
-    assert_eq!(selects("malt > 3 || status == approved"), ["A", "C"]);
+    assert_eq!(truth("diameter > 3 || status == approved", 2), Truth::True);
+    assert_eq!(selects("diameter > 3 || status == approved"), ["A", "C"]);
 }
 
 #[test]
 fn is_missing_selects_absent_values() {
     // The only predicate true on absence, which is what makes absence askable.
-    assert_eq!(selects("malt is missing"), ["C"]);
+    assert_eq!(selects("diameter is missing"), ["C"]);
 }
 
 #[test]
 fn is_present_is_its_complement() {
     // Together they partition the collection.
-    let present = selects("malt is present");
-    let missing = selects("malt is missing");
+    let present = selects("diameter is present");
+    let missing = selects("diameter is missing");
     assert_eq!(present, ["A", "B"]);
     assert_eq!(missing, ["C"]);
     assert_eq!(present.len() + missing.len(), collection().len());
     // And `is not missing` is `is present`.
-    assert_eq!(selects("malt is not missing"), present);
+    assert_eq!(selects("diameter is not missing"), present);
 }
 
 #[test]
@@ -319,7 +320,7 @@ fn unknown_is_countable_by_the_caller() {
     // Excluded because false and excluded because unanswerable are two
     // different facts, and a summary saying 58 / 70 needs the second.
     let samples = collection();
-    let parsed = filter::parse("malt > 3").unwrap();
+    let parsed = filter::parse("diameter > 3").unwrap();
     let vocabulary = fields::vocabulary_of(&refs(&samples));
     let mut counts = (0, 0, 0);
     for sample in &samples {
@@ -372,7 +373,7 @@ fn has_on_a_non_tag_field_is_refused() {
     // The operator is not general, and the error is `WrongOperator` rather
     // than a kind mismatch.
     let samples = collection();
-    let parsed = filter::parse("beer has reference").unwrap();
+    let parsed = filter::parse("alloy has reference").unwrap();
     let vocabulary = fields::vocabulary_of(&refs(&samples));
     let subject = Subject {
         sample: &samples[0],
@@ -388,7 +389,7 @@ fn has_on_a_non_tag_field_is_refused() {
     // It names the operator text takes, as `contains` on a list names `has`.
     assert!(error.to_string().contains("contains"), "{error}");
     // A number has no such operator: `contains` is not offered for it.
-    let parsed = filter::parse("malt has 1").unwrap();
+    let parsed = filter::parse("diameter has 1").unwrap();
     let error = filter::evaluate(&parsed, &subject).unwrap_err();
     assert!(!error.to_string().contains("contains"), "{error}");
 }
@@ -433,14 +434,14 @@ fn unknown_field_suggests_nearest_name() {
     let parsed = filter::parse("bere == x").unwrap();
     let diagnostics = filter::check(&parsed, &refs(&samples));
     let rendered = format!("{:?}", diagnostics.unknown_fields);
-    assert!(rendered.contains("beer"), "{rendered}");
+    assert!(rendered.contains("alloy"), "{rendered}");
 }
 
 #[test]
 fn check_reports_every_problem_at_once() {
     // Three mistakes yield three diagnostics from one run.
     let samples = collection();
-    let parsed = filter::parse("bere == x && nonexistent == 5 && malt > \"heavy\"").unwrap();
+    let parsed = filter::parse("bere == x && nonexistent == 5 && diameter > \"heavy\"").unwrap();
     let diagnostics = filter::check(&parsed, &refs(&samples));
     assert_eq!(diagnostics.unknown_fields.len(), 2, "{diagnostics:?}");
     assert_eq!(diagnostics.type_conflicts.len(), 1, "{diagnostics:?}");
@@ -448,9 +449,9 @@ fn check_reports_every_problem_at_once() {
 
 #[test]
 fn type_conflict_is_reported() {
-    // `malt > "heavy"` errors rather than matching nothing.
+    // `diameter > "heavy"` errors rather than matching nothing.
     let samples = collection();
-    let parsed = filter::parse("malt > \"heavy\"").unwrap();
+    let parsed = filter::parse("diameter > \"heavy\"").unwrap();
     let diagnostics = filter::check(&parsed, &refs(&samples));
     assert_eq!(diagnostics.type_conflicts.len(), 1);
     let message =
@@ -463,7 +464,7 @@ fn type_conflict_is_reported() {
 #[test]
 fn unbalanced_parenthesis_reports_the_opening_position() {
     // Not the end of input: the reader needs to see which one was never closed.
-    let source = "status == approved && (plato > 2";
+    let source = "status == approved && (ductility > 2";
     let error = filter::parse(source).unwrap_err();
     let FilterError::UnbalancedParenthesis { position } = error else {
         panic!("{error:?}");
@@ -478,7 +479,7 @@ fn unbalanced_parenthesis_reports_the_opening_position() {
 
 #[test]
 fn unterminated_string_is_reported() {
-    let source = "beer == \"Dunkel 57";
+    let source = "alloy == \"Duplex 57";
     let error = filter::parse(source).unwrap_err();
     let FilterError::UnterminatedString { position } = error else {
         panic!("{error:?}");
@@ -489,19 +490,19 @@ fn unterminated_string_is_reported() {
 #[test]
 fn filter_declares_its_fields() {
     // `fields()` lists exactly what is referenced.
-    let parsed = filter::parse("malt > 3 && status == approved && malt < 100").unwrap();
+    let parsed = filter::parse("diameter > 3 && status == approved && diameter < 100").unwrap();
     let named: Vec<String> = filter::fields(&parsed)
         .iter()
         .map(fields::describe)
         .collect();
-    assert_eq!(named, ["malt", "status"]);
+    assert_eq!(named, ["diameter", "status"]);
 }
 
 #[test]
 fn parse_does_not_need_a_sample() {
     // A filter validates against no data, which is what lets a config hold one.
     assert!(filter::parse("nonexistent == 5").is_ok());
-    assert!(filter::parse("mashing.wort[65] > 1").is_ok());
+    assert!(filter::parse("preheating.tension[65] > 1").is_ok());
 }
 
 #[test]
@@ -604,10 +605,10 @@ fn the_words_and_or_and_not_are_names() {
     // operator stood, naming the symbol to write; as a field's name each is an
     // ordinary word, and `is not missing` keeps its `not`.
     for (source, symbol, at) in [
-        ("status == approved and malt > 5", "'&&'", 20),
+        ("status == approved and diameter > 5", "'&&'", 20),
         ("status == reviewed OR batch == 7", "'||'", 20),
         ("not status == approved", "'!'", 1),
-        ("not (malt > 5)", "'!'", 1),
+        ("not (diameter > 5)", "'!'", 1),
     ] {
         let message = filter::parse(source).unwrap_err().to_string();
         assert!(message.contains(&format!("expected {symbol}")), "{message}");
@@ -621,15 +622,15 @@ fn the_words_and_or_and_not_are_names() {
         let parsed = filter::parse(source).unwrap_or_else(|error| panic!("{source}: {error}"));
         assert!(!filter::fields(&parsed).is_empty());
     }
-    assert_eq!(selects("!(status == approved || malt > 100)"), ["B"]);
+    assert_eq!(selects("!(status == approved || diameter > 100)"), ["B"]);
     assert_eq!(selects("status != approved"), ["B"]);
 }
 
 #[test]
 fn a_lone_ampersand_or_bar_is_refused() {
     for (source, expected, at) in [
-        ("malt > 5 & batch == 7", "'&&'", 10),
-        ("malt > 5 | batch == 7", "'||'", 10),
+        ("diameter > 5 & batch == 7", "'&&'", 14),
+        ("diameter > 5 | batch == 7", "'||'", 14),
     ] {
         let error = filter::parse(source).unwrap_err();
         let message = error.to_string();
@@ -642,12 +643,12 @@ fn a_lone_ampersand_or_bar_is_refused() {
 fn has_on_a_sample_without_the_list_is_unknown() {
     let mut with = Sample::new();
     with.set_attribute(
-        id("adjuncts"),
-        AttributeValue::list(vec![Value::text("oats")]).unwrap(),
+        id("additives"),
+        AttributeValue::list(vec![Value::text("flux")]).unwrap(),
     )
     .unwrap();
     let samples = vec![with, Sample::new()];
-    let parsed = filter::parse("adjuncts has oats").unwrap();
+    let parsed = filter::parse("additives has flux").unwrap();
     let vocabulary = fields::vocabulary_of(&refs(&samples));
     let truth = |sample: &Sample| {
         filter::evaluate(
@@ -669,16 +670,16 @@ fn has_on_a_sample_without_the_list_is_unknown() {
 #[test]
 fn a_row_no_sample_holds_is_an_unknown_field() {
     let samples = collection();
-    let parsed = filter::parse("mashing.wort[500] > 1").unwrap();
+    let parsed = filter::parse("preheating.tension[500] > 1").unwrap();
     let diagnostics = filter::check(&parsed, &refs(&samples));
     assert_eq!(diagnostics.unknown_fields.len(), 1, "{diagnostics:?}");
 }
 
 #[test]
 fn a_stray_closing_parenthesis_closes_nothing() {
-    let error = filter::parse("yeast_strain == US05)").unwrap_err();
+    let error = filter::parse("process_strain == UT05)").unwrap_err();
     assert!(
-        matches!(error, FilterError::UnexpectedClose { position: 20 }),
+        matches!(error, FilterError::UnexpectedClose { position: 22 }),
         "{error:?}"
     );
     assert!(error.to_string().contains("closes nothing"), "{error}");
@@ -701,32 +702,32 @@ fn a_number_too_large_is_refused_not_read_as_text() {
     let error = filter::parse("loading > 1e999").unwrap_err();
     assert!(error.to_string().contains("a finite number"), "{error}");
     // A word that is no number stays text.
-    assert!(filter::parse("yeast_strain == nan").is_ok());
+    assert!(filter::parse("process_strain == nan").is_ok());
 }
 
 #[test]
 fn a_quoted_date_is_a_date() {
     assert_eq!(
-        selects("brewed_on >= \"2026-01-01\""),
-        selects("brewed_on >= 2026-01-01")
+        selects("poured_on >= \"2026-01-01\""),
+        selects("poured_on >= 2026-01-01")
     );
-    assert_eq!(selects("brewed_on >= \"2026-01-01\""), ["A"]);
+    assert_eq!(selects("poured_on >= \"2026-01-01\""), ["A"]);
 }
 
 #[test]
 fn a_number_compared_with_text_is_an_error() {
     let samples = collection();
-    let parsed = filter::parse("malt == \"heavy\"").unwrap();
+    let parsed = filter::parse("diameter == \"heavy\"").unwrap();
     let diagnostics = filter::check(&parsed, &refs(&samples));
     assert_eq!(diagnostics.type_conflicts.len(), 1, "{diagnostics:?}");
 }
 
 #[test]
 fn text_compared_with_a_number_is_an_error_too() {
-    // A type conflict is symmetric. `beer == 3` used to answer *nothing
-    // matched*, where `malt == "heavy"` was refused.
+    // A type conflict is symmetric. `alloy == 3` used to answer *nothing
+    // matched*, where `diameter == "heavy"` was refused.
     let samples = collection();
-    for source in ["beer == 3", "beer != 3", "beer == 2.5"] {
+    for source in ["alloy == 3", "alloy != 3", "alloy == 2.5"] {
         let parsed = filter::parse(source).unwrap();
         let diagnostics = filter::check(&parsed, &refs(&samples));
         assert_eq!(
@@ -736,18 +737,18 @@ fn text_compared_with_a_number_is_an_error_too() {
         );
         let message =
             FilterError::TypeConflict(Box::new(diagnostics.type_conflicts[0].clone())).to_string();
-        assert!(message.contains("beer"), "{message}");
+        assert!(message.contains("alloy"), "{message}");
         assert!(message.contains("text"), "{message}");
     }
 }
 
 #[test]
 fn ordered_comparison_on_text_ignores_case() {
-    // The sort orders `altbier` before `Dunkel 57`, and the filter agrees.
-    assert_eq!(selects("beer > \"b\""), ["A", "C"]);
-    assert_eq!(selects("beer < \"E\""), ["A", "B", "C"]);
-    assert_eq!(selects("beer < \"b\""), ["B"]);
-    assert_eq!(selects("beer >= \"dc 57\""), ["A", "C"]);
+    // The sort orders `alumina` before `Duplex 57`, and the filter agrees.
+    assert_eq!(selects("alloy > \"b\""), ["A", "C"]);
+    assert_eq!(selects("alloy < \"E\""), ["A", "B", "C"]);
+    assert_eq!(selects("alloy < \"b\""), ["B"]);
+    assert_eq!(selects("alloy >= \"dc 57\""), ["A", "C"]);
 }
 
 // ------------------------------------------------------------- completion
@@ -778,42 +779,45 @@ fn completes(source: &str) -> Vec<String> {
 #[test]
 fn completion_offers_fields_where_a_predicate_begins() {
     let empty = completes("");
-    assert!(empty.contains(&"malt".to_string()), "{empty:?}");
-    assert!(empty.contains(&"beer".to_string()), "{empty:?}");
+    assert!(empty.contains(&"diameter".to_string()), "{empty:?}");
+    assert!(empty.contains(&"alloy".to_string()), "{empty:?}");
     // And after a connective, which opens a new predicate.
     let after = completes("status == approved && ");
     assert!(
-        after.contains(&"status == approved && malt".to_string()),
+        after.contains(&"status == approved && diameter".to_string()),
         "{after:?}"
     );
 }
 
 #[test]
 fn completion_offers_operators_after_a_complete_field() {
-    let offered = completes("malt ");
-    assert!(offered.contains(&"malt == ".to_string()), "{offered:?}");
+    let offered = completes("diameter ");
+    assert!(offered.contains(&"diameter == ".to_string()), "{offered:?}");
     assert!(
-        offered.contains(&"malt contains ".to_string()),
+        offered.contains(&"diameter contains ".to_string()),
         "{offered:?}"
     );
     // `has` belongs to tags and lists, and completion cannot propose what
     // `check` would refuse.
-    assert!(!offered.contains(&"malt has ".to_string()), "{offered:?}");
+    assert!(
+        !offered.contains(&"diameter has ".to_string()),
+        "{offered:?}"
+    );
     assert!(completes("tags ").contains(&"tags has ".to_string()));
 }
 
 #[test]
 fn completion_offers_values_after_an_operator() {
-    let offered = completes("beer == ");
+    let offered = completes("alloy == ");
     assert!(
-        offered.contains(&"beer == altbier".to_string()),
+        offered.contains(&"alloy == alumina".to_string()),
         "{offered:?}"
     );
     // What the collection holds, never every string there could be.
     assert!(
         offered
             .iter()
-            .all(|candidate| candidate.starts_with("beer == ")),
+            .all(|candidate| candidate.starts_with("alloy == ")),
         "{offered:?}"
     );
 }
@@ -821,78 +825,84 @@ fn completion_offers_values_after_an_operator() {
 #[test]
 fn completion_offers_connectives_after_a_complete_predicate() {
     assert_eq!(
-        completes("malt > 12 "),
-        ["malt > 12 && ".to_string(), "malt > 12 || ".to_string()]
+        completes("diameter > 12 "),
+        [
+            "diameter > 12 && ".to_string(),
+            "diameter > 12 || ".to_string()
+        ]
     );
 }
 
 #[test]
 fn completion_finds_a_table_column_by_its_own_name() {
-    // `wo` begins no field's full name, and is the column `mashing.wort`:
+    // `tens` begins no field's full name, and is the column `preheating.tension`:
     // the filter offers its cells as the field completion does.
-    let offered = completes("wo");
+    let offered = completes("tens");
     assert!(
-        offered.contains(&"mashing.wort[78.5]".to_string()),
+        offered.contains(&"preheating.tension[78.5]".to_string()),
         "{offered:?}"
     );
-    let after = completes("malt > 1 && wo");
+    let after = completes("diameter > 1 && tens");
     assert!(
-        after.contains(&"malt > 1 && mashing.wort[78.5]".to_string()),
+        after.contains(&"diameter > 1 && preheating.tension[78.5]".to_string()),
         "{after:?}"
     );
 }
 
 #[test]
 fn completion_carries_what_precedes_it() {
-    let offered = completes("malt > 12 && bee");
+    let offered = completes("diameter > 12 && allo");
     assert!(
-        offered.contains(&"malt > 12 && beer".to_string()),
+        offered.contains(&"diameter > 12 && alloy".to_string()),
         "{offered:?}"
     );
     // The fragment alone would replace the whole expression in a shell.
-    assert!(!offered.contains(&"beer".to_string()), "{offered:?}");
+    assert!(!offered.contains(&"alloy".to_string()), "{offered:?}");
 }
 
 #[test]
 fn completion_inside_an_unclosed_quote_offers_values() {
     // `parse` never sees a valid expression here: the string is unterminated.
-    assert!(filter::parse("beer == \"Du").is_err());
-    let offered = completes("beer == \"Du");
+    assert!(filter::parse("alloy == \"Du").is_err());
+    let offered = completes("alloy == \"Du");
     assert!(
-        offered.contains(&"beer == \"Dunkel 57\"".to_string()),
+        offered.contains(&"alloy == \"Duplex 57\"".to_string()),
         "{offered:?}"
     );
 }
 
 #[test]
 fn completion_quotes_a_value_holding_a_space() {
-    let offered = completes("beer == ");
+    let offered = completes("alloy == ");
     assert!(
-        offered.contains(&"beer == \"Dunkel 57\"".to_string()),
+        offered.contains(&"alloy == \"Duplex 57\"".to_string()),
         "{offered:?}"
     );
 }
 
 #[test]
 fn completion_never_fails_on_a_half_written_expression() {
-    let whole = "malt > 12 && beer == \"Dunkel 57\"";
+    let whole = "diameter > 12 && alloy == \"Duplex 57\"";
     for end in 0..=whole.len() {
         if whole.is_char_boundary(end) {
             let _ = completes(&whole[..end]);
         }
     }
     // A head that does not tokenize leaves completion silent rather than wrong.
-    assert!(completes("malt > 12 & ").is_empty());
+    assert!(completes("diameter > 12 & ").is_empty());
 }
 
 #[test]
 fn completion_continues_an_operator_being_typed() {
     // The tokenizer reads a lone `!` as the connective `not`. The position does
     // not, because the reader is still writing the operator.
-    let offered = completes("malt !");
-    assert!(offered.contains(&"malt != ".to_string()), "{offered:?}");
-    assert!(!offered.contains(&"malt beer".to_string()), "{offered:?}");
-    assert!(completes("malt >").contains(&"malt >= ".to_string()));
+    let offered = completes("diameter !");
+    assert!(offered.contains(&"diameter != ".to_string()), "{offered:?}");
+    assert!(
+        !offered.contains(&"diameter alloy".to_string()),
+        "{offered:?}"
+    );
+    assert!(completes("diameter >").contains(&"diameter >= ".to_string()));
 }
 
 #[test]
@@ -904,7 +914,7 @@ fn completion_offers_values_inside_a_membership_list() {
     );
     // The parenthesis holds operands; it does not open another predicate.
     assert!(
-        !offered.contains(&"status in (beer".to_string()),
+        !offered.contains(&"status in (alloy".to_string()),
         "{offered:?}"
     );
 }
@@ -912,10 +922,10 @@ fn completion_offers_values_inside_a_membership_list() {
 #[test]
 fn completion_offers_presence_after_is() {
     assert_eq!(
-        completes("malt is "),
+        completes("diameter is "),
         [
-            "malt is missing ".to_string(),
-            "malt is present ".to_string()
+            "diameter is missing ".to_string(),
+            "diameter is present ".to_string()
         ]
     );
 }
@@ -943,28 +953,30 @@ fn completion_omits_operators_the_field_would_refuse() {
 
 #[test]
 fn a_sample_whose_field_holds_text_is_left_aside_and_named() {
-    // One brew's `og` written `high` refused `og > 1.06` over the whole
+    // One piece's `radius` written `high` refused `radius > 1.06` over the whole
     // collection; it is left aside, named, and never selected, even under `!`.
     // Text everywhere is still a question that cannot be asked.
     let mut samples = Vec::new();
-    for (name, og) in [
+    for (name, radius) in [
         ("a", number(1.05)),
         ("b", Value::text("high")),
         ("c", number(1.07)),
     ] {
         let mut sample = Sample::new();
         sample.set_name(Some(name.to_string()));
-        sample.set_property(id("og"), Property::stored(og)).unwrap();
+        sample
+            .set_property(id("radius"), Property::stored(radius))
+            .unwrap();
         samples.push(sample);
     }
-    let parsed = filter::parse("og > 1.06").unwrap();
+    let parsed = filter::parse("radius > 1.06").unwrap();
     let diagnostics = filter::check(&parsed, &refs(&samples));
     assert!(diagnostics.is_empty(), "{diagnostics:?}");
     assert_eq!(diagnostics.set_aside.len(), 1, "{diagnostics:?}");
     assert_eq!(diagnostics.set_aside[0].samples, vec!["b".to_string()]);
     assert_eq!(
         diagnostics.set_aside[0].said(),
-        "b left aside: 'og' holds text there, which > cannot compare"
+        "b left aside: 'radius' holds text there, which > cannot compare"
     );
     let vocabulary = fields::vocabulary_of(&refs(&samples));
     let truth = |source: &str, sample: &Sample| {
@@ -976,15 +988,18 @@ fn a_sample_whose_field_holds_text_is_left_aside_and_named() {
         };
         filter::evaluate_leaving_aside(&filter::parse(source).unwrap(), &subject).unwrap()
     };
-    assert_eq!(truth("og > 1.06", &samples[2]), Truth::True);
-    assert_eq!(truth("og > 1.06", &samples[1]), Truth::Unknown);
-    assert_eq!(truth("!(og > 1.06)", &samples[1]), Truth::Unknown);
+    assert_eq!(truth("radius > 1.06", &samples[2]), Truth::True);
+    assert_eq!(truth("radius > 1.06", &samples[1]), Truth::Unknown);
+    assert_eq!(truth("!(radius > 1.06)", &samples[1]), Truth::Unknown);
     // Two comparisons of one field are one sentence.
-    let both = filter::check(&filter::parse("og > 1 && og < 2").unwrap(), &refs(&samples));
+    let both = filter::check(
+        &filter::parse("radius > 1 && radius < 2").unwrap(),
+        &refs(&samples),
+    );
     assert_eq!(both.set_aside.len(), 1, "{both:?}");
     assert!(both.set_aside[0].said().contains("> and <"), "{both:?}");
     // Text in every sample: refused, as ever.
-    let words = filter::check(&filter::parse("og > 1").unwrap(), &refs(&samples[1..2]));
+    let words = filter::check(&filter::parse("radius > 1").unwrap(), &refs(&samples[1..2]));
     assert_eq!(words.type_conflicts.len(), 1, "{words:?}");
 }
 
@@ -1052,7 +1067,12 @@ fn a_state_only_the_model_could_deny_stays_unknown() {
         asked("state != never_computed", Some(&unread)),
         Ok(Truth::Unknown)
     );
-    assert_eq!(asked("state == outdated", Some(&unread)), Ok(Truth::False));
+    // Outdated too: a formula changed since it computed a value is the
+    // model's to say, and a sample whose model was not read may owe one.
+    assert_eq!(
+        asked("state == outdated", Some(&unread)),
+        Ok(Truth::Unknown)
+    );
     let stale = states_of(&[Stale], false);
     assert_eq!(asked("state == outdated", Some(&stale)), Ok(Truth::True));
     assert_eq!(asked("state == not_current", Some(&stale)), Ok(Truth::True));
@@ -1075,14 +1095,11 @@ fn an_unknown_state_word_is_refused_at_parse() {
     let said = error.to_string();
     assert!(said.contains("available: current, not_current"), "{said}");
     assert!(filter::caret("state == faild", &error).is_some());
-    // The word `outdated` replaced is not a state, and is sent to it, though no
-    // edit distance would.
-    match filter::parse("state == stale") {
-        Err(FilterError::UnknownState { suggestion, .. }) => {
-            assert_eq!(suggestion.as_deref(), Some("outdated"));
-        }
-        other => panic!("{other:?}"),
-    }
+    // A word that is no state is refused, as any other.
+    assert!(matches!(
+        filter::parse("state == stale"),
+        Err(FilterError::UnknownState { .. })
+    ));
     let quoted = filter::parse("state == \"failed\"").unwrap();
     assert_eq!(filter::state_words(&quoted).len(), 1);
 }
@@ -1127,5 +1144,200 @@ fn completion_offers_the_states_after_state() {
     assert!(
         listed.contains(&"state in (defective".to_string()),
         "{listed:?}"
+    );
+}
+
+#[test]
+fn a_comparison_takes_a_field_on_either_side() {
+    // `diameter > batch`: two fields of one sample, as `radius > notch`. A bare word
+    // naming no field after `==` stays the text it always was; after an
+    // ordering operator it is a field or a mistake.
+    assert_eq!(selects("diameter > batch"), ["A"]);
+    assert_eq!(selects("batch < diameter"), ["A"]);
+    assert_eq!(selects("alloy == alumina"), ["B"]);
+    assert_eq!(selects("alloy == \"alumina\""), ["B"]);
+    // Two quantities in different units compare nothing.
+    let mut litres = Sample::new();
+    litres.set_name(Some("L".to_string()));
+    let mut volume = Property::stored(number(20.0));
+    volume.set_presentation(samplekit::core::formatting::Presentation {
+        unit: Some("L".to_string()),
+        ..Default::default()
+    });
+    let mut mass = Property::stored(number(4.0));
+    mass.set_presentation(samplekit::core::formatting::Presentation {
+        unit: Some("kg".to_string()),
+        ..Default::default()
+    });
+    litres.set_property(id("volume"), volume).unwrap();
+    litres.set_property(id("ore_mass"), mass).unwrap();
+    let samples = vec![litres];
+    let vocabulary = fields::vocabulary_of(&refs(&samples));
+    let subject = Subject {
+        sample: &samples[0],
+        path: None,
+        vocabulary: &vocabulary,
+        states: None,
+    };
+    let parsed = filter::parse("volume > ore_mass").unwrap();
+    let refused = filter::evaluate(&parsed, &subject).unwrap_err();
+    assert!(
+        matches!(refused, FilterError::UnitsDiffer { .. }),
+        "{refused}"
+    );
+    assert!(refused.to_string().contains("in L") && refused.to_string().contains("in kg"));
+}
+
+// ------------------------------------------------------ columns, tables, rows
+
+#[test]
+fn a_column_without_its_row_is_asked_by_has() {
+    assert_eq!(selects("preheating.tension has 104.2"), ["A"]);
+    assert!(selects("preheating.tension has 99").is_empty());
+    // A sample without the table answers unknown.
+    assert_eq!(truth("preheating.tension has 104.2", 1), Truth::Unknown);
+}
+
+#[test]
+fn a_table_has_what_any_of_its_cells_holds() {
+    assert_eq!(selects("preheating has 78.5"), ["A"]);
+    assert_eq!(selects("preheating has 104.2"), ["A"]);
+    assert!(selects("preheating has 1").is_empty());
+}
+
+#[test]
+fn where_asks_one_row_its_names_the_rows_cells() {
+    assert_eq!(
+        selects("preheating where (temperature > 70 && tension > 100)"),
+        ["A"]
+    );
+    assert!(selects("preheating where (temperature > 80 && tension > 100)").is_empty());
+    // A name no column holds is the sample's.
+    assert_eq!(
+        selects("preheating where (tension > 100 && diameter > 10)"),
+        ["A"]
+    );
+    // Every row, by the negation's negation; unknown without the table.
+    assert_eq!(truth("!(preheating where (tension < 100))", 0), Truth::True);
+    assert_eq!(
+        truth("!(preheating where (tension < 100))", 1),
+        Truth::Unknown
+    );
+}
+
+#[test]
+fn a_column_or_a_table_no_sample_holds_is_an_error() {
+    let samples = collection();
+    let vocabulary = fields::vocabulary_of(&refs(&samples));
+    let subject = Subject {
+        sample: &samples[0],
+        path: None,
+        vocabulary: &vocabulary,
+        states: None,
+    };
+    for (source, said) in [
+        ("preheating.tensiom has 1", "did you mean: 'tension'"),
+        ("preheatng where (tension > 1)", "preheating"),
+    ] {
+        let parsed = filter::parse(source).unwrap();
+        let error = filter::evaluate(&parsed, &subject).unwrap_err();
+        assert!(error.to_string().contains(said), "{source}: {error}");
+    }
+    // A scalar operator on a whole column names has and where.
+    let error = filter::parse("preheating.tension > 1").unwrap_err();
+    assert!(
+        error.to_string().contains("preheating.tension has X")
+            && error.to_string().contains("preheating where (tension > X)"),
+        "{error}"
+    );
+}
+
+#[test]
+fn completion_walks_a_table_whole_and_by_row() {
+    // A table and a column without its row were never offered, nor `has`
+    // and `where` after them, nor a row's columns inside `where (`.
+    assert!(completes("preheat").contains(&"preheating".to_string()));
+    assert!(
+        completes("preheating.tens").contains(&"preheating.tension".to_string()),
+        "{:?}",
+        completes("preheating.tens")
+    );
+    assert_eq!(
+        completes("preheating "),
+        ["preheating has ", "preheating where "]
+    );
+    assert_eq!(
+        completes("preheating.tension "),
+        ["preheating.tension has "]
+    );
+    assert!(
+        completes("preheating.tension has ").contains(&"preheating.tension has 104.2".to_string())
+    );
+    assert_eq!(completes("preheating where "), ["preheating where ("]);
+    let columns = completes("preheating where (");
+    assert!(
+        columns[..2] == ["preheating where (temperature", "preheating where (tension"],
+        "{columns:?}"
+    );
+    assert!(
+        completes("preheating where (tension ")
+            .contains(&"preheating where (tension > ".to_string())
+    );
+    assert!(
+        completes("preheating where (tension > ")
+            .contains(&"preheating where (tension > 104.2".to_string())
+    );
+}
+
+#[test]
+fn a_table_filter_says_its_misspellings() {
+    let samples = collection();
+    let mut a = samples;
+    // A text column, for a text to be misspelt.
+    let mut carbon = Table::new(
+        id("carbon"),
+        vec![id("variety")],
+        ["variety", "grams"]
+            .iter()
+            .map(|n| (id(n), ColumnMeta::default()))
+            .collect::<IndexMap<_, _>>(),
+        Vec::new(),
+    )
+    .unwrap();
+    carbon
+        .add_row(vec![
+            (id("variety"), Property::stored(Value::text("alpha"))),
+            (id("grams"), Property::stored(number(20.0))),
+        ])
+        .unwrap();
+    a[0].set_table(id("carbon"), carbon).unwrap();
+    let diagnostics = filter::check(&filter::parse("carbon has alph").unwrap(), &refs(&a));
+    assert!(
+        diagnostics
+            .unmatched_texts
+            .iter()
+            .any(|warning| warning.to_string().contains("did you mean 'alpha'")),
+        "{diagnostics:?}"
+    );
+    // A row's name neither a column nor the sample's is the table's column
+    // misspelt.
+    let vocabulary = fields::vocabulary_of(&refs(&a));
+    let subject = Subject {
+        sample: &a[0],
+        path: None,
+        vocabulary: &vocabulary,
+        states: None,
+    };
+    let error = filter::evaluate(
+        &filter::parse("carbon where (varety == alpha)").unwrap(),
+        &subject,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("unknown column 'varety' in table 'carbon'")
+            && error.to_string().contains("variety"),
+        "{error}"
     );
 }

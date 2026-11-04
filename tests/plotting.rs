@@ -77,16 +77,16 @@ open(os.path.join(os.path.dirname(__file__), "imported"), "w").close()
 print("loading the adjustment")
 
 
-class Keg(sk.Sample):
+class Billet(sk.Sample):
     @sk.figure
     def mass_bar(self, ax):
-        ax.bar(["malt"], [self.malt.value])
+        ax.bar(["diameter"], [self.diameter.value])
 
     @sk.figure(subplots=(1, 2))
     @classmethod
     def overview(cls, samples, axes):
         names = [sample.name for sample in samples]
-        axes[0].bar(names, [sample.malt.value for sample in samples])
+        axes[0].bar(names, [sample.diameter.value for sample in samples])
         axes[1].set_title(",".join(names))
         open(os.path.join(os.path.dirname(__file__), "drew"), "w").write(",".join(names))
 
@@ -95,25 +95,25 @@ class Keg(sk.Sample):
         return 1 / 0
 "#;
 
-const RC: &str = "schema_version = 1\n[model]\npath = \"model.py\"\n\
-[figure.malt_volume]\nx = \"volume\"\ny = \"malt\"\ngroup = \"beer\"\n\
-[figure.schwarz]\nx = \"volume\"\ny = \"malt\"\nquery = \"schwarz\"\n\
-[query.schwarz]\nfilter = \"beer == schwarz\"\n\
+const RC: &str = "schema_version = 1\n[model]\npath = \"model.py\"\npython = \".venv\"\n\
+[figure.diameter_volume]\nx = \"volume\"\ny = \"diameter\"\ngroup = \"alloy\"\n\
+[figure.cobalt]\nx = \"volume\"\ny = \"diameter\"\nquery = \"cobalt\"\n\
+[query.cobalt]\nfilter = \"alloy == cobalt\"\n\
 [style.figure]\n[style.math]\n\
 [unit.g]\nfigure = '$\\mathrm{g}$'\nmath = '\\si{\\gram}'\n\
-[property.malt]\nsymbol = \"m\"\nsymbol_figure = '$m$'\n";
+[property.diameter]\nsymbol = \"m\"\nsymbol_figure = '$m$'\n";
 
 fn project(scratch: &Scratch) -> PathBuf {
     scratch.write("project/.samplekitrc", RC);
     scratch.write("project/model.py", MODEL);
-    for (name, malt, beer, ebc) in [("c1", 12.0, "schwarz", 5.1), ("c2", 10.0, "bock", 5.3)] {
+    for (name, diameter, alloy, hv) in [("c1", 12.0, "cobalt", 5.1), ("c2", 10.0, "chrome", 5.3)] {
         scratch.write(
             &format!("project/samples/{name}.md"),
             &format!(
-                "---\nschema_version: 1\nname: {}\nbeer: {beer}\nproperties:\n  \
-                 malt: {{v: {malt:?}, u: 0.1, unit: g}}\n  volume: {{v: 4.0, unit: L}}\n\
+                "---\nschema_version: 1\nname: {}\nalloy: {alloy}\nproperties:\n  \
+                 diameter: {{v: {diameter:?}, u: 0.1, unit: g}}\n  volume: {{v: 4.0, unit: L}}\n\
                  tables:\n  m:\n    index: T\n    columns:\n      T: {{unit: C}}\n      \
-                 ebc: {{}}\n    rows:\n      - {{T: 20.0, ebc: {{v: {ebc}, u: 0.05}}}}\n---\n",
+                 hv: {{}}\n    rows:\n      - {{T: 20.0, hv: {{v: {hv}, u: 0.05}}}}\n---\n",
                 name.to_uppercase()
             ),
         );
@@ -161,7 +161,14 @@ fn a_declared_figure_is_written_to_a_file() {
     project(&scratch);
     let output = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "out.png", "--write"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "out.png",
+            "--write",
+        ],
     );
     assert_eq!(code(&output), 0, "{}", err(&output));
     assert!(starts_with(&scratch.at("project/out.png"), b"\x89PNG"));
@@ -177,11 +184,11 @@ fn an_output_is_previewed_until_write() {
     fs::remove_file(scratch.at("project/.venv")).unwrap();
     let output = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "out.png"],
+        &["samples", "plot", "diameter_volume", "-o", "out.png"],
     );
     assert_eq!(code(&output), 0, "{}", err(&output));
     assert!(out(&output).contains("out.png"), "{}", out(&output));
-    assert!(out(&output).contains("--write"), "{}", out(&output));
+    assert!(out(&output).contains("nothing written"), "{}", out(&output));
     assert!(!scratch.at("project/out.png").exists());
 }
 
@@ -192,12 +199,48 @@ fn axes_given_on_the_command_line_draw_without_a_declaration() {
     let output = run(
         &scratch,
         &[
-            "plot", "-x", "volume", "-y", "malt", "--kind", "bar", "--group", "beer", "samples",
+            "samples", "plot", "-x", "alloy", "-y", "diameter", "--kind", "bar", "--group", "name",
             "-o", "out.svg", "--write",
         ],
     );
     assert_eq!(code(&output), 0, "{}", err(&output));
     assert!(starts_with(&scratch.at("project/out.svg"), b"<?xml"));
+}
+
+#[test]
+fn grouped_bars_on_a_numeric_x_are_refused_and_a_text_y_lies_them_down() {
+    // Side by side, each bar stood off its x and was read at a value it did
+    // not have.
+    let scratch = Scratch::new("bars-numeric");
+    project(&scratch);
+    let refused = run(
+        &scratch,
+        &[
+            "samples", "plot", "-x", "volume", "-y", "diameter", "--kind", "bar", "--group",
+            "alloy", "-o", "no.svg", "--write",
+        ],
+    );
+    assert_eq!(code(&refused), 1, "{}", err(&refused));
+    assert!(
+        err(&refused).contains("--kind scatter"),
+        "{}",
+        err(&refused)
+    );
+    assert!(!scratch.at("project/no.svg").exists());
+    // A text y and a number x: horizontal bars, one per alloy.
+    let lying = run(
+        &scratch,
+        &[
+            "samples", "plot", "-x", "diameter", "-y", "alloy", "--kind", "bar", "-o", "h.svg",
+            "--write",
+        ],
+    );
+    assert_eq!(code(&lying), 0, "{}", err(&lying));
+    let drawn = fs::read_to_string(scratch.at("project/h.svg")).unwrap();
+    assert!(
+        drawn.contains("cobalt") && drawn.contains("chrome"),
+        "the alloys label y"
+    );
 }
 
 #[test]
@@ -207,9 +250,9 @@ fn a_model_figure_draws_one_sample() {
     let output = run(
         &scratch,
         &[
+            "samples/c1.md",
             "plot",
             "mass_bar",
-            "samples/c1.md",
             "-o",
             "one.pdf",
             "--write",
@@ -225,7 +268,7 @@ fn a_collection_figure_draws_the_selection() {
     project(&scratch);
     let output = run(
         &scratch,
-        &["plot", "overview", "samples", "-o", "all.png", "--write"],
+        &["samples", "plot", "overview", "-o", "all.png", "--write"],
     );
     assert_eq!(code(&output), 0, "{}", err(&output));
     let drew = fs::read_to_string(scratch.at("project/drew")).unwrap();
@@ -251,11 +294,18 @@ fn a_window_over_ssh_without_a_display_is_refused() {
             .output()
             .unwrap()
     };
-    let window = over_ssh(&["plot", "malt_volume", "samples"]);
+    let window = over_ssh(&["samples", "plot", "diameter_volume"]);
     assert_eq!(code(&window), 1, "{}", err(&window));
     assert!(err(&window).contains("SSH"), "{}", err(&window));
     assert!(err(&window).contains("-o"), "{}", err(&window));
-    let file = over_ssh(&["plot", "malt_volume", "samples", "-o", "ssh.png", "--write"]);
+    let file = over_ssh(&[
+        "samples",
+        "plot",
+        "diameter_volume",
+        "-o",
+        "ssh.png",
+        "--write",
+    ]);
     assert_eq!(code(&file), 0, "{}", err(&file));
     assert!(starts_with(&scratch.at("project/ssh.png"), b"\x89PNG"));
 }
@@ -266,10 +316,17 @@ fn an_unknown_figure_names_those_that_exist() {
     project(&scratch);
     let output = run(
         &scratch,
-        &["plot", "malt_volum", "samples", "-o", "x.png", "--write"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volum",
+            "-o",
+            "x.png",
+            "--write",
+        ],
     );
     assert_eq!(code(&output), 1, "{}", err(&output));
-    for name in ["malt_volume", "mass_bar", "overview"] {
+    for name in ["diameter_volume", "mass_bar", "overview"] {
         assert!(err(&output).contains(name), "{}", err(&output));
     }
 }
@@ -280,7 +337,7 @@ fn a_figure_that_raises_exits_two_with_its_traceback() {
     project(&scratch);
     let output = run(
         &scratch,
-        &["plot", "broken", "samples/c1.md", "-o", "x.png", "--write"],
+        &["samples/c1.md", "plot", "broken", "-o", "x.png", "--write"],
     );
     assert_eq!(code(&output), 2, "{}", err(&output));
     assert!(
@@ -298,7 +355,7 @@ fn a_one_sample_figure_over_several_with_an_output_is_refused() {
     project(&scratch);
     let output = run(
         &scratch,
-        &["plot", "mass_bar", "samples", "-o", "x.png", "--write"],
+        &["samples", "plot", "mass_bar", "-o", "x.png", "--write"],
     );
     assert_eq!(code(&output), 1, "{}", err(&output));
     assert!(err(&output).contains("one sample"), "{}", err(&output));
@@ -312,9 +369,9 @@ fn list_figures_names_the_model_figures_where_it_may_run() {
     empty.write("project/.samplekitrc", "schema_version = 1\n");
     empty.write(
         "project/samples/c1.md",
-        "---\nschema_version: 1\nname: C1\nproperties:\n  malt: 1.0\n---\n",
+        "---\nschema_version: 1\nname: C1\nproperties:\n  diameter: 1.0\n---\n",
     );
-    let said = run(&empty, &["list", "figures", "samples"]);
+    let said = run(&empty, &["samples", "list", "figures"]);
     assert_eq!(code(&said), 0, "{}", err(&said));
     assert!(
         out(&said).contains("no figure is declared"),
@@ -325,9 +382,9 @@ fn list_figures_names_the_model_figures_where_it_may_run() {
     let scratch = Scratch::new("list");
     project(&scratch);
     // The model is read to list its figures, nothing asked.
-    let after = run(&scratch, &["list", "figures", "samples"]);
+    let after = run(&scratch, &["samples", "list", "figures"]);
     assert_eq!(code(&after), 0, "{}", err(&after));
-    for name in ["malt_volume", "mass_bar", "overview", "broken"] {
+    for name in ["diameter_volume", "mass_bar", "overview", "broken"] {
         assert!(out(&after).contains(name), "{}", out(&after));
     }
     // What the model prints as it loads is not a figure.
@@ -351,6 +408,8 @@ fn the_request_is_one_json_object() {
         project_style: true,
         said: None,
         snapshot: None,
+        workbench: false,
+        accept_outdated: false,
     };
     let body: serde_json::Value = serde_json::from_str(&request_json(&named)).unwrap();
     assert_eq!(body["figure"], "vfi");
@@ -369,7 +428,7 @@ fn the_request_is_one_json_object() {
             kind: FigureKind::Line,
             x: "period".to_string(),
             y: "vfi".to_string(),
-            group: Some("beer".to_string()),
+            group: Some("alloy".to_string()),
             query: None,
             title: None,
             x_label: None,
@@ -382,6 +441,7 @@ fn the_request_is_one_json_object() {
             aspect: None,
             legend: None,
             figsize: None,
+            matplotlib: Default::default(),
         })),
         samples: Vec::new(),
         output: None,
@@ -389,10 +449,12 @@ fn the_request_is_one_json_object() {
         project_style: false,
         said: None,
         snapshot: None,
+        workbench: false,
+        accept_outdated: false,
     };
     let body: serde_json::Value = serde_json::from_str(&request_json(&axes)).unwrap();
     assert_eq!(body["axes"]["kind"], "line");
-    assert_eq!(body["axes"]["group"], "beer");
+    assert_eq!(body["axes"]["group"], "alloy");
     assert_eq!(body["model"], false);
     assert!(body["output"].is_null());
 }
@@ -405,15 +467,7 @@ fn a_table_cell_is_an_axis_across_samples() {
     let drawn = run(
         &scratch,
         &[
-            "plot",
-            "-x",
-            "malt",
-            "-y",
-            "m.ebc[20]",
-            "samples",
-            "-o",
-            "cell.png",
-            "--write",
+            "samples", "plot", "-x", "diameter", "-y", "m.hv[20]", "-o", "cell.png", "--write",
         ],
     );
     assert_eq!(code(&drawn), 0, "{}", err(&drawn));
@@ -421,15 +475,7 @@ fn a_table_cell_is_an_axis_across_samples() {
     let nowhere = run(
         &scratch,
         &[
-            "plot",
-            "-x",
-            "malt",
-            "-y",
-            "m.ebc[99]",
-            "samples",
-            "-o",
-            "x.png",
-            "--write",
+            "samples", "plot", "-x", "diameter", "-y", "m.hv[99]", "-o", "x.png", "--write",
         ],
     );
     assert_eq!(code(&nowhere), 1, "{}", err(&nowhere));
@@ -437,11 +483,11 @@ fn a_table_cell_is_an_axis_across_samples() {
     let misspelt = run(
         &scratch,
         &[
-            "plot", "-x", "mal", "-y", "volume", "samples", "-o", "x.png", "--write",
+            "samples", "plot", "-x", "diametr", "-y", "volume", "-o", "x.png", "--write",
         ],
     );
     assert_eq!(code(&misspelt), 1, "{}", err(&misspelt));
-    assert!(err(&misspelt).contains("malt"), "{}", err(&misspelt));
+    assert!(err(&misspelt).contains("diameter"), "{}", err(&misspelt));
 }
 
 #[test]
@@ -451,11 +497,11 @@ fn a_title_labels_and_a_style_are_given_on_the_command_line() {
     let drawn = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--title",
-            "Malts",
+            "Diameters",
             "--x-label",
             "$V$",
             "--style",
@@ -470,9 +516,9 @@ fn a_title_labels_and_a_style_are_given_on_the_command_line() {
     let unknown = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--style",
             "figur",
             "-o",
@@ -485,9 +531,9 @@ fn a_title_labels_and_a_style_are_given_on_the_command_line() {
     let on_the_model = run(
         &scratch,
         &[
+            "samples/c1.md",
             "plot",
             "mass_bar",
-            "samples/c1.md",
             "--x-label",
             "V",
             "-o",
@@ -511,9 +557,9 @@ fn a_label_matplotlib_cannot_typeset_is_refused() {
     let refused = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--style",
             "math",
             "-o",
@@ -544,13 +590,13 @@ fn axes_complete_as_columns_do() {
         out(&output)
     };
     assert!(complete(&["-x", "vol"]).contains("volume"));
-    assert!(complete(&["-y", "m.ebc["]).contains("m.ebc[20]"));
-    assert!(complete(&["--group", "bee"]).contains("beer"));
+    assert!(complete(&["-y", "m.hv["]).contains("m.hv[20]"));
+    assert!(complete(&["--group", "allo"]).contains("alloy"));
     assert!(complete(&["--style", "fig"]).contains("figure"));
     // A figure's name: the declared ones, and the model's read from its
     // source, which completion never imports.
-    let figures = complete(&["m"]);
-    for name in ["malt_volume", "mass_bar"] {
+    for (begun, name) in [("d", "diameter_volume"), ("m", "mass_bar")] {
+        let figures = complete(&[begun]);
         assert!(figures.contains(name), "{figures}");
     }
     assert!(complete(&["o"]).contains("overview"));
@@ -566,13 +612,13 @@ fn a_group_and_a_kind_replace_a_declared_figures_own() {
     let drawn = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--group",
             "name",
             "--kind",
-            "bar",
+            "line",
             "-o",
             "g.png",
             "--write",
@@ -583,11 +629,11 @@ fn a_group_and_a_kind_replace_a_declared_figures_own() {
     let on_the_model = run(
         &scratch,
         &[
+            "samples/c1.md",
             "plot",
             "mass_bar",
-            "samples/c1.md",
             "--group",
-            "beer",
+            "alloy",
             "-o",
             "m.png",
             "--write",
@@ -620,7 +666,14 @@ fn no_project_style_sets_the_projects_settings_aside() {
         .current_dir(scratch.at("project/samples"))
         .env("SAMPLEKIT_STATE_DIR", scratch.at("state"))
         .env("MPLBACKEND", "Agg")
-        .args(["plot", "malt_volume", ".", "-o", "styled.png", "--write"])
+        .args([
+            ".",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "styled.png",
+            "--write",
+        ])
         .stdin(Stdio::null())
         .output()
         .unwrap();
@@ -631,9 +684,9 @@ fn no_project_style_sets_the_projects_settings_aside() {
         .env("SAMPLEKIT_STATE_DIR", scratch.at("state"))
         .env("MPLBACKEND", "Agg")
         .args([
-            "plot",
-            "malt_volume",
             ".",
+            "plot",
+            "diameter_volume",
             "--no-project-style",
             "-o",
             "plain.png",
@@ -654,9 +707,9 @@ fn limits_scales_and_aspect_are_given_on_the_command_line() {
     let drawn = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--x-limits",
             "0,auto",
             "--y-scale",
@@ -672,16 +725,16 @@ fn limits_scales_and_aspect_are_given_on_the_command_line() {
     assert!(starts_with(&scratch.at("project/a.png"), b"\x89PNG"));
     let unreadable = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "--x-limits", "0,cent"],
+        &["samples", "plot", "diameter_volume", "--x-limits", "0,cent"],
     );
     assert_eq!(code(&unreadable), 1, "{}", err(&unreadable));
     assert!(err(&unreadable).contains("'cent'"), "{}", err(&unreadable));
     let at_zero = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--y-limits",
             "0,20",
             "--y-scale",
@@ -706,26 +759,26 @@ fn a_preview_refuses_what_write_would() {
     project(&scratch);
     for arguments in [
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "-o",
             "x.png",
             "--style",
             "nope",
         ][..],
         &[
+            "samples",
             "plot",
             "mass_bar",
-            "samples",
             "-o",
             "x.png",
             "--x-label",
             "m",
         ][..],
-        &["plot", "malt_volume", "samples", "-o", "noext"][..],
-        &["plot", "malt_volume", "samples", "-o", "-"][..],
-        &["plot", "malt_volume", "samples", "-o", "x.xyz"][..],
+        &["samples", "plot", "diameter_volume", "-o", "noext"][..],
+        &["samples", "plot", "diameter_volume", "-o", "-"][..],
+        &["samples", "plot", "diameter_volume", "-o", "x.xyz"][..],
     ] {
         let output = run(&scratch, arguments);
         assert_eq!(code(&output), 1, "{arguments:?}: {}", out(&output));
@@ -738,14 +791,21 @@ fn a_preview_refuses_what_write_would() {
     // matplotlib would have written noext.png, and said nothing.
     let written = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "noext", "--write"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "noext",
+            "--write",
+        ],
     );
     assert_eq!(code(&written), 1, "{}", err(&written));
     assert!(!scratch.at("project/noext.png").exists());
 
     let missing = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "figs/x.png"],
+        &["samples", "plot", "diameter_volume", "-o", "figs/x.png"],
     );
     assert_eq!(code(&missing), 0, "{}", err(&missing));
     assert!(
@@ -762,11 +822,11 @@ fn an_output_makes_its_folder() {
     project(&scratch);
     let preview = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "figs/x.png"],
+        &["samples", "plot", "diameter_volume", "-o", "figs/x.png"],
     );
     assert_eq!(code(&preview), 0, "{}", err(&preview));
     assert!(
-        out(&preview).contains("figs does not exist, and --write creates it"),
+        out(&preview).contains("figs does not exist, and is made"),
         "{}",
         out(&preview)
     );
@@ -774,9 +834,9 @@ fn an_output_makes_its_folder() {
     let written = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "-o",
             "figs/x.png",
             "--write",
@@ -790,10 +850,10 @@ fn an_output_makes_its_folder() {
 fn a_declared_figures_query_is_counted_by_the_preview() {
     let scratch = Scratch::new("preview-query");
     project(&scratch);
-    let output = run(&scratch, &["plot", "schwarz", "samples", "-o", "x.png"]);
+    let output = run(&scratch, &["samples", "plot", "cobalt", "-o", "x.png"]);
     assert_eq!(code(&output), 0, "{}", err(&output));
     assert!(
-        out(&output).contains("a figure of 1 sample"),
+        out(&output).contains("figure cobalt · x.png · 1 sample"),
         "{}",
         out(&output)
     );
@@ -804,15 +864,15 @@ fn an_unknown_group_is_refused_naming_the_nearest() {
     let scratch = Scratch::new("group");
     project(&scratch);
     for arguments in [
-        &["plot", "-x", "volume", "-y", "malt", "--group", "beet"][..],
-        &["plot", "malt_volume", "--group", "beet"][..],
+        &["plot", "-x", "volume", "-y", "diameter", "--group", "alloi"][..],
+        &["plot", "diameter_volume", "--group", "alloi"][..],
     ] {
-        let mut arguments = arguments.to_vec();
-        arguments.extend(["samples", "-o", "x.png", "--write"]);
+        let mut arguments = [&["samples"][..], arguments].concat();
+        arguments.extend(["-o", "x.png", "--write"]);
         let output = run(&scratch, &arguments);
         assert_eq!(code(&output), 1, "{}", err(&output));
         assert!(
-            err(&output).contains("did you mean: beer"),
+            err(&output).contains("did you mean: alloy"),
             "{}",
             err(&output)
         );
@@ -827,13 +887,13 @@ fn a_figures_name_beside_axes_is_a_usage_error() {
     let output = run(
         &scratch,
         &[
+            "samples",
             "plot",
-            "malt_volume",
+            "diameter_volume",
             "-x",
             "volume",
             "-y",
-            "malt",
-            "samples",
+            "diameter",
         ],
     );
     assert_eq!(code(&output), 1, "{}", err(&output));
@@ -850,7 +910,14 @@ fn a_python_killed_by_a_signal_says_so() {
     fs::set_permissions(&python, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
     let output = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "x.png", "--write"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "x.png",
+            "--write",
+        ],
     );
     assert_eq!(code(&output), 2, "{}", err(&output));
     assert!(err(&output).contains("signal 11"), "{}", err(&output));
@@ -868,7 +935,14 @@ fn an_environment_without_samplekit_is_an_environment_failure() {
     fs::set_permissions(&python, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
     let output = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "x.png", "--write"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "x.png",
+            "--write",
+        ],
     );
     assert_eq!(code(&output), 3, "{}", err(&output));
     assert!(
@@ -885,11 +959,18 @@ fn a_name_close_to_a_figures_is_offered_before_consent() {
     project(&scratch);
     let output = run(
         &scratch,
-        &["plot", "malt_volum", "samples", "-o", "x.png", "--write"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volum",
+            "-o",
+            "x.png",
+            "--write",
+        ],
     );
     assert_eq!(code(&output), 1, "{}", err(&output));
     assert!(
-        err(&output).contains("did you mean 'malt_volume'"),
+        err(&output).contains("did you mean 'diameter_volume'"),
         "{}",
         err(&output)
     );
@@ -904,16 +985,16 @@ fn a_name_declared_and_the_models_is_refused() {
     let rc = std::fs::read_to_string(scratch.at("project/.samplekitrc")).unwrap();
     scratch.write(
         "project/.samplekitrc",
-        &format!("{rc}[figure.mass_bar]\nx = \"volume\"\ny = \"malt\"\n"),
+        &format!("{rc}[figure.mass_bar]\nx = \"volume\"\ny = \"diameter\"\n"),
     );
     let output = run(
         &scratch,
-        &["plot", "mass_bar", "samples", "-o", "x.png", "--write"],
+        &["samples", "plot", "mass_bar", "-o", "x.png", "--write"],
     );
     assert_eq!(code(&output), 1, "{}", err(&output));
     assert!(err(&output).contains("rename one"), "{}", err(&output));
     assert!(!scratch.at("project/imported").exists());
-    let validated = run(&scratch, &["validate", "samples"]);
+    let validated = run(&scratch, &["samples", "validate"]);
     assert!(
         out(&validated).contains("the model defines a figure of the same name"),
         "{}",
@@ -928,7 +1009,7 @@ fn a_figure_of_one_sample_writes_a_file_per_sample() {
     project(&scratch);
     let preview = run(
         &scratch,
-        &["plot", "mass_bar", "samples", "-o", "figs/{name}.png"],
+        &["samples", "plot", "mass_bar", "-o", "figs/{name}.png"],
     );
     assert_eq!(code(&preview), 0, "{}", err(&preview));
     assert!(
@@ -940,9 +1021,9 @@ fn a_figure_of_one_sample_writes_a_file_per_sample() {
     let written = run(
         &scratch,
         &[
+            "samples",
             "plot",
             "mass_bar",
-            "samples",
             "-o",
             "figs/{name}.png",
             "--write",
@@ -957,7 +1038,13 @@ fn a_figure_of_one_sample_writes_a_file_per_sample() {
     }
     let declared = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "figs/{name}.png"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "figs/{name}.png",
+        ],
     );
     assert_eq!(code(&declared), 1, "{}", err(&declared));
 }
@@ -969,9 +1056,9 @@ fn a_legend_a_size_and_a_box_are_given_on_the_command_line() {
     let sized = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--legend",
             "outside",
             "--figsize",
@@ -990,7 +1077,7 @@ fn a_legend_a_size_and_a_box_are_given_on_the_command_line() {
     let boxed = run(
         &scratch,
         &[
-            "plot", "-x", "beer", "-y", "malt", "--kind", "box", "samples", "-o", "b.png",
+            "samples", "plot", "-x", "alloy", "-y", "diameter", "--kind", "box", "-o", "b.png",
             "--write",
         ],
     );
@@ -998,9 +1085,9 @@ fn a_legend_a_size_and_a_box_are_given_on_the_command_line() {
     let bad = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--figsize",
             "4",
             "-o",
@@ -1016,12 +1103,12 @@ fn a_figure_says_what_it_leaves_out() {
     project(&scratch);
     scratch.write(
         "project/samples/c3.md",
-        "---\nschema_version: 1\nname: C3\nbeer: schwarz\nproperties:\n  malt: {v: 1.0, unit: g}\n---\n",
+        "---\nschema_version: 1\nname: C3\nalloy: cobalt\nproperties:\n  diameter: {v: 1.0, unit: g}\n---\n",
     );
     let output = run(
         &scratch,
         &[
-            "plot", "-x", "volume", "-y", "malt", "samples", "-o", "x.png", "--write",
+            "samples", "plot", "-x", "volume", "-y", "diameter", "-o", "x.png", "--write",
         ],
     );
     assert_eq!(code(&output), 0, "{}", err(&output));
@@ -1052,22 +1139,29 @@ fn a_figure_over_two_projects_draws_them_both() {
     );
     scratch.write(
         "project/samples/nested/n1.md",
-        "---\nschema_version: 1\nname: N1\nbeer: tin\nproperties:\n  malt: {v: 3.0, unit: g}\n  \
+        "---\nschema_version: 1\nname: N1\nalloy: tin\nproperties:\n  diameter: {v: 3.0, unit: g}\n  \
          volume: {v: 1.0, unit: L}\n---\n",
     );
     let axes = run(
         &scratch,
         &[
-            "plot", "-x", "volume", "-y", "malt", "samples", "-o", "a.png", "--write",
+            "samples", "plot", "-x", "volume", "-y", "diameter", "-o", "a.png", "--write",
         ],
     );
     assert_eq!(code(&axes), 0, "{}", err(&axes));
     assert!(!err(&axes).contains("not drawn"), "{}", err(&axes));
     assert!(starts_with(&scratch.at("project/a.png"), b"\x89PNG"));
-    // The nested project does not declare `malt_volume`: refused, naming it.
+    // The nested project does not declare `diameter_volume`: refused, naming it.
     let declared = run(
         &scratch,
-        &["plot", "malt_volume", "samples", "-o", "d.png", "--write"],
+        &[
+            "samples",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "d.png",
+            "--write",
+        ],
     );
     assert_ne!(code(&declared), 0, "{}", err(&declared));
     assert!(
@@ -1087,17 +1181,17 @@ fn a_figure_written_is_found_again_and_carries_its_snapshot() {
     for (file, marker) in [("out.svg", true), ("out.pdf", true), ("out.png", true)] {
         let output = run(
             &scratch,
-            &["plot", "malt_volume", "samples", "-o", file, "--write"],
+            &["samples", "plot", "diameter_volume", "-o", file, "--write"],
         );
         assert_eq!(code(&output), 0, "{}", err(&output));
         let bytes = fs::read(scratch.at(&format!("project/{file}"))).unwrap();
         let text = String::from_utf8_lossy(&bytes);
         assert_eq!(text.contains("samplekit snapshot "), marker, "{file}");
     }
-    let explained = run(&scratch, &["explain", "out.svg"]);
+    let explained = run(&scratch, &["out.svg", "explain"]);
     assert_eq!(code(&explained), 0, "{}", err(&explained));
     assert!(
-        out(&explained).contains("by samplekit plot malt_volume samples -o out.svg --write"),
+        out(&explained).contains("by samplekit samples plot diameter_volume -o out.svg --write"),
         "{}",
         out(&explained)
     );
@@ -1106,13 +1200,34 @@ fn a_figure_written_is_found_again_and_carries_its_snapshot() {
         .unwrap()
         .replace("</svg>", "<!-- edited --></svg>");
     fs::write(scratch.at("project/edited.svg"), edited).unwrap();
-    let carried = run(&scratch, &["explain", "edited.svg"]);
+    let carried = run(&scratch, &["edited.svg", "explain"]);
     assert_eq!(code(&carried), 0, "{}", err(&carried));
     assert!(
         out(&carried).contains("carries the snapshot it was made from"),
         "{}",
         out(&carried)
     );
+}
+
+#[test]
+fn a_figure_drawn_twice_is_the_same_file() {
+    // A PDF and an SVG recorded the time they were written, so that a figure
+    // made again with `--at` never compared equal to the one published.
+    let scratch = Scratch::new("figure-undated");
+    project(&scratch);
+    for file in ["out.svg", "out.pdf"] {
+        let mut drawn = Vec::new();
+        for _ in 0..2 {
+            let output = run(
+                &scratch,
+                &["samples", "plot", "diameter_volume", "-o", file, "--write"],
+            );
+            assert_eq!(code(&output), 0, "{}", err(&output));
+            drawn.push(fs::read(scratch.at(&format!("project/{file}"))).unwrap());
+            std::thread::sleep(std::time::Duration::from_millis(1100));
+        }
+        assert!(drawn[0] == drawn[1], "{file} differs from itself");
+    }
 }
 
 #[test]
@@ -1124,25 +1239,31 @@ fn a_figure_is_drawn_again_as_it_was() {
     let first = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "-o",
             "first.svg",
             "--write",
         ],
     );
     assert_eq!(code(&first), 0, "{}", err(&first));
-    let set = run(&scratch, &["set", "samples/c1.md", "malt=15", "--write"]);
+    let set = run(
+        &scratch,
+        &["samples/c1.md", "set", "diameter=15", "--write"],
+    );
     assert_eq!(code(&set), 0, "{}", err(&set));
     let log = out(&run(&scratch, &["log"]));
-    assert!(log.contains("samplekit set samples/c1.md malt=15"), "{log}");
+    assert!(
+        log.contains("samplekit samples/c1.md set diameter=15"),
+        "{log}"
+    );
     let then = run(
         &scratch,
         &[
-            "plot",
-            "malt_volume",
             "samples",
+            "plot",
+            "diameter_volume",
             "--at",
             "2",
             "-o",
@@ -1162,7 +1283,7 @@ fn a_figure_is_drawn_again_as_it_was() {
         first_drawn.contains(&carried),
         "drawn from the snapshot the first was"
     );
-    let explained = out(&run(&scratch, &["explain", "then.svg"]));
+    let explained = out(&run(&scratch, &["then.svg", "explain"]));
     assert!(
         explained.contains("made from the project as it was then, on purpose"),
         "{explained}"
@@ -1176,17 +1297,17 @@ fn a_preview_says_which_samples_will_not_be_drawn() {
     project(&scratch);
     scratch.write(
         "project/samples/c3.md",
-        "---\nschema_version: 1\nname: C3\nbeer: schwarz\nproperties:\n  volume: {v: 4.0, unit: L}\n---\n",
+        "---\nschema_version: 1\nname: C3\nalloy: cobalt\nproperties:\n  volume: {v: 4.0, unit: L}\n---\n",
     );
     let output = run(
         &scratch,
         &[
-            "plot", "-x", "volume", "-y", "malt", "samples", "-o", "out.png",
+            "samples", "plot", "-x", "volume", "-y", "diameter", "-o", "out.png",
         ],
     );
     assert_eq!(code(&output), 0, "{}", err(&output));
     assert!(
-        out(&output).contains("a figure of 2 of 3 samples — 1 has no malt"),
+        out(&output).contains("· 2 of 3 samples\n\n  1 has no diameter"),
         "{}",
         out(&output)
     );
@@ -1201,7 +1322,10 @@ fn a_termination_reaches_the_drawing_and_ends_the_command() {
     use std::os::unix::fs::PermissionsExt as _;
     use std::time::{Duration, Instant};
     let scratch = Scratch::new("terminated");
-    scratch.write(".samplekitrc", "schema_version = 1\n");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[model]\npython = \".venv\"\n",
+    );
     scratch.write(
         "a.md",
         "---\nschema_version: 1\nname: a\nproperties:\n  m: {v: 1.0}\n---\n",
@@ -1209,7 +1333,7 @@ fn a_termination_reaches_the_drawing_and_ends_the_command() {
     let python = scratch.write(".venv/bin/python", "#!/bin/sh\nexec sleep 30\n");
     fs::set_permissions(&python, fs::Permissions::from_mode(0o755)).unwrap();
     let mut plot = Command::new(env!("CARGO_BIN_EXE_samplekit"))
-        .args(["plot", "-x", "m", "-y", "m", "."])
+        .args([".", "plot", "-x", "m", "-y", "m"])
         .current_dir(&scratch.0)
         .env_remove("SSH_CONNECTION")
         .env_remove("SSH_TTY")
@@ -1248,14 +1372,14 @@ fn an_empty_selection_is_refused() {
     let output = run(
         &scratch,
         &[
+            "samples",
             "plot",
             "-x",
             "volume",
             "-y",
-            "malt",
-            "samples",
+            "diameter",
             "-f",
-            "beer == gold",
+            "alloy == gold",
             "-o",
             "out.png",
             "--write",
@@ -1271,11 +1395,11 @@ fn an_empty_selection_is_refused() {
     // A declared figure's query that keeps nothing is named.
     let output = run(
         &scratch,
-        &["plot", "schwarz", "samples", "-f", "beer == bock"],
+        &["samples", "plot", "cobalt", "-f", "alloy == chrome"],
     );
     assert_eq!(code(&output), 2, "{}", err(&output));
     assert!(
-        err(&output).contains("(the figure's query is 'schwarz')"),
+        err(&output).contains("(the figure's query is 'cobalt')"),
         "{}",
         err(&output)
     );
@@ -1283,20 +1407,20 @@ fn an_empty_selection_is_refused() {
 
 #[test]
 fn a_group_over_several_fields_draws_their_combinations() {
-    // `--group beer,name`: a series per combination of the two.
+    // `--group alloy,name`: a series per combination of the two.
     let scratch = Scratch::new("several-groups");
     project(&scratch);
     let output = run(
         &scratch,
         &[
+            "samples",
             "plot",
             "-x",
             "volume",
             "-y",
-            "malt",
+            "diameter",
             "--group",
-            "beer,name",
-            "samples",
+            "alloy,name",
             "-o",
             "out.png",
             "--write",
@@ -1308,14 +1432,14 @@ fn a_group_over_several_fields_draws_their_combinations() {
     let output = run(
         &scratch,
         &[
+            "samples",
             "plot",
             "-x",
             "volume",
             "-y",
-            "malt",
+            "diameter",
             "--group",
-            "beer,nmae",
-            "samples",
+            "alloy,nmae",
             "-o",
             "bad.png",
             "--write",
@@ -1324,4 +1448,405 @@ fn a_group_over_several_fields_draws_their_combinations() {
     assert_eq!(code(&output), 1, "{}", err(&output));
     assert!(err(&output).contains("name"), "{}", err(&output));
     assert!(!scratch.at("project/bad.png").exists());
+}
+
+#[test]
+fn a_figure_that_draws_nothing_for_a_sample_is_said() {
+    // A model figure of one sample per file wrote a blank file for a sample
+    // it had nothing to draw of, where a declared figure says so.
+    let scratch = Scratch::new("per-sample-blank");
+    project(&scratch);
+    scratch.write(
+        "project/model.py",
+        &MODEL.replace(
+            "    @sk.figure\n    def mass_bar",
+            "    @sk.figure\n    def sparse(self, ax):\n        if self.name == \"C1\":\n            \
+             ax.plot([1, 2], [1, 2])\n        else:\n            ax.plot([], [])\n\n    \
+             @sk.figure\n    def mass_bar",
+        ),
+    );
+    fs::create_dir_all(scratch.at("project/figs")).unwrap();
+    let written = run(
+        &scratch,
+        &[
+            "samples",
+            "plot",
+            "sparse",
+            "-o",
+            "figs/{name}.png",
+            "--write",
+        ],
+    );
+    assert_eq!(code(&written), 0, "{}", err(&written));
+    assert!(
+        err(&written).contains("1 of 2 figures drew nothing, and is written blank: C2"),
+        "{}",
+        err(&written)
+    );
+}
+
+#[test]
+fn a_figure_from_values_not_current_exits_two_unless_accepted() {
+    // An export from values not current is written and exits 2; a figure
+    // warned and exited 0. Alike now, and said in the preview.
+    let scratch = Scratch::new("stale");
+    project(&scratch);
+    let file = scratch.at("project/samples/c1.md");
+    let text = fs::read_to_string(&file).unwrap();
+    fs::write(
+        &file,
+        text.replace(
+            "  volume: {v: 4.0, unit: L}\n",
+            "  volume: {v: 4.0, unit: L}\n  twice: {v: 24.0, computed: {diameter: '111111111111'}, \
+             fingerprint: '222222222222'}\n",
+        ),
+    )
+    .unwrap();
+    let preview = run(
+        &scratch,
+        &[
+            "samples", "plot", "-x", "diameter", "-y", "twice", "-o", "f.png",
+        ],
+    );
+    assert!(
+        out(&preview).contains("drawn from values that are not current"),
+        "{}",
+        out(&preview)
+    );
+    let drawn = run(
+        &scratch,
+        &[
+            "samples", "plot", "-x", "diameter", "-y", "twice", "-o", "f.png", "--write",
+        ],
+    );
+    assert_eq!(code(&drawn), 2, "{}", err(&drawn));
+    // Typed over its formula, the value is edited, and accepted by its word
+    //.
+    assert!(err(&drawn).contains("--accept edited"), "{}", err(&drawn));
+    assert!(scratch.at("project/f.png").exists());
+    let accepted = run(
+        &scratch,
+        &[
+            "samples", "plot", "-x", "diameter", "-y", "twice", "-o", "g.png", "--write",
+            "--accept", "edited",
+        ],
+    );
+    assert_eq!(code(&accepted), 0, "{}", err(&accepted));
+}
+
+#[test]
+fn a_figure_from_a_column_not_current_exits_two_unless_accepted() {
+    // A table's column drawn while not current wrote the figure and exited 0,
+    // where a property's exits 2: alike now.
+    let scratch = Scratch::new("stale-column");
+    project(&scratch);
+    let file = scratch.at("project/samples/c1.md");
+    let text = fs::read_to_string(&file).unwrap();
+    // A cell recorded from a T whose digest is not the one it holds.
+    fs::write(
+        &file,
+        text.replace(
+            "hv: {v: 5.1, u: 0.05}",
+            "hv: {v: 5.1, computed: {row.T: '111111111111'}, fingerprint: '222222222222'}",
+        ),
+    )
+    .unwrap();
+    let rc = fs::read_to_string(scratch.at("project/.samplekitrc")).unwrap();
+    scratch.write(
+        "project/.samplekitrc",
+        &format!("{rc}\n[figure.colour]\nkind = \"line\"\nx = \"m.T\"\ny = \"m.hv\"\n"),
+    );
+    let drawn = run(
+        &scratch,
+        &["samples", "plot", "colour", "-o", "f.png", "--write"],
+    );
+    assert_eq!(code(&drawn), 2, "{}", err(&drawn));
+    assert!(err(&drawn).contains("C1 m.hv"), "{}", err(&drawn));
+    let accepted = run(
+        &scratch,
+        &[
+            "samples", "plot", "colour", "-o", "g.png", "--write", "--accept", "edited",
+        ],
+    );
+    assert_eq!(code(&accepted), 0, "{}", err(&accepted));
+}
+
+#[test]
+fn a_figure_over_projects_takes_the_first_named_and_refuses_disagreeing_units() {
+    // `diameter` in g here, in no unit in `gamma`: refused, naming both; given
+    // one unit, either order draws, the first named's spellings said.
+    let scratch = Scratch::new("over-projects");
+    project(&scratch);
+    scratch.write(
+        "gamma/.samplekitrc",
+        "schema_version = 1\n[model]\npython = \"../project/.venv\"\n",
+    );
+    scratch.write(
+        "gamma/samples/g1.md",
+        "---\nschema_version: 1\nname: G1\nproperties:\n  diameter: 11.0\n  volume: {v: 4.0, unit: L}\n---\n",
+    );
+    let axes = ["-x", "volume", "-y", "diameter", "-o", "out.svg"];
+    let refused = run(
+        &scratch,
+        &[&["samples", "../gamma/samples", "plot"][..], &axes].concat(),
+    );
+    assert_eq!(code(&refused), 2, "{}", err(&refused));
+    let said = err(&refused);
+    assert!(said.contains("diameter is in g in "), "{said}");
+    assert!(
+        said.contains("in no unit in ") && said.contains("gamma"),
+        "{said}"
+    );
+
+    scratch.write(
+        "gamma/samples/g1.md",
+        "---\nschema_version: 1\nname: G1\nproperties:\n  diameter: {v: 11.0, unit: g}\n  volume: {v: 4.0, unit: L}\n---\n",
+    );
+    for targets in [
+        ["samples", "../gamma/samples"],
+        ["../gamma/samples", "samples"],
+    ] {
+        let output = run(&scratch, &[&targets[..], &["plot"], &axes].concat());
+        assert_eq!(code(&output), 0, "{targets:?}: {}", err(&output));
+        let note = err(&output);
+        assert_eq!(
+            note.matches("the first project named").count(),
+            1,
+            "{targets:?}: {note}"
+        );
+        let first = if targets[0] == "samples" {
+            "project"
+        } else {
+            "gamma"
+        };
+        assert!(
+            note.contains(&format!(
+                "unit spellings of {}",
+                scratch.at(first).join(".samplekitrc").display()
+            )),
+            "{targets:?}: {note}"
+        );
+    }
+}
+
+/// The fixture's project, with exports of its figures beside its own
+/// declarations.
+fn project_exporting(scratch: &Scratch, exports: &str) -> PathBuf {
+    let root = project(scratch);
+    scratch.write("project/.samplekitrc", &format!("{RC}{exports}"));
+    root
+}
+
+#[test]
+fn a_figure_is_exported_to_its_declared_file() {
+    // As a table for a paper is written again by one command, its figure is.
+    let scratch = Scratch::new("export-figure");
+    project_exporting(
+        &scratch,
+        "[export.curves]\nfigure = \"diameter_volume\"\noutput = \"figs/curves.png\"\n",
+    );
+    let preview = run(&scratch, &["samples", "export", "curves"]);
+    assert_eq!(code(&preview), 0, "{}", err(&preview));
+    assert!(
+        out(&preview)
+            .contains("export curves · figure diameter_volume · figs/curves.png · 2 samples"),
+        "{}",
+        out(&preview)
+    );
+    assert!(!scratch.at("project/figs").exists());
+    let written = run(&scratch, &["samples", "export", "curves", "--write"]);
+    assert_eq!(code(&written), 0, "{}", err(&written));
+    assert!(starts_with(
+        &scratch.at("project/figs/curves.png"),
+        b"\x89PNG"
+    ));
+    // Listed with the exports, by the figure it draws.
+    let listed = run(&scratch, &["list", "exports"]);
+    assert!(
+        out(&listed).contains("figs/curves.png · figure diameter_volume"),
+        "{}",
+        out(&listed)
+    );
+    // Made again by the command that made it.
+    let explained = run(&scratch, &["figs/curves.png", "explain"]);
+    assert_eq!(code(&explained), 0, "{}", err(&explained));
+    assert!(
+        out(&explained).contains("by samplekit samples export curves --write"),
+        "{}",
+        out(&explained)
+    );
+    // -o writes it elsewhere.
+    let elsewhere = run(
+        &scratch,
+        &["samples", "export", "curves", "-o", "other.png", "--write"],
+    );
+    assert_eq!(code(&elsewhere), 0, "{}", err(&elsewhere));
+    assert!(starts_with(&scratch.at("project/other.png"), b"\x89PNG"));
+}
+
+#[test]
+fn a_figures_export_takes_its_query_and_its_style() {
+    let scratch = Scratch::new("export-figure-query");
+    project_exporting(
+        &scratch,
+        "[export.dark]\nfigure = \"diameter_volume\"\noutput = \"dark.png\"\n\
+         query = \"cobalt\"\nstyle = \"figure\"\n",
+    );
+    let preview = run(&scratch, &["samples", "export", "dark"]);
+    assert_eq!(code(&preview), 0, "{}", err(&preview));
+    assert!(
+        out(&preview).contains("export dark · figure diameter_volume · dark.png · 1 sample"),
+        "{}",
+        out(&preview)
+    );
+    let written = run(&scratch, &["samples", "export", "dark", "--write"]);
+    assert_eq!(code(&written), 0, "{}", err(&written));
+    assert!(starts_with(&scratch.at("project/dark.png"), b"\x89PNG"));
+}
+
+#[test]
+fn a_model_figure_is_exported_a_file_per_sample() {
+    let scratch = Scratch::new("export-model-figure");
+    project_exporting(
+        &scratch,
+        "[export.bars]\nfigure = \"mass_bar\"\noutput = \"figs/{name}-bar.png\"\n",
+    );
+    let written = run(&scratch, &["samples", "export", "bars", "--write"]);
+    assert_eq!(code(&written), 0, "{}", err(&written));
+    for name in ["C1", "C2"] {
+        assert!(
+            starts_with(
+                &scratch.at(&format!("project/figs/{name}-bar.png")),
+                b"\x89PNG"
+            ),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn an_export_writes_a_profile_or_a_figure() {
+    // Refused as the file loads, each saying what to write.
+    let scratch = Scratch::new("export-figure-refused");
+    for (declared, said) in [
+        (
+            "[profile.p]\ncolumns = [{field = \"diameter\"}]\n\
+             [export.e]\nprofile = \"p\"\nfigure = \"diameter_volume\"\noutput = \"e.png\"\n",
+            "a profile or a figure, not both",
+        ),
+        (
+            "[export.e]\noutput = \"e.png\"\n",
+            "profile = … for a table, figure = … for a figure",
+        ),
+        (
+            "[export.e]\nfigure = \"diameter_volume\"\nformat = \"csv\"\noutput = \"e.png\"\n",
+            "format is a table's",
+        ),
+        (
+            "[export.e]\nfigure = \"diameter_volume\"\noutput = \"e.csv\"\n",
+            "one matplotlib writes",
+        ),
+    ] {
+        if !scratch.at("project").exists() {
+            project(&scratch);
+        }
+        scratch.write("project/.samplekitrc", &format!("{RC}{declared}"));
+        let output = run(&scratch, &["samples", "export", "e"]);
+        assert_ne!(code(&output), 0, "{declared}");
+        assert!(err(&output).contains(said), "{declared}\n{}", err(&output));
+    }
+}
+
+#[test]
+fn a_figures_export_refuses_a_tables_options() {
+    let scratch = Scratch::new("export-figure-options");
+    project_exporting(
+        &scratch,
+        "[export.curves]\nfigure = \"diameter_volume\"\noutput = \"curves.png\"\n",
+    );
+    for option in [&["--precision", ".3f"][..], &["--status"][..]] {
+        let mut arguments = vec!["samples", "export", "curves"];
+        arguments.extend(option);
+        let output = run(&scratch, &arguments);
+        assert_eq!(code(&output), 1, "{}", err(&output));
+        assert!(
+            err(&output).contains(&format!("{} is a table's", option[0])),
+            "{}",
+            err(&output)
+        );
+    }
+}
+
+#[test]
+fn an_export_naming_no_figure_is_a_defect() {
+    let scratch = Scratch::new("export-figure-unknown");
+    project_exporting(
+        &scratch,
+        "[export.lost]\nfigure = \"nothing\"\noutput = \"lost.png\"\n",
+    );
+    let validated = run(&scratch, &["samples", "validate"]);
+    assert!(
+        out(&validated).contains("figure = \"nothing\" names no figure"),
+        "{}",
+        out(&validated)
+    );
+    let exported = run(&scratch, &["samples", "export", "lost", "--write"]);
+    assert_eq!(code(&exported), 1, "{}", err(&exported));
+    assert!(!scratch.at("project/lost.png").exists());
+}
+
+#[test]
+fn a_figures_export_over_several_projects_is_refused() {
+    // A figure is drawn from one project: the refusal names one.
+    let scratch = Scratch::new("export-figure-projects");
+    let exports = "[export.curves]\nfigure = \"diameter_volume\"\noutput = \"curves.png\"\n";
+    project_exporting(&scratch, exports);
+    scratch.write("project/other/.samplekitrc", &format!("{RC}{exports}"));
+    scratch.write(
+        "project/other/samples/c3.md",
+        "---\nschema_version: 1\nname: C3\nalloy: chrome\nproperties:\n  \
+         diameter: {v: 9.0, u: 0.1, unit: g}\n  volume: {v: 4.0, unit: L}\n---\n",
+    );
+    let output = run(&scratch, &[".", "export", "curves", "--write"]);
+    assert_eq!(code(&output), 1, "{}", err(&output));
+    assert!(
+        err(&output).contains("a figure is drawn from one project"),
+        "{}",
+        err(&output)
+    );
+    assert!(!scratch.at("project/curves.png").exists());
+}
+
+#[test]
+fn a_style_sheet_or_a_font_not_there_is_said_by_validate_and_plot() {
+    let scratch = Scratch::new("matplotlib-sheets");
+    project_exporting(
+        &scratch,
+        "[matplotlib]\nstyle = [\"nonesuch\"]\nfonts = [\"fonts/*.otf\"]\n",
+    );
+    let validated = run(&scratch, &["samples", "validate"]);
+    for said in [
+        "matplotlib has no style sheet 'nonesuch'",
+        "fonts/*.otf finds no file",
+    ] {
+        assert!(out(&validated).contains(said), "{}", out(&validated));
+    }
+    let drawn = run(
+        &scratch,
+        &[
+            "samples",
+            "plot",
+            "diameter_volume",
+            "-o",
+            "x.png",
+            "--write",
+        ],
+    );
+    assert_ne!(code(&drawn), 0, "{}", err(&drawn));
+    assert!(
+        err(&drawn).contains("no style sheet 'nonesuch'"),
+        "{}",
+        err(&drawn)
+    );
+    assert!(!scratch.at("project/x.png").exists());
 }

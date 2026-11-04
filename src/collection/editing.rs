@@ -13,7 +13,7 @@ use crate::core::property::{Produced, Property, Records};
 use crate::core::sample::{AttributeValue, PropertyHandle, Sample};
 use crate::core::table::{ColumnMeta, RowAddress, Table};
 use crate::core::uncertainty::Uncertainty;
-use crate::core::value::{self, Readings, Value, ValueKind};
+use crate::core::value::{self, Readings, Value};
 use crate::format::fingerprint::{self, Freshness};
 use crate::format::schema;
 use crate::query::field_addressing::{self as fields, Channel, Field, Subject};
@@ -108,11 +108,10 @@ pub struct NotCurrent {
     pub rows: usize,
 }
 
-/// A new sample shaped like `pattern` — what `new --like` and the workbench
-/// both write: its attributes carried, its measured quantities empty for their
-/// author to fill (those in `keep` with their values), its derived ones left
-/// out, records and all, and its tables' columns without their rows, which are
-/// another sample's measurements.
+/// A new sample, and what it took from another — what `new --keep` and the
+/// workbench both write: the quantities and attributes named, nothing else.
+/// `left_out`, `tables` and `not_carried` stay empty, nothing being carried
+/// unasked.
 pub struct Shaped {
     pub sample: Sample,
     /// Quantities carried, waiting for their values.
@@ -131,6 +130,31 @@ pub struct Shaped {
 /// a path — which put the file anywhere, outside the collection too — and none
 /// another sample of `project` holds, since a name identifies one sample.
 /// Another project's samples, nested below, keep their own names.
+/// A character of Unicode's *format* kind — shown as nothing — and the
+/// others a screen draws as nothing.
+fn invisible(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{034F}'
+            | '\u{061C}'
+            | '\u{115F}'
+            | '\u{1160}'
+            | '\u{17B4}'
+            | '\u{17B5}'
+            | '\u{180B}'..='\u{180F}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{206F}'
+            | '\u{3164}'
+            | '\u{FE00}'..='\u{FE0F}'
+            | '\u{FEFF}'
+            | '\u{FFA0}'
+            | '\u{FFF9}'..='\u{FFFB}'
+            | '\u{E0000}'..='\u{E007F}'
+    )
+}
+
 pub fn refuses_name(
     name: &str,
     collection: &SampleList,
@@ -158,6 +182,44 @@ pub fn refuses_name(
             name.split_whitespace().collect::<Vec<_>>().join("-")
         )));
     }
+    // A control character or an escape is a file named by what the screen
+    // cannot show: `new` wrote `a<BEL>b.md` and said `ab.md`.
+    if name.chars().any(char::is_control) {
+        return Some(EditError::new(format!(
+            "{name:?} holds a control character: a name is text a screen shows as it is"
+        )));
+    }
+    // A character that shows nothing, or turns the text around — a
+    // zero-width space, a direction override, a byte order mark — makes two
+    // names that look one, or a name that reads otherwise than it is.
+    if let Some(hidden) = name.chars().find(|c| invisible(*c)) {
+        return Some(EditError::new(format!(
+            "{name:?} holds U+{:04X}, a character a screen does not show: a name is text a \
+             screen shows as it is",
+            hidden as u32
+        )));
+    }
+    // `x.md` is the file, not the name: it made `x.md.md` — `x.MD` too.
+    if let Some(stem) = name
+        .len()
+        .checked_sub(3)
+        .filter(|at| name.is_char_boundary(*at) && name[*at..].eq_ignore_ascii_case(".md"))
+        .map(|at| &name[..at])
+        .filter(|stem| !stem.is_empty())
+    {
+        return Some(EditError::new(format!(
+            "'{name}' is a file's name: a new sample takes a name, {stem}, and its file is \
+             {stem}.md"
+        )));
+    }
+    // A project goes to other computers: a name Windows cannot give a file
+    // made a project that one of them could not hold.
+    if let Some(reason) = unportable(name) {
+        return Some(EditError::new(format!(
+            "'{name}' {reason}, which Windows cannot name a file by: a project shared with it \
+             could not hold the sample"
+        )));
+    }
     if name.starts_with('-') {
         let bare = name.trim_start_matches('-');
         return Some(EditError::new(format!(
@@ -169,6 +231,64 @@ pub fn refuses_name(
             }
         )));
     }
+    name_taken(name, collection, project, None)
+}
+
+/// A sample renamed, `name=` given to `set` or on the workbench: refused where
+/// another sample of `project` holds the name, as a new sample's is — the two
+/// were written, and `validate` then found the name twice. `renamed` is the
+/// file that takes the name, which may hold it already.
+pub fn refuses_rename(
+    name: &str,
+    collection: &SampleList,
+    project: Option<&Path>,
+    renamed: &Path,
+) -> Option<EditError> {
+    name_taken(name, collection, project, Some(renamed))
+}
+
+/// Why Windows cannot name a file `name`: a character it refuses, or a name
+/// it keeps for a device.
+fn unportable(name: &str) -> Option<String> {
+    if let Some(refused) = name
+        .chars()
+        .find(|c| matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*'))
+    {
+        return Some(format!("holds '{refused}'"));
+    }
+    if name.ends_with(['.', ' ']) {
+        return Some("ends with a dot or a space".to_string());
+    }
+    let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
+    let device = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.len() == 4
+            && stem[3..].chars().all(|c| c.is_ascii_digit() && c != '0'));
+    device.then(|| format!("is {stem}, a device's name"))
+}
+
+/// A name as a file system that folds case, or one that normalises Unicode,
+/// takes it: `Ab` and `ab`, `é` written whole or as `e` and its accent, are
+/// one file on macOS and Windows.
+pub fn name_key(name: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+    name.nfc().collect::<String>().to_lowercase()
+}
+
+fn name_taken(
+    name: &str,
+    collection: &SampleList,
+    project: Option<&Path>,
+    renamed: Option<&Path>,
+) -> Option<EditError> {
+    let same_file = |path: &Path| {
+        renamed.is_some_and(|renamed| {
+            path == renamed
+                || std::fs::canonicalize(path)
+                    .ok()
+                    .is_some_and(|path| std::fs::canonicalize(renamed).ok() == Some(path))
+        })
+    };
     let taken = collection
         .iter()
         .filter(|entry| {
@@ -179,14 +299,27 @@ pub fn refuses_name(
                 .map(|config| config.root())
                 == project
         })
-        .find(|entry| entry.sample.borrow().name() == Some(name))?;
-    Some(EditError::new(format!(
-        "{name} is already a sample's name, in {}: a name identifies one sample",
-        taken
-            .path
-            .as_deref()
-            .map_or_else(|| "?".to_string(), |path| path.display().to_string())
-    )))
+        .filter(|entry| !entry.path.as_deref().is_some_and(same_file))
+        .find(|entry| {
+            entry
+                .sample
+                .borrow()
+                .name()
+                .is_some_and(|held| name_key(held) == name_key(name))
+        })?;
+    let place = taken
+        .path
+        .as_deref()
+        .map_or_else(|| "?".to_string(), |path| path.display().to_string());
+    let held = taken.sample.borrow().name().unwrap_or_default().to_string();
+    Some(EditError::new(if held == name {
+        format!("{name} is already a sample's name, in {place}: a name identifies one sample")
+    } else {
+        format!(
+            "{name} differs from {held}, in {place}, only by case or by how its accents are \
+             written: on macOS and Windows the two files are one"
+        )
+    }))
 }
 
 pub fn shaped_like(
@@ -199,56 +332,32 @@ pub fn shaped_like(
     // and the pattern's is not carried.
     sample.set_file(Some(Path::new(&format!("{name}.md"))));
     let mut measured: Vec<String> = Vec::new();
-    let mut left_out: Vec<String> = Vec::new();
-    let mut tables: Vec<String> = Vec::new();
     let mut attributes: Vec<(String, String)> = Vec::new();
-    let mut not_carried: Vec<String> = Vec::new();
-
-    if let Some(pattern) = pattern {
-        // A name to keep that the pattern does not hold was a typo, and
-        // accepted without a word.
-        if let Some(missing) = keep.iter().find(|kept| {
-            !pattern
-                .property_names()
-                .iter()
-                .any(|held| held.as_str() == kept.as_str())
-        }) {
-            // A table is no value to keep: its rows are the pattern's own
-            // measurements, and saying it held nothing of that name was false.
-            if pattern
-                .table_names()
-                .iter()
-                .any(|table| table.as_str() == missing.as_str())
-            {
-                return Err(EditError::new(format!(
-                    "--keep {missing}: --keep takes values, and {missing} is a table — its rows \
-                     are that sample's own measurements, and are not carried"
-                )));
-            }
+    let Some(pattern) = pattern else {
+        return Ok(Shaped {
+            sample,
+            measured,
+            left_out: Vec::new(),
+            tables: Vec::new(),
+            attributes,
+            not_carried: Vec::new(),
+        });
+    };
+    // Only what is named is taken: another sample's attributes — its tester,
+    // its dates — and the shape of its quantities and tables came across
+    // unasked, someone else's identity in a new file.
+    for kept in keep {
+        let Ok(held) = Identifier::new(kept) else {
             return Err(EditError::new(format!(
-                "--keep {missing}: the pattern holds no value of that name"
+                "--keep {kept}: the sample holds no field of that name"
             )));
-        }
-        for held in pattern
-            .property_names()
-            .into_iter()
-            .cloned()
-            .collect::<Vec<_>>()
-        {
-            let handle = pattern
-                .property(&held)
-                .map_err(|error| EditError::new(error.to_string()))?;
+        };
+        if let Ok(handle) = pattern.property(&held) {
             // A value the file records as derived belongs to the model, not to
-            // a new file: it is left out entirely, records and all. `computed`
-            // present — even empty — is what says a formula owns this value. A
-            // measured value carries a fingerprint of its own as soon as
-            // something derives from it, so an empty record is not the test.
-            // **A value, not a record**: a record whose channel is the
-            // uncertainty's says the value beside it was entered — a reading
-            // whose uncertainty is a formula of it is still a reading, and was
-            // left out of the new sample as if the model computed it. **Nor
-            // readings**: a statistic of them records `readings` as its input,
-            // and is still a measurement — the new sample's own, to fill in.
+            // a new file: kept, it would be written with no record, a computed
+            // value passed off as entered. **A value, not a record**: a record
+            // whose channel is the uncertainty's says the value beside it was
+            // entered; nor readings, whose statistic records them as input.
             let derived = handle.peek(|property| {
                 let records = property.records();
                 records.computed.is_some()
@@ -256,30 +365,15 @@ pub fn shaped_like(
                     && property.readings().is_none()
             });
             if derived {
-                // Kept, it would be written with no record: a computed value
-                // passed off as entered.
-                if keep.iter().any(|kept| kept == held.as_str()) {
-                    return Err(EditError::new(format!(
-                        "--keep {held}: the model computes it, and computes it for the new \
-                         sample too"
-                    )));
-                }
-                left_out.push(held.to_string());
-                continue;
+                return Err(EditError::new(format!(
+                    "--keep {held}: the model computes it, and computes it for the new \
+                     sample too"
+                )));
             }
-            let presentation = handle.presentation();
-            let keeping = keep.iter().any(|kept| kept == held.as_str());
-            let value = if keeping {
-                handle
-                    .peek(|property| property.peek_value())
-                    .unwrap_or_else(Value::absent)
-            } else {
-                Value::absent()
-            };
             // Kept whole: the readings a kept value stands for come with it,
             // a value written beside them only where one was, its entered
             // uncertainty, and the statistics declared for it.
-            let mut property = match handle.readings().filter(|_| keeping) {
+            let mut property = match handle.readings() {
                 Some(readings) => {
                     let mut measured = Property::measured(readings, None);
                     measured.set_written_value(
@@ -287,126 +381,86 @@ pub fn shaped_like(
                     );
                     measured
                 }
-                None => Property::stored(value),
+                None => Property::stored(
+                    handle
+                        .peek(|property| property.peek_value())
+                        .unwrap_or_else(Value::absent),
+                ),
             };
-            if keeping {
-                let (location, convention) =
-                    handle.peek(|kept| (kept.declared_location(), kept.declared_convention()));
-                if location.is_some() || convention.is_some() {
-                    property.declare_statistics(location, convention);
-                }
-                if let Some(spread) = handle
-                    .peek(|property| property.peek_uncertainty())
-                    .flatten()
-                {
-                    property.set_uncertainty(Some(spread));
+            let (location, convention) =
+                handle.peek(|kept| (kept.declared_location(), kept.declared_convention()));
+            if location.is_some() || convention.is_some() {
+                property.declare_statistics(location, convention);
+                if handle.peek(Property::statistic_taken) {
+                    property.take_statistic();
                 }
             }
-            property.set_presentation(presentation);
+            // An uncertainty a formula gives — its record's channel — is the
+            // model's to give the new sample, as a value it computes is: kept,
+            // it was written with no record, *record missing* for good.
+            let spread_derived = handle.peek(|property| {
+                property.records().produced == Some(Produced::Uncertainty)
+                    || property.has_uncertainty_formula()
+            });
+            if !spread_derived
+                && let Some(spread) = handle
+                    .peek(|property| property.peek_uncertainty())
+                    .flatten()
+            {
+                property.set_uncertainty(Some(spread));
+            }
+            // The statistic its readings give, recorded: kept with its record,
+            // or the value it stands for is written with none, *record
+            // missing*, and `status --exit-code` fails over a copy.
+            let recorded = handle.peek(|kept| {
+                (kept.readings().is_some() && kept.records().computed.is_some())
+                    .then(|| kept.records().clone())
+            });
+            if let Some(records) = recorded {
+                property.set_records(records);
+            }
+            property.set_presentation(handle.presentation());
             sample
                 .set_property(held.clone(), property)
                 .map_err(|error| EditError::new(error.to_string()))?;
             measured.push(held.to_string());
-        }
-        // An attribute describes the sample, so it is carried; the values
-        // that identify this one are the author's to change.
-        for held in pattern
-            .attribute_names()
-            .into_iter()
-            .cloned()
-            .collect::<Vec<_>>()
-        {
-            if let Ok(value) = pattern.attribute(&held) {
-                // Its dates — when it was made, measured, received — and its
-                // `status` are the pattern's own, and were carried into the new
-                // sample as if they were its too. Here, so that `new --like`
-                // and the workbench's `N` agree.
-                let dated =
-                    |value: &Value| matches!(value.kind(), ValueKind::Date | ValueKind::DateTime);
-                if held.as_str() == "status"
-                    || value.as_scalar().is_some_and(dated)
-                    || value.as_list().is_some_and(|items| items.iter().any(dated))
-                {
-                    not_carried.push(held.to_string());
-                    continue;
-                }
-                // Shown with its value, not only its name: `brewer: ana`
-                // carried silently into a new sample is someone else's
-                // identity, published without anyone reading it.
-                let shown = value.as_scalar().map_or_else(
-                    || {
-                        value.as_list().map_or_else(
-                            || "—".to_string(),
-                            |items| {
-                                let written: Vec<String> = items.iter().map(shown_value).collect();
-                                format!("[{}]", written.join(", "))
-                            },
-                        )
-                    },
-                    shown_value,
-                );
-                let carried = value.clone();
-                sample
-                    .set_attribute(held.clone(), carried)
-                    .map_err(|error| EditError::new(error.to_string()))?;
-                attributes.push((held.to_string(), shown));
-            }
-        }
-        // A table keeps its columns and loses its rows: the columns describe
-        // the measurement, the rows *are* another sample's measurements.
-        for held in pattern
-            .table_names()
-            .into_iter()
-            .cloned()
-            .collect::<Vec<_>>()
-        {
-            let table = pattern
-                .table(&held)
-                .map_err(|error| EditError::new(error.to_string()))?;
-            let index: Vec<Identifier> = table.index_columns().to_vec();
-            let mut columns: indexmap::IndexMap<Identifier, ColumnMeta> = indexmap::IndexMap::new();
-            for column in table
-                .column_names()
-                .into_iter()
-                .cloned()
-                .collect::<Vec<_>>()
-            {
-                let presentation = table
-                    .presentation_of(&column, &RowAddress::ordinal(0))
-                    .unwrap_or(Presentation {
-                        unit: None,
-                        symbol: None,
-                        precision: None,
-                    });
-                // The statistics its readings are read through are the
-                // column's, as its unit is.
-                let statistics = table
-                    .column(&column)
-                    .map(|view| view.statistics())
-                    .unwrap_or_default();
-                columns.insert(
-                    column,
-                    ColumnMeta {
-                        presentation,
-                        statistics,
-                    },
-                );
-            }
-            let empty = Table::new(held.clone(), index, columns, Vec::new())
-                .map_err(|error| EditError::new(error.to_string()))?;
+        } else if let Ok(value) = pattern.attribute(&held) {
+            let shown = value.as_scalar().map_or_else(
+                || {
+                    value.as_list().map_or_else(
+                        || "—".to_string(),
+                        |items| {
+                            let written: Vec<String> = items.iter().map(shown_value).collect();
+                            format!("[{}]", written.join(", "))
+                        },
+                    )
+                },
+                shown_value,
+            );
             sample
-                .set_table(held.clone(), empty)
+                .set_attribute(held.clone(), value.clone())
                 .map_err(|error| EditError::new(error.to_string()))?;
-            tables.push(held.to_string());
+            attributes.push((held.to_string(), shown));
+        } else if pattern.table_names().iter().any(|table| **table == held) {
+            // A table is no value to keep: its rows are the pattern's own
+            // measurements.
+            return Err(EditError::new(format!(
+                "--keep {held}: --keep takes values, and {held} is a table — its rows are that \
+                 sample's own measurements, and are not carried"
+            )));
+        } else {
+            return Err(EditError::new(format!(
+                "--keep {held}: the sample holds no field of that name"
+            )));
         }
     }
     Ok(Shaped {
         sample,
         measured,
-        left_out,
-        tables,
+        left_out: Vec::new(),
+        tables: Vec::new(),
         attributes,
-        not_carried,
+        not_carried: Vec::new(),
     })
 }
 
@@ -419,7 +473,7 @@ pub fn split_assignment(written: &str) -> Result<(String, String), EditError> {
             Ok((field.trim().to_string(), value.trim().to_string()))
         }
         _ => Err(EditError::new(format!(
-            "'{written}' is not a change: write it as <field>=<value>, such as fg=1.010"
+            "'{written}' is not a change: write it as <field>=<value>, such as notch=1.010"
         ))),
     }
 }
@@ -440,7 +494,182 @@ pub fn typed(field: &str, text: &str) -> Result<Value, EditError> {
             Value::text(text)
         });
     }
+    // A list typed by hand is readings, said with the field's own name: the
+    // advice named `notch` whatever was typed.
+    if text.starts_with('[') && !text.starts_with("[[") && crate::core::link::parse(text).is_none()
+    {
+        let quantity = field.split(['.', '[']).next().unwrap_or(field);
+        return Err(EditError::new(format!(
+            "'{text}' is a list, and a value is one number\n  \
+             repeated measurements of one property are its readings: {quantity}.readings={}",
+            text.trim_start_matches('[')
+                .trim_end_matches(']')
+                .split(',')
+                .map(str::trim)
+                .collect::<Vec<_>>()
+                .join(",")
+        )));
+    }
     value_of(text)
+}
+
+/// A list typed for an attribute, `[ana, tom]`: its items, each read as a
+/// value is — `'b, c'` quoted keeps its comma — or `None` where the text is no
+/// list. A wikilink, `[[Other note]]`, is text, not a list.
+pub fn list_typed(text: &str) -> Option<Result<Vec<Value>, EditError>> {
+    let text = text.trim();
+    if let Some(links) = links_listed(text) {
+        return Some(Ok(links.into_iter().map(Value::text).collect()));
+    }
+    if !text.starts_with('[') || text.starts_with("[[") || !text.ends_with(']') {
+        return None;
+    }
+    let inner = &text[1..text.len() - 1];
+    if inner.trim().is_empty() {
+        return Some(Ok(Vec::new()));
+    }
+    let mut items: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut quote: Option<char> = None;
+    for character in inner.chars() {
+        match (quote, character) {
+            (None, '\'' | '"') if current.trim().is_empty() => {
+                quote = Some(character);
+                current.clear();
+            }
+            (Some(open), close) if close == open => quote = None,
+            (None, ',') => items.push(std::mem::take(&mut current)),
+            _ => current.push(character),
+        }
+    }
+    items.push(current);
+    Some(
+        items
+            .iter()
+            .map(|item| {
+                let item = item.trim();
+                if item.is_empty() {
+                    return Err(EditError::new(format!(
+                        "'{text}' holds an empty item: a list's items are separated by commas, \
+                         each one given"
+                    )));
+                }
+                value_of(item)
+            })
+            .collect(),
+    )
+}
+
+/// Several links typed as one text, `[[a]],[[b]]` or `[ [[a]], [[b]] ]`: each
+/// link, where every piece is one; `None` for one link alone, or other text.
+fn links_listed(text: &str) -> Option<Vec<String>> {
+    if crate::core::link::parse(text).is_some() {
+        return None;
+    }
+    // Split at the commas outside any bracket, as a link holds its own.
+    let pieces = |text: &str| -> Vec<String> {
+        let (mut pieces, mut current, mut depth) = (Vec::new(), String::new(), 0i32);
+        for character in text.chars() {
+            match character {
+                '[' | '(' => depth += 1,
+                ']' | ')' => depth -= 1,
+                ',' if depth == 0 => {
+                    pieces.push(std::mem::take(&mut current).trim().to_string());
+                    continue;
+                }
+                _ => {}
+            }
+            current.push(character);
+        }
+        pieces.push(current.trim().to_string());
+        pieces
+    };
+    let all_links = |pieces: Vec<String>| {
+        (!pieces.is_empty()
+            && pieces
+                .iter()
+                .all(|piece| crate::core::link::parse(piece).is_some()))
+        .then_some(pieces)
+    };
+    let bare = pieces(text);
+    if bare.len() > 1
+        && let Some(links) = all_links(bare)
+    {
+        return Some(links);
+    }
+    let inner = text.strip_prefix('[')?.strip_suffix(']')?;
+    all_links(pieces(inner))
+}
+
+/// An attribute written as a list, `authors=[ana, tom]`: what it was and what
+/// it becomes, as a preview shows them. A quantity takes no list — its
+/// repeated measurements are its readings — nor does a name SampleKit keeps.
+pub fn assign_list(
+    sample: &mut Sample,
+    field: &str,
+    items: Vec<Value>,
+) -> Result<(String, String), EditError> {
+    let name = match fields::parse(field) {
+        Ok(Field::Named {
+            name,
+            channel: Channel::Value,
+        }) => name,
+        _ => {
+            return Err(EditError::new(format!(
+                "{field} takes no list: a list is an attribute's, written by its name"
+            )));
+        }
+    };
+    if sample.property(&name).is_ok() {
+        let shown: Vec<String> = items.iter().map(shown_value).collect();
+        return Err(EditError::new(format!(
+            "{name} is a property, and a value is one number\n  repeated measurements of one \
+             property are its readings: {name}.readings={}",
+            shown.join(",")
+        )));
+    }
+    let before = sample
+        .attribute(&name)
+        .ok()
+        .map_or("—".to_string(), shown_attribute);
+    let value = AttributeValue::list(items).map_err(|error| EditError::new(error.to_string()))?;
+    let after = shown_attribute(&value);
+    sample
+        .set_attribute(name, value)
+        .map_err(|error| EditError::new(error.to_string()))?;
+    Ok((before, after))
+}
+
+/// An attribute as a preview shows it: its value, or its items in brackets.
+pub fn shown_attribute(value: &AttributeValue) -> String {
+    match value {
+        AttributeValue::Scalar(value) => shown_value(value),
+        // An item holding a comma quoted, as it is typed: `['a, b', c]`; a
+        // list of links spaced from its brackets, `[ [[a]], [[b]] ]`.
+        AttributeValue::List(items) => format!(
+            "{}{}{}",
+            if spaced(items) { "[ " } else { "[" },
+            items
+                .iter()
+                .map(|item| {
+                    let shown = shown_value(item);
+                    if shown.contains(',') {
+                        format!("'{shown}'")
+                    } else {
+                        shown
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+            if spaced(items) { " ]" } else { "]" },
+        ),
+    }
+}
+
+fn spaced(items: &[Value]) -> bool {
+    items
+        .first()
+        .is_some_and(|item| matches!(item, Value::Text(text) if text.starts_with('[')))
 }
 
 /// A name to write in a sample's file, as `set`, Python and the workbench check
@@ -471,11 +700,14 @@ pub fn value_of(text: &str) -> Result<Value, EditError> {
         return Ok(Value::absent());
     }
     // A list typed by hand is someone entering readings, which a value is
-    // not. Storing it as text would put a string where numbers belong.
-    if text.starts_with('[') {
+    // not. Storing it as text would put a string where numbers belong. A
+    // wikilink, `[[Other note]]`, or a Markdown link, `[text](file.md)`, is
+    // text: a link, as the file holds it.
+    if text.starts_with('[') && !text.starts_with("[[") && crate::core::link::parse(text).is_none()
+    {
         return Err(EditError::new(format!(
             "'{text}' is a list, and a value is one number\n  \
-             repeated measurements of one quantity are its readings: fg.readings={text}"
+             repeated measurements of one property are its readings: notch.readings={text}"
         )));
     }
     if let Ok(whole) = text.parse::<i64>() {
@@ -495,16 +727,18 @@ pub fn value_of(text: &str) -> Result<Value, EditError> {
 pub fn readings_of(field: &str, text: &str) -> Result<Readings, EditError> {
     let listed = unbracketed(text);
     if listed.is_empty() {
-        return Err(EditError::new(format!(
-            "no readings given: they are written {field}=1.011,1.010,1.012"
-        )));
+        return Err(EditError::new(
+            "no readings given: readings are numbers apart by commas, 1.011, 1.010, 1.012"
+                .to_string(),
+        ));
     }
     let mut numbers = Vec::new();
     for piece in listed.split(',') {
         let piece = piece.trim();
         numbers.push(piece.parse::<f64>().map_err(|_| {
             EditError::new(format!(
-                "'{piece}' is not a number: readings are written {field}=1.011,1.010,1.012"
+                "'{piece}' is not a number: readings are numbers apart by commas, 1.011, \
+                 1.010, 1.012"
             ))
         })?);
     }
@@ -515,7 +749,7 @@ pub fn readings_of(field: &str, text: &str) -> Result<Readings, EditError> {
         let quantity = field.strip_suffix(".readings").unwrap_or(field);
         return Err(EditError::new(format!(
             "'{listed}' is one number, and readings are several: one number is a value, \
-             {quantity}={only}; readings are written {field}={only},…"
+             {quantity}={only}"
         )));
     }
     Readings::new(numbers).map_err(|error| EditError::new(error.to_string()))
@@ -577,7 +811,7 @@ pub fn decimal_commas(field: &str, text: &str) -> Option<String> {
     ))
 }
 
-/// Whether an assignment gives readings — `og.readings=…`, or a cell's
+/// Whether an assignment gives readings — `radius.readings=…`, or a cell's
 /// `table.column[…].readings=…`.
 pub fn gives_readings(field: &str) -> bool {
     matches!(
@@ -607,8 +841,8 @@ pub fn shown_value(value: &Value) -> String {
 }
 
 /// The precision the project declares for a field a preview shows :
-/// `[property.og]`'s for `og` and its readings, a column's for its cells, the
-/// uncertainty's for `og.u`. A precision is declared in the project and nowhere
+/// `[property.radius]`'s for `radius` and its readings, a column's for its cells, the
+/// uncertainty's for `radius.u`. A precision is declared in the project and nowhere
 /// else.
 pub fn declared_precision(
     field: &str,
@@ -638,31 +872,59 @@ pub fn declared_precision(
 
 /// A value as a preview shows it: a number at the precision the project
 /// declares for its field, as a table shows it — `6.08`, where the computation
-/// left `6.081250000000001` — and every digit it holds where none is declared.
+/// left `6.081250000000001` — and as a table shows it where none is declared.
 /// Text, dates and the rest as the file writes them.
 pub fn previewed(
     value: &Value,
     field: &str,
     config: Option<&crate::config::project_config::ProjectConfig>,
 ) -> String {
-    shown_at(value, declared_precision(field, config))
+    // A spread with nothing declared is rounded up, as a table writes it.
+    let spread =
+        crate::query::field_addressing::parse(field).is_ok_and(|parsed| fields_spread(&parsed));
+    let precision = declared_precision(field, config)
+        .or_else(|| spread.then(crate::core::formatting::Precision::general_spread));
+    shown_at(value, precision)
 }
 
-/// A value at `precision`, every digit without one: the one rule a preview
-/// shows a number by.
+fn fields_spread(field: &crate::query::field_addressing::Field) -> bool {
+    crate::query::field_addressing::is_spread(crate::query::field_addressing::channel(field))
+}
+
+/// A value typed, as a preview shows it: at the declared precision where that
+/// writes it whole, and every digit where it would round it — `1.0555` was
+/// shown `1.056`, `18.75` `18.8`, and a reader copying from a spreadsheet could
+/// not check the digits written.
+pub fn previewed_typed(
+    value: &Value,
+    field: &str,
+    config: Option<&crate::config::project_config::ProjectConfig>,
+) -> String {
+    let shown = previewed(value, field, config);
+    match value {
+        Value::Number(number) if shown.parse::<f64>().ok() != Some(*number) => shown_value(value),
+        _ => shown,
+    }
+}
+
+/// A value at `precision`, or as a table shows it without one: the one rule a
+/// preview shows a number by. Every digit was shown where no precision was
+/// declared, `1.0505 ± 0.0004999999999999449`, the noise a computation leaves.
 pub fn shown_at(value: &Value, precision: Option<crate::core::formatting::Precision>) -> String {
     match (value, precision) {
-        (Value::Number(_) | Value::Integer(_), Some(precision)) => {
-            crate::core::formatting::format_value(
-                value,
-                &crate::core::formatting::Resolved {
-                    unit: None,
-                    symbol: None,
-                    separator: "±".to_string(),
-                    precision: Some(precision),
-                },
-            )
-        }
+        (Value::Number(_) | Value::Integer(_), precision) => crate::core::formatting::format_value(
+            value,
+            &crate::core::formatting::Resolved {
+                unit: None,
+                symbol: None,
+                property: None,
+                uncertainty: None,
+                unitless: None,
+                unit_alone: None,
+                unit_in_form: None,
+                precision,
+            },
+        ),
         _ => shown_value(value),
     }
 }
@@ -690,7 +952,13 @@ pub fn previewed_change(
     if was == is && differ {
         (side(before, &shown_value), side(after, &shown_value))
     } else {
-        (was, is)
+        // What is typed is what is written: a precision that would round it —
+        // `1.03` shown `1.0` — hides the digits the reader is checking.
+        let whole = after.is_some_and(|after| match after {
+            Value::Number(number) => is.parse::<f64>().ok() != Some(*number),
+            _ => false,
+        });
+        (was, if whole { side(after, &shown_value) } else { is })
     }
 }
 
@@ -722,6 +990,15 @@ pub fn set_by_hand(handle: &PropertyHandle, value: Value) {
     // value written over it — and `n/a` outranks their statistic as any value
     // written does.
     let not_applicable = value.is_not_applicable();
+    // Emptied beside readings a statistic stands for: given back to it, which
+    // is no override of anything.
+    if matches!(value, Value::Absent)
+        && handle
+            .peek(|property| property.readings().is_some() && property.has_declared_statistic())
+    {
+        handle.set_value(value);
+        return;
+    }
     if handle.peek(Property::is_computed) {
         handle.set_value(value);
         if not_applicable {
@@ -741,11 +1018,41 @@ pub fn set_by_hand(handle: &PropertyHandle, value: Value) {
     // computed uncertainty overrides nothing, and the record stays for the
     // uncertainty's formula.
     let owned = kept.produced != Some(Produced::Uncertainty);
+    mark_by_hand(handle, kept, owned);
+}
+
+/// An uncertainty typed by hand. Over one a statistic of the readings or a
+/// formula gave, it is an override, as a value typed over its formula is —
+/// said by every surface, and given back by `--force` or by emptying it: the
+/// record is kept, marked edited. Whether it is one is returned.
+pub fn set_uncertainty_by_hand(handle: &PropertyHandle, uncertainty: Uncertainty) -> bool {
+    let records = handle.records();
+    let owned_by = handle.peek(|property| {
+        property.declared_convention().is_some() || property.has_uncertainty_formula()
+    }) || records.produced == Some(Produced::Uncertainty);
+    handle.set_uncertainty(Some(uncertainty));
+    if records.computed.is_some() && owned_by {
+        mark_by_hand(handle, records, true);
+        return true;
+    }
+    false
+}
+
+/// The record of a quantity one of whose channels a hand wrote: its own
+/// digest taken again, marked edited where a formula or a statistic owned
+/// that channel, so that every surface reads the same override.
+fn mark_by_hand(handle: &PropertyHandle, kept: Records, owned: bool) {
     let shape = handle.peek(schema::property_as_is);
     // Written the way the check computes it, or the two disagree and an
     // untouched channel reads edited.
     let digest = fingerprint::own_of(&shape, kept.produced);
-    let digest = if owned {
+    // A channel the hand overrode before stays overridden: writing the other
+    // beside it gives nothing back to the formula.
+    let overridden = kept
+        .fingerprint
+        .as_ref()
+        .is_some_and(|fingerprint| fingerprint.is_edited());
+    let digest = if owned || overridden {
         digest.marked_edited()
     } else {
         digest
@@ -790,7 +1097,7 @@ pub fn kept_by(sample: &Sample, field_name: &str) -> Option<Kept> {
 /// Text where a column holds numbers, or declares a unit, as `refuses_text`
 /// says of a quantity: a cell of a numeric column is a number. `in_row` when
 /// the cell is given by `--add-row`, whose hint writes the column alone —
-/// `gravity=1.011` — rather than the address `set` takes.
+/// `hardness=1.011` — rather than the address `set` takes.
 fn refuses_text_in(
     held: &Table,
     table: &Identifier,
@@ -823,9 +1130,17 @@ fn refuses_text_in(
     if !numeric && unit.is_none() {
         return None;
     }
+    // A column a formula fills is not measured: it holds numbers.
+    let derived = held.is_derived(column);
     let what = unit.map_or_else(
         || format!("{table}.{column} holds numbers"),
-        |unit| format!("{table}.{column} is measured in {unit}"),
+        |unit| {
+            if derived {
+                format!("{table}.{column} holds numbers in {unit}")
+            } else {
+                format!("{table}.{column} is measured in {unit}")
+            }
+        },
     );
     let written = if in_row {
         format!("{column}=")
@@ -886,6 +1201,19 @@ fn number_in(value: &Value) -> String {
     let Value::Text(text) = value else {
         return "1.05".to_string();
     };
+    // A number in a form YAML would not read as one, `1_000` or `0x10`: the
+    // advice is that number, not the digits before the first letter.
+    let bare = text.trim().replace('_', "");
+    if bare != text.trim()
+        && let Ok(number) = bare.parse::<f64>()
+    {
+        return number.to_string();
+    }
+    if let Some(hex) = bare.strip_prefix("0x").or_else(|| bare.strip_prefix("0X"))
+        && let Ok(number) = i64::from_str_radix(hex, 16)
+    {
+        return number.to_string();
+    }
     let leading: String = text
         .trim()
         .chars()
@@ -901,7 +1229,7 @@ fn number_in(value: &Value) -> String {
 
 /// Text where a number belongs: a quantity that holds a number, or declares a
 /// unit, which nothing but a measurement has. A yes-or-no is no number either:
-/// `og=true` was written `v: true`.
+/// `radius=true` was written `v: true`.
 fn refuses_text(
     sample: &Sample,
     name: &Identifier,
@@ -912,11 +1240,16 @@ fn refuses_text(
         return None;
     }
     let handle = sample.property(name).ok()?;
+    // Readings, a statistic of them declared, or an uncertainty, are a
+    // number's too: a quantity a computation left without a value, holding
+    // only the statistic it declares, took `1,016` as text.
     let numeric = handle.peek(|property| {
         matches!(
             property.peek_value(),
             Some(Value::Integer(_) | Value::Number(_))
-        )
+        ) || property.readings().is_some()
+            || property.has_declared_statistic()
+            || property.peek_uncertainty().is_some()
     });
     let unit = handle.presentation().unit.clone();
     if !numeric && unit.is_none() {
@@ -933,6 +1266,26 @@ pub fn not_a_number_for(name: &str, unit: Option<&str>, value: &Value) -> EditEr
         || format!("'{name}' holds a number"),
         |unit| format!("'{name}' is measured in {unit}"),
     );
+    // A value and its uncertainty written together, `1.048±0.001`: both kept
+    // in the advice, where the number alone lost the uncertainty unseen.
+    if let Value::Text(text) = value
+        && let Some((number, uncertainty)) = ["±", "+/-", "+-"]
+            .iter()
+            .find_map(|sign| text.split_once(sign))
+        && number.trim().parse::<f64>().is_ok()
+        && uncertainty.trim().parse::<f64>().is_ok()
+    {
+        return EditError::new(format!(
+            "{quantity}, and '{}' is {}\n  its uncertainty is a field of its own: {name}={} \
+             {name}.u={}",
+            shown_value(value),
+            not_a_number(value),
+            number.trim(),
+            // An uncertainty is a size: `±-1` is advised as 1, which `set`
+            // takes, not as -1, which it refuses.
+            uncertainty.trim().trim_start_matches('-')
+        ));
+    }
     EditError::new(format!(
         "{quantity}, and '{}' is {}\n  write the number alone: {name}={}",
         shown_value(value),
@@ -955,8 +1308,8 @@ pub struct HeldAs {
 }
 
 /// Whether other samples hold `name` as a quantity. A new sample given a value
-/// for it is written as they write it: `og=1.048` beside brews that measure
-/// `og` was written as an attribute, which the model then refused to read.
+/// for it is written as they write it: `radius=1.048` beside pieces that measure
+/// `radius` was written as an attribute, which the model then refused to read.
 pub fn held_as(collection: &SampleList, name: &str) -> Option<HeldAs> {
     let name = Identifier::new(name).ok()?;
     let mut found = false;
@@ -1024,7 +1377,7 @@ pub struct Known {
 /// **`.samplekitrc`, then the model, then the other samples** — the first that
 /// names it says it is a quantity, and the unit is the first any of them gives.
 /// The model is read from its description, where it is current, and never from
-/// its source: a name only the model declares, `self.ibu =
+/// its source: a name only the model declares, `self.hb =
 /// sk.Property(unit="mm")`, is written as a quantity with its unit, where it
 /// was written as an attribute the model then refused. The model and the
 /// samples are asked only of a name the sample holds as no quantity — the
@@ -1081,6 +1434,43 @@ pub fn known_as(
     })
 }
 
+/// A value typed where the model computes it and never did — no record of
+/// any formula beside it — held as an override, as one typed over a value
+/// computed is: said *an override* and marked so in the file. It was written
+/// as a value entered, and each surface named it apart — *record missing*,
+/// *waits for*, *entered or measured*.
+pub fn over_the_model(
+    sample: &Sample,
+    change: &mut Change,
+    config: Option<&crate::config::project_config::ProjectConfig>,
+) {
+    if !matches!(change.became, Became::Changed | Became::NewQuantity)
+        || change.after.as_ref().is_none_or(Value::is_absent)
+    {
+        return;
+    }
+    let Ok(Field::Named {
+        name,
+        channel: Channel::Value,
+    }) = fields::parse(&change.field)
+    else {
+        return;
+    };
+    let computes = config
+        .and_then(crate::config::model_runtime::current_description)
+        .and_then(|described| described.properties.get(name.as_str()).cloned())
+        .is_some_and(|property| property.value.is_formula());
+    let Ok(handle) = sample.property(&name) else {
+        return;
+    };
+    let records = handle.records();
+    if !computes || records.computed.is_some() || handle.peek(Property::is_computed) {
+        return;
+    }
+    mark_by_hand(&handle, records, true);
+    change.became = Became::Override;
+}
+
 /// [`apply`], with what the project knows of the name: **a name the model
 /// declares is a quantity whatever is written** — text too, where the model
 /// gives it no unit, since a property of the model holds text as the model
@@ -1132,7 +1522,52 @@ pub fn apply(
     value: Value,
     declared: Option<&PropertyDeclaration>,
 ) -> Result<Change, EditError> {
-    let before = value_at(sample, field);
+    // `note` is the text below the frontmatter, as Python's `sample.note`
+    // is: written whole, an empty value emptying it.
+    if field == "note" {
+        let shown = |note: &str| (!note.is_empty()).then(|| Value::text(note.trim_end()));
+        let before = shown(sample.note());
+        let text = match &value {
+            Value::Absent => String::new(),
+            Value::Text(text) => text.clone(),
+            Value::Integer(whole) => whole.to_string(),
+            Value::Number(real) => real.to_string(),
+            Value::Boolean(flag) => flag.to_string(),
+            Value::Date(date) => date.iso(),
+            Value::DateTime(moment) => moment.iso(),
+            Value::NotApplicable => "n/a".to_string(),
+        };
+        let text = if text.is_empty() || text.ends_with('\n') {
+            text
+        } else {
+            format!("{text}\n")
+        };
+        let became = if text == sample.note() {
+            Became::Unchanged
+        } else {
+            Became::Changed
+        };
+        sample.set_note(text);
+        return Ok(Change {
+            field: field.to_string(),
+            before,
+            after: shown(sample.note()),
+            kept: None,
+            became,
+        });
+    }
+    // A list is no value, and is said as its items: removing one was said
+    // *unchanged*, from nothing to nothing.
+    let before = value_at(sample, field).or_else(|| match fields::parse(field) {
+        Ok(Field::Named {
+            name,
+            channel: Channel::Value,
+        }) => sample
+            .attribute(&name)
+            .ok()
+            .map(|held| Value::Text(shown_attribute(held))),
+        _ => None,
+    });
     let kept = kept_by(sample, field);
     // The name is what the file writes, compared as written: removing a `name:`
     // that says what the file's name says changes the file, and the name read
@@ -1142,8 +1577,17 @@ pub fn apply(
         Ok(Field::Reserved(fields::ReservedField::Name))
     );
     let written_before = sample.written_name().map(str::to_string);
+    // A row's index changed moves the row: read at the old address after,
+    // it was said `11 → —`, as if the row went away.
+    let reindexed = match fields::parse(field) {
+        Ok(Field::Cell { table, column, .. }) => sample
+            .table(&table)
+            .is_ok_and(|held| held.index_columns().contains(&column)),
+        _ => false,
+    };
+    let assigned = reindexed.then(|| value.clone());
     let became = assign(sample, field, value, declared)?;
-    let after = value_at(sample, field);
+    let after = value_at(sample, field).or(assigned.filter(|value| !value.is_absent()));
     let untouched = if naming {
         written_before.as_deref() == sample.written_name()
     } else {
@@ -1189,8 +1633,8 @@ fn assign(
         // Tags are a list with a command of their own: `tags=a,b` was refused
         // as a name already taken.
         Field::Named { name, .. } if name.as_str() == "tags" => Err(EditError::new(
-            "tags are not set as a value: samplekit tag add <tag> FILE --write adds one, \
-             samplekit tag remove <tag> FILE --write takes one away",
+            "tags are not set as a value: samplekit FILE tag add <tag> --write adds one, \
+             samplekit FILE tag remove <tag> --write takes one away",
         )),
         Field::Named { name, channel } => {
             if sample.has_property(name) {
@@ -1213,7 +1657,16 @@ fn assign(
                             "readings are a list: {name}.readings=1.011,1.010,1.012"
                         )));
                     }
-                    Channel::Value => set_by_hand(&handle, value),
+                    Channel::Value => {
+                        let given_back = matches!(value, Value::Absent)
+                            && handle.peek(|property| {
+                                property.readings().is_some() && property.has_declared_statistic()
+                            });
+                        set_by_hand(&handle, value);
+                        if given_back {
+                            return Ok(Became::Cleared);
+                        }
+                    }
                     Channel::Uncertainty => {
                         let magnitude = match &value {
                             Value::Integer(whole) => *whole as f64,
@@ -1223,14 +1676,16 @@ fn assign(
                                 return Ok(Became::Cleared);
                             }
                             _ => {
-                                return Err(EditError::new(format!(
-                                    "an uncertainty is a number: {field_name}=0.01"
-                                )));
+                                return Err(EditError::new(
+                                    "an uncertainty is a number, as 0.01".to_string(),
+                                ));
                             }
                         };
                         let uncertainty = Uncertainty::new(magnitude)
                             .map_err(|error| EditError::new(error.to_string()))?;
-                        handle.set_uncertainty(Some(uncertainty));
+                        if set_uncertainty_by_hand(&handle, uncertainty) {
+                            return Ok(Became::Override);
+                        }
                     }
                     Channel::Unit | Channel::Symbol => {
                         let mut presentation = handle.presentation();
@@ -1238,6 +1693,16 @@ fn assign(
                             Value::Absent => None,
                             other => Some(shown_value(other)),
                         };
+                        if written
+                            .as_deref()
+                            .is_some_and(|text| text.chars().any(char::is_control))
+                        {
+                            return Err(EditError::new(format!(
+                                "{field_name} is written in letters and signs: '{}' holds a \
+                                 control character, as an escape a terminal reads",
+                                written.unwrap_or_default().escape_default()
+                            )));
+                        }
                         if matches!(channel, Channel::Unit) {
                             presentation.unit = written;
                         } else {
@@ -1272,9 +1737,16 @@ fn assign(
                 return Ok(Became::Unchanged);
             }
             if sample.has_attribute(name) || !matches!(channel, Channel::Value) {
+                // A blank value removes the attribute, a list as a value.
+                if matches!(value, Value::Absent) && matches!(channel, Channel::Value) {
+                    sample
+                        .remove_attribute(name)
+                        .map_err(|error| EditError::new(error.to_string()))?;
+                    return Ok(Became::Cleared);
+                }
                 if !matches!(channel, Channel::Value) {
                     return Err(EditError::new(format!(
-                        "'{name}' holds no quantity here, so it has no {}",
+                        "'{name}' is no property here, so it has no {}",
                         match channel {
                             Channel::Uncertainty => "uncertainty",
                             Channel::Unit => "unit",
@@ -1456,9 +1928,9 @@ fn assign(
                             (before, Some(spread), false)
                         }
                         _ => {
-                            return Err(EditError::new(format!(
-                                "an uncertainty is a number: {field_name}=0.01"
-                            )));
+                            return Err(EditError::new(
+                                "an uncertainty is a number, as 0.01".to_string(),
+                            ));
                         }
                     }
                 }
@@ -1497,12 +1969,17 @@ fn assign(
             // property is: a value entered beside a computed uncertainty
             // overrides nothing, nor an uncertainty given beside a computed
             // value.
+            // A channel the hand overrode before stays overridden: writing the
+            // other beside it gives nothing back to the formula.
             let owned = kept.as_ref().is_some_and(|records| {
                 records.computed.is_some()
-                    && match channel {
+                    && (match channel {
                         Channel::Value => records.produced != Some(Produced::Uncertainty),
                         _ => records.produced == Some(Produced::Uncertainty),
-                    }
+                    } || records
+                        .fingerprint
+                        .as_ref()
+                        .is_some_and(|fingerprint| fingerprint.is_edited()))
             });
             if let Some(records) = kept.filter(|records| records.computed.is_some()) {
                 let shape = schema::property_as_is(&property);
@@ -1566,6 +2043,27 @@ fn assign(
     }
 }
 
+/// Readings refused for a value the model computes, as its description says
+/// it: a sample that never held the value has no record to say so, and the
+/// model then refused to load the file, for the whole project.
+pub fn readings_refused_by_model(
+    config: Option<&crate::config::project_config::ProjectConfig>,
+    name: &str,
+) -> Option<EditError> {
+    use crate::config::model_runtime::Origin;
+    let description = crate::config::model_runtime::current_description(config?)?;
+    let declared = description.properties.get(name)?;
+    matches!(
+        declared.value,
+        Origin::Formula { .. } | Origin::Quantity { .. }
+    )
+    .then(|| {
+        EditError::new(format!(
+            "{name} is computed by the model: readings belong to a measured value"
+        ))
+    })
+}
+
 /// New readings of a quantity. They replace the readings before and nothing
 /// written: a value written or entered stands, stale, beside them, and its
 /// entered uncertainty, its declared statistic, its record, its unit and its
@@ -1618,18 +2116,25 @@ pub fn set_readings(
             let entered = (property.convention().is_none() && !property.has_uncertainty_formula())
                 .then(|| property.peek_uncertainty().flatten())
                 .flatten();
-            let statistics = (property.declared_location(), property.declared_convention());
+            let statistics = (
+                property.declared_location(),
+                property.declared_convention(),
+                property.statistic_taken(),
+            );
             (written, entered, statistics, records, presentation)
         })
     });
     let mut property = Property::measured(readings, None);
-    if let Some((written, entered, (location, convention), records, presentation)) = held {
+    if let Some((written, entered, (location, convention, taken), records, presentation)) = held {
         property.set_written_value(written);
         if entered.is_some() {
             property.set_uncertainty(entered);
         }
         if location.is_some() || convention.is_some() {
             property.declare_statistics(location, convention);
+            if taken {
+                property.take_statistic();
+            }
         }
         property.set_records(records);
         property.set_presentation(presentation);
@@ -1704,7 +2209,7 @@ pub fn set_cell_readings(
 ///
 /// A number is asked for where the declaration gives a unit, which only a
 /// number has. A declaration without one — `[property.style]` naming how a
-/// figure's legend says it — describes text as well, and `style=ipa` was
+/// figure's legend says it — describes text as well, and `style=titanium` was
 /// refused with *write a number*.
 fn refuse_text_for_a_quantity(
     name: &Identifier,
@@ -1732,7 +2237,7 @@ fn refuse_text_for_a_quantity(
             _ => ": write a number".to_string(),
         };
         return Err(EditError::new(format!(
-            "'{name}' is a quantity this project declares{unit}, and '{}' is {}{hint}",
+            "'{name}' is a property this project declares{unit}, and '{}' is {}{hint}",
             shown_value(value),
             not_a_number(value)
         )));
@@ -1749,7 +2254,7 @@ pub fn shape_from_model(
     config: &crate::config::project_config::ProjectConfig,
     name: &Identifier,
 ) -> Option<Lent> {
-    use crate::config::model_runtime::{self as runtime, Origin};
+    use crate::config::model_runtime as runtime;
     let template = runtime::template_of(config)?;
     let described = runtime::current_description(config)?;
     let declared = described.table(name.as_str())?;
@@ -1762,7 +2267,12 @@ pub fn shape_from_model(
     let mut derived = Vec::new();
     for column in &declared.columns {
         let id = Identifier::new(&column.name).ok()?;
-        if matches!(column.value, Origin::Rows { .. } | Origin::Columns { .. }) {
+        // A column whose value a formula gives: one whose formula gives the
+        // uncertainty alone takes its value by hand.
+        if matches!(
+            column.value,
+            runtime::Origin::Rows { .. } | runtime::Origin::Columns { .. }
+        ) {
             derived.push(id.clone());
         }
         columns.insert(
@@ -1837,9 +2347,21 @@ fn derived_columns(table: &Table, columns: &[Identifier]) -> Vec<Identifier> {
     table.rows().next().map_or_else(Vec::new, |row| {
         columns
             .iter()
+            // A column whose formula gives the uncertainty alone takes its
+            // value by hand, and one whose cells' value is a statistic of
+            // their readings takes readings: both are entered, not derived.
             .filter(|column| {
-                row.cell(column)
-                    .is_ok_and(|cell| cell.records().computed.is_some())
+                row.cell(column).is_ok_and(|cell| {
+                    let records = cell.records();
+                    let of_readings = records.computed.as_ref().is_some_and(|inputs| {
+                        inputs.contains_key(&crate::core::property::InputName::Named(
+                            fingerprint::readings_key(),
+                        ))
+                    });
+                    records.computed.is_some()
+                        && records.produced != Some(Produced::Uncertainty)
+                        && !of_readings
+                })
             })
             .cloned()
             .collect()
@@ -1871,8 +2393,12 @@ fn overriding_cell(value: Value, records: Option<&Records>) -> (Property, bool) 
     let Some(records) = records else {
         return (property, true);
     };
-    // A value beside a computed uncertainty overrides nothing.
-    let owned = records.produced != Some(Produced::Uncertainty);
+    // A value beside a computed uncertainty overrides nothing, and carries no
+    // record of another row's: its uncertainty is owed, never computed.
+    if records.produced == Some(Produced::Uncertainty) {
+        return (property, false);
+    }
+    let owned = true;
     let digest = fingerprint::own_of(&schema::property_as_is(&property), records.produced);
     property.set_records(Records {
         failure: None,
@@ -1901,7 +2427,7 @@ pub fn add_row(
     add_row_with_readings(sample, table, cells, Vec::new(), lend)
 }
 
-/// A new row whose cells may hold readings — `sweetness.readings=1.05,1.06` beside
+/// A new row whose cells may hold readings — `stiffness.readings=1.05,1.06` beside
 /// `temperature=40`. A cell given readings is measured, and takes the
 /// statistics its column declares as the table takes it; a column a formula
 /// fills, or the index, takes none.
@@ -2081,47 +2607,106 @@ pub fn add_row_with_readings(
 /// The inputs a stale value moved on from that now hold nothing: its value then
 /// waits for them, as the model says — `status` said *stale — volume* where
 /// `compute` said *waits for volume* of one value. `state` reads it too, so
-/// that a value waiting is `waiting` without the model.
+/// that a value waiting is `waiting` without the model. A column read whole
+/// waits for each of its cells emptied, `ageing.hardness[4]`.
 pub fn emptied_inputs(sample: &Sample, state: &Freshness) -> Vec<String> {
+    emptied_inputs_at(sample, state, None)
+}
+
+/// [`emptied_inputs`] of a table's cell, in the row `row` names — its table
+/// and its index: the cell of its own row an input `row.hardness` names is
+/// that row's. Said of a cell, `status` called *outdated — row.hardness* what
+/// `compute` said waits for `ageing.hardness[4]`.
+pub fn emptied_inputs_at(
+    sample: &Sample,
+    state: &Freshness,
+    row: Option<(&Identifier, &[Value])>,
+) -> Vec<String> {
     let Freshness::Stale { changed, upstream } = state else {
         return Vec::new();
     };
     if changed.is_empty() && upstream.is_empty() {
         return Vec::new();
     }
-    let emptied: Vec<String> = changed
-        .iter()
-        .filter_map(|input| match input {
+    // Readings with no value are owed their statistic, which a computation
+    // takes: nothing to wait for. Said *waits for radius*, a piece whose hardnesses
+    // were read was told to wait for a number nobody needed to type.
+    let empty = |property: &Property| {
+        property.readings().is_none()
+            && property
+                .peek_value()
+                .is_none_or(|value| matches!(value, Value::Absent))
+    };
+    let addressed = |table: &Identifier, column: &Identifier, index: &[&Value]| {
+        let index: Vec<String> = index.iter().map(|value| shown_value(value)).collect();
+        format!("{table}.{column}[{}]", index.join(", "))
+    };
+    let mut named: Vec<String> = Vec::new();
+    let mut matched = 0;
+    for input in changed {
+        let found: Vec<String> = match input {
             crate::core::property::InputName::Named(name) => sample
                 .property(name)
                 .ok()
-                .filter(|handle| {
-                    handle
-                        .peek(Property::peek_value)
-                        .is_none_or(|value| matches!(value, Value::Absent))
+                .filter(|handle| handle.peek(empty))
+                .map(|_| vec![name.to_string()])
+                .unwrap_or_default(),
+            // A column a formula gives owes its new rows' cells, which nobody
+            // emptied: what reads it is outdated, said so, never *waits for
+            // curve.stress[11]* of a row just added. Known from the model, or
+            // from the records its other cells carry.
+            crate::core::property::InputName::Column { table, column } => sample
+                .table(table)
+                .map(|held| {
+                    let computed = held.is_derived(column)
+                        || held.rows().any(|each| {
+                            each.cell(column).is_ok_and(|cell| {
+                                cell.is_computed() || cell.records().computed.is_some()
+                            })
+                        });
+                    if computed {
+                        return Vec::new();
+                    }
+                    held.rows()
+                        .filter(|each| each.cell(column).is_ok_and(empty))
+                        .map(|each| addressed(table, column, &each.index()))
+                        .collect()
                 })
-                .map(|_| name.to_string()),
-            _ => None,
-        })
-        .collect();
-    // An input itself waiting is waited for, as the model says: `haze`
-    // waits for `plato`, which waits for the `volume` emptied.
-    let waiting: Vec<String> = upstream
-        .iter()
-        .filter_map(|input| match input {
-            crate::core::property::InputName::Named(name) => {
-                fingerprint::check_property(sample, name)
-                    .ok()
-                    .filter(|state| !emptied_inputs(sample, state).is_empty())
-                    .map(|_| name.to_string())
-            }
-            _ => None,
-        })
-        .collect();
+                .unwrap_or_default(),
+            crate::core::property::InputName::Cell(column)
+            | crate::core::property::InputName::CellValue(column) => row
+                .and_then(|(table, index)| {
+                    let held = sample.table(table).ok()?;
+                    let each = held
+                        .rows()
+                        .find(|each| each.index().into_iter().eq(index.iter()))?;
+                    each.cell(column)
+                        .is_ok_and(empty)
+                        .then(|| vec![addressed(table, column, &each.index())])
+                })
+                .unwrap_or_default(),
+        };
+        if !found.is_empty() {
+            matched += 1;
+            named.extend(found);
+        }
+    }
+    // An input itself waiting is waited for, as the model says: `roughness`
+    // waits for `ductility`, which waits for the `volume` emptied.
+    for input in upstream {
+        if let crate::core::property::InputName::Named(name) = input
+            && fingerprint::check_property(sample, name)
+                .ok()
+                .is_some_and(|state| !emptied_inputs(sample, &state).is_empty())
+        {
+            matched += 1;
+            named.push(name.to_string());
+        }
+    }
     // Waiting only where every input that moved is empty, or waits: one that
     // holds a new value makes the value stale, whatever the others hold.
-    if emptied.len() + waiting.len() == changed.len() + upstream.len() {
-        emptied.into_iter().chain(waiting).collect()
+    if matched == changed.len() + upstream.len() {
+        named
     } else {
         Vec::new()
     }
@@ -2132,18 +2717,101 @@ pub fn emptied_inputs(sample: &Sample, state: &Freshness) -> Vec<String> {
 /// Every derived value of a sample that is not current: a property by its name,
 /// and a table column once, as `table.column`, with how many of its rows are. A
 /// value whose records cannot be followed is listed.
+/// What a change makes not current: in `after` and not in `before` as it
+/// stands — a value by its name and the way it stands, and a column's rows
+/// beyond those that already stood so. Compared by name alone, a column
+/// holding an override was already *not current*, and the rows a change made
+/// outdated beside it went unsaid.
+pub fn newly_not_current(before: &[NotCurrent], after: &[NotCurrent]) -> Vec<NotCurrent> {
+    after
+        .iter()
+        .filter_map(|entry| {
+            let was = before.iter().find(|was| {
+                was.name == entry.name
+                    && std::mem::discriminant(&was.state) == std::mem::discriminant(&entry.state)
+            });
+            match was {
+                None => Some(entry.clone()),
+                Some(was) if entry.rows > was.rows => Some(NotCurrent {
+                    rows: entry.rows - was.rows,
+                    ..entry.clone()
+                }),
+                Some(_) => None,
+            }
+        })
+        .collect()
+}
+
 pub fn not_current(sample: &Sample) -> Vec<NotCurrent> {
     let standing = fingerprint::check_sample(sample);
     let mut found = Vec::new();
     let mut named: Vec<_> = standing.properties.into_iter().collect();
     named.sort_by_key(|(name, _)| name.to_string());
     for (name, state) in named {
-        if !matches!(state, Freshness::Source | Freshness::Current) {
-            found.push(NotCurrent {
+        if matches!(state, Freshness::Source | Freshness::Current) {
+            continue;
+        }
+        // **A value and its uncertainty given by two formulas count apart**
+        //: where their records say which input each read alone, an
+        // input moved is said of the channel it reaches, `q` for the value,
+        // `q.u` for the uncertainty, and of both where it reaches both.
+        let channels = match &state {
+            Freshness::Stale { changed, upstream } => sample
+                .property(&name)
+                .ok()
+                .map(|handle| handle.records().channel_only)
+                .filter(|only| !only.is_empty())
+                .map(|only| {
+                    let reach = |channel: Produced| {
+                        changed
+                            .iter()
+                            .chain(upstream)
+                            .any(|input| only.get(input).is_none_or(|alone| *alone == channel))
+                    };
+                    (reach(Produced::Value), reach(Produced::Uncertainty))
+                }),
+            _ => None,
+        };
+        match channels {
+            Some((value, uncertainty)) => {
+                if value || !uncertainty {
+                    found.push(NotCurrent {
+                        name: name.to_string(),
+                        state: state.clone(),
+                        rows: 0,
+                    });
+                }
+                if uncertainty {
+                    found.push(NotCurrent {
+                        name: format!("{name}.u"),
+                        state,
+                        rows: 0,
+                    });
+                }
+            }
+            // Two formulas read the same inputs: their record is one, and
+            // both are outdated by what moved — each counted.
+            None if matches!(state, Freshness::Stale { .. })
+                && sample
+                    .property(&name)
+                    .is_ok_and(|handle| handle.peek(Property::has_two_formulas)) =>
+            {
+                found.push(NotCurrent {
+                    name: name.to_string(),
+                    state: state.clone(),
+                    rows: 0,
+                });
+                found.push(NotCurrent {
+                    name: format!("{name}.u"),
+                    state,
+                    rows: 0,
+                });
+            }
+            None => found.push(NotCurrent {
                 name: name.to_string(),
                 state,
                 rows: 0,
-            });
+            }),
         }
     }
     for (table, cells) in standing.tables {

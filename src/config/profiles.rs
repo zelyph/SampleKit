@@ -22,8 +22,8 @@ impl Profile {
     }
 
     /// One name per emitted column, from `header` or the field — **never**
-    /// from `label`, so that a column labelled *Plato (g/L)* still exports
-    /// as `plato` and a reader can round-trip the header back to a field.
+    /// from `label`, so that a column labelled *Ductility (g/L)* still exports
+    /// as `ductility` and a reader can round-trip the header back to a field.
     ///
     /// A quantity flattens where the format cannot carry a pair: two names
     /// when `expanded`, which every export format is and a terminal is not.
@@ -33,11 +33,11 @@ impl Profile {
             .clone()
             .unwrap_or_else(|| column.field.clone());
         // A column that names a channel outright is one column, and it is
-        // called `malt_value` too: a column's name does not depend on how it
+        // called `diameter_value` too: a column's name does not depend on how it
         // was asked for.
         if let Some(channel) = channel_of(&column.field) {
             // The field without its channel: a cell keeps its table, column
-            // and row, or `m.srm[20].u` and `m.ebc[20].u` were both `m_uncertainty`.
+            // and row, or `m.hrc[20].u` and `m.hv[20].u` were both `m_uncertainty`.
             let stem = column.header.clone().unwrap_or_else(|| {
                 column
                     .field
@@ -120,6 +120,16 @@ pub fn parse_column(written: &str) -> Result<ColumnSpec, ColumnError> {
     let (declaration, label) = match first_top_level(column, '=') {
         Some(at) => {
             let label = column[at + 1..].trim();
+            // Quoted, a name holds a comma: `radius='Density, dry'`. A quote
+            // opened is closed: one left open took the rest of the line.
+            let label = match label.strip_prefix('\'') {
+                Some(rest) => rest
+                    .strip_suffix('\'')
+                    .ok_or_else(|| ColumnError::Unclosed {
+                        column: column.to_string(),
+                    })?,
+                None => label,
+            };
             if label.is_empty() {
                 return Err(ColumnError::EmptyLabel {
                     column: column.to_string(),
@@ -135,6 +145,18 @@ pub fn parse_column(written: &str) -> Result<ColumnSpec, ColumnError> {
             if precision.is_empty() {
                 return Err(ColumnError::EmptyPrecision {
                     column: column.to_string(),
+                });
+            }
+            // A pair is a profile's, `precision = [".3f", ".4f"]`: on the
+            // command line one specifier stands for both, and the pair was
+            // said to be a thousands separator.
+            if precision.starts_with('[') {
+                return Err(ColumnError::Precision {
+                    column: column.to_string(),
+                    reason: "a precision here is one specifier, for the value and its \
+                             uncertainty both: `radius:.3f` — a pair, one for each, is a \
+                             profile's, precision = [\".3f\", \".4f\"]"
+                        .to_string(),
                 });
             }
             Precision::both(precision).map_err(|error| ColumnError::Precision {
@@ -202,14 +224,20 @@ pub fn last_top_level(source: &str, delimiter: char) -> Option<usize> {
 fn top_level_delimiters(source: &str, delimiter: char) -> impl Iterator<Item = usize> + '_ {
     let mut depth = 0usize;
     let mut quoted = false;
+    // A name opened by `'` just after `=` runs to the next `'`: an
+    // apostrophe inside a name written bare, `radius=Tester's`, opens nothing.
+    let mut named = false;
+    let mut before = None;
     source.char_indices().filter_map(move |(at, character)| {
         match character {
             '"' if depth > 0 => quoted = !quoted,
-            '[' if !quoted => depth += 1,
-            ']' if !quoted => depth = depth.saturating_sub(1),
+            '\'' if depth == 0 && !quoted && (named || before == Some('=')) => named = !named,
+            '[' if !quoted && !named => depth += 1,
+            ']' if !quoted && !named => depth = depth.saturating_sub(1),
             _ => {}
         }
-        (character == delimiter && depth == 0 && !quoted).then_some(at)
+        before = Some(character);
+        (character == delimiter && depth == 0 && !quoted && !named).then_some(at)
     })
 }
 
@@ -219,6 +247,7 @@ pub enum ColumnError {
     Empty,
     EmptyLabel { column: String },
     EmptyPrecision { column: String },
+    Unclosed { column: String },
     Precision { column: String, reason: String },
 }
 
@@ -228,6 +257,12 @@ impl fmt::Display for ColumnError {
             ColumnError::Empty => f.write_str("a column name cannot be empty"),
             ColumnError::EmptyLabel { column } => {
                 write!(f, "column '{column}' has an empty label")
+            }
+            ColumnError::Unclosed { column } => {
+                write!(
+                    f,
+                    "column '{column}' opens a quote it does not close: young_modulus='Modulus, E'"
+                )
             }
             ColumnError::EmptyPrecision { column } => {
                 write!(f, "column '{column}' has an empty precision")
@@ -240,7 +275,7 @@ impl fmt::Display for ColumnError {
 impl std::error::Error for ColumnError {}
 
 /// The channel a field path ends with, spelled as an export header would say
-/// it: `malt.v` and `malt.value` both flatten to `value`.
+/// it: `diameter.v` and `diameter.value` both flatten to `value`.
 fn channel_of(field: &str) -> Option<&'static str> {
     let tail = field.rsplit('.').next()?;
     // A path with no dot has no channel, and a cell path's tail is its channel
@@ -259,8 +294,8 @@ fn channel_of(field: &str) -> Option<&'static str> {
     }
 }
 
-/// The quantity a field path names, without its channel or its index. `malt.v`
-/// and `malt` are the same quantity; `mashing.wort[77]` is `mashing`.
+/// The quantity a field path names, without its channel or its index. `diameter.v`
+/// and `diameter` are the same quantity; `preheating.tension[77]` is `preheating`.
 pub(crate) fn stem(field: &str) -> &str {
     let head = field.split('[').next().unwrap_or(field);
     head.split('.').next().unwrap_or(head)

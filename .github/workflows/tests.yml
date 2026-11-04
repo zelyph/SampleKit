@@ -44,7 +44,9 @@ jobs:
         run: |
           python -m venv .venv
           if [[ "$RUNNER_OS" == "Windows" ]]; then bin=.venv/Scripts; else bin=.venv/bin; fi
-          "$bin/python" -m pip install maturin pytest mypy
+          # PyYAML: the migration tool reads 0.x files with it, as the
+          # release's build of samplekit-migrate.pyz does.
+          "$bin/python" -m pip install maturin pytest mypy pyyaml
           "$bin/maturin" develop --release
       - name: cargo test
         run: cargo test --locked --no-fail-fast

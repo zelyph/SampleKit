@@ -65,8 +65,8 @@ pub enum Change {
 
 /// The declared derivations of one sample, in both directions.
 ///
-/// Declaration is natural forwards ("abv depends on og and fg");
-/// invalidation traverses backwards ("og changed — who cares?"). Deriving one
+/// Declaration is natural forwards ("modulus depends on radius and notch");
+/// invalidation traverses backwards ("radius changed — who cares?"). Deriving one
 /// from the other on each change is O(edges) per invalidation, which is the
 /// wrong cost for the operation that runs most often.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -153,7 +153,7 @@ impl DependencyGraph {
 
     /// The path of a cycle reachable from `start`, closing back on it.
     ///
-    /// Reported as `plato → haze → rating → plato`: a message saying
+    /// Reported as `ductility → roughness → rating → ductility`: a message saying
     /// only "cycle detected" sends the author to read every declaration they
     /// wrote; the path sends them to the one that is wrong.
     fn cycle_through(&self, start: &Node) -> Option<Vec<Node>> {

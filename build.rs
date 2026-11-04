@@ -1,4 +1,4 @@
-//! Embeds the home-brewing demo, `examples/brewing/`, for the start page to
+//! Embeds the demo, the tensile test of `examples/tensile/`, for the start page to
 //! write into a folder the user names: the demo of the version installed, with
 //! neither Python nor the network.
 //!
@@ -17,13 +17,13 @@ const LEFT_BY_RUNS: [&str; 4] = [".samplekit", "__pycache__", ".venv", "out"];
 
 fn main() {
     let root = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
-    let demo = root.join("examples").join("brewing");
+    let demo = root.join("examples").join("tensile");
     // A folder: cargo reruns this when anything under it changes.
     println!("cargo:rerun-if-changed={}", demo.display());
     // No demo, no binary: one without it would offer a demo it cannot write.
     // tools/regenerate-demo.sh cannot answer this, since it builds the binary.
     let missing = format!(
-        "{} is missing or empty: it is committed, and `git checkout -- examples/brewing` \
+        "{} is missing or empty: it is committed, and `git checkout -- examples/tensile` \
          brings it back",
         demo.display()
     );
@@ -51,7 +51,7 @@ fn main() {
         let _ = writeln!(table, "    ({name:?}, DEMO_{index}),");
     }
     let generated = format!(
-        "{blobs}\n/// The demo, `examples/brewing/`, as the binary was built with it: each\n\
+        "{blobs}\n/// The demo, `examples/tensile/`, as the binary was built with it: each\n\
          /// file's path under the demo's folder, `/`-separated, and its bytes.\n\
          pub static DEMO_FILES: &[(&str, &[u8])] = &[\n{table}];\n"
     );

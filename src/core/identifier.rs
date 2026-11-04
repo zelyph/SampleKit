@@ -167,7 +167,7 @@ impl Identifier {
 /// What the name would be with its offending characters replaced.
 ///
 /// The suggestion is what turns a refusal into an instruction: an author told
-/// only "invalid character" tries `sample-malt` after `sample.malt` and gets
+/// only "invalid character" tries `sample-diameter` after `sample.diameter` and gets
 /// the same unhelpful answer twice.
 fn suggestion(name: &str) -> String {
     let repaired: String = name
@@ -204,10 +204,10 @@ impl fmt::Display for IdentifierError {
                 position,
             } => {
                 let meaning = match character {
-                    '.' => "'.' separates a name from its channel, as in malt.u",
+                    '.' => "'.' separates a name from its channel, as in width.u",
                     _ => {
                         "'[' and ']' delimit a column's index value, as in \
-                          fermentation.gravity[3]"
+                          ageing.hardness[3]"
                     }
                 };
                 write!(
@@ -227,7 +227,7 @@ impl fmt::Display for IdentifierError {
             } => write!(
                 f,
                 "'{name}' contains ',' at character {}, and ',' separates names in a \
-                 list, as in -c og,fg: one name is expected here",
+                 list, as in -c radius,notch: one name is expected here",
                 position + 1
             ),
             // A quote belongs to the shell, never to a field.
@@ -238,7 +238,7 @@ impl fmt::Display for IdentifierError {
             } => write!(
                 f,
                 "'{name}' contains a quote: a field is written without quotes, which only the \
-                 shell needs, as -c 'fermentation.gravity[3]'"
+                 shell needs, as -c 'ageing.hardness[3]'"
             ),
             // Cannot say what the character means — a hyphen means nothing — so
             // it states the rule instead.
@@ -281,8 +281,8 @@ impl<'de> Deserialize<'de> for Identifier {
 /// The nearest of a set of candidates, or nothing when nothing is close.
 ///
 /// Levenshtein distance, offered only within **a third of the written name's
-/// length**: `plto` suggests `plato`, and `carbonation_level` suggests nothing
-/// among `temperature, ph, srm, wort`. A suggestion that is not nearly
+/// length**: `plto` suggests `ductility`, and `nitridation_level` suggests nothing
+/// among `temperature, ph, hrc, tension`. A suggestion that is not nearly
 /// right sends the reader somewhere else, which is worse than none.
 ///
 /// It lives here because three modules had written it independently — two with
@@ -300,7 +300,9 @@ pub fn nearest<'a>(written: &str, candidates: impl IntoIterator<Item = &'a str>)
         .map(|(_, candidate)| candidate.to_string())
 }
 
-/// Levenshtein, by `strsim`, which clap already builds for its own suggestions.
+/// Levenshtein with a transposition as one edit, by `strsim`, which clap
+/// already builds for its own suggestions: `stlye` is one slip from `style`,
+/// and plain Levenshtein counted two and suggested nothing.
 pub fn edit_distance(left: &str, right: &str) -> usize {
-    strsim::levenshtein(left, right)
+    strsim::osa_distance(left, right)
 }

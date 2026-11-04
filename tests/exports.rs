@@ -20,15 +20,15 @@ impl Scratch {
         Scratch(path)
     }
 
-    /// A sample with a malt (value and uncertainty) and an optional plato.
-    fn sample(&self, file: &str, name: &str, malt: f64, plato: Option<f64>) -> PathBuf {
+    /// A sample with a diameter (value and uncertainty) and an optional ductility.
+    fn sample(&self, file: &str, name: &str, diameter: f64, ductility: Option<f64>) -> PathBuf {
         let mut body = format!("---\nschema_version: 1\nname: {name}\n");
         body.push_str(&format!(
-            "properties:\n  malt: {{v: {malt}, u: 0.05, unit: g}}\n"
+            "properties:\n  diameter: {{v: {diameter}, u: 0.05, unit: g}}\n"
         ));
-        match plato {
-            Some(plato) => body.push_str(&format!("  plato: {{v: {plato}}}\n")),
-            None => body.push_str("  plato: {}\n"),
+        match ductility {
+            Some(ductility) => body.push_str(&format!("  ductility: {{v: {ductility}}}\n")),
+            None => body.push_str("  ductility: {}\n"),
         }
         body.push_str("---\nnote\n");
         let path = self.0.join(file);
@@ -55,8 +55,8 @@ schema_version = 1
 [profile.transport]
 columns = [
   {field = "name"},
-  {field = "malt", label = "Malt (g)"},
-  {field = "plato.v", header = "brix"},
+  {field = "diameter", label = "Diameter (g)"},
+  {field = "ductility.v", header = "porosity"},
 ]
 
 [export.transport]
@@ -83,7 +83,7 @@ fn project(name: &str) -> (Scratch, project_config::ProjectConfig, list::SampleL
 
 fn csv(name: &str) -> (Scratch, String) {
     let (scratch, config, collection) = project(name);
-    let target = config.export("transport").unwrap();
+    let target = config.table_export("transport").unwrap();
     let profile = config.profile("transport").unwrap();
     let dataset = exports::run(target, profile, &collection).unwrap();
     (scratch, formats::serialize(&dataset, Format::Csv).unwrap())
@@ -103,13 +103,13 @@ fn row_order_matches_the_profile() {
 fn headers_rename_only_the_output() {
     // A label is the terminal's; the file takes the field or the header.
     let (_scratch, out) = csv("headers");
-    // `brix_value` and not `brix`: a declared header is the stem, always, which
+    // `porosity_value` and not `porosity`: a declared header is the stem, always, which
     // is what keeps a column's name independent of how it was asked for.
     assert_eq!(
         out.lines().next().unwrap(),
-        "name,malt_value [g],malt_uncertainty [g],brix_value"
+        "name,diameter_value [g],diameter_uncertainty [g],porosity_value"
     );
-    assert!(!out.contains("Malt (g)"), "{out}");
+    assert!(!out.contains("Diameter (g)"), "{out}");
 }
 
 /// The screen showed `12.22` and the file held `12.219999999999999`: the rule
@@ -124,21 +124,21 @@ fn a_declared_precision_reaches_the_file() {
     fs::write(
         scratch.0.join("a.md"),
         "---\nschema_version: 1\nname: A\nproperties:\n  \
-         malt: {v: 12.219999999999999, u: 0.05, unit: g}\n  \
-         plato: {v: 0.30000000000000004}\n---\n",
+         diameter: {v: 12.219999999999999, u: 0.05, unit: g}\n  \
+         ductility: {v: 0.30000000000000004}\n---\n",
     )
     .unwrap();
     let config = scratch.config(
         "schema_version = 1\n\n\
-         [property.malt]\nunit = \"g\"\nprecision = \".2f\"\n\n\
+         [property.diameter]\nunit = \"g\"\nprecision = \".2f\"\n\n\
          [profile.transport]\ncolumns = [\n  \
          {field = \"name\"},\n  \
-         {field = \"malt\"},\n  \
-         {field = \"plato.v\", precision = \".1f\"},\n]\n\n\
+         {field = \"diameter\"},\n  \
+         {field = \"ductility.v\", precision = \".1f\"},\n]\n\n\
          [export.transport]\nprofile = \"transport\"\nformat = \"csv\"\noutput = \"out/t.csv\"\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
-    let target = config.export("transport").unwrap();
+    let target = config.table_export("transport").unwrap();
     let profile = config.profile("transport").unwrap();
     let dataset =
         exports::run_within(target, profile, &collection, Some(&config), &collection).unwrap();
@@ -153,11 +153,11 @@ fn a_declared_precision_reaches_the_file() {
     // formula produced, which is what `numbers-round-trip-exactly` rests on.
     let bare = scratch.config(
         "schema_version = 1\n\n\
-         [profile.transport]\ncolumns = [{field = \"name\"}, {field = \"malt\"}]\n\n\
+         [profile.transport]\ncolumns = [{field = \"name\"}, {field = \"diameter\"}]\n\n\
          [export.transport]\nprofile = \"transport\"\nformat = \"csv\"\noutput = \"out/t.csv\"\n",
     );
     let untouched = exports::run_within(
-        bare.export("transport").unwrap(),
+        bare.table_export("transport").unwrap(),
         bare.profile("transport").unwrap(),
         &collection,
         Some(&bare),
@@ -182,19 +182,24 @@ fn a_quantity_is_one_whatever_the_selection_holds() {
     scratch.sample("a.md", "A", 12.5, Some(2.8));
     fs::write(
         scratch.0.join("b.md"),
-        "---\nschema_version: 1\nname: B\nmaltster: kim\n---\nnote\n",
+        "---\nschema_version: 1\nname: B\nmachinist: kim\n---\nnote\n",
     )
     .unwrap();
     let config = scratch.config(
         "schema_version = 1\n\
-         [profile.p]\ncolumns = [{field = \"name\"}, {field = \"maltster\"}, {field = \"malt\"}]\n\
+         [profile.p]\ncolumns = [{field = \"name\"}, {field = \"machinist\"}, {field = \"diameter\"}]\n\
          [export.e]\nprofile = \"p\"\nformat = \"csv\"\noutput = \"o.csv\"\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
-    let expected = ["name", "maltster", "malt_value [g]", "malt_uncertainty [g]"];
+    let expected = [
+        "name",
+        "machinist",
+        "diameter_value [g]",
+        "diameter_uncertainty [g]",
+    ];
     let headers = |selection: &list::SampleList| {
         let dataset = exports::run_within(
-            config.export("e").unwrap(),
+            config.table_export("e").unwrap(),
             config.profile("p").unwrap(),
             selection,
             Some(&config),
@@ -211,7 +216,7 @@ fn a_quantity_is_one_whatever_the_selection_holds() {
     let everything = headers(&collection);
     assert_eq!(everything, expected.join(","));
     // No sample at all; then only B, which holds neither quantity and is the
-    // one sample holding `maltster`; then only A, which lacks `maltster`.
+    // one sample holding `machinist`; then only A, which lacks `machinist`.
     for kept in ["NOBODY", "B", "A"] {
         let selection = collection.filter_by(|sample| sample.name() == Some(kept));
         assert_eq!(headers(&selection), everything, "selection {kept}");
@@ -223,17 +228,17 @@ fn a_channel_exports_one_column() {
     let scratch = Scratch::new("channel");
     scratch.sample("a.md", "A", 12.5, Some(2.8));
     let config = scratch.config(
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt.v\"}, {field = \"malt.u\"}]\n\
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter.v\"}, {field = \"diameter.u\"}]\n\
          [export.e]\nprofile = \"p\"\nformat = \"csv\"\noutput = \"o.csv\"\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let dataset = exports::run(
-        config.export("e").unwrap(),
+        config.table_export("e").unwrap(),
         config.profile("p").unwrap(),
         &collection,
     )
     .unwrap();
-    assert_eq!(dataset.headers, ["malt_value", "malt_uncertainty"]);
+    assert_eq!(dataset.headers, ["diameter_value", "diameter_uncertainty"]);
     assert_eq!(dataset.rows[0].len(), 2);
 }
 
@@ -253,7 +258,7 @@ fn a_missing_uncertainty_leaves_an_empty_field() {
 fn absent_values_are_emitted_consistently() {
     // Empty in CSV and TSV, `null` in JSON, from the same dataset.
     let (_scratch, config, collection) = project("absent");
-    let target = config.export("transport").unwrap();
+    let target = config.table_export("transport").unwrap();
     let profile = config.profile("transport").unwrap();
     let dataset = exports::run(target, profile, &collection).unwrap();
     assert!(
@@ -264,7 +269,7 @@ fn absent_values_are_emitted_consistently() {
     assert!(
         formats::serialize(&dataset, Format::Json)
             .unwrap()
-            .contains("\"brix_value\": null")
+            .contains("\"porosity_value\": null")
     );
 }
 
@@ -273,10 +278,20 @@ fn filename_and_path_columns_are_optional() {
     let (_scratch, config, collection) = project("located");
     let profile = config.profile("transport").unwrap();
 
-    let plain = exports::run(config.export("transport").unwrap(), profile, &collection).unwrap();
+    let plain = exports::run(
+        config.table_export("transport").unwrap(),
+        profile,
+        &collection,
+    )
+    .unwrap();
     assert_eq!(plain.headers[0], "name");
 
-    let located = exports::run(config.export("located").unwrap(), profile, &collection).unwrap();
+    let located = exports::run(
+        config.table_export("located").unwrap(),
+        profile,
+        &collection,
+    )
+    .unwrap();
     assert_eq!(located.headers[0], "filename");
     assert_eq!(located.headers[1], "path");
     let out = formats::serialize(&located, Format::Csv).unwrap();
@@ -289,13 +304,18 @@ fn the_same_profile_prints_and_exports_alike() {
     // shape of a quantity differs — one cell at a terminal, two in a file.
     let (_scratch, config, collection) = project("alike");
     let profile = config.profile("transport").unwrap();
-    let dataset = exports::run(config.export("transport").unwrap(), profile, &collection).unwrap();
+    let dataset = exports::run(
+        config.table_export("transport").unwrap(),
+        profile,
+        &collection,
+    )
+    .unwrap();
     let terminal: Vec<String> = profile
         .columns()
         .iter()
         .map(|column| profile.label_for(column).to_string())
         .collect();
-    assert_eq!(terminal, ["name", "Malt (g)", "plato.v"]);
+    assert_eq!(terminal, ["name", "Diameter (g)", "ductility.v"]);
     // Three columns on screen, four in the file, same three quantities.
     assert_eq!(dataset.headers.len(), 4);
 }
@@ -307,14 +327,117 @@ fn a_templated_column_reaches_the_file() {
     let scratch = Scratch::new("template");
     scratch.sample("a.md", "A", 12.5, Some(2.8));
     let config = scratch.config(
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt\", template = \"x\"}]\n\
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter\", template = \"x\"}]\n\
          [export.e]\nprofile = \"p\"\nformat = \"csv\"\noutput = \"o.csv\"\n",
     );
     let profile = config.profile("p").unwrap();
     assert_eq!(profile.columns()[0].template.as_deref(), Some("x"));
     let collection = list::from_directory(&scratch.0).unwrap();
-    let dataset = exports::run(config.export("e").unwrap(), profile, &collection).unwrap();
-    assert_eq!(dataset.headers, ["malt_value", "malt_uncertainty"]);
+    let dataset = exports::run(config.table_export("e").unwrap(), profile, &collection).unwrap();
+    assert_eq!(dataset.headers, ["diameter_value", "diameter_uncertainty"]);
+}
+
+#[test]
+fn a_template_writes_its_text_in_csv_and_tsv_and_numbers_in_json() {
+    // A LaTeX table read by `csvsimple` is a declaration: the template's text
+    // is what a delimited file writes, while JSON keeps its numbers for
+    // programs.
+    let scratch = Scratch::new("template-written");
+    scratch.sample("a.md", "A", 12.5, Some(2.8));
+    scratch.sample("b.md", "B", 7.25, None);
+    let config = scratch.config(
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"name\"}, {field = \"diameter\", header = \"Diameter\", \
+         template = \"\\\\num{{value:.1f} \\\\pm {uncertainty:.2f}} {unit}\"}, {field = \"ductility\"}]\n\
+         [export.e]\nprofile = \"p\"\nformat = \"csv\"\noutput = \"o.csv\"\n",
+    );
+    let profile = config.profile("p").unwrap();
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let dataset = exports::run(config.table_export("e").unwrap(), profile, &collection).unwrap();
+    let csv = formats::serialize(&dataset, Format::Csv).unwrap();
+    assert_eq!(
+        csv,
+        "name,Diameter,ductility_value,ductility_uncertainty\n\
+         A,\\num{12.5 \\pm 0.05} g,2.8,\n\
+         B,\\num{7.3 \\pm 0.05} g,,\n"
+    );
+    let tsv = formats::serialize(&dataset, Format::Tsv).unwrap();
+    assert!(tsv.starts_with("name\tDiameter\tductility_value"), "{tsv}");
+    let json = formats::serialize(&dataset, Format::Json).unwrap();
+    assert!(json.contains("12.5") && !json.contains("num{"), "{json}");
+}
+
+#[test]
+fn a_data_export_spells_units_as_the_files_do() {
+    // `plain` is the screen's form: written into a file, a program reading it
+    // back found `°C` where the files write `degC`, and a change of display
+    // changed every export.
+    let scratch = Scratch::new("units-as-written");
+    fs::write(
+        scratch.0.join("a.md"),
+        "---\nschema_version: 1\nname: A\nproperties:\n  temperature: {v: 20.5, unit: degC}\n---\n",
+    )
+    .unwrap();
+    let config = scratch.config(
+        "schema_version = 1\n[unit.\"degC\"]\nplain = \"°C\"\n\
+         [profile.p]\ncolumns = [{field = \"temperature\"}]\n\
+         [export.e]\nprofile = \"p\"\nformat = \"csv\"\noutput = \"o.csv\"\n",
+    );
+    let profile = config.profile("p").unwrap();
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let mut target = config.table_export("e").unwrap().clone();
+    let dataset = exports::run(&target, profile, &collection).unwrap();
+    let csv = formats::serialize(&dataset, Format::Csv).unwrap();
+    assert!(csv.starts_with("temperature_value [degC]"), "{csv}");
+    let json = formats::serialize(&dataset, Format::Json).unwrap();
+    assert!(json.contains("\"degC\"") && !json.contains('°'), "{json}");
+    // Asked for, the plain form: a spreadsheet's headers in Unicode.
+    target.style = Some("plain".to_string());
+    let dataset = exports::run(&target, profile, &collection).unwrap();
+    let csv = formats::serialize(&dataset, Format::Csv).unwrap();
+    assert!(csv.starts_with("temperature_value [°C]"), "{csv}");
+    // A style naming nothing is refused as the file loads, not written plain.
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"temperature\"}]\n\
+         [export.e]\nprofile = \"p\"\nformat = \"csv\"\noutput = \"o.csv\"\nstyle = \"nope\"\n",
+    )
+    .unwrap();
+    let refused = project_config::load(&scratch.0.join(".samplekitrc")).unwrap_err();
+    assert!(
+        refused.to_string().contains("[export.e] style"),
+        "{refused}"
+    );
+}
+
+#[test]
+fn a_template_is_spelled_in_the_render_style_and_data_as_the_files() {
+    // A template is written for a document, as the terminal writes it: in
+    // `[render] style`. A column of data keeps the files' spelling.
+    let scratch = Scratch::new("template-styled");
+    fs::write(
+        scratch.0.join("a.md"),
+        "---\nschema_version: 1\nname: A\nproperties:\n  temperature: {v: 20.5, unit: degC}\n---\n",
+    )
+    .unwrap();
+    let declared = "[unit.\"degC\"]\nplain = \"°C\"\nlatex = \"\\\\si{\\\\degreeCelsius}\"\n\
+         [style.latex]\n\
+         [profile.p]\ncolumns = [{field = \"temperature\", template = \"{value} {unit}\", \
+         header = \"t\"}, {field = \"temperature.v\"}]\n\
+         [export.e]\nprofile = \"p\"\nformat = \"csv\"\noutput = \"o.csv\"\n";
+    let written = |render: &str| {
+        let config = scratch.config(&format!("schema_version = 1\n{render}{declared}"));
+        let collection = list::from_directory(&scratch.0).unwrap();
+        let profile = config.profile("p").unwrap();
+        let dataset =
+            exports::run(config.table_export("e").unwrap(), profile, &collection).unwrap();
+        formats::serialize(&dataset, Format::Csv).unwrap()
+    };
+    assert_eq!(written(""), "t,temperature_value [degC]\n20.5 °C,20.5\n");
+    assert_eq!(
+        written("[render]\nstyle = \"latex\"\n"),
+        "t,temperature_value [degC]\n\
+         20.5 \\si{\\degreeCelsius},20.5\n"
+    );
 }
 
 // -------------------------------------------------------------- stability
@@ -328,7 +451,7 @@ fn regeneration_is_byte_identical() {
     for _ in 0..4 {
         let collection = list::from_directory(&scratch.0).unwrap();
         let dataset = exports::run(
-            config.export("transport").unwrap(),
+            config.table_export("transport").unwrap(),
             config.profile("transport").unwrap(),
             &collection,
         )
@@ -345,7 +468,7 @@ fn unknown_profile_suggests_nearest() {
     let path = scratch.0.join(".samplekitrc");
     fs::write(
         &path,
-        "schema_version = 1\n[profile.transport]\ncolumns = [{field = \"malt\"}]\n\
+        "schema_version = 1\n[profile.transport]\ncolumns = [{field = \"diameter\"}]\n\
          [export.e]\nprofile = \"transprot\"\nformat = \"csv\"\noutput = \"o.csv\"\n",
     )
     .unwrap();
@@ -385,7 +508,7 @@ fn an_export_never_replaces_a_sample() {
     let scratch = Scratch::new("over-a-sample");
     let path = scratch.sample("BR-01.md", "BR-01", 12.487, None);
     let before = fs::read_to_string(&path).unwrap();
-    let error = exports::write("malt\n12.487\n", &path, true).unwrap_err();
+    let error = exports::write("diameter\n12.487\n", &path, true).unwrap_err();
     assert!(matches!(error, ExportError::IsASample { .. }), "{error:?}");
     assert_eq!(fs::read_to_string(&path).unwrap(), before);
     // And a preview knows it before `--write` does.
@@ -410,14 +533,14 @@ fn an_export_never_replaces_a_file_opening_with_frontmatter() {
     ] {
         let path = scratch.0.join(name);
         fs::write(&path, text).unwrap();
-        let error = exports::write("malt\n12.487\n", &path, true).unwrap_err();
+        let error = exports::write("diameter\n12.487\n", &path, true).unwrap_err();
         assert!(matches!(error, ExportError::IsASample { .. }), "{error:?}");
         assert_eq!(fs::read_to_string(&path).unwrap(), text);
     }
     // A table the export wrote before is replaced.
     let table = scratch.0.join("table.md");
-    fs::write(&table, "| malt |\n| --- |\n").unwrap();
-    exports::write("| malt |\n| --- |\n| 1 |\n", &table, true).unwrap();
+    fs::write(&table, "| diameter |\n| --- |\n").unwrap();
+    exports::write("| diameter |\n| --- |\n| 1 |\n", &table, true).unwrap();
 }
 
 #[test]
@@ -433,6 +556,30 @@ fn an_export_never_replaces_a_read_only_file() {
     let error = exports::write("new", &path, true).unwrap_err();
     assert!(matches!(error, ExportError::ReadOnly { .. }), "{error:?}");
     assert_eq!(fs::read_to_string(&path).unwrap(), "kept");
+}
+
+#[test]
+fn an_export_never_replaces_a_file_the_project_runs_on() {
+    // `-o .samplekitrc` or `-o .samplekit/history/HEAD` replaced what the
+    // project runs on with a table, and the history could then be mended only
+    // by hand.
+    let scratch = Scratch::new("project-file");
+    let rc = scratch.0.join(".samplekitrc");
+    fs::write(&rc, "schema_version = 1\n").unwrap();
+    let error = exports::write("new", &rc, true).unwrap_err();
+    assert!(
+        matches!(error, ExportError::ProjectFile { .. }),
+        "{error:?}"
+    );
+    assert_eq!(fs::read_to_string(&rc).unwrap(), "schema_version = 1\n");
+    fs::create_dir_all(scratch.0.join(".samplekit")).unwrap();
+    let inside = scratch.0.join(".samplekit/table.csv");
+    let error = exports::write("new", &inside, true).unwrap_err();
+    assert!(
+        matches!(error, ExportError::ProjectFile { .. }),
+        "{error:?}"
+    );
+    assert!(!inside.exists());
 }
 
 #[test]
@@ -499,7 +646,7 @@ fn a_missing_directory_is_made() {
 fn an_export_records_each_column_unit_and_quantity() {
     let (_scratch, config, collection) = project("units");
     let dataset = exports::run(
-        config.export("transport").unwrap(),
+        config.table_export("transport").unwrap(),
         config.profile("transport").unwrap(),
         &collection,
     )
@@ -509,7 +656,7 @@ fn an_export_records_each_column_unit_and_quantity() {
         [None, Some("g".to_string()), Some("g".to_string()), None]
     );
     assert_eq!(dataset.quantities.len(), 1);
-    assert_eq!(dataset.quantities[0].key, "malt");
+    assert_eq!(dataset.quantities[0].key, "diameter");
     assert_eq!(dataset.quantities[0].value, 1);
 }
 
@@ -535,7 +682,7 @@ fn a_profile_that_groups_writes_each_groups_rows_together() {
     // One table carrying its groups — the field grouped by first, each group's
     // rows together, in the values' order or, sorted, in the sort's.
     let scratch = Scratch::new("grouped");
-    for (file, name, status, malt) in [
+    for (file, name, status, diameter) in [
         ("a.md", "A", "approved", 12.5),
         ("b.md", "B", "rejected", 9.0),
         ("c.md", "C", "approved", 10.0),
@@ -544,14 +691,14 @@ fn a_profile_that_groups_writes_each_groups_rows_together() {
             scratch.0.join(file),
             format!(
                 "---\nschema_version: 1\nname: {name}\nstatus: {status}\n\
-                 properties:\n  malt: {{v: {malt}, unit: g}}\n---\n"
+                 properties:\n  diameter: {{v: {diameter}, unit: g}}\n---\n"
             ),
         )
         .unwrap();
     }
     let config = scratch.config(
         "schema_version = 1\n\
-         [profile.by_status]\ncolumns = [{field = \"name\"}, {field = \"malt\"}]\n\
+         [profile.by_status]\ncolumns = [{field = \"name\"}, {field = \"diameter\"}]\n\
          group = [\"status\"]\n\
          [profile.flat]\ncolumns = [{field = \"name\"}]\n",
     );
@@ -569,11 +716,11 @@ fn a_profile_that_groups_writes_each_groups_rows_together() {
         .iter()
         .map(|column| column.field.as_str())
         .collect();
-    assert_eq!(fields, ["status", "name", "malt"]);
+    assert_eq!(fields, ["status", "name", "diameter"]);
     assert_eq!(names(&rows), ["A", "C", "B"]);
-    // Sorted by malt, the rejected B is the lightest, and its group leads.
+    // Sorted by diameter, the rejected B is the lightest, and its group leads.
     let lightest_first = collection
-        .sorted(&samplekit::query::ordering::parse_spec(&["malt".to_string()]).unwrap())
+        .sorted(&samplekit::query::ordering::parse_spec(&["diameter".to_string()]).unwrap())
         .unwrap();
     let (_, rows) = exports::grouped(profile, &lightest_first, list::GroupOrder::Listed).unwrap();
     assert_eq!(names(&rows), ["B", "C", "A"]);
@@ -582,4 +729,136 @@ fn a_profile_that_groups_writes_each_groups_rows_together() {
     let (same, rows) = exports::grouped(flat, &collection, list::GroupOrder::Values).unwrap();
     assert_eq!(&same, flat);
     assert_eq!(names(&rows), names(&collection));
+}
+
+#[test]
+fn a_text_format_writes_a_latex_table() {
+    // A table for a paper was a CSV read back by a LaTeX package: declared as
+    // a text format, it is written as it goes in the paper.
+    let scratch = Scratch::new("latex");
+    scratch.sample("a.md", "A_1", 12.5, Some(2.8));
+    scratch.sample("b.md", "B", 7.25, None);
+    let config = scratch.config(
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"name\", label = \"Piece\"}, \
+         {field = \"diameter\", label = \"Diameter\"}, {field = \"ductility\"}]\n\
+         [export.e]\nprofile = \"p\"\nstyle = \"latex\"\noutput = \"t.tex\"\n",
+    );
+    let profile = config.profile("p").unwrap();
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let target = config.table_export("e").unwrap();
+    assert!(matches!(&target.format, Format::Text(text) if text.name == "latex"));
+    let dataset = exports::run(target, profile, &collection).unwrap();
+    let text = formats::serialize(&dataset, target.format.clone()).unwrap();
+    assert_eq!(
+        text,
+        "\\begin{tabular}{lrr}\n\\toprule\n\
+         Piece & Diameter (g) & ductility \\\\\n\\midrule\n\
+         A\\_1 & $12.5 \\pm 0.05$ & 2.8 \\\\\n\
+         B & $7.25 \\pm 0.05$ & -- \\\\\n\
+         \\bottomrule\n\\end{tabular}\n"
+    );
+}
+
+#[test]
+fn a_declared_text_format_replaces_the_given_one_and_marks_groups() {
+    let scratch = Scratch::new("text-declared");
+    for (file, name, status, diameter) in [
+        ("a.md", "A", "approved", 12.5),
+        ("b.md", "B", "rejected", 9.0),
+        ("c.md", "C", "approved", 10.0),
+    ] {
+        fs::write(
+            scratch.0.join(file),
+            format!(
+                "---\nschema_version: 1\nname: {name}\nstatus: {status}\n\
+                 properties:\n  diameter: {{v: {diameter}, u: 0.5, unit: g}}\n---\n"
+            ),
+        )
+        .unwrap();
+    }
+    let config = scratch.config(
+        "schema_version = 1\n\
+         [profile.p]\ncolumns = [{field = \"name\"}, {field = \"diameter\"}]\ngroup = [\"status\"]\n\
+         [style.latex]\nproperty = false\nbetween_groups = \"\\\\hline\"\n\
+         [style.list]\nbefore = \"<{align}>\"\nrow = \"- {cells};\"\ncells = \", \"\n\
+         header = false\n\
+         [export.e]\nprofile = \"p\"\nstyle = \"latex\"\noutput = \"t.tex\"\n\
+         [export.f]\nprofile = \"p\"\nstyle = \"list\"\noutput = \"t.list\"\n",
+    );
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let (grouped, rows) = exports::grouped(
+        config.profile("p").unwrap(),
+        &collection,
+        list::GroupOrder::Values,
+    )
+    .unwrap();
+    let latex = config.table_export("e").unwrap();
+    let dataset = exports::run(latex, &grouped, &rows).unwrap();
+    let text = formats::serialize(&dataset, latex.format.clone()).unwrap();
+    // Two columns for a quantity where `property = false`, and the declared
+    // line where the group changes.
+    assert!(
+        text.contains("status & name & diameter (g) & diameter (g) \\\\"),
+        "{text}"
+    );
+    assert!(text.contains(" \\\\\n\\hline\nrejected & B & "), "{text}");
+    assert_eq!(text.matches("\\hline").count(), 1, "{text}");
+    // A declared format joins a quantity's two numbers unless it says not.
+    let list = config.table_export("f").unwrap();
+    let dataset = exports::run(list, &grouped, &rows).unwrap();
+    let text = formats::serialize(&dataset, list.format.clone()).unwrap();
+    assert_eq!(
+        text,
+        "<llr>\n- approved, A, 12.5 ± 0.5;\n- approved, C, 10 ± 0.5;\n- rejected, B, 9 ± 0.5;\n"
+    );
+}
+
+#[test]
+fn an_unknown_format_is_refused_with_the_known_ones() {
+    let scratch = Scratch::new("text-unknown");
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"name\"}]\n\
+         [export.e]\nprofile = \"p\"\nformat = \"latx\"\noutput = \"t.tex\"\n",
+    )
+    .unwrap();
+    let error = project_config::load(&scratch.0.join(".samplekitrc"))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("latx"), "{error}");
+    assert!(error.contains("csv, tsv, json"), "{error}");
+    // A style's name as the format is said with its form now.
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"name\"}]\n\
+         [export.e]\nprofile = \"p\"\nformat = \"latex\"\noutput = \"t.tex\"\n",
+    )
+    .unwrap();
+    let error = project_config::load(&scratch.0.join(".samplekitrc"))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("written style = \"latex\" now"), "{error}");
+}
+
+#[test]
+#[cfg(unix)]
+fn the_interpreters_own_environment_is_refused_through_links() {
+    // `[model] python` names a venv whose interpreter is pyenv's or conda's:
+    // a link set in the project into that environment is refused as it is.
+    let scratch = Scratch::new("real-environment");
+    let real = scratch.0.join("real");
+    fs::create_dir_all(real.join("bin")).unwrap();
+    fs::create_dir_all(real.join("lib")).unwrap();
+    fs::write(real.join("bin/python3"), "").unwrap();
+    let project = scratch.0.join("p");
+    fs::create_dir_all(project.join(".venv/bin")).unwrap();
+    std::os::unix::fs::symlink(real.join("bin/python3"), project.join(".venv/bin/python")).unwrap();
+    fs::write(
+        project.join(".samplekitrc"),
+        "schema_version = 1\n[model]\npython = \".venv\"\n",
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(real.join("lib"), project.join("envlink")).unwrap();
+    assert!(exports::refusal(&project.join("envlink/x.csv")).is_some());
+    assert!(exports::refusal(&project.join("out.csv")).is_none());
 }

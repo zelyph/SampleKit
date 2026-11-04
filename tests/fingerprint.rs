@@ -57,22 +57,22 @@ impl Compute for Constant {
     }
 }
 
-/// malt and volume entered, plato computed from both.
+/// diameter and volume entered, ductility computed from both.
 fn derived_sample() -> Sample {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     sample
         .set_property(id("volume"), Property::stored(number(4.1)))
         .unwrap();
     sample
-        .set_property(id("plato"), Property::computed(Constant::new(3.0488)))
+        .set_property(id("ductility"), Property::computed(Constant::new(3.0488)))
         .unwrap();
     sample
         .declare_dependencies(
-            &id("plato"),
-            &[Node::Named(id("malt")), Node::Named(id("volume"))],
+            &id("ductility"),
+            &[Node::Named(id("diameter")), Node::Named(id("volume"))],
         )
         .unwrap();
     sample
@@ -232,7 +232,7 @@ fn becoming_an_input_adds_a_fingerprint() {
     stamp(&mut sample);
     assert!(
         sample
-            .property(&id("malt"))
+            .property(&id("diameter"))
             .unwrap()
             .records()
             .fingerprint
@@ -240,7 +240,7 @@ fn becoming_an_input_adds_a_fingerprint() {
     );
     assert!(
         sample
-            .property(&id("malt"))
+            .property(&id("diameter"))
             .unwrap()
             .records()
             .computed
@@ -249,12 +249,12 @@ fn becoming_an_input_adds_a_fingerprint() {
 
     let mut alone = Sample::new();
     alone
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     assert!(
         fingerprint::record(&alone)
             .unwrap()
-            .get(&id("malt"))
+            .get(&id("diameter"))
             .is_none()
     );
 }
@@ -264,12 +264,12 @@ fn recording_an_unknown_input_fails() {
     // Rather than recording a shorter dependency list.
     let mut sample = Sample::new();
     sample
-        .set_property(id("plato"), Property::computed(Constant::new(3.0)))
+        .set_property(id("ductility"), Property::computed(Constant::new(3.0)))
         .unwrap();
     sample
-        .declare_dependencies(&id("plato"), &[Node::Named(id("vanished"))])
+        .declare_dependencies(&id("ductility"), &[Node::Named(id("vanished"))])
         .unwrap();
-    let _ = sample.property(&id("plato")).unwrap().value();
+    let _ = sample.property(&id("ductility")).unwrap().value();
     let error = fingerprint::record(&sample).unwrap_err();
     assert!(error.to_string().contains("vanished"), "{error}");
 }
@@ -282,7 +282,7 @@ fn recording_after_materialize_records_no_derivation() {
     let records = fingerprint::record(&sample).unwrap();
     assert!(
         records
-            .get(&id("plato"))
+            .get(&id("ductility"))
             .and_then(|r| r.computed.as_ref())
             .is_none(),
         "the derivation survived materialize, which it cannot"
@@ -298,13 +298,13 @@ fn an_attribute_input_is_recorded_as_its_value() {
         .unwrap();
     sample
         .declare_dependencies(
-            &id("plato"),
-            &[Node::Named(id("malt")), Node::Named(id("batch"))],
+            &id("ductility"),
+            &[Node::Named(id("diameter")), Node::Named(id("batch"))],
         )
         .unwrap();
     stamp(&mut sample);
     let computed = sample
-        .property(&id("plato"))
+        .property(&id("ductility"))
         .unwrap()
         .records()
         .computed
@@ -314,7 +314,7 @@ fn an_attribute_input_is_recorded_as_its_value() {
         InputRecord::Literal(Value::integer(7))
     );
     assert!(matches!(
-        computed[&InputName::Named(id("malt"))],
+        computed[&InputName::Named(id("diameter"))],
         InputRecord::Digest(_)
     ));
 }
@@ -330,13 +330,13 @@ fn a_list_attribute_input_is_recorded_and_checked_by_digest() {
         .unwrap();
     sample
         .declare_dependencies(
-            &id("plato"),
-            &[Node::Named(id("malt")), Node::Named(id("temperatures"))],
+            &id("ductility"),
+            &[Node::Named(id("diameter")), Node::Named(id("temperatures"))],
         )
         .unwrap();
     stamp(&mut sample);
     let computed = sample
-        .property(&id("plato"))
+        .property(&id("ductility"))
         .unwrap()
         .records()
         .computed
@@ -345,7 +345,7 @@ fn a_list_attribute_input_is_recorded_and_checked_by_digest() {
         computed[&InputName::Named(id("temperatures"))],
         InputRecord::Digest(_)
     ));
-    assert_eq!(freshness(&sample, "plato"), Freshness::Current);
+    assert_eq!(freshness(&sample, "ductility"), Freshness::Current);
 
     sample
         .set_attribute(
@@ -354,7 +354,7 @@ fn a_list_attribute_input_is_recorded_and_checked_by_digest() {
         )
         .unwrap();
     assert!(matches!(
-        freshness(&sample, "plato"),
+        freshness(&sample, "ductility"),
         Freshness::Stale { changed, .. }
             if changed == vec![InputName::Named(id("temperatures"))]
     ));
@@ -366,7 +366,7 @@ fn a_list_attribute_input_is_recorded_and_checked_by_digest() {
 fn unchanged_inputs_report_current() {
     let mut sample = derived_sample();
     stamp(&mut sample);
-    assert_eq!(freshness(&sample, "plato"), Freshness::Current);
+    assert_eq!(freshness(&sample, "ductility"), Freshness::Current);
 }
 
 #[test]
@@ -374,7 +374,7 @@ fn a_property_without_a_computed_record_is_source() {
     // An entered value is never reported as anything else.
     let mut sample = derived_sample();
     stamp(&mut sample);
-    assert_eq!(freshness(&sample, "malt"), Freshness::Source);
+    assert_eq!(freshness(&sample, "diameter"), Freshness::Source);
 }
 
 #[test]
@@ -400,13 +400,13 @@ fn changed_input_is_named() {
     let mut sample = derived_sample();
     stamp(&mut sample);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
     assert_eq!(
-        freshness(&sample, "plato"),
+        freshness(&sample, "ductility"),
         Freshness::Stale {
-            changed: vec![InputName::Named(id("malt"))],
+            changed: vec![InputName::Named(id("diameter"))],
             upstream: Vec::new()
         }
     );
@@ -417,14 +417,14 @@ fn two_changed_inputs_are_both_named() {
     let mut sample = derived_sample();
     stamp(&mut sample);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
     sample
         .property(&id("volume"))
         .unwrap()
         .set_value(number(1.0));
-    let Freshness::Stale { changed, .. } = freshness(&sample, "plato") else {
+    let Freshness::Stale { changed, .. } = freshness(&sample, "ductility") else {
         panic!("expected stale");
     };
     assert_eq!(changed.len(), 2);
@@ -435,25 +435,25 @@ fn stale_input_propagates_upstream() {
     // A derived input that is stale makes its dependent stale, in `upstream`.
     let mut sample = derived_sample();
     sample
-        .set_property(id("haze"), Property::computed(Constant::new(0.2)))
+        .set_property(id("roughness"), Property::computed(Constant::new(0.2)))
         .unwrap();
     sample
-        .declare_dependencies(&id("haze"), &[Node::Named(id("plato"))])
+        .declare_dependencies(&id("roughness"), &[Node::Named(id("ductility"))])
         .unwrap();
     stamp(&mut sample);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
     assert!(matches!(
-        freshness(&sample, "plato"),
+        freshness(&sample, "ductility"),
         Freshness::Stale { .. }
     ));
     assert_eq!(
-        freshness(&sample, "haze"),
+        freshness(&sample, "roughness"),
         Freshness::Stale {
             changed: Vec::new(),
-            upstream: vec![InputName::Named(id("plato"))]
+            upstream: vec![InputName::Named(id("ductility"))]
         }
     );
 }
@@ -462,7 +462,7 @@ fn stale_input_propagates_upstream() {
 fn deep_chain_propagates() {
     // Three levels: a root change reaches the far end.
     let mut sample = derived_sample();
-    for (name, from) in [("haze", "plato"), ("rating", "haze")] {
+    for (name, from) in [("roughness", "ductility"), ("rating", "roughness")] {
         sample
             .set_property(id(name), Property::computed(Constant::new(1.0)))
             .unwrap();
@@ -473,7 +473,7 @@ fn deep_chain_propagates() {
     stamp(&mut sample);
     assert_eq!(freshness(&sample, "rating"), Freshness::Current);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
     assert!(matches!(
@@ -497,7 +497,7 @@ fn sibling_branch_is_untouched() {
         .unwrap();
     stamp(&mut sample);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
     assert_eq!(freshness(&sample, "shade"), Freshness::Current);
@@ -510,7 +510,7 @@ fn missing_input_is_broken_not_stale() {
     stamp(&mut sample);
     sample.remove_property(&id("volume")).unwrap();
     assert_eq!(
-        freshness(&sample, "plato"),
+        freshness(&sample, "ductility"),
         Freshness::Broken {
             missing: vec![InputName::Named(id("volume"))],
             changed_kind: Vec::new()
@@ -523,11 +523,11 @@ fn an_edited_value_is_reported_as_edited() {
     // Inputs unchanged, value changed: not Current.
     let mut sample = derived_sample();
     stamp(&mut sample);
-    let plato = sample.property(&id("plato")).unwrap();
-    let records = plato.records();
-    plato.set_value(number(99.0));
-    plato.set_records(records);
-    assert_eq!(freshness(&sample, "plato"), Freshness::Edited);
+    let ductility = sample.property(&id("ductility")).unwrap();
+    let records = ductility.records();
+    ductility.set_value(number(99.0));
+    ductility.set_records(records);
+    assert_eq!(freshness(&sample, "ductility"), Freshness::Edited);
 }
 
 #[test]
@@ -535,12 +535,15 @@ fn edited_outranks_stale() {
     // Both conditions true reports Edited.
     let mut sample = derived_sample();
     stamp(&mut sample);
-    let plato = sample.property(&id("plato")).unwrap();
-    let records = plato.records();
-    plato.set_value(number(99.0));
-    plato.set_records(records);
-    sample.property(&id("malt")).unwrap().set_value(number(1.0));
-    assert_eq!(freshness(&sample, "plato"), Freshness::Edited);
+    let ductility = sample.property(&id("ductility")).unwrap();
+    let records = ductility.records();
+    ductility.set_value(number(99.0));
+    ductility.set_records(records);
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(1.0));
+    assert_eq!(freshness(&sample, "ductility"), Freshness::Edited);
 }
 
 #[test]
@@ -549,14 +552,14 @@ fn a_presentation_edit_is_not_an_edit() {
     let mut sample = derived_sample();
     stamp(&mut sample);
     sample
-        .property(&id("plato"))
+        .property(&id("ductility"))
         .unwrap()
         .set_presentation(Presentation {
             unit: Some("g/dl".to_string()),
             symbol: None,
             precision: None,
         });
-    assert_eq!(freshness(&sample, "plato"), Freshness::Current);
+    assert_eq!(freshness(&sample, "ductility"), Freshness::Current);
 }
 
 #[test]
@@ -566,12 +569,12 @@ fn a_stale_fingerprint_on_an_input_is_not_a_defect() {
     let mut sample = derived_sample();
     stamp(&mut sample);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
-    assert_eq!(freshness(&sample, "malt"), Freshness::Source);
+    assert_eq!(freshness(&sample, "diameter"), Freshness::Source);
     assert!(matches!(
-        freshness(&sample, "plato"),
+        freshness(&sample, "ductility"),
         Freshness::Stale { .. }
     ));
 }
@@ -583,8 +586,8 @@ fn check_recomputes_and_does_not_compare_records() {
     let mut sample = derived_sample();
     stamp(&mut sample);
     // Corrupt the input's own fingerprint without touching its value.
-    let malt = sample.property(&id("malt")).unwrap();
-    malt.set_records(Records {
+    let diameter = sample.property(&id("diameter")).unwrap();
+    diameter.set_records(Records {
         produced: None,
         channel_only: Default::default(),
         statistics: None,
@@ -593,7 +596,7 @@ fn check_recomputes_and_does_not_compare_records() {
         computed: None,
     });
     assert_eq!(
-        freshness(&sample, "plato"),
+        freshness(&sample, "ductility"),
         Freshness::Current,
         "the check read the input's stored hash instead of its content"
     );
@@ -637,7 +640,7 @@ fn a_cycle_leaves_the_rest_of_the_sample_judged() {
     // `check` answers `Unjudged` with the path for the values on the cycle and
     // below it, and judges an unrelated value as in a sound file.
     let mut sample = Sample::new();
-    for name in ["a", "b", "below", "malt", "plato"] {
+    for name in ["a", "b", "below", "diameter", "ductility"] {
         sample
             .set_property(id(name), Property::stored(number(1.0)))
             .unwrap();
@@ -647,10 +650,10 @@ fn a_cycle_leaves_the_rest_of_the_sample_judged() {
         ("a", "b", recorded()),
         ("b", "a", recorded()),
         ("below", "a", recorded()),
-        // What `plato` read is no longer what `malt` holds.
+        // What `ductility` read is no longer what `diameter` holds.
         (
-            "plato",
-            "malt",
+            "ductility",
+            "diameter",
             InputRecord::Digest(fingerprint::of(&shape(Some(number(2.0))))),
         ),
     ] {
@@ -673,11 +676,11 @@ fn a_cycle_leaves_the_rest_of_the_sample_judged() {
         };
         assert!(reason.contains('\u{2192}'), "{reason}");
     }
-    assert_eq!(report[&id("malt")], Freshness::Source);
+    assert_eq!(report[&id("diameter")], Freshness::Source);
     assert!(
-        matches!(&report[&id("plato")], Freshness::Stale { changed, .. } if changed.len() == 1),
+        matches!(&report[&id("ductility")], Freshness::Stale { changed, .. } if changed.len() == 1),
         "{:?}",
-        report[&id("plato")]
+        report[&id("ductility")]
     );
 }
 
@@ -689,10 +692,10 @@ fn check_needs_no_model() {
     sample.materialize().unwrap();
     let shape = schema::from_sample(&sample).unwrap();
     let reloaded = schema::into_sample(shape).unwrap();
-    assert!(!reloaded.property(&id("plato")).unwrap().is_computed());
+    assert!(!reloaded.property(&id("ductility")).unwrap().is_computed());
     let report = fingerprint::check(&reloaded).unwrap();
-    assert_eq!(report[&id("plato")], Freshness::Current);
-    assert_eq!(report[&id("malt")], Freshness::Source);
+    assert_eq!(report[&id("ductility")], Freshness::Current);
+    assert_eq!(report[&id("diameter")], Freshness::Source);
 }
 
 #[test]
@@ -714,36 +717,42 @@ fn assigning_a_value_clears_the_records() {
     let mut sample = derived_sample();
     stamp(&mut sample);
     sample
-        .property(&id("plato"))
+        .property(&id("ductility"))
         .unwrap()
         .set_value(number(99.0));
-    assert!(sample.property(&id("plato")).unwrap().records().is_empty());
-    assert_eq!(freshness(&sample, "plato"), Freshness::Source);
+    assert!(
+        sample
+            .property(&id("ductility"))
+            .unwrap()
+            .records()
+            .is_empty()
+    );
+    assert_eq!(freshness(&sample, "ductility"), Freshness::Source);
 }
 
 // ----------------------------------------------------------------- cells
 
-/// `clarity = 1 / wort`, over the cask's foam.
-struct OverGravity;
+/// `rigidity = 1 / tension`, over the slab's wear.
+struct OverHardness;
 
-impl ComputeRow for OverGravity {
+impl ComputeRow for OverHardness {
     fn compute(
         &self,
         row: &RowView,
         scope: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
-        let wort = match row.cell(&id("wort")).unwrap().value().unwrap() {
+        let tension = match row.cell(&id("tension")).unwrap().value().unwrap() {
             Value::Number(n) => n,
             other => panic!("{other:?}"),
         };
-        let foam = match scope.read(&id("foam"))? {
+        let wear = match scope.read(&id("wear"))? {
             Value::Number(n) => n,
             other => panic!("{other:?}"),
         };
         let mut out = IndexMap::new();
         out.insert(
-            id("clarity"),
-            CellOutput::Value(number(1.0 / (wort * foam))),
+            id("rigidity"),
+            CellOutput::Value(number(1.0 / (tension * wear))),
         );
         Ok(out)
     }
@@ -752,20 +761,20 @@ impl ComputeRow for OverGravity {
 fn table_sample() -> Sample {
     let mut sample = Sample::new();
     sample
-        .set_property(id("foam"), Property::stored(number(2.0)))
+        .set_property(id("wear"), Property::stored(number(2.0)))
         .unwrap();
-    let columns: IndexMap<Identifier, ColumnMeta> = ["temperature", "wort", "clarity"]
+    let columns: IndexMap<Identifier, ColumnMeta> = ["temperature", "tension", "rigidity"]
         .iter()
         .map(|name| (id(name), ColumnMeta::default()))
         .collect();
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns,
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort")), InputName::Named(id("foam"))],
-            formula: Rc::new(OverGravity),
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension")), InputName::Named(id("wear"))],
+            formula: Rc::new(OverHardness),
         }],
     )
     .unwrap();
@@ -773,11 +782,11 @@ fn table_sample() -> Sample {
         table
             .add_row(vec![
                 (id("temperature"), Property::stored(number(t))),
-                (id("wort"), Property::stored(number(r))),
+                (id("tension"), Property::stored(number(r))),
             ])
             .unwrap();
     }
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     sample.materialize().unwrap();
     sample
 }
@@ -786,26 +795,26 @@ fn table_sample() -> Sample {
 fn a_cell_records_the_values_of_its_own_row() {
     // Two cells of one derived column carry two different records.
     let sample = table_sample();
-    let records = fingerprint::record_table(&sample, &id("mashing")).unwrap();
-    let clarity = &records[&id("clarity")];
-    assert_eq!(clarity.len(), 2);
-    let first = clarity[0].1.computed.as_ref().unwrap();
-    let second = clarity[1].1.computed.as_ref().unwrap();
+    let records = fingerprint::record_table(&sample, &id("preheating")).unwrap();
+    let rigidity = &records[&id("rigidity")];
+    assert_eq!(rigidity.len(), 2);
+    let first = rigidity[0].1.computed.as_ref().unwrap();
+    let second = rigidity[1].1.computed.as_ref().unwrap();
     assert_ne!(
-        first[&InputName::Cell(id("wort"))],
-        second[&InputName::Cell(id("wort"))]
+        first[&InputName::Cell(id("tension"))],
+        second[&InputName::Cell(id("tension"))]
     );
 }
 
 #[test]
 fn a_cell_records_a_sample_input_too() {
-    // The cask's foam appears in both, with one digest.
+    // The slab's wear appears in both, with one digest.
     let sample = table_sample();
-    let records = fingerprint::record_table(&sample, &id("mashing")).unwrap();
-    let clarity = &records[&id("clarity")];
-    let first = clarity[0].1.computed.as_ref().unwrap();
-    let second = clarity[1].1.computed.as_ref().unwrap();
-    let key = InputName::Named(id("foam"));
+    let records = fingerprint::record_table(&sample, &id("preheating")).unwrap();
+    let rigidity = &records[&id("rigidity")];
+    let first = rigidity[0].1.computed.as_ref().unwrap();
+    let second = rigidity[1].1.computed.as_ref().unwrap();
+    let key = InputName::Named(id("wear"));
     assert_eq!(first[&key], second[&key]);
     assert!(matches!(first[&key], InputRecord::Digest(_)));
 }
@@ -815,24 +824,29 @@ fn a_cell_is_checked_on_its_own_row() {
     // Correcting one row's input reports that row's derived cell stale and
     // leaves the other Current.
     let mut sample = table_sample();
-    let records = fingerprint::record_table(&sample, &id("mashing")).unwrap();
+    let records = fingerprint::record_table(&sample, &id("preheating")).unwrap();
     // Apply the records by rebuilding the table with them on its cells.
     let rebuilt = {
-        let held = sample.table(&id("mashing")).unwrap();
+        let held = sample.table(&id("preheating")).unwrap();
         let columns: IndexMap<Identifier, ColumnMeta> = held
             .column_names()
             .into_iter()
             .map(|name| (name.clone(), ColumnMeta::default()))
             .collect();
-        let mut table =
-            Table::new(id("mashing"), vec![id("temperature")], columns, Vec::new()).unwrap();
+        let mut table = Table::new(
+            id("preheating"),
+            vec![id("temperature")],
+            columns,
+            Vec::new(),
+        )
+        .unwrap();
         for (at, row) in held.rows().enumerate() {
             let mut cells = Vec::new();
-            for column in ["temperature", "wort", "clarity"] {
+            for column in ["temperature", "tension", "rigidity"] {
                 let cell = row.cell(&id(column)).unwrap();
                 let mut built = Property::stored(cell.value().unwrap());
-                if column == "clarity" {
-                    built.set_records(records[&id("clarity")][at].1.clone());
+                if column == "rigidity" {
+                    built.set_records(records[&id("rigidity")][at].1.clone());
                 }
                 cells.push((id(column), built));
             }
@@ -840,22 +854,23 @@ fn a_cell_is_checked_on_its_own_row() {
         }
         table
     };
-    sample.remove_table(&id("mashing")).unwrap();
-    sample.set_table(id("mashing"), rebuilt).unwrap();
+    sample.remove_table(&id("preheating")).unwrap();
+    sample.set_table(id("preheating"), rebuilt).unwrap();
 
     assert_eq!(
-        fingerprint::check_cell(&sample, &id("mashing"), &id("clarity"), &[number(65.0)]).unwrap(),
+        fingerprint::check_cell(&sample, &id("preheating"), &id("rigidity"), &[number(65.0)])
+            .unwrap(),
         Freshness::Current
     );
 
-    // Change the 65 K wort, and only that row's clarity moves.
-    let held = sample.table(&id("mashing")).unwrap();
+    // Change the 65 K tension, and only that row's rigidity moves.
+    let held = sample.table(&id("preheating")).unwrap();
     let mut rows: Vec<Vec<(Identifier, Property)>> = Vec::new();
     for (at, row) in held.rows().enumerate() {
         let mut cells = Vec::new();
-        for column in ["temperature", "wort", "clarity"] {
+        for column in ["temperature", "tension", "rigidity"] {
             let cell = row.cell(&id(column)).unwrap();
-            let mut built = if at == 0 && column == "wort" {
+            let mut built = if at == 0 && column == "tension" {
                 Property::stored(number(99.0))
             } else {
                 Property::stored(cell.value().unwrap())
@@ -870,23 +885,30 @@ fn a_cell_is_checked_on_its_own_row() {
         .into_iter()
         .map(|name| (name.clone(), ColumnMeta::default()))
         .collect();
-    let mut table =
-        Table::new(id("mashing"), vec![id("temperature")], columns, Vec::new()).unwrap();
+    let mut table = Table::new(
+        id("preheating"),
+        vec![id("temperature")],
+        columns,
+        Vec::new(),
+    )
+    .unwrap();
     for cells in rows {
         table.add_row(cells).unwrap();
     }
-    sample.remove_table(&id("mashing")).unwrap();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.remove_table(&id("preheating")).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
 
     assert!(matches!(
-        fingerprint::check_cell(&sample, &id("mashing"), &id("clarity"), &[number(65.0)]).unwrap(),
+        fingerprint::check_cell(&sample, &id("preheating"), &id("rigidity"), &[number(65.0)])
+            .unwrap(),
         Freshness::Stale { .. }
     ));
     assert_eq!(
-        fingerprint::check_cell(&sample, &id("mashing"), &id("clarity"), &[number(78.5)]).unwrap(),
+        fingerprint::check_cell(&sample, &id("preheating"), &id("rigidity"), &[number(78.5)])
+            .unwrap(),
         Freshness::Current
     );
-    let report = fingerprint::check_table(&sample, &id("mashing")).unwrap();
+    let report = fingerprint::check_table(&sample, &id("preheating")).unwrap();
     assert_eq!(report[&id("temperature")][0].1, Freshness::Source);
 }
 
@@ -906,7 +928,7 @@ fn a_sample_wide_check_composes_properties_and_cells() {
             fingerprint::check_table(&sample, table).unwrap()
         );
     }
-    assert!(!standing.tables[&id("mashing")].is_empty());
+    assert!(!standing.tables[&id("preheating")].is_empty());
 }
 
 #[test]
@@ -914,23 +936,28 @@ fn a_column_digest_covers_every_cell() {
     // Changing one cell changes the digest a column derivation recorded.
     let sample = table_sample();
     let before = {
-        let held = sample.table(&id("mashing")).unwrap();
-        fingerprint::of_column(&held.column(&id("wort")).unwrap()).unwrap()
+        let held = sample.table(&id("preheating")).unwrap();
+        fingerprint::of_column(&held.column(&id("tension")).unwrap()).unwrap()
     };
     let mut moved = table_sample();
     {
-        let held = moved.table(&id("mashing")).unwrap();
+        let held = moved.table(&id("preheating")).unwrap();
         let columns: IndexMap<Identifier, ColumnMeta> = held
             .column_names()
             .into_iter()
             .map(|name| (name.clone(), ColumnMeta::default()))
             .collect();
-        let mut table =
-            Table::new(id("mashing"), vec![id("temperature")], columns, Vec::new()).unwrap();
+        let mut table = Table::new(
+            id("preheating"),
+            vec![id("temperature")],
+            columns,
+            Vec::new(),
+        )
+        .unwrap();
         for (at, row) in held.rows().enumerate() {
             let mut cells = Vec::new();
-            for column in ["temperature", "wort", "clarity"] {
-                let value = if at == 0 && column == "wort" {
+            for column in ["temperature", "tension", "rigidity"] {
+                let value = if at == 0 && column == "tension" {
                     number(99.0)
                 } else {
                     row.cell(&id(column)).unwrap().value().unwrap()
@@ -939,12 +966,12 @@ fn a_column_digest_covers_every_cell() {
             }
             table.add_row(cells).unwrap();
         }
-        moved.remove_table(&id("mashing")).unwrap();
-        moved.set_table(id("mashing"), table).unwrap();
+        moved.remove_table(&id("preheating")).unwrap();
+        moved.set_table(id("preheating"), table).unwrap();
     }
     let after = {
-        let held = moved.table(&id("mashing")).unwrap();
-        fingerprint::of_column(&held.column(&id("wort")).unwrap()).unwrap()
+        let held = moved.table(&id("preheating")).unwrap();
+        fingerprint::of_column(&held.column(&id("tension")).unwrap()).unwrap()
     };
     assert_ne!(before, after);
 }
@@ -990,7 +1017,7 @@ fn stale_record() -> samplekit::core::property::Records {
         computed: Some(
             [
                 (
-                    InputName::Named(id("malt")),
+                    InputName::Named(id("diameter")),
                     InputRecord::Digest(Fingerprint::new("000000000000")),
                 ),
                 (
@@ -1004,17 +1031,17 @@ fn stale_record() -> samplekit::core::property::Records {
     }
 }
 
-/// `derived_sample`'s declaration, filled by a file whose plato carries a
+/// `derived_sample`'s declaration, filled by a file whose ductility carries a
 /// stale record.
-fn filled_plato() -> Sample {
+fn filled_ductility() -> Sample {
     let mut file = Sample::new();
-    file.set_property(id("malt"), Property::stored(number(12.5)))
+    file.set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     file.set_property(id("volume"), Property::stored(number(4.1)))
         .unwrap();
-    let mut plato = Property::stored(number(3.0488));
-    plato.set_records(stale_record());
-    file.set_property(id("plato"), plato).unwrap();
+    let mut ductility = Property::stored(number(3.0488));
+    ductility.set_records(stale_record());
+    file.set_property(id("ductility"), ductility).unwrap();
     let mut sample = derived_sample();
     sample.fill_from(file).unwrap();
     sample
@@ -1031,7 +1058,7 @@ impl samplekit::core::table::ComputeRow for FillCell {
     ) -> Result<indexmap::IndexMap<Identifier, samplekit::core::table::CellOutput>, ComputeError>
     {
         Ok([(
-            id("clarity"),
+            id("rigidity"),
             samplekit::core::table::CellOutput::Value(number(1.0)),
         )]
         .into_iter()
@@ -1044,13 +1071,13 @@ fn a_value_a_file_supplied_keeps_its_record() {
     use samplekit::core::property::InputName;
     use samplekit::core::table::{ColumnMeta, Derivation, Table};
 
-    let sample = filled_plato();
+    let sample = filled_ductility();
     let records = fingerprint::record(&sample).unwrap();
-    assert_eq!(records[&id("plato")], stale_record());
+    assert_eq!(records[&id("ductility")], stale_record());
 
     // And a derived cell the file supplied, likewise.
     let columns = || {
-        ["temperature", "wort", "clarity"]
+        ["temperature", "tension", "rigidity"]
             .iter()
             .map(|name| (id(name), ColumnMeta::default()))
             .collect::<indexmap::IndexMap<_, _>>()
@@ -1058,14 +1085,14 @@ fn a_value_a_file_supplied_keeps_its_record() {
     let mut model = Sample::new();
     model
         .set_table(
-            id("mashing"),
+            id("preheating"),
             Table::new(
-                id("mashing"),
+                id("preheating"),
                 vec![id("temperature")],
                 columns(),
                 vec![Derivation::Row {
-                    outputs: vec![id("clarity")],
-                    inputs: vec![InputName::Cell(id("wort"))],
+                    outputs: vec![id("rigidity")],
+                    inputs: vec![InputName::Cell(id("tension"))],
                     formula: Rc::new(FillCell),
                 }],
             )
@@ -1073,7 +1100,7 @@ fn a_value_a_file_supplied_keeps_its_record() {
         )
         .unwrap();
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns(),
         Vec::new(),
@@ -1084,51 +1111,51 @@ fn a_value_a_file_supplied_keeps_its_record() {
     table
         .add_row(vec![
             (id("temperature"), Property::stored(number(65.0))),
-            (id("wort"), Property::stored(number(12.5))),
-            (id("clarity"), cell),
+            (id("tension"), Property::stored(number(12.5))),
+            (id("rigidity"), cell),
         ])
         .unwrap();
     let mut file = Sample::new();
-    file.set_table(id("mashing"), table).unwrap();
+    file.set_table(id("preheating"), table).unwrap();
     model.fill_from(file).unwrap();
-    let cells = fingerprint::record_table(&model, &id("mashing")).unwrap();
-    assert_eq!(cells[&id("clarity")][0].1, stale_record());
+    let cells = fingerprint::record_table(&model, &id("preheating")).unwrap();
+    assert_eq!(cells[&id("rigidity")][0].1, stale_record());
 }
 
 #[test]
 fn a_recomputed_value_is_restamped() {
     use samplekit::core::property::{Fingerprint, InputName, InputRecord};
-    let sample = filled_plato();
-    let plato = sample.property(&id("plato")).unwrap();
-    plato.invalidate();
-    let _ = plato.value().unwrap();
+    let sample = filled_ductility();
+    let ductility = sample.property(&id("ductility")).unwrap();
+    ductility.invalidate();
+    let _ = ductility.value().unwrap();
     let records = fingerprint::record(&sample).unwrap();
-    let computed = records[&id("plato")].computed.clone().unwrap();
+    let computed = records[&id("ductility")].computed.clone().unwrap();
     assert_ne!(
-        computed[&InputName::Named(id("malt"))],
+        computed[&InputName::Named(id("diameter"))],
         InputRecord::Digest(Fingerprint::new("000000000000"))
     );
 }
 
 // -------------------------------------------------------------- stamping
 
-/// malt and volume entered, plato computed from both, its runs counted.
-fn counted_plato() -> (Sample, Rc<Constant>) {
+/// diameter and volume entered, ductility computed from both, its runs counted.
+fn counted_ductility() -> (Sample, Rc<Constant>) {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     sample
         .set_property(id("volume"), Property::stored(number(4.1)))
         .unwrap();
     let formula = Constant::new(3.0488);
     sample
-        .set_property(id("plato"), Property::computed(formula.clone()))
+        .set_property(id("ductility"), Property::computed(formula.clone()))
         .unwrap();
     sample
         .declare_dependencies(
-            &id("plato"),
-            &[Node::Named(id("malt")), Node::Named(id("volume"))],
+            &id("ductility"),
+            &[Node::Named(id("diameter")), Node::Named(id("volume"))],
         )
         .unwrap();
     (sample, formula)
@@ -1136,71 +1163,71 @@ fn counted_plato() -> (Sample, Rc<Constant>) {
 
 #[test]
 fn stamping_records_a_value_computed_in_session() {
-    let (mut sample, _) = counted_plato();
-    sample.property(&id("plato")).unwrap().value().unwrap();
+    let (mut sample, _) = counted_ductility();
+    sample.property(&id("ductility")).unwrap().value().unwrap();
     assert!(fingerprint::stamp(&mut sample).unwrap().is_empty());
-    let records = sample.property(&id("plato")).unwrap().records();
+    let records = sample.property(&id("ductility")).unwrap().records();
     assert_eq!(records.computed.unwrap().len(), 2);
     assert!(records.fingerprint.is_some());
-    assert_eq!(freshness(&sample, "plato"), Freshness::Current);
+    assert_eq!(freshness(&sample, "ductility"), Freshness::Current);
 }
 
 #[test]
 fn a_stamped_value_goes_stale_when_its_input_changes() {
-    let (mut sample, formula) = counted_plato();
-    sample.property(&id("plato")).unwrap().value().unwrap();
+    let (mut sample, formula) = counted_ductility();
+    sample.property(&id("ductility")).unwrap().value().unwrap();
     fingerprint::stamp(&mut sample).unwrap();
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(20.0));
     assert!(matches!(
-        freshness(&sample, "plato"),
+        freshness(&sample, "ductility"),
         Freshness::Stale { .. }
     ));
-    assert!(fingerprint::is_stale(&sample, &id("plato")).unwrap());
+    assert!(fingerprint::is_stale(&sample, &id("ductility")).unwrap());
     assert!(fingerprint::stamp(&mut sample).unwrap().is_empty());
     assert_eq!(formula.calls.get(), 1);
 }
 
 #[test]
 fn a_value_overtaken_before_recording_cannot_be_stamped() {
-    let (mut sample, _) = counted_plato();
-    sample.property(&id("plato")).unwrap().value().unwrap();
+    let (mut sample, _) = counted_ductility();
+    sample.property(&id("ductility")).unwrap().value().unwrap();
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(20.0));
     assert_eq!(
         fingerprint::stamp(&mut sample).unwrap(),
-        vec!["plato".to_string()]
+        vec!["ductility".to_string()]
     );
-    let plato = sample.property(&id("plato")).unwrap();
-    assert!(plato.records().computed.is_none());
-    assert!(fingerprint::is_stale(&sample, &id("plato")).unwrap());
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert!(ductility.records().computed.is_none());
+    assert!(fingerprint::is_stale(&sample, &id("ductility")).unwrap());
 }
 
 #[test]
 fn a_recomputation_that_changed_nothing_is_confirmed_current() {
-    let (mut sample, formula) = counted_plato();
-    let plato = sample.property(&id("plato")).unwrap();
-    plato.value().unwrap();
+    let (mut sample, formula) = counted_ductility();
+    let ductility = sample.property(&id("ductility")).unwrap();
+    ductility.value().unwrap();
     fingerprint::stamp(&mut sample).unwrap();
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(12.5));
-    assert!(!plato.is_current());
+    assert!(!ductility.is_current());
     fingerprint::stamp(&mut sample).unwrap();
-    assert!(plato.is_current());
-    plato.value().unwrap();
+    assert!(ductility.is_current());
+    ductility.value().unwrap();
     assert_eq!(formula.calls.get(), 1);
 }
 
 #[test]
 fn a_value_never_computed_is_not_stale() {
-    let (sample, formula) = counted_plato();
-    assert!(!fingerprint::is_stale(&sample, &id("plato")).unwrap());
+    let (sample, formula) = counted_ductility();
+    assert!(!fingerprint::is_stale(&sample, &id("ductility")).unwrap());
     assert_eq!(formula.calls.get(), 0);
 }
 
@@ -1209,30 +1236,34 @@ fn an_unchanged_input_confirms_its_dependent_below_a_stale_upstream() {
     use samplekit::core::property::{Fingerprint, InputName, InputRecord, Records};
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     let vfi = Constant::new(7.25);
     sample
-        .set_property(id("grist"), Property::computed(Constant::new(25.0)))
+        .set_property(id("swarf"), Property::computed(Constant::new(25.0)))
         .unwrap();
     sample
-        .set_property(id("brix"), Property::computed(Constant::new(6.25)))
+        .set_property(id("porosity"), Property::computed(Constant::new(6.25)))
         .unwrap();
     sample
         .set_property(id("vfi"), Property::computed(vfi.clone()))
         .unwrap();
-    for (dependent, input) in [("grist", "malt"), ("brix", "grist"), ("vfi", "brix")] {
+    for (dependent, input) in [
+        ("swarf", "diameter"),
+        ("porosity", "swarf"),
+        ("vfi", "porosity"),
+    ] {
         sample
             .declare_dependencies(&id(dependent), &[Node::Named(id(input))])
             .unwrap();
     }
-    for name in ["grist", "brix", "vfi"] {
+    for name in ["swarf", "porosity", "vfi"] {
         sample.property(&id(name)).unwrap().value().unwrap();
     }
     fingerprint::stamp(&mut sample).unwrap();
 
-    // The grist's record no longer matches its malt, as a corrected file leaves it.
-    sample.property(&id("grist")).unwrap().set_records(Records {
+    // The swarf's record no longer matches its diameter, as a corrected file leaves it.
+    sample.property(&id("swarf")).unwrap().set_records(Records {
         produced: None,
         channel_only: Default::default(),
         statistics: None,
@@ -1240,17 +1271,17 @@ fn an_unchanged_input_confirms_its_dependent_below_a_stale_upstream() {
         fingerprint: None,
         computed: Some(
             [(
-                InputName::Named(id("malt")),
+                InputName::Named(id("diameter")),
                 InputRecord::Digest(Fingerprint::new("000000000000")),
             )]
             .into_iter()
             .collect(),
         ),
     });
-    // The plato is computed again, to the value it had.
-    let brix = sample.property(&id("brix")).unwrap();
-    brix.invalidate();
-    brix.value().unwrap();
+    // The ductility is computed again, to the value it had.
+    let porosity = sample.property(&id("porosity")).unwrap();
+    porosity.invalidate();
+    porosity.value().unwrap();
     fingerprint::stamp(&mut sample).unwrap();
 
     let below = sample.property(&id("vfi")).unwrap();
@@ -1262,18 +1293,22 @@ fn an_unchanged_input_confirms_its_dependent_below_a_stale_upstream() {
 
 // ------------------------------------------------------------- overrides
 
-/// malt entered; grist, brix and vfi computed, each from the last.
-fn dosed() -> Sample {
+/// diameter entered; swarf, porosity and vfi computed, each from the last.
+fn doped() -> Sample {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
-    for (name, value) in [("grist", 25.0), ("brix", 6.25), ("vfi", 7.25)] {
+    for (name, value) in [("swarf", 25.0), ("porosity", 6.25), ("vfi", 7.25)] {
         sample
             .set_property(id(name), Property::computed(Constant::new(value)))
             .unwrap();
     }
-    for (dependent, input) in [("grist", "malt"), ("brix", "grist"), ("vfi", "brix")] {
+    for (dependent, input) in [
+        ("swarf", "diameter"),
+        ("porosity", "swarf"),
+        ("vfi", "porosity"),
+    ] {
         sample
             .declare_dependencies(&id(dependent), &[Node::Named(id(input))])
             .unwrap();
@@ -1282,9 +1317,9 @@ fn dosed() -> Sample {
 }
 
 fn overridden_then_read(value: f64, reads: &[&str]) -> Sample {
-    let mut sample = dosed();
+    let mut sample = doped();
     sample
-        .property(&id("grist"))
+        .property(&id("swarf"))
         .unwrap()
         .set_value(number(value));
     for name in reads {
@@ -1297,24 +1332,24 @@ fn overridden_then_read(value: f64, reads: &[&str]) -> Sample {
 #[test]
 fn an_override_is_edited_and_not_stale() {
     // Never computed.
-    let sample = dosed();
+    let sample = doped();
     sample
-        .property(&id("grist"))
+        .property(&id("swarf"))
         .unwrap()
         .set_value(number(3.2));
-    assert!(matches!(freshness(&sample, "grist"), Freshness::Edited));
-    assert!(!fingerprint::is_stale(&sample, &id("grist")).unwrap());
+    assert!(matches!(freshness(&sample, "swarf"), Freshness::Edited));
+    assert!(!fingerprint::is_stale(&sample, &id("swarf")).unwrap());
 
     // Computed and recorded first.
-    let mut sample = dosed();
-    sample.property(&id("grist")).unwrap().value().unwrap();
+    let mut sample = doped();
+    sample.property(&id("swarf")).unwrap().value().unwrap();
     fingerprint::stamp(&mut sample).unwrap();
     sample
-        .property(&id("grist"))
+        .property(&id("swarf"))
         .unwrap()
         .set_value(number(3.2));
-    assert!(matches!(freshness(&sample, "grist"), Freshness::Edited));
-    assert!(!fingerprint::is_stale(&sample, &id("grist")).unwrap());
+    assert!(matches!(freshness(&sample, "swarf"), Freshness::Edited));
+    assert!(!fingerprint::is_stale(&sample, &id("swarf")).unwrap());
 
     // Marked in a record with no formula, as a file read alone has it.
     let mut loose = Sample::new();
@@ -1327,51 +1362,51 @@ fn an_override_is_edited_and_not_stale() {
         fingerprint: Some(Fingerprint::edited("7c01e2b3a9f4")),
         computed: None,
     });
-    loose.set_property(id("grist"), held).unwrap();
-    assert!(matches!(freshness(&loose, "grist"), Freshness::Edited));
+    loose.set_property(id("swarf"), held).unwrap();
+    assert!(matches!(freshness(&loose, "swarf"), Freshness::Edited));
 }
 
 #[test]
 fn an_overridden_input_is_recorded_with_its_mark() {
-    let sample = overridden_then_read(3.2, &["brix"]);
-    let grist = sample.property(&id("grist")).unwrap();
-    let current = fingerprint::of(&grist.peek(schema::property_as_is));
+    let sample = overridden_then_read(3.2, &["porosity"]);
+    let swarf = sample.property(&id("swarf")).unwrap();
+    let current = fingerprint::of(&swarf.peek(schema::property_as_is));
 
-    let records = sample.property(&id("brix")).unwrap().records();
+    let records = sample.property(&id("porosity")).unwrap().records();
     let InputRecord::Digest(recorded) =
-        &records.computed.as_ref().unwrap()[&InputName::Named(id("grist"))]
+        &records.computed.as_ref().unwrap()[&InputName::Named(id("swarf"))]
     else {
         panic!("a property input is a digest");
     };
     assert!(recorded.is_edited());
     assert!(recorded.same_digest(&current));
 
-    let own = grist.records().fingerprint.unwrap();
+    let own = swarf.records().fingerprint.unwrap();
     assert!(own.is_edited());
     assert!(own.same_digest(&current));
 }
 
 #[test]
 fn what_reads_an_override_is_not_stale_because_of_it() {
-    let sample = overridden_then_read(3.2, &["brix"]);
-    assert!(matches!(freshness(&sample, "brix"), Freshness::Current));
+    let sample = overridden_then_read(3.2, &["porosity"]);
+    assert!(matches!(freshness(&sample, "porosity"), Freshness::Current));
 
     // The override's own input moves: it holds, and nothing is stale.
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
-    assert!(matches!(freshness(&sample, "brix"), Freshness::Current));
-    assert!(!fingerprint::is_stale(&sample, &id("brix")).unwrap());
+    assert!(matches!(freshness(&sample, "porosity"), Freshness::Current));
+    assert!(!fingerprint::is_stale(&sample, &id("porosity")).unwrap());
 
     // The override is set again: what read it is stale, as changed.
     sample
-        .property(&id("grist"))
+        .property(&id("swarf"))
         .unwrap()
         .set_value(number(4.0));
-    match freshness(&sample, "brix") {
+    match freshness(&sample, "porosity") {
         Freshness::Stale { changed, upstream } => {
-            assert_eq!(changed, vec![InputName::Named(id("grist"))]);
+            assert_eq!(changed, vec![InputName::Named(id("swarf"))]);
             assert!(upstream.is_empty());
         }
         other => panic!("expected stale, got {other:?}"),
@@ -1380,28 +1415,28 @@ fn what_reads_an_override_is_not_stale_because_of_it() {
 
 #[test]
 fn edited_upstream_follows_the_records_through_a_chain() {
-    let sample = overridden_then_read(3.2, &["brix", "vfi"]);
+    let sample = overridden_then_read(3.2, &["porosity", "vfi"]);
     assert_eq!(
         fingerprint::edited_upstream(&sample, &id("vfi")),
-        vec![id("grist")]
+        vec![id("swarf")]
     );
     assert_eq!(
-        fingerprint::edited_upstream(&sample, &id("brix")),
-        vec![id("grist")]
+        fingerprint::edited_upstream(&sample, &id("porosity")),
+        vec![id("swarf")]
     );
     // Nothing past an override: its own record describes its formula.
-    assert!(fingerprint::edited_upstream(&sample, &id("grist")).is_empty());
-    assert!(fingerprint::edited_upstream(&sample, &id("malt")).is_empty());
+    assert!(fingerprint::edited_upstream(&sample, &id("swarf")).is_empty());
+    assert!(fingerprint::edited_upstream(&sample, &id("diameter")).is_empty());
 }
 
 #[test]
 fn a_marked_record_compares_by_its_digest() {
-    let mut sample = overridden_then_read(3.2, &["brix"]);
+    let mut sample = overridden_then_read(3.2, &["porosity"]);
     // The same content, no longer an override.
     sample
-        .set_property(id("grist"), Property::stored(number(3.2)))
+        .set_property(id("swarf"), Property::stored(number(3.2)))
         .unwrap();
-    assert!(matches!(freshness(&sample, "brix"), Freshness::Current));
+    assert!(matches!(freshness(&sample, "porosity"), Freshness::Current));
 }
 
 struct Doubling;
@@ -1422,16 +1457,16 @@ impl ComputeRow for Doubling {
 fn a_cell_resting_on_a_stale_value_is_stale() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     sample
-        .set_property(id("brix"), Property::computed(Constant::new(6.25)))
+        .set_property(id("porosity"), Property::computed(Constant::new(6.25)))
         .unwrap();
     sample
-        .declare_dependencies(&id("brix"), &[Node::Named(id("malt"))])
+        .declare_dependencies(&id("porosity"), &[Node::Named(id("diameter"))])
         .unwrap();
     let mut table = Table::new(
-        id("boil"),
+        id("soak"),
         vec![id("step")],
         ["step", "double"]
             .iter()
@@ -1439,7 +1474,7 @@ fn a_cell_resting_on_a_stale_value_is_stale() {
             .collect(),
         vec![Derivation::Row {
             outputs: vec![id("double")],
-            inputs: vec![InputName::Named(id("brix"))],
+            inputs: vec![InputName::Named(id("porosity"))],
             formula: Rc::new(Doubling),
         }],
     )
@@ -1447,76 +1482,76 @@ fn a_cell_resting_on_a_stale_value_is_stale() {
     table
         .add_row(vec![(id("step"), Property::stored(number(1.0)))])
         .unwrap();
-    sample.set_table(id("boil"), table).unwrap();
-    sample.property(&id("brix")).unwrap().value().unwrap();
-    sample.resolve_table(&id("boil")).unwrap();
+    sample.set_table(id("soak"), table).unwrap();
+    sample.property(&id("porosity")).unwrap().value().unwrap();
+    sample.resolve_table(&id("soak")).unwrap();
     fingerprint::stamp(&mut sample).unwrap();
     let index = vec![number(1.0)];
     assert!(matches!(
-        fingerprint::check_cell(&sample, &id("boil"), &id("double"), &index).unwrap(),
+        fingerprint::check_cell(&sample, &id("soak"), &id("double"), &index).unwrap(),
         Freshness::Current
     ));
 
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(13.0));
-    match fingerprint::check_cell(&sample, &id("boil"), &id("double"), &index).unwrap() {
+    match fingerprint::check_cell(&sample, &id("soak"), &id("double"), &index).unwrap() {
         Freshness::Stale { changed, upstream } => {
             assert!(changed.is_empty());
-            assert_eq!(upstream, vec![InputName::Named(id("brix"))]);
+            assert_eq!(upstream, vec![InputName::Named(id("porosity"))]);
         }
         other => panic!("expected stale, got {other:?}"),
     }
-    assert!(fingerprint::is_cell_stale(&sample, &id("boil"), &id("double"), &index).unwrap());
+    assert!(fingerprint::is_cell_stale(&sample, &id("soak"), &id("double"), &index).unwrap());
 }
 
 #[test]
 fn edited_upstream_follows_the_graph_before_anything_is_read() {
-    let sample = dosed();
+    let sample = doped();
     sample
-        .property(&id("grist"))
+        .property(&id("swarf"))
         .unwrap()
         .set_value(number(3.2));
     assert_eq!(
         fingerprint::edited_upstream(&sample, &id("vfi")),
-        vec![id("grist")]
+        vec![id("swarf")]
     );
     assert_eq!(
-        fingerprint::edited_upstream(&sample, &id("brix")),
-        vec![id("grist")]
+        fingerprint::edited_upstream(&sample, &id("porosity")),
+        vec![id("swarf")]
     );
-    assert!(fingerprint::edited_upstream(&sample, &id("grist")).is_empty());
+    assert!(fingerprint::edited_upstream(&sample, &id("swarf")).is_empty());
 }
 
 #[test]
 fn a_supplied_cell_without_a_record_is_not_given_one() {
     // Only what a formula wrote in this session is recorded.
     let columns = || {
-        ["temperature", "wort", "clarity"]
+        ["temperature", "tension", "rigidity"]
             .iter()
             .map(|name| (id(name), ColumnMeta::default()))
             .collect::<IndexMap<Identifier, ColumnMeta>>()
     };
     let mut declared = Sample::new();
     declared
-        .set_property(id("foam"), Property::stored(number(2.0)))
+        .set_property(id("wear"), Property::stored(number(2.0)))
         .unwrap();
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns(),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort")), InputName::Named(id("foam"))],
-            formula: Rc::new(OverGravity),
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension")), InputName::Named(id("wear"))],
+            formula: Rc::new(OverHardness),
         }],
     )
     .unwrap();
-    declared.set_table(id("mashing"), table).unwrap();
+    declared.set_table(id("preheating"), table).unwrap();
     let mut file = Sample::new();
     let mut supplied = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns(),
         Vec::new(),
@@ -1525,17 +1560,17 @@ fn a_supplied_cell_without_a_record_is_not_given_one() {
     supplied
         .add_row(vec![
             (id("temperature"), Property::stored(number(65.0))),
-            (id("wort"), Property::stored(number(12.5))),
-            (id("clarity"), Property::stored(number(99.0))),
+            (id("tension"), Property::stored(number(12.5))),
+            (id("rigidity"), Property::stored(number(99.0))),
         ])
         .unwrap();
-    file.set_table(id("mashing"), supplied).unwrap();
+    file.set_table(id("preheating"), supplied).unwrap();
     declared.fill_from(file).unwrap();
     let unrecordable = fingerprint::stamp(&mut declared).unwrap();
     assert!(unrecordable.is_empty(), "{unrecordable:?}");
     let at = samplekit::core::table::RowAddress::Index(vec![number(65.0)]);
-    let held = declared.table(&id("mashing")).unwrap();
-    let cell = held.at(&at, &id("clarity")).unwrap();
+    let held = declared.table(&id("preheating")).unwrap();
+    let cell = held.at(&at, &id("rigidity")).unwrap();
     assert!(cell.records().computed.is_none());
     assert_eq!(cell.value().unwrap(), number(99.0));
 }
@@ -1551,24 +1586,24 @@ fn a_value_without_its_record_is_not_stamped_edited() {
     // a record.
     let mut declared = derived_sample();
     let mut file = Sample::new();
-    file.set_property(id("malt"), Property::stored(number(12.5)))
+    file.set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     file.set_property(id("volume"), Property::stored(number(4.1)))
         .unwrap();
     // The value a formula owns, supplied by the file with no record of how it
     // came — what `load_into` holds as record missing.
-    file.set_property(id("plato"), Property::stored(number(3.0488)))
+    file.set_property(id("ductility"), Property::stored(number(3.0488)))
         .unwrap();
     declared.fill_from(file).unwrap();
     let held = declared
-        .property(&id("plato"))
+        .property(&id("ductility"))
         .unwrap()
         .hold_record_missing();
     assert!(held, "the value is held as record missing");
 
     fingerprint::stamp(&mut declared).unwrap();
 
-    let records = declared.property(&id("plato")).unwrap().records();
+    let records = declared.property(&id("ductility")).unwrap().records();
     assert!(
         records
             .fingerprint
@@ -1583,30 +1618,30 @@ fn a_value_without_its_record_is_not_stamped_edited() {
 fn a_derived_cell_without_its_record_is_record_missing() {
     // A value no record explains, in a column a model derives.
     let columns = || {
-        ["temperature", "wort", "clarity"]
+        ["temperature", "tension", "rigidity"]
             .iter()
             .map(|name| (id(name), ColumnMeta::default()))
             .collect::<IndexMap<Identifier, ColumnMeta>>()
     };
     let mut declared = Sample::new();
     declared
-        .set_property(id("foam"), Property::stored(number(2.0)))
+        .set_property(id("wear"), Property::stored(number(2.0)))
         .unwrap();
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns(),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort")), InputName::Named(id("foam"))],
-            formula: Rc::new(OverGravity),
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension")), InputName::Named(id("wear"))],
+            formula: Rc::new(OverHardness),
         }],
     )
     .unwrap();
-    declared.set_table(id("mashing"), table).unwrap();
+    declared.set_table(id("preheating"), table).unwrap();
     let mut file = Sample::new();
     let mut supplied = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns(),
         Vec::new(),
@@ -1615,14 +1650,19 @@ fn a_derived_cell_without_its_record_is_record_missing() {
     supplied
         .add_row(vec![
             (id("temperature"), Property::stored(number(65.0))),
-            (id("wort"), Property::stored(number(12.5))),
-            (id("clarity"), Property::stored(number(99.0))),
+            (id("tension"), Property::stored(number(12.5))),
+            (id("rigidity"), Property::stored(number(99.0))),
         ])
         .unwrap();
-    file.set_table(id("mashing"), supplied).unwrap();
+    file.set_table(id("preheating"), supplied).unwrap();
     declared.fill_from(file).unwrap();
-    let state = fingerprint::check_cell(&declared, &id("mashing"), &id("clarity"), &[number(65.0)])
-        .unwrap();
+    let state = fingerprint::check_cell(
+        &declared,
+        &id("preheating"),
+        &id("rigidity"),
+        &[number(65.0)],
+    )
+    .unwrap();
     assert!(
         matches!(state, fingerprint::Freshness::RecordMissing),
         "{state:?}"
@@ -1637,18 +1677,21 @@ fn a_check_spanning_two_samples_keeps_their_verdicts_apart() {
     stamp(&mut current);
     let mut moved = derived_sample();
     stamp(&mut moved);
-    moved.property(&id("malt")).unwrap().set_value(number(99.0));
+    moved
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(99.0));
 
     let _verdicts = fingerprint::Verdicts::begin();
-    assert_eq!(freshness(&current, "plato"), Freshness::Current);
+    assert_eq!(freshness(&current, "ductility"), Freshness::Current);
     assert_eq!(
-        freshness(&moved, "plato"),
+        freshness(&moved, "ductility"),
         Freshness::Stale {
-            changed: vec![InputName::Named(id("malt"))],
+            changed: vec![InputName::Named(id("diameter"))],
             upstream: Vec::new()
         }
     );
-    assert_eq!(freshness(&current, "plato"), Freshness::Current);
+    assert_eq!(freshness(&current, "ductility"), Freshness::Current);
 }
 
 #[test]
@@ -1657,64 +1700,69 @@ fn a_declared_statistic_carries_a_record() {
     // be named. The property records the readings they were taken over, under
     // the reserved key, and is current.
     let mut sample = Sample::new();
-    let malt = Property::measured(
+    let diameter = Property::measured(
         samplekit::core::value::Readings::new(vec![3.0571, 3.0557, 3.0584]).unwrap(),
         Some(samplekit::core::uncertainty::Convention::StandardError),
     );
-    sample.set_property(id("malt"), malt).unwrap();
-    let _ = sample.property(&id("malt")).unwrap().uncertainty();
+    sample.set_property(id("diameter"), diameter).unwrap();
+    let _ = sample.property(&id("diameter")).unwrap().uncertainty();
 
     let records = fingerprint::record(&sample).unwrap();
-    let malt_records = records
-        .get(&id("malt"))
+    let diameter_records = records
+        .get(&id("diameter"))
         .expect("a declared statistic records");
-    let inputs = malt_records.computed.as_ref().expect("a computed record");
+    let inputs = diameter_records
+        .computed
+        .as_ref()
+        .expect("a computed record");
     assert_eq!(
         inputs.keys().map(|k| k.to_string()).collect::<Vec<_>>(),
         vec!["readings".to_string()],
         "its own observations, never an input the sample holds"
     );
-    assert!(malt_records.fingerprint.is_some());
+    assert!(diameter_records.fingerprint.is_some());
 
     for (name, records) in records {
         sample.property(&name).unwrap().set_records(records);
     }
-    let verdict = fingerprint::check_property(&sample, &id("malt")).unwrap();
+    let verdict = fingerprint::check_property(&sample, &id("diameter")).unwrap();
     assert!(
         matches!(verdict, Freshness::Current),
         "a record just taken is current: {verdict:?}"
     );
 }
 
-/// `malt` as a model declaring both statistics holds it: the uncertainty follows
+/// `diameter` as a model declaring both statistics holds it: the uncertainty follows
 /// the readings live.
-fn malt_by_statistics(values: Vec<f64>) -> Property {
+fn diameter_by_statistics(values: Vec<f64>) -> Property {
     use samplekit::core::uncertainty::Convention;
-    let mut malt = Property::measured(
+    let mut diameter = Property::measured(
         samplekit::core::value::Readings::new(values).unwrap(),
         Some(Convention::StandardError),
     );
-    malt.declare_statistics(
+    diameter.declare_statistics(
         Some(samplekit::core::statistics::Location::Mean),
         Some(Convention::StandardError),
     );
-    malt
+    // Taken, as a computation takes it: owed, it gives no value to record.
+    diameter.take_statistic();
+    diameter
 }
 
 #[test]
 fn an_uncertainty_the_readings_give_is_outside_the_own_digest() {
     // Under a model the uncertainty follows the readings live, so a corrected
-    // dosing moved the own digest and read *edited* from Python where the
+    // doping moved the own digest and read *edited* from Python where the
     // command line, holding the file's stored number, read *stale — readings*.
     // The channel the readings give is left out of that digest.
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), malt_by_statistics(vec![1.0, 2.0, 3.0]))
+        .set_property(id("diameter"), diameter_by_statistics(vec![1.0, 2.0, 3.0]))
         .unwrap();
-    let handle = sample.property(&id("malt")).unwrap();
+    let handle = sample.property(&id("diameter")).unwrap();
     let _ = handle.uncertainty();
     let taken = fingerprint::record(&sample).unwrap();
-    let recorded = taken.get(&id("malt")).expect("a record").clone();
+    let recorded = taken.get(&id("diameter")).expect("a record").clone();
     let value = handle
         .peek(samplekit::format::schema::property_as_is)
         .value
@@ -1722,13 +1770,16 @@ fn an_uncertainty_the_readings_give_is_outside_the_own_digest() {
 
     // As a model loads the corrected file: new readings, the file's value
     // written beside them, and an uncertainty nobody pinned.
-    let mut corrected = malt_by_statistics(vec![1.0, 2.0, 6.0]);
+    let mut corrected = diameter_by_statistics(vec![1.0, 2.0, 6.0]);
     corrected.set_written_value(Some(value));
-    sample.remove_property(&id("malt")).unwrap();
-    sample.set_property(id("malt"), corrected).unwrap();
-    sample.property(&id("malt")).unwrap().set_records(recorded);
+    sample.remove_property(&id("diameter")).unwrap();
+    sample.set_property(id("diameter"), corrected).unwrap();
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_records(recorded);
 
-    let verdict = fingerprint::check_property(&sample, &id("malt")).unwrap();
+    let verdict = fingerprint::check_property(&sample, &id("diameter")).unwrap();
     let Freshness::Stale { changed, .. } = &verdict else {
         panic!("stale by its readings, under a model too: {verdict:?}");
     };
@@ -1742,59 +1793,63 @@ fn a_value_written_over_a_statistic_is_stamped_edited() {
     // record to be measured against, nothing is stamped.
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), malt_by_statistics(vec![1.0, 2.0, 3.0]))
+        .set_property(id("diameter"), diameter_by_statistics(vec![1.0, 2.0, 3.0]))
         .unwrap();
-    let _ = sample.property(&id("malt")).unwrap().uncertainty();
+    let _ = sample.property(&id("diameter")).unwrap().uncertainty();
     stamp(&mut sample);
-    let handle = sample.property(&id("malt")).unwrap();
+    let handle = sample.property(&id("diameter")).unwrap();
     assert!(!handle.records().fingerprint.unwrap().is_edited());
     handle.set_value(number(4.75));
     // `fingerprint::stamp` itself: the path `save_computed` takes.
     fingerprint::stamp(&mut sample).unwrap();
-    let handle = sample.property(&id("malt")).unwrap();
+    let handle = sample.property(&id("diameter")).unwrap();
     assert!(handle.records().fingerprint.unwrap().is_edited());
-    assert_eq!(freshness(&sample, "malt"), Freshness::Edited);
+    assert_eq!(freshness(&sample, "diameter"), Freshness::Edited);
 
     let mut migrated = Sample::new();
-    let mut held = malt_by_statistics(vec![1.0, 2.0, 9.0]);
+    let mut held = diameter_by_statistics(vec![1.0, 2.0, 9.0]);
     held.set_written_value(Some(number(5.0)));
-    migrated.set_property(id("malt"), held).unwrap();
+    migrated.set_property(id("diameter"), held).unwrap();
     fingerprint::stamp(&mut migrated).unwrap();
     assert!(
-        migrated.property(&id("malt")).unwrap().records().is_empty(),
+        migrated
+            .property(&id("diameter"))
+            .unwrap()
+            .records()
+            .is_empty(),
         "no record says what the statistic gave, so none is invented"
     );
 }
 
 #[test]
 fn a_corrected_reading_stales_its_own_statistic() {
-    // The whole point: a dosing corrected by hand leaves the
+    // The whole point: a doping corrected by hand leaves the
     // statistic behind, and the property says so instead of staying silent.
     let readings = |values: Vec<f64>| samplekit::core::value::Readings::new(values).unwrap();
     let mut sample = Sample::new();
     sample
         .set_property(
-            id("malt"),
+            id("diameter"),
             Property::measured(
                 readings(vec![3.0571, 3.0557, 3.0584]),
                 Some(samplekit::core::uncertainty::Convention::StandardError),
             ),
         )
         .unwrap();
-    let _ = sample.property(&id("malt")).unwrap().uncertainty();
+    let _ = sample.property(&id("diameter")).unwrap().uncertainty();
     let taken = fingerprint::record(&sample).unwrap();
-    let recorded = taken.get(&id("malt")).expect("a record").clone();
+    let recorded = taken.get(&id("diameter")).expect("a record").clone();
 
-    // One dosing corrected **as a file holds it**: the readings move, and the
+    // One doping corrected **as a file holds it**: the readings move, and the
     // value and uncertainty the file recorded stay as they were — they are not
     // re-derived by a reader without the model, which is the state `check` is
     // asked about. Re-deriving them in memory would move the quantity too, and
     // the question would stop being *did the observations move*.
     let held = sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .peek(samplekit::format::schema::property_as_is);
-    let handle = sample.property(&id("malt")).unwrap();
+    let handle = sample.property(&id("diameter")).unwrap();
     handle.set_readings(
         readings(vec![3.0571, 3.1259, 3.0584]),
         Some(samplekit::core::uncertainty::Convention::StandardError),
@@ -1810,7 +1865,7 @@ fn a_corrected_reading_stales_its_own_statistic() {
     );
     handle.set_records(recorded.clone());
 
-    let verdict = fingerprint::check_property(&sample, &id("malt")).unwrap();
+    let verdict = fingerprint::check_property(&sample, &id("diameter")).unwrap();
     let Freshness::Stale { changed, .. } = &verdict else {
         panic!("a corrected reading leaves the statistic behind: {verdict:?}");
     };
@@ -1828,19 +1883,22 @@ fn a_written_value_beside_readings_is_edited_not_stale() {
     let mut sample = Sample::new();
     sample
         .set_property(
-            id("malt"),
+            id("diameter"),
             Property::measured(
                 samplekit::core::value::Readings::new(vec![1.0, 2.0, 9.0]).unwrap(),
                 Some(samplekit::core::uncertainty::Convention::SampleStdev),
             ),
         )
         .unwrap();
-    let _ = sample.property(&id("malt")).unwrap().uncertainty();
+    let _ = sample.property(&id("diameter")).unwrap().uncertainty();
     for (name, records) in fingerprint::record(&sample).unwrap() {
         sample.property(&name).unwrap().set_records(records);
     }
-    sample.property(&id("malt")).unwrap().set_value(number(2.5));
-    let verdict = fingerprint::check_property(&sample, &id("malt")).unwrap();
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(2.5));
+    let verdict = fingerprint::check_property(&sample, &id("diameter")).unwrap();
     assert!(
         matches!(verdict, Freshness::Edited),
         "the quantity moved, not the observations: {verdict:?}"
@@ -1882,9 +1940,9 @@ fn readings_hash_alone_and_with_the_quantity() {
 
 #[test]
 fn an_uncertainty_a_formula_gives_carries_the_record() {
-    // The record belongs to the property, not to a channel. A hydrometer's
-    // resolution computed beside an entered ibu is as derived as a
-    // plato, and goes stale the same way.
+    // The record belongs to the property, not to a channel. A durometer's
+    // resolution computed beside an entered hb is as derived as a
+    // ductility, and goes stale the same way.
     let mut sample = Sample::new();
     sample
         .set_property(id("resolution"), Property::stored(number(0.01)))
@@ -2154,7 +2212,7 @@ fn a_cells_statistic_is_recorded_and_goes_stale_when_its_readings_move() {
     let mut columns = IndexMap::new();
     columns.insert(id("T"), ColumnMeta::default());
     columns.insert(
-        id("sweetness"),
+        id("stiffness"),
         ColumnMeta {
             presentation: Presentation::default(),
             statistics: DeclaredStatistics {
@@ -2163,30 +2221,30 @@ fn a_cells_statistic_is_recorded_and_goes_stale_when_its_readings_move() {
             },
         },
     );
-    let mut table = Table::new(id("mouthfeel"), vec![id("T")], columns, Vec::new()).unwrap();
+    let mut table = Table::new(id("toughness"), vec![id("T")], columns, Vec::new()).unwrap();
     table
         .add_row(vec![
             (id("T"), Property::stored(number(40.0))),
             (
-                id("sweetness"),
+                id("stiffness"),
                 Property::measured(Readings::new(vec![1.0, 2.0, 3.0]).unwrap(), None),
             ),
         ])
         .unwrap();
     let mut sample = Sample::new();
-    sample.set_table(id("mouthfeel"), table).unwrap();
+    sample.set_table(id("toughness"), table).unwrap();
     fingerprint::stamp(&mut sample).unwrap();
     // As a file holds it: the statistic written beside its readings.
     let mut sample = schema::into_sample(schema::from_sample_as_is(&sample).unwrap()).unwrap();
     let index = [number(40.0)];
     let verdict = |sample: &Sample| {
-        fingerprint::check_cell(sample, &id("mouthfeel"), &id("sweetness"), &index).unwrap()
+        fingerprint::check_cell(sample, &id("toughness"), &id("stiffness"), &index).unwrap()
     };
     assert_eq!(verdict(&sample), Freshness::Current);
     let (records, written) = {
-        let held = sample.table(&id("mouthfeel")).unwrap();
+        let held = sample.table(&id("toughness")).unwrap();
         let cell = held
-            .at(&RowAddress::Index(index.to_vec()), &id("sweetness"))
+            .at(&RowAddress::Index(index.to_vec()), &id("stiffness"))
             .unwrap();
         assert!(
             cell.records()
@@ -2204,9 +2262,9 @@ fn a_cells_statistic_is_recorded_and_goes_stale_when_its_readings_move() {
     corrected.set_records(records);
     sample
         .update_row(
-            &id("mouthfeel"),
+            &id("toughness"),
             &RowAddress::Index(index.to_vec()),
-            vec![(id("sweetness"), corrected)],
+            vec![(id("stiffness"), corrected)],
         )
         .unwrap();
     assert_eq!(

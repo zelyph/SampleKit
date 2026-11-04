@@ -1,6 +1,7 @@
 pub mod dependency_graph;
 pub mod formatting;
 pub mod identifier;
+pub mod link;
 pub mod property;
 pub mod sample;
 pub mod statistics;

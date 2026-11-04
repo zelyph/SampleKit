@@ -54,10 +54,7 @@ pub(super) fn tag(options: &Options) -> Outcome {
     // Nothing to do is an answer, not a mistake: it exits 0 and says the
     // collection is unchanged.
     if matches!(edit, Edit::Rename) && tags[0] == tags[1] {
-        outln!(
-            "'{}' renamed to itself changes nothing — unchanged",
-            tags[0]
-        );
+        outln!("nothing to change — '{}' renamed to itself", tags[0]);
         return Ok(());
     }
     let root = rest
@@ -67,6 +64,12 @@ pub(super) fn tag(options: &Options) -> Outcome {
     let collection = loaded(&root)?;
     warn_skipped(&collection, options);
     let selected = select(&collection, options, &root)?;
+    // Nothing selected is said as every command with nothing to change says
+    // it, before a plan of no sample.
+    if selected.is_empty() {
+        outln!("nothing to change — no sample is selected");
+        return Ok(());
+    }
 
     // A tag to rename or remove that no sample carries leaves the collection
     // as it was: said *unchanged*, exit 0, since nothing was left to do
@@ -77,7 +80,7 @@ pub(super) fn tag(options: &Options) -> Outcome {
             .iter()
             .any(|entry| entry.sample.borrow().has_tag(&tags[0]))
     {
-        outln!("no sample carries '{}' — unchanged", tags[0]);
+        outln!("nothing to change — no sample carries '{}'", tags[0]);
         if let Some(suggestion) = collection.vocabulary().nearest_tag(tags[0].as_str()) {
             outln!("  did you mean: '{suggestion}'?");
         }
@@ -100,7 +103,7 @@ pub(super) fn tag(options: &Options) -> Outcome {
         if let Some(existing) = in_use
             .tags()
             .iter()
-            // Renaming `Infected` to `infected` is how the second spelling
+            // Renaming `Impure` to `impure` is how the second spelling
             // goes: the tag renamed is not the one warned about.
             .find(|tag| {
                 *tag != new
@@ -127,15 +130,8 @@ pub(super) fn tag(options: &Options) -> Outcome {
             },
         },
     );
-    let named = |path: &Path| {
-        selected
-            .iter()
-            .find(|entry| entry.path.as_deref() == Some(path))
-            .map_or_else(
-                || path.display().to_string(),
-                |entry| file_of(Some(path), &entry.sample.borrow()),
-            )
-    };
+    // A sample by its path from here, as every preview names one.
+    let named = |path: &Path| relative_to_here(path);
     let changes: Vec<(PathBuf, String, String)> = plan
         .changes
         .iter()
@@ -153,29 +149,30 @@ pub(super) fn tag(options: &Options) -> Outcome {
         .map(|path| (path.clone(), named(path)))
         .collect();
 
-    // Said in the tense that is true when it is read: *would* before a write,
-    // and after one, what was done — `will add` stood on the screen above the
-    // account of a write already made.
-    let verb = |done: bool| match (&edit, done) {
-        (Edit::Add, false) => format!("would add '{}' to", tags[0]),
-        (Edit::Add, true) => format!("added '{}' to", tags[0]),
-        (Edit::Remove, false) => format!("would remove '{}' from", tags[0]),
-        (Edit::Remove, true) => format!("removed '{}' from", tags[0]),
-        (Edit::Rename, false) => format!("would rename '{}' to '{}' on", tags[0], tags[1]),
-        (Edit::Rename, true) => format!("renamed '{}' to '{}' on", tags[0], tags[1]),
+    // What and where, as every preview's first line says it, before a write
+    // and after it alike.
+    // A tag in its colour, as the TUI draws it: an attribute's.
+    let tag = |name: &Identifier| render::paint(name.as_str(), render::palette().attribute);
+    let what = match &edit {
+        Edit::Add => format!("+{}", tag(&tags[0])),
+        Edit::Remove => format!("-{}", tag(&tags[0])),
+        Edit::Rename => format!("{} → {}", tag(&tags[0]), tag(&tags[1])),
     };
-    let show_plan = |done: bool| {
+    let show_plan = |_done: bool| {
         outln!(
-            "{} {} of {} samples\n",
-            verb(done),
+            "tag {what} · {} of {}\n",
             changes.len(),
-            selected.len()
+            counted_as(selected.len(), "sample", "samples")
         );
-        for (_, name, what) in &changes {
-            outln!("  {name:<28} {what}");
-        }
-        for (_, name) in unchanged.iter().take(5) {
-            outln!("  {name:<28} unchanged");
+        let mut lines: Vec<samplekit::presentation::changes::FieldChange> = changes
+            .iter()
+            .map(|(_, name, what)| samplekit::presentation::changes::FieldChange::said(name, what))
+            .collect();
+        lines.extend(unchanged.iter().take(5).map(|(_, name)| {
+            samplekit::presentation::changes::FieldChange::said(name, "unchanged")
+        }));
+        for line in samplekit::presentation::changes::change_lines(&lines) {
+            outln!("{line}");
         }
         if unchanged.len() > 5 {
             outln!("  … {} more unchanged", unchanged.len() - 5);
@@ -211,20 +208,32 @@ pub(super) fn tag(options: &Options) -> Outcome {
     if changes.is_empty() {
         show_plan(false);
         warn_outside();
-        outln!("\nnothing to write: no sample of the selection would change");
+        outln!("\nnothing to change — no sample of the selection would change");
         return Ok(());
     }
+    let written_paths: Vec<PathBuf> = changes.iter().map(|(path, _, _)| path.clone()).collect();
     if !options.write {
         show_plan(false);
+        super::say_changed_by_this_write(written_paths.iter().map(PathBuf::as_path));
         warn_outside();
-        outln!("\n{}", advice("nothing written — pass --write to apply"));
+        outln!();
+        offer_to_apply(
+            "apply these changes?",
+            "nothing written — pass --write to apply",
+        );
         return Ok(());
     }
+    let changed_too = super::changed_by_this_write(written_paths.iter().map(PathBuf::as_path));
 
     // Written one file at a time, each atomically: a failure halfway names the
     // files changed before it, and leaves the ones after it untouched.
-    let written: Vec<String> = match tagging::apply(&plan) {
-        Ok(paths) => paths.iter().map(|path| named(path)).collect(),
+    let stop = || super::STOP.load(std::sync::atomic::Ordering::SeqCst);
+    let written: Vec<String> = match tagging::apply_until(&plan, stop) {
+        Ok((paths, true)) => {
+            let written: Vec<String> = paths.iter().map(|path| named(path)).collect();
+            return Err(super::stopped(&written));
+        }
+        Ok((paths, false)) => paths.iter().map(|path| named(path)).collect(),
         Err(error) => {
             let before: Vec<String> = error.written.iter().map(|path| named(path)).collect();
             for name in &before {
@@ -240,13 +249,30 @@ pub(super) fn tag(options: &Options) -> Outcome {
                     before.join(", ")
                 ));
             }
-            return Err(Fail::data(said));
+            // Exit 3 where the filesystem refused, as `set` does.
+            return Err(if error.filesystem {
+                Fail::io(said)
+            } else {
+                Fail::data(said)
+            });
         }
     };
     show_plan(true);
+    if !changed_too.is_empty() {
+        outln!("\n  what else this write changed:");
+        for line in &changed_too {
+            outln!(
+                "    {}",
+                line.replace("this write removes", "removed")
+                    .replace("this write drops", "dropped")
+            );
+        }
+    }
     warn_outside();
-    // The files are named above, each with what changed in it.
-    outln!("\nwritten: {}", counted_as(written.len(), "file", "files"));
+    outln!();
+    for line in super::written_lines(&written) {
+        outln!("{line}");
+    }
     Ok(())
 }
 
@@ -273,7 +299,7 @@ pub(super) fn rename_unusable(
             .iter()
             .any(|tag| tag == old)
     }) {
-        outln!("no sample carries '{old}' — unchanged");
+        outln!("nothing to change — no sample carries '{old}'");
         return Ok(());
     }
     let carrying: Vec<(PathBuf, String)> = selected
@@ -281,7 +307,7 @@ pub(super) fn rename_unusable(
         .filter_map(|entry| {
             let path = entry.path.clone()?;
             let sample = entry.sample.borrow();
-            let name = file_of(Some(&path), &sample);
+            let name = relative_to_here(&path);
             sample
                 .unusable_tags()
                 .iter()
@@ -289,29 +315,41 @@ pub(super) fn rename_unusable(
                 .then_some((path, name))
         })
         .collect();
-    let show_plan = |done: bool| {
+    let show_plan = |_done: bool| {
         outln!(
-            "{} '{old}' to '{new}' on {} of {} samples\n",
-            if done { "renamed" } else { "would rename" },
+            "tag {old} → {new} · {} of {}\n",
             carrying.len(),
-            selected.len()
+            counted_as(selected.len(), "sample", "samples")
         );
-        for (_, name) in &carrying {
-            outln!("  {name:<28} '{old}' → '{new}'");
+        let lines: Vec<samplekit::presentation::changes::FieldChange> = carrying
+            .iter()
+            .map(|(_, name)| {
+                samplekit::presentation::changes::FieldChange::said(name, format!("{old} → {new}"))
+            })
+            .collect();
+        for line in samplekit::presentation::changes::change_lines(&lines) {
+            outln!("{line}");
         }
     };
     if carrying.is_empty() {
         show_plan(false);
-        outln!("\nnothing to write: no sample of the selection carries '{old}'");
+        outln!("\nnothing to change — no sample of the selection carries '{old}'");
         return Ok(());
     }
     if !options.write {
         show_plan(false);
-        outln!("\n{}", advice("nothing written — pass --write to apply"));
+        outln!();
+        offer_to_apply(
+            "apply these changes?",
+            "nothing written — pass --write to apply",
+        );
         return Ok(());
     }
     let mut written = Vec::new();
     for (path, name) in &carrying {
+        if super::STOP.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(super::stopped(&written));
+        }
         let result = document::load_sample(path)
             .map_err(|error| error.to_string())
             .and_then(|(mut sample, origin)| {
@@ -323,6 +361,7 @@ pub(super) fn rename_unusable(
                     .collect();
                 sample.set_unusable_tags(kept);
                 sample.add_tag(new.clone());
+                samplekit::collection::sample_list::declare_model_units_at(&mut sample, path);
                 document::save_sample(&mut sample, &Destination::Origin(origin))
                     .map(|_| ())
                     .map_err(|error| error.to_string())
@@ -338,8 +377,10 @@ pub(super) fn rename_unusable(
         }
     }
     show_plan(true);
-    // In the words every command that writes a file says it.
-    outln!("\nwritten: {}", counted_as(written.len(), "file", "files"));
+    outln!();
+    for line in super::written_lines(&written) {
+        outln!("{line}");
+    }
     Ok(())
 }
 
@@ -350,16 +391,58 @@ pub(super) fn note_of(
     tags: &[Identifier],
     edit: &Edit,
 ) -> String {
+    let tag = |name: &Identifier| render::paint(name.as_str(), render::palette().attribute);
     match edit {
-        Edit::Add => format!("+{}", tags[0]),
-        Edit::Remove => format!("-{}", tags[0]),
+        Edit::Add => format!("+{}", tag(&tags[0])),
+        Edit::Remove => format!("-{}", tag(&tags[0])),
         Edit::Rename if before.contains(&tags[1]) && after.len() < before.len() => {
             format!(
                 "{} → {}; already had it, the duplicate is dropped",
-                tags[0], tags[1]
+                tag(&tags[0]),
+                tag(&tags[1])
             )
         }
-        Edit::Rename => format!("{} → {}", tags[0], tags[1]),
+        Edit::Rename => format!("{} → {}", tag(&tags[0]), tag(&tags[1])),
+    }
+}
+
+/// The sample `--keep` names by its name or its file's stem, among those
+/// where the new one goes: one, or refused naming those there are.
+fn sample_named(written: &Path, into: Option<&Path>) -> Result<PathBuf, Fail> {
+    let word = written.to_string_lossy();
+    let root = into
+        .filter(|into| into.is_dir())
+        .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+    let found: Vec<PathBuf> = super::loaded(&root)
+        .map(|collection| {
+            collection
+                .iter()
+                .filter(|entry| {
+                    entry.sample.borrow().name() == Some(word.as_ref())
+                        || entry
+                            .path
+                            .as_deref()
+                            .and_then(Path::file_stem)
+                            .is_some_and(|stem| stem.to_string_lossy() == word)
+                })
+                .filter_map(|entry| entry.path.clone())
+                .collect()
+        })
+        .unwrap_or_default();
+    match found.as_slice() {
+        [one] => Ok(one.clone()),
+        [] => Err(Fail::io(format!(
+            "{word}: no such file or directory, and no sample here is named so"
+        ))),
+        several => Err(Fail::usage(format!(
+            "{} samples are named '{word}': name its file — {}",
+            several.len(),
+            several
+                .iter()
+                .map(|path| relative_to_here(path))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))),
     }
 }
 
@@ -368,11 +451,14 @@ pub(super) fn note_of(
 /// copying a file by hand does wrong.
 pub(super) fn new_sample(
     name: &str,
-    like: Option<&Path>,
+    keeping: Option<(PathBuf, Vec<String>)>,
     into: Option<&Path>,
-    keep: &[String],
     options: &Options,
 ) -> Outcome {
+    let (like, keep): (Option<&Path>, &[String]) = match &keeping {
+        Some((sample, fields)) => (Some(sample.as_path()), fields.as_slice()),
+        None => (None, &[]),
+    };
     // A name is something: an empty one wrote `.md`, a file every scan skips
     // as hidden, and a blank one a file named by a space.
     if name.trim().is_empty() {
@@ -393,17 +479,11 @@ pub(super) fn new_sample(
         }));
     }
     let pattern_path = match like {
-        Some(path) => {
-            if !path.exists() {
-                return Err(Fail::io(format!(
-                    "{}: no such file or directory",
-                    path.display()
-                )));
-            }
-            Some(path.to_path_buf())
-        }
-        // Without --like, nothing is taken from anywhere: taking the shape of
-        // another sample is exactly what --like is for, and copying a
+        Some(path) if path.exists() => Some(path.to_path_buf()),
+        // A sample's name, as the advice writes `--keep <sample>`: the one
+        // sample of the collection so named.
+        Some(path) => Some(sample_named(path, into)?),
+        // Without --keep, nothing is taken from anywhere: copying a
         // neighbour's attributes unasked is how another sample's identity
         // ends up in a new file.
         None => None,
@@ -428,7 +508,7 @@ pub(super) fn new_sample(
         // What --keep names is the command's to correct, not the data's.
         .map_err(|error| Fail::usage(error.message))?;
 
-    // A destination is a sample's file: `--into brews/x.txt` previewed a file
+    // A destination is a sample's file: `--into pieces/x.txt` previewed a file
     // no scan would ever read as a sample.
     if let Some(path) = into.filter(|path| !path.is_dir())
         && path.extension().is_some()
@@ -483,7 +563,7 @@ pub(super) fn new_sample(
     // is: nothing on the disk failed.
     if destination.exists() {
         return Err(Fail::usage(format!(
-            "{}: already here\n  samplekit set {} <field>=<value> changes what it holds",
+            "{}: already here\n  samplekit {} set <field>=<value> changes what it holds",
             destination.display(),
             shell_path(&destination)
         )));
@@ -491,7 +571,7 @@ pub(super) fn new_sample(
 
     // What the project declares about a name, so that a quantity it already
     // knows is written as one rather than as an attribute: the project the file
-    // goes into, which `--like` alone decides when `--into` is not given. A
+    // goes into, which `--keep`'s sample alone decides when `--into` is not given. A
     // configuration that will not read is reported elsewhere and never stops a
     // write here.
     let declaring = samplekit::config::project_config::load_for(
@@ -523,7 +603,7 @@ pub(super) fn new_sample(
     let mut unvalued: Vec<String> = Vec::new();
     for written in &options.positionals {
         let (field_name, text) = split_assignment(written)?;
-        // Readings, `og.readings=1.05,1.06`, as `set` takes them: shown under
+        // Readings, `radius.readings=1.05,1.06`, as `set` takes them: shown under
         // the quantity's own name, which is what is filled in.
         if editing::gives_readings(&field_name) {
             let mut lines = Vec::new();
@@ -558,10 +638,35 @@ pub(super) fn new_sample(
             filled.push(format!("{quantity} = readings [{listed}]"));
             continue;
         }
+        // A list, `carbon=[a, b]`, as `set` writes one. A name the project
+        // declares a quantity takes none, as `set` refuses it: its repeated
+        // measurements are its readings.
+        if let Some(items) = editing::list_typed(&text) {
+            let items = items.map_err(edit_failure)?;
+            let declared_quantity = measured.contains(&field_name)
+                || declaring
+                    .as_ref()
+                    .is_some_and(|config| config.property(&field_name).is_some())
+                || declaring
+                    .as_ref()
+                    .and_then(samplekit::config::model_runtime::current_description)
+                    .is_some_and(|description| description.properties.contains_key(&field_name));
+            if declared_quantity {
+                let shown: Vec<String> = items.iter().map(editing::shown_value).collect();
+                return Err(Fail::usage(format!(
+                    "{field_name} is a property, and a value is one number\n  repeated \
+                     measurements of one property are its readings: {field_name}.readings={}",
+                    shown.join(",")
+                )));
+            }
+            editing::assign_list(&mut sample, &field_name, items).map_err(edit_failure)?;
+            filled.push(field_name.to_string());
+            continue;
+        }
         let value = typed(&field_name, &text)?;
         // The number is shown back, so that a preview can be read over before
         // it is written — as the project writes it.
-        let shown = shown_declared(&value, &field_name, declaring.as_ref());
+        let shown = editing::previewed_typed(&value, &field_name, declaring.as_ref());
         let (_, what) = apply_known(
             &mut sample,
             &field_name,
@@ -572,31 +677,9 @@ pub(super) fn new_sample(
         filled.push(format!("{what} = {shown}"));
     }
 
-    match &pattern_path {
-        Some(path) => outln!(
-            "{} {}, shaped like {}",
-            if options.write {
-                "writing"
-            } else {
-                "would write"
-            },
-            destination.display(),
-            path.display()
-        ),
-        None => outln!(
-            "{} {} — what you give here, named by its file\n  \
-             samplekit new {} --like <sample> takes another sample's shape",
-            if options.write {
-                "writing"
-            } else {
-                "would write"
-            },
-            destination.display(),
-            shell_word(name)
-        ),
-    }
+    outln!("{} · new sample", relative_to_here(&destination));
     // The sections below are set off from the heading by one blank line, and
-    // only where there is one: `new pilsner` alone printed two blank lines
+    // only where there is one: `new inconel` alone printed two blank lines
     // round nothing.
     let opened = std::cell::Cell::new(false);
     let open = || {
@@ -630,7 +713,7 @@ pub(super) fn new_sample(
         );
         // An empty quantity is written only for what it holds, its unit: one
         // with none has no line in the file until a value is set. The preview
-        // listed `og` to fill in, and the file then had no `og` anywhere.
+        // listed `radius` to fill in, and the file then had no `radius` anywhere.
         let unwritten: Vec<&str> = waiting
             .iter()
             .map(|name| name.as_str())
@@ -646,34 +729,72 @@ pub(super) fn new_sample(
         }
     }
     if !filled.is_empty() {
+        // What is given now, as every change is said: from nothing, a number
+        // typed with every digit it was typed with.
         open();
-        outln!("  filled in now                  {}", filled.join(", "));
+        let changes: Vec<samplekit::presentation::changes::FieldChange> = filled
+            .iter()
+            .map(|written| {
+                // What the name was taken as — `new, declared in .samplekitrc`
+                // — said beneath it.
+                // Every field of a new sample is new to it: only how it was
+                // taken is said, a quantity `declared in .samplekitrc`.
+                let aside = written
+                    .split_once(" (")
+                    .and_then(|(_, rest)| rest.split_once(')'))
+                    .map(|(aside, _)| aside.trim_start_matches("new").trim_start_matches(", "))
+                    .filter(|aside| !aside.is_empty())
+                    .map(str::to_string);
+                let named = written
+                    .split([' ', '('])
+                    .next()
+                    .unwrap_or(written)
+                    .to_string();
+                // Readings given are said as the readings they are.
+                let (field, typed) = if written.contains(" = readings ") {
+                    (format!("{named}.readings"), String::new())
+                } else {
+                    let typed = written
+                        .split_once(" = ")
+                        .map_or_else(String::new, |(_, value)| value.to_string());
+                    (named, typed)
+                };
+                let mut change =
+                    samplekit::presentation::changes::FieldChange::new(field, "—", typed);
+                change.notes.extend(aside);
+                change
+            })
+            .collect();
+        let changes = samplekit::presentation::changes::made_whole(
+            changes,
+            None,
+            &sample,
+            declaring.as_ref(),
+        );
+        for line in samplekit::presentation::changes::change_lines(&changes) {
+            outln!("{line}");
+        }
     }
-    // What --keep copied is said, with the rest the pattern gives.
-    let kept: Vec<&str> = measured
+    // What --keep took is said, an attribute with the value it carries: it
+    // is another sample's, read before it is written.
+    let mut kept: Vec<String> = measured
         .iter()
         .filter(|name| !given(name) && keep.iter().any(|kept| kept == name.as_str()))
-        .map(String::as_str)
+        .cloned()
         .collect();
-    if !kept.is_empty() {
+    kept.extend(
+        attributes
+            .iter()
+            .filter(|(name, _)| !given(name))
+            .map(|(name, shown)| format!("{name} = {shown}")),
+    );
+    if let (false, Some(path)) = (kept.is_empty(), &pattern_path) {
         open();
-        outln!("  kept from the pattern          {}", kept.join(", "));
-    }
-    let carried: Vec<String> = attributes
-        .iter()
-        .filter(|(name, _)| {
-            !filled
-                .iter()
-                .any(|written| written.split(' ').next() == Some(name.as_str()))
-        })
-        .map(|(name, shown)| format!("{name} = {shown}"))
-        .collect();
-    if !carried.is_empty() {
-        // These describe the sample rather than measure it — a batch, an
-        // operator, a date — so they come across with the shape. They are also
-        // the pattern's own identity, which is why they are shown in full.
-        open();
-        outln!("  copied from the pattern        {}", carried.join(", "));
+        outln!(
+            "  taken from {}   {}",
+            relative_to_here(path),
+            kept.join(", ")
+        );
     }
     // The pattern's dates and `status` are its own, as the workbench's `N`
     // says: one filled in on the command line is not said here.
@@ -710,19 +831,24 @@ pub(super) fn new_sample(
         );
     }
     // What readings given here come to.
-    notes.extend(unvalued_note(&unvalued));
+    notes.extend(unvalued_note(&unvalued, declaring.as_ref()));
     for note in &notes {
         outln!("\n  {note}");
     }
 
     if !options.write {
-        outln!("\n{}", advice("nothing written — pass --write to apply"));
+        outln!();
+        offer_to_apply(
+            "apply these changes?",
+            "nothing written — pass --write to apply",
+        );
         return Ok(());
     }
 
     sample.set_note(format!("# {name}\n"));
     // A file another writer made there since the name was checked is not
     // replaced.
+    samplekit::collection::sample_list::declare_model_units_at(&mut sample, &destination);
     document::save_sample(&mut sample, &Destination::New(destination.clone()))
         .map_err(|error| write_failed(&destination, &error))?;
     let quoted = shell_path(&destination);
@@ -732,10 +858,10 @@ pub(super) fn new_sample(
         .as_ref()
         .is_some_and(|config| config.model().is_some());
     outln!(
-        "\nwritten: {}\n\n  samplekit set {quoted} <field>=<value>   fill a value in{}",
-        destination.display(),
+        "\nwritten: {}\n\n  samplekit {quoted} set <field>=<value>   fill a value in{}",
+        relative_to_here(&destination),
         if model {
-            format!("\n  samplekit compute {quoted} --write        run the model on it")
+            format!("\n  samplekit {quoted} compute --write        run the model on it")
         } else {
             String::new()
         }
@@ -756,10 +882,10 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
         let shown = shell_path(file);
         return Err(Fail::usage(match add_row {
             Some(table) => format!(
-                "--add-row wants the row's cells: samplekit set {shown} --add-row {table} <column>=<value> …"
+                "--add-row wants the row's cells: samplekit {shown} set --add-row {table} <column>=<value> …"
             ),
             None => format!(
-                "set wants what to change, as field=value: samplekit set {shown} {quantity}=<value>"
+                "set wants what to change, as field=value: samplekit {shown} set {quantity}=<value>"
             ),
         }));
     }
@@ -774,10 +900,14 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
     }
     let (mut sample, origin) =
         document::load_sample(file).map_err(|error| read_failed(file, &error))?;
+    // What its model declares, read from its description: the two formulas
+    // of a value and its uncertainty are counted apart.
+    samplekit::collection::sample_list::declare_model_units_at(&mut sample, file);
 
-    let before_states: Vec<String> = not_current(&sample)
-        .into_iter()
-        .map(|(name, _, _)| name)
+    let before_standing = editing::not_current(&sample);
+    let before_states: Vec<String> = before_standing
+        .iter()
+        .map(|entry| entry.name.clone())
         .collect();
 
     // As for `new`: a name this project declares is a quantity. `old.md` has an
@@ -797,7 +927,7 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
     let mut seen: Vec<String> = Vec::new();
     for written in &options.positionals {
         let (field_name, _) = split_assignment(written)?;
-        // By the field it addresses, not as typed: `malt` and `malt.v` are one.
+        // By the field it addresses, not as typed: `diameter` and `diameter.v` are one.
         let field_name = fields::parse(&field_name)
             .map(|field| fields::describe(&field))
             .unwrap_or(field_name);
@@ -830,6 +960,88 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
         None
     };
 
+    // A name another sample of the project holds is refused, as `new` refuses
+    // it: a name identifies one sample.
+    for written in &options.positionals {
+        let Ok((field_name, text)) = split_assignment(written) else {
+            continue;
+        };
+        let renamed = text.trim();
+        if field_name != "name" || renamed.is_empty() || sample.name() == Some(renamed) {
+            continue;
+        }
+        let (others, root) = project_samples(
+            file.parent()
+                .filter(|parent| !parent.as_os_str().is_empty())
+                .unwrap_or(Path::new(".")),
+        );
+        if let Some(others) = &others
+            && let Some(refused) = editing::refuses_rename(renamed, others, root.as_deref(), file)
+        {
+            return Err(edit_failure(refused));
+        }
+    }
+
+    // A name nothing here holds, one slip from one held: written as asked —
+    // a new field is a new field — and said, where `ogg=` became an attribute
+    // beside `radius` without a word.
+    for written in &options.positionals {
+        let Ok((field_name, _)) = split_assignment(written) else {
+            continue;
+        };
+        let Ok(Field::Named { name, .. }) = fields::parse(&field_name) else {
+            continue;
+        };
+        if sample.has_property(&name) || sample.has_attribute(&name) {
+            continue;
+        }
+        let mut held: Vec<String> = sample
+            .property_names()
+            .iter()
+            .chain(sample.attribute_names().iter())
+            .map(|held| held.to_string())
+            .collect();
+        if let Some(neighbours) = &neighbours {
+            held.extend(neighbours.available_fields().iter().map(fields::describe));
+        }
+        if let Some(description) = declaring
+            .as_ref()
+            .and_then(samplekit::config::model_runtime::current_description)
+        {
+            held.extend(description.properties.keys().cloned());
+        }
+        if held.iter().any(|field| field == name.as_str()) {
+            continue;
+        }
+        // A short name is one letter from another of its length: `fq` for
+        // `notch` was offered nothing, the rule for longer names asking more
+        // letters than it has.
+        let near =
+            samplekit::core::identifier::nearest(name.as_str(), held.iter().map(String::as_str))
+                .or_else(|| {
+                    let written = name.as_str();
+                    (written.chars().count() <= 3)
+                        .then(|| {
+                            held.iter().find(|field| {
+                                field.chars().count() == written.chars().count()
+                                    && field
+                                        .chars()
+                                        .zip(written.chars())
+                                        .filter(|(a, b)| a != b)
+                                        .count()
+                                        == 1
+                            })
+                        })
+                        .flatten()
+                        .cloned()
+                });
+        if let Some(near) = near {
+            warn(&format!(
+                "no sample here holds '{name}', written as a new field — did you mean '{near}'?"
+            ));
+        }
+    }
+
     // What renaming a unit leaves as it was, said after the change itself.
     let mut unit_readers = false;
     // What readings given here come to, said once below the changes.
@@ -838,7 +1050,7 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
     for written in &options.positionals {
         let mut relabelled: Vec<String> = Vec::new();
         let (field_name, text) = split_assignment(written)?;
-        // Readings are a channel of their own, `og.readings=1.05,1.06`, and
+        // Readings are a channel of their own, `radius.readings=1.05,1.06`, and
         // take a list where every other channel takes one value.
         if editing::gives_readings(&field_name) {
             if readings_change(
@@ -853,6 +1065,20 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
                     unvalued: &mut unvalued,
                 },
             )? {
+                changed += 1;
+            }
+            continue;
+        }
+        // A list, `authors=[ana, tom]`, for an attribute: it was refused as
+        // readings, and no command wrote one.
+        if let Some(items) = editing::list_typed(&text) {
+            let items = items.map_err(edit_failure)?;
+            let (before, after) =
+                editing::assign_list(&mut sample, &field_name, items).map_err(edit_failure)?;
+            if before == after {
+                changes.push(format!("{field_name:<28} {after}  unchanged"));
+            } else {
+                changes.push(format!("{field_name:<28} {before}  →  {after}"));
                 changed += 1;
             }
             continue;
@@ -875,11 +1101,20 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
                 shown_declared(value, &field_name, config)
             })
         };
-        let (mut before, mut after) = (shown(&change.before), shown(&change.after));
+        let (mut before, mut after) = (
+            shown(&change.before),
+            change.after.as_ref().map_or("—".to_string(), |value| {
+                editing::previewed_typed(value, &field_name, config)
+            }),
+        );
         // A blank value removes what was there: an edit, said as one, where `→
         // —` read as a value nobody had given yet.
+        // An uncertainty emptied takes the uncertainty alone: the value stays,
+        // said whole beneath, where `notch 1.012 ± 0.0010  →  removed` read as
+        // the measurement lost.
         if change.kept.is_none()
             && change.became != editing::Became::Unchanged
+            && !field_name.ends_with(".u")
             && change
                 .after
                 .as_ref()
@@ -889,9 +1124,21 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
         }
         // Two numbers the precision writes alike are still a change, and are
         // then shown whole: a preview must not read `1.021 → 1.021`.
-        if before == after && change.became != editing::Became::Unchanged {
-            let whole = |value: &Option<Value>| value.as_ref().map_or("—".to_string(), shown_value);
-            (before, after) = (whole(&change.before), whole(&change.after));
+        let whole = |value: &Option<Value>| value.as_ref().map_or("—".to_string(), shown_value);
+        let alike = before == shown(&change.after)
+            || before == after
+            || samplekit::presentation::changes::exaggerated(
+                &before,
+                &after,
+                &whole(&change.before),
+                &whole(&change.after),
+            );
+        if alike && change.became != editing::Became::Unchanged {
+            // With the fewest digits that tell them apart, never every one.
+            (before, after) = samplekit::presentation::changes::apart(
+                &whole(&change.before),
+                &whole(&change.after),
+            );
         }
         // The name keeps its column; what the change *means* goes on its own
         // line, where it does not push the numbers out of alignment.
@@ -973,8 +1220,8 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
         }
         changes.append(&mut relabelled);
         if let Some(kept) = &change.kept {
-            // The quantity's name, not the path written: `fg.v=` offered
-            // `fg.v.u=`, which is no field.
+            // The quantity's name, not the path written: `notch.v=` offered
+            // `notch.v.u=`, which is no field.
             let quantity = match fields::parse(&field_name) {
                 Ok(fields::Field::Named { name, .. }) => name.to_string(),
                 _ => name.clone(),
@@ -999,8 +1246,9 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
             } else if kept.statistic {
                 changes.push(format!(
                     "{:<28} the value you wrote outranks their statistic — \
-                     samplekit compute --force returns it",
-                    ""
+                     samplekit {} compute --force returns it",
+                    "",
+                    shell_path(file)
                 ));
             } else {
                 // No mean is offered in its place: which statistic stands for
@@ -1031,6 +1279,34 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
         }
     }
 
+    // A value written outside the range the project declares is written, and
+    // said: the range is a check, not a refusal.
+    for written in &options.positionals {
+        let Ok((field_name, _)) = split_assignment(written) else {
+            continue;
+        };
+        let Ok(Field::Named { name, .. }) = fields::parse(&field_name) else {
+            continue;
+        };
+        let Ok(handle) = sample.property(&name) else {
+            continue;
+        };
+        let outside = handle.with(|property| {
+            let unit = property.presentation().unit.clone();
+            property.peek_value().and_then(|value| {
+                samplekit::collection::validation::outside_range(
+                    declaring.as_ref(),
+                    name.as_str(),
+                    &value,
+                    unit.as_deref(),
+                )
+            })
+        });
+        if let Some(said) = outside {
+            warn(&said);
+        }
+    }
+
     outln!(
         "{} · {}\n",
         file.display(),
@@ -1043,25 +1319,31 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
             counted_as(changed, "change", "changes")
         }
     );
-    for change in &changes {
-        outln!("  {change}");
+    // Each change as every surface says it: the values whole, with their
+    // uncertainty and unit, what they mean beneath.
+    let original = document::load_sample(file).ok().map(|(sample, _)| sample);
+    for line in relaid(&changes, original.as_ref(), &sample, declaring.as_ref()) {
+        outln!("{line}");
     }
-    notes.extend(unvalued_note(&unvalued));
+    notes.extend(unvalued_note(&unvalued, declaring.as_ref()));
     for note in &notes {
         outln!("\n  {note}");
     }
     if changed == 0 {
-        outln!("\nnothing written — every value is already what it was asked to be");
+        // Of several samples, the verdict is said once, after them all.
+        if !super::ASK_AFTER.load(AtomicOrdering::Relaxed) {
+            outln!("\nnothing to change — every value is already what it was asked to be");
+        }
         return Ok(());
     }
 
     // What this costs downstream, which is the question an editor cannot answer.
     let after_states = not_current(&sample);
-    let newly: Vec<(String, Freshness, usize)> = after_states
-        .iter()
-        .filter(|(name, _, _)| !before_states.contains(name))
-        .cloned()
-        .collect();
+    let newly: Vec<(String, Freshness, usize)> =
+        editing::newly_not_current(&before_standing, &editing::not_current(&sample))
+            .into_iter()
+            .map(|entry| (entry.name, entry.state, entry.rows))
+            .collect();
     // An override is what compute leaves alone: promising that it recomputes
     // them sent the reader to a command that kept the value.
     let way_back = |listed: Vec<&Freshness>| {
@@ -1071,17 +1353,17 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
             .count();
         match overridden {
             0 => format!(
-                "samplekit compute {} --write recomputes them",
+                "samplekit {} compute --write recomputes them",
                 shell_path(file)
             ),
             all if all == listed.len() => format!(
-                "compute keeps an override — samplekit compute {} --force --write gives it back \
-                 to its formula",
+                "compute keeps a value typed over its formula — samplekit {} compute --force \
+                 --write gives it back to its formula",
                 shell_path(file)
             ),
             _ => format!(
-                "samplekit compute {} --write recomputes the others; --force also gives an \
-                 override back to its formula",
+                "samplekit {} compute --write recomputes the others; --force also gives a \
+                 value typed over its formula back to it",
                 shell_path(file)
             ),
         }
@@ -1094,14 +1376,74 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
             // Said above, value by value: they rest on the number, which did
             // not move, and nothing marks them.
         } else if before_states.is_empty() {
-            outln!("\n  nothing derived rests on this");
+            // What the model reads of what changed, never computed yet: *nothing
+            // derived rests on this* was said of the `notch` that `modulus` waited for.
+            let changed_fields: Vec<String> = options
+                .positionals
+                .iter()
+                .filter_map(|written| split_assignment(written).ok())
+                .map(|(field, _)| {
+                    let field = field.split('[').next().unwrap_or(&field).to_string();
+                    match field.rsplit_once('.') {
+                        Some((base, "readings" | "u" | "v" | "unit")) => base.to_string(),
+                        _ => field,
+                    }
+                })
+                .collect();
+            let readers: Vec<String> = declaring
+                .as_ref()
+                .and_then(samplekit::config::model_runtime::current_description)
+                .map(|described| {
+                    described
+                        .properties
+                        .iter()
+                        .filter(|(_, property)| {
+                            property.reads.iter().any(|read| {
+                                changed_fields.iter().any(|field| {
+                                    read == field || read.strip_prefix("row.") == Some(field)
+                                })
+                            })
+                        })
+                        .map(|(name, _)| name.clone())
+                        .collect()
+                })
+                .unwrap_or_default();
+            // A model never read here says nothing of what rests on the
+            // change: *nothing derived* was said all the same.
+            let unread = declaring.as_ref().is_some_and(|config| {
+                samplekit::config::model_runtime::template_of(config).is_some()
+                    && samplekit::config::model_runtime::current_description(config).is_none()
+            });
+            if readers.is_empty() && unread {
+                outln!(
+                    "\n  what rests on this is not known here: the model could not be read — \
+                     samplekit validate says why"
+                );
+            } else if readers.is_empty() {
+                outln!();
+                for line in samplekit::presentation::changes::not_current_lines(&[], 0) {
+                    outln!("{line}");
+                }
+            } else {
+                outln!(
+                    "\n  {} {} it, never computed yet: {}",
+                    readers.join(", "),
+                    if readers.len() == 1 { "reads" } else { "read" },
+                    advice(&format!(
+                        "samplekit {} compute --write computes {}",
+                        shell_path(file),
+                        if readers.len() == 1 { "it" } else { "them" }
+                    ))
+                );
+            }
         } else {
-            outln!(
-                "\n  nothing more becomes outdated — {} already not current before this",
-                counted_as(before_states.len(), "value was", "values were")
-            );
-            for name in &before_states {
-                outln!("    {name}");
+            outln!();
+            for line in samplekit::presentation::changes::not_current_lines(
+                &[],
+                // By cells, as every count is.
+                before_standing.iter().map(|entry| entry.rows.max(1)).sum(),
+            ) {
+                outln!("{line}");
             }
             let listed = after_states
                 .iter()
@@ -1111,25 +1453,63 @@ pub(super) fn set_values(file: &Path, add_row: Option<&str>, options: &Options) 
             outln!("\n  {}", advice(&way_back(listed)));
         }
     } else {
-        outln!(
-            "\n  this makes {} not current",
-            counted_as(newly.len(), "value", "values")
-        );
-        for (name, state, rows) in &newly {
-            outln!("    {name:<28} {}", state_of(&sample, state, *rows));
+        outln!();
+        let said: Vec<(String, String)> = newly
+            .iter()
+            .map(|(name, state, rows)| (name.clone(), state_of(&sample, state, *rows)))
+            .collect();
+        for line in samplekit::presentation::changes::not_current_lines(&said, 0) {
+            outln!("{line}");
         }
         let listed = newly.iter().map(|(_, state, _)| state).collect();
         outln!("\n  {}", advice(&way_back(listed)));
     }
 
+    super::say_changed_by_this_write(std::iter::once(file));
     if !options.write {
-        outln!("\n{}", advice("nothing written — pass --write to apply"));
+        outln!();
+        offer_to_apply(
+            "apply these changes?",
+            "nothing written — pass --write to apply",
+        );
         return Ok(());
     }
+    samplekit::collection::sample_list::declare_model_units_at(&mut sample, file);
     document::save_sample(&mut sample, &Destination::Origin(origin))
         .map_err(|error| write_failed(file, &error))?;
-    outln!("\nwritten: {}", file.display());
+    // Of several samples, what was written is said once, after them all.
+    if !super::WRITTEN_AFTER.load(AtomicOrdering::Relaxed) {
+        outln!("\nwritten: {}", file.display());
+    }
     Ok(())
+}
+
+/// The preview's lines as they are built — a field in its column of 28, then
+/// `before  →  after` or what became of it, and a note beneath with that
+/// column blank — said as every surface says a change.
+fn relaid(
+    lines: &[String],
+    before: Option<&samplekit::core::sample::Sample>,
+    after: &samplekit::core::sample::Sample,
+    config: Option<&ProjectConfig>,
+) -> Vec<String> {
+    use samplekit::presentation::changes::{FieldChange, change_lines, made_whole};
+    let mut changes: Vec<FieldChange> = Vec::new();
+    for line in lines {
+        if line.starts_with(' ') {
+            if let Some(last) = changes.last_mut() {
+                last.notes.push(line.trim().to_string());
+            }
+            continue;
+        }
+        let (field, rest) = line.split_once(' ').unwrap_or((line.as_str(), ""));
+        let rest = rest.trim();
+        changes.push(match rest.split_once("  →  ") {
+            Some((before, after)) => FieldChange::new(field, before, after),
+            None => FieldChange::said(field, rest),
+        });
+    }
+    change_lines(&made_whole(changes, before, after, config))
 }
 
 /// Where what readings given in one command come to is said: lines of the
@@ -1156,9 +1536,60 @@ fn row_index(
 }
 
 /// Readings with no statistic recorded and no value beside them, said once for
-/// every quantity given so. `set` reads no model, so what the model declares is
-/// not known here, and is not guessed at.
-fn unvalued_note(names: &[String]) -> Option<String> {
+/// every quantity given so: by the statistic the model's description declares
+/// where it declares one, and not guessed at where it is not known.
+fn unvalued_note(names: &[String], config: Option<&ProjectConfig>) -> Option<String> {
+    let description = config.and_then(runtime::current_description);
+    let declared = |name: &String| {
+        description
+            .as_ref()
+            .and_then(|description| description.properties.get(name.as_str()))
+            .and_then(|property| property.value.statistic().map(str::to_string))
+    };
+    // One line for the quantities of one statistic: a line each read as
+    // fragments, the second set apart from the first.
+    let mut by_statistic: Vec<(String, Vec<&String>)> = Vec::new();
+    for name in names {
+        if let Some(statistic) = declared(name) {
+            match by_statistic.iter_mut().find(|(held, _)| *held == statistic) {
+                Some((_, names)) => names.push(name),
+                None => by_statistic.push((statistic, vec![name])),
+            }
+        }
+    }
+    let mut said: Vec<String> = by_statistic
+        .into_iter()
+        .map(|(statistic, names)| {
+            let listed = match names.as_slice() {
+                [one] => one.to_string(),
+                [first @ .., last] => format!(
+                    "{} and {last}",
+                    first
+                        .iter()
+                        .map(|name| name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                [] => String::new(),
+            };
+            format!(
+                "{listed} {} for samplekit compute: the {statistic} of {} readings, as the \
+                 model declares",
+                if names.len() == 1 { "waits" } else { "wait" },
+                if names.len() == 1 { "its" } else { "their" }
+            )
+        })
+        .collect();
+    let unknown: Vec<String> = names
+        .iter()
+        .filter(|name| declared(name).is_none())
+        .cloned()
+        .collect();
+    said.extend(unknown_statistic_note(&unknown));
+    (!said.is_empty()).then(|| said.join("\n"))
+}
+
+fn unknown_statistic_note(names: &[String]) -> Option<String> {
     let first = names.first()?;
     Some(format!(
         "{} no statistic recorded for {} readings: samplekit compute takes the one the model \
@@ -1172,8 +1603,8 @@ fn unvalued_note(names: &[String]) -> Option<String> {
     ))
 }
 
-/// The repeated measurements behind one quantity, or one cell: `og.readings=…`,
-/// `mouthfeel.sweetness[40].readings=…`, with or without brackets. Said as lines of
+/// The repeated measurements behind one quantity, or one cell: `radius.readings=…`,
+/// `toughness.stiffness[40].readings=…`, with or without brackets. Said as lines of
 /// the preview `set` prints, and whether they change anything.
 ///
 /// Entering one reading where three were made does not fail: it reports an
@@ -1293,7 +1724,7 @@ fn readings_change(
             } else {
                 notes.push(format!(
                     "{at} declares no statistic of its readings: they give the cell no value \
-                     until the model's Column declares one — sk.Column(value=sk.stats.mean)"
+                     until the model's column declares one — sk.Property(value=sk.stats.mean)"
                 ));
             }
             Ok(true)
@@ -1311,7 +1742,7 @@ fn readings_change(
                 .flatten();
             if sample.has_attribute(&name) {
                 return Err(Fail::usage(format!(
-                    "'{name}' is an attribute here, and readings belong to a quantity: \
+                    "'{name}' is an attribute here, and readings belong to a property: \
                      remove it first, {name}="
                 )));
             }
@@ -1353,6 +1784,9 @@ fn readings_change(
                 ));
                 return Ok(false);
             }
+            if let Some(refused) = editing::readings_refused_by_model(config, name.as_str()) {
+                return Err(edit_failure(refused));
+            }
             editing::set_readings(sample, &name, readings.clone()).map_err(edit_failure)?;
             if let (Some(unit), Ok(handle)) = (unit, sample.property(&name)) {
                 let mut presentation = handle.presentation();
@@ -1364,7 +1798,7 @@ fn readings_change(
             let location = sample.property(&name).ok().and_then(|handle| {
                 handle.peek(samplekit::core::property::Property::declared_location)
             });
-            let convention = sample.property(&name).ok().and_then(|handle| {
+            let mut convention = sample.property(&name).ok().and_then(|handle| {
                 handle
                     .records()
                     .statistics
@@ -1374,10 +1808,30 @@ fn readings_change(
             let statistic_said = match location {
                 Some(location) => {
                     let summary = samplekit::core::statistics::summarize(&readings);
+                    let statistic = location.of(&summary);
+                    // Known to the uncertainty the file records for them, the
+                    // statistic is written to its place, as a table writes the
+                    // value: *their mean 1.99133* said digits their standard
+                    // error of 0.0015 denies.
+                    let places = convention
+                        .filter(|_| editing::declared_precision(name.as_str(), config).is_none())
+                        .and_then(|convention| {
+                            samplekit::core::uncertainty::from_readings(&readings, convention)
+                        })
+                        .and_then(|uncertainty| {
+                            samplekit::core::formatting::uncertainty_places(uncertainty.magnitude())
+                        })
+                        .map(|(_, most)| most)
+                        .filter(|most| *most >= 0);
                     format!(
                         ", their {} {}",
                         location.name().replace('_', " "),
-                        number_declared(location.of(&summary), name.as_str(), config, false)
+                        match places {
+                            Some(places) => {
+                                samplekit::core::formatting::fixed(statistic, places as usize)
+                            }
+                            None => number_declared(statistic, name.as_str(), config, false),
+                        }
                     )
                 }
                 None => String::new(),
@@ -1415,11 +1869,21 @@ fn readings_change(
                         shown_declared(&kept, name.as_str(), config)
                     ));
                 } else if statistic {
-                    lines.push(format!(
-                        "{:<28} its value, their {statistic_name}, is not current until \
-                         samplekit compute takes it again",
-                        ""
-                    ));
+                    // The uncertainty the file records waits as the value
+                    // does: one sentence for both.
+                    match convention.take() {
+                        Some(convention) => lines.push(format!(
+                            "{:<28} its value and its uncertainty, their {statistic_name} and \
+                             {}, wait for samplekit compute",
+                            "",
+                            convention.name().replace('_', " ")
+                        )),
+                        None => lines.push(format!(
+                            "{:<28} its value, their {statistic_name}, is not current until \
+                             samplekit compute takes it again",
+                            ""
+                        )),
+                    }
                 }
                 if let Some(spread) = spread.filter(|_| !statistic) {
                     lines.push(format!(
@@ -1452,7 +1916,7 @@ fn readings_change(
             Ok(true)
         }
         _ => Err(Fail::usage(format!(
-            "{field_name}: readings belong to a quantity or a table's cell"
+            "{field_name}: readings belong to a property or a table's cell"
         ))),
     }
 }
@@ -1466,7 +1930,7 @@ pub(super) fn add_table_row(file: &Path, table: &str, options: &Options) -> Outc
     let (mut sample, origin) =
         document::load_sample(file).map_err(|error| read_failed(file, &error))?;
     let mut cells = Vec::new();
-    // A cell given readings, `sweetness.readings=1.05,1.06`, holds them as a
+    // A cell given readings, `stiffness.readings=1.05,1.06`, holds them as a
     // measurement does.
     let mut measured = Vec::new();
     for written in &options.positionals {
@@ -1483,62 +1947,68 @@ pub(super) fn add_table_row(file: &Path, table: &str, options: &Options) -> Outc
         cells.push((column, value_of(&text)?));
     }
     // A table this sample holds none of takes the shape of one a sample of the
-    // collection holds, which is what `new --like` already does. `nt.md` has an
+    // collection holds, which is what `new` already does. `nt.md` has an
     // empty parent, which names the current directory: read as a path, it
     // found no sibling, and the shape came from the model instead.
     let directory = file
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
+    // What is not current before the row, for what the row makes so.
+    let before_standing = editing::not_current(&sample);
     let added = editing::add_row_with_readings(&mut sample, table, cells, measured, |name| {
-        loaded(directory)
+        // The model's declaration of the table first: it says the columns,
+        // where another sample's file was copied, whichever came first.
+        samplekit::config::project_config::load_for(directory)
             .ok()
-            .and_then(|collection| editing::shape_from(&collection, file, name))
-            // No sample holds it yet: the model's description says its columns,
-            // written again first where it is stale.
-            .or_else(|| {
-                let config = samplekit::config::project_config::load_for(directory)
-                    .ok()
-                    .flatten()?;
+            .flatten()
+            .and_then(|config| {
                 describe_now(&config);
                 editing::shape_from_model(&config, name)
+            })
+            .or_else(|| {
+                loaded(directory)
+                    .ok()
+                    .and_then(|collection| editing::shape_from(&collection, file, name))
             })
     })
     .map_err(edit_failure)?;
 
-    outln!(
-        "{} · {} row in {table}\n",
-        file.display(),
-        if options.write {
-            "a new"
-        } else {
-            "would add a"
-        }
-    );
+    outln!("{} · a row in {table}\n", file.display());
     // Where the columns come from, said rather than done quietly: this file had
     // no such table a moment ago.
     if let Some(source) = &added.lent_from {
-        outln!(
-            "  the table is created here, with the columns of {}",
-            display_relative(source, Path::new("."))
-        );
+        if source
+            .extension()
+            .is_some_and(|extension| extension == "py")
+        {
+            outln!("  the table is created here, with the columns the model declares");
+        } else {
+            outln!(
+                "  the table is created here, with the columns of {}",
+                display_relative(source, Path::new("."))
+            );
+        }
     }
     let declaring = samplekit::config::project_config::load_for(directory)
         .ok()
         .flatten();
-    let mut shown: Vec<String> = added
+    // Each cell given, as every change is said: from nothing.
+    let mut shown: Vec<samplekit::presentation::changes::FieldChange> = added
         .given
         .iter()
         .map(|(column, value, overriding)| {
-            format!(
-                "{column} = {}{}",
-                shown_declared(value, &format!("{table}.{column}"), declaring.as_ref()),
-                if *overriding {
-                    "   (a computed column, set by hand: an override)"
-                } else {
-                    ""
-                }
-            )
+            let mut change = samplekit::presentation::changes::FieldChange::new(
+                format!("{table}.{column}"),
+                "—",
+                editing::previewed_typed(value, &format!("{table}.{column}"), declaring.as_ref()),
+            );
+            if *overriding {
+                change
+                    .notes
+                    .push("a computed column, typed over its formula".to_string());
+            }
+            change
         })
         .collect();
     // Readings as they are written, each one, and the statistic their column
@@ -1549,25 +2019,28 @@ pub(super) fn add_table_row(file: &Path, table: &str, options: &Options) -> Outc
             .table(&Identifier::new(table).map_err(|error| Fail::usage(error.to_string()))?)
             .ok()
             .and_then(|held| held.column(column).ok().map(|view| view.statistics().value));
-        shown.push(format!(
-            "{column}.readings = [{}]{}",
+        let mut change = samplekit::presentation::changes::FieldChange::new(
+            format!("{at}.readings"),
+            "—",
             readings
                 .iter()
                 .map(|reading| number_declared(*reading, &at, declaring.as_ref(), false))
                 .collect::<Vec<_>>()
                 .join(", "),
-            match statistic.flatten() {
-                Some(location) =>
-                    format!(" (its value their {})", location.name().replace('_', " ")),
-                // The model is not read here: what it declares is taken when it
-                // computes.
-                None => " (no statistic recorded for the column: no value until compute takes \
-                          the model's)"
-                    .to_string(),
-            }
-        ));
+        );
+        change.notes.push(match statistic.flatten() {
+            Some(location) => format!("its value their {}", location.name().replace('_', " ")),
+            // The model is not read here: what it declares is taken when it
+            // computes.
+            None => "no statistic recorded for the column: no value until compute takes the \
+                     model's"
+                .to_string(),
+        });
+        shown.push(change);
     }
-    outln!("  {}", shown.join(", "));
+    for line in samplekit::presentation::changes::change_lines(&shown) {
+        outln!("{line}");
+    }
     let names = |columns: &[Identifier]| {
         columns
             .iter()
@@ -1576,26 +2049,41 @@ pub(super) fn add_table_row(file: &Path, table: &str, options: &Options) -> Outc
             .join(", ")
     };
     if !added.left_absent.is_empty() {
-        outln!(
-            "  left absent                    {}",
-            names(&added.left_absent)
-        );
+        outln!("\n  left absent             {}", names(&added.left_absent));
     }
     if !added.by_the_model.is_empty() {
-        outln!(
-            "  computed by the model          {}",
-            names(&added.by_the_model)
-        );
+        outln!("  computed by the model   {}", names(&added.by_the_model));
+    }
+    // What the new row makes not current, as a cell's `set` says it: `rate`'s
+    // other rows and `drop` went outdated unannounced.
+    let newly: Vec<(String, samplekit::format::fingerprint::Freshness, usize)> =
+        editing::newly_not_current(&before_standing, &editing::not_current(&sample))
+            .into_iter()
+            .map(|entry| (entry.name, entry.state, entry.rows))
+            .collect();
+    outln!();
+    let said: Vec<(String, String)> = newly
+        .iter()
+        .map(|(name, state, rows)| (name.clone(), state_of(&sample, state, *rows)))
+        .collect();
+    for line in samplekit::presentation::changes::not_current_lines(&said, 0) {
+        outln!("{line}");
     }
 
+    super::say_changed_by_this_write(std::iter::once(file));
     if !options.write {
-        outln!("\n{}", advice("nothing written — pass --write to apply"));
+        outln!();
+        offer_to_apply(
+            "apply these changes?",
+            "nothing written — pass --write to apply",
+        );
         return Ok(());
     }
+    samplekit::collection::sample_list::declare_model_units_at(&mut sample, file);
     document::save_sample(&mut sample, &Destination::Origin(origin))
         .map_err(|error| write_failed(file, &error))?;
     outln!(
-        "\nwritten: {}\n\n  samplekit compute {} --write   fills what the model derives from it",
+        "\nwritten: {}\n\n  samplekit {} compute --write   fills what the model derives from it",
         file.display(),
         shell_path(file)
     );
@@ -1677,9 +2165,6 @@ pub(super) fn describe_now(config: &ProjectConfig) {
     thread_local! {
         static TRIED: RefCell<Vec<PathBuf>> = const { RefCell::new(Vec::new()) };
     }
-    if runtime::template_of(config).is_none() || runtime::current_description(config).is_some() {
-        return;
-    }
     let root = config.root().to_path_buf();
     let first = TRIED.with(|tried| {
         let mut tried = tried.borrow_mut();
@@ -1692,12 +2177,18 @@ pub(super) fn describe_now(config: &ProjectConfig) {
     if !first {
         return;
     }
-    if let Err(error) = runtime::describe(config, &root) {
-        let said = error.to_string();
+    if let Err(said) = samplekit::collection::computation::describe_if_missing(config) {
+        // Whole: its first line alone was `Traceback (most recent call
+        // last):`, which says nothing of what went wrong.
+        let trace = said
+            .trim_end()
+            .lines()
+            .map(|line| format!("  {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
         warn(&format!(
-            "the model could not be read, so what it declares is not known: {}\n  \
-             a name only the model declares is written as the samples here hold it",
-            said.lines().next().unwrap_or_default()
+            "the model could not be read, so what it declares is not known, and a name only \
+             the model declares is written as the samples here hold it:\n{trace}"
         ));
     }
 }
@@ -1705,9 +2196,9 @@ pub(super) fn describe_now(config: &ProjectConfig) {
 /// One assignment to a sample that may not hold its name yet, written as the
 /// project knows it (`editing::known_as`): as `[property.*]` declares it, else
 /// as the model's description says it declares it, else as the collection's
-/// samples hold it — a quantity, with its unit. `og=1.048` for a new brew
-/// beside brews that all measure `og` was written as an attribute, and so was
-/// `ibu=25.1` where only the model declared it; and a text the model's
+/// samples hold it — a quantity, with its unit. `radius=1.048` for a new piece
+/// beside pieces that all measure `radius` was written as an attribute, and so was
+/// `hb=25.1` where only the model declared it; and a text the model's
 /// property holds is a property too.
 pub(super) fn apply_known(
     sample: &mut samplekit::core::sample::Sample,
@@ -1716,12 +2207,129 @@ pub(super) fn apply_known(
     config: Option<&ProjectConfig>,
     collection: Option<&SampleList>,
 ) -> Result<(editing::Change, String), Fail> {
+    // **A bare number is in the unit the project declares** — the unit its
+    // `[property.*]` gives, else the model's: written into a file that holds
+    // another, the number went in under the file's unit, with the old
+    // uncertainty, in that unit, beside it. The unit is written again, the
+    // old uncertainty removed, and the preview says both.
+    let switched = match (fields::parse(field_name), &value) {
+        (
+            Ok(Field::Named {
+                name,
+                channel: Channel::Value,
+            }),
+            Value::Integer(_) | Value::Number(_),
+        ) if sample.has_property(&name) => {
+            let handle = sample.property(&name).ok();
+            let written = handle
+                .as_ref()
+                .and_then(|handle| handle.presentation().unit);
+            let declared = config
+                .and_then(|config| config.property(name.as_str()))
+                .and_then(|declaration| declaration.unit.clone())
+                .or_else(|| {
+                    config
+                        .and_then(runtime::current_description)
+                        .and_then(|description| {
+                            description
+                                .properties
+                                .get(name.as_str())
+                                .and_then(|property| property.unit.clone())
+                        })
+                });
+            match (written, declared) {
+                (Some(written), Some(declared)) if written != declared => {
+                    let uncertainty = handle
+                        .as_ref()
+                        .and_then(|handle| handle.uncertainty().ok().flatten());
+                    Some((name, written, declared, uncertainty))
+                }
+                _ => None,
+            }
+        }
+        _ => None,
+    };
+    let (mut change, mut what) =
+        apply_known_as_written(sample, field_name, value, config, collection)?;
+    // Whether the model computes it is read from its description, had written
+    // where it is missing, as a fresh copy has it.
+    if matches!(
+        change.became,
+        editing::Became::Changed | editing::Became::NewQuantity
+    ) && let Some(config) = config
+    {
+        describe_now(config);
+    }
+    editing::over_the_model(sample, &mut change, config);
+    if change.became == editing::Became::Override {
+        what = described(&change);
+    }
+    if let Some((name, written, declared, uncertainty)) = switched
+        && let Ok(handle) = sample.property(&name)
+    {
+        let mut presentation = handle.presentation();
+        presentation.unit = Some(declared.clone());
+        handle.set_presentation(presentation);
+        let mut said =
+            format!("in {declared}, the unit the project declares — the file wrote {written}");
+        if let Some(uncertainty) = uncertainty {
+            handle.set_uncertainty(None);
+            said.push_str(&format!(
+                "; its uncertainty, {} {written}, is removed with the unit it was in",
+                uncertainty.magnitude()
+            ));
+        }
+        // Said as every note on a change is: in brackets after its field,
+        // which the preview writes under it.
+        what = match what.strip_suffix(')') {
+            Some(noted) if noted.contains(" (") => format!("{noted}; {said})"),
+            _ => format!("{what} ({said})"),
+        };
+    }
+    Ok((change, what))
+}
+
+/// [`apply_known`], the value in whatever unit the file holds.
+fn apply_known_as_written(
+    sample: &mut samplekit::core::sample::Sample,
+    field_name: &str,
+    value: Value,
+    config: Option<&ProjectConfig>,
+    collection: Option<&SampleList>,
+) -> Result<(editing::Change, String), Fail> {
     describe_for(sample, field_name, config);
+    // A value the model no longer computes, emptied: removed, record and all —
+    // made an override, it stayed a value of no formula for good.
+    if matches!(value, Value::Absent)
+        && let Some(config) = config
+        && let Ok(name) = Identifier::new(field_name)
+        && sample.has_property(&name)
+        && samplekit::collection::computation::orphans(Some(config), config.root(), sample)
+            .iter()
+            .any(|orphan| orphan == field_name)
+    {
+        let before = sample
+            .property(&name)
+            .ok()
+            .and_then(|handle| handle.value().ok());
+        sample
+            .remove_property(&name)
+            .map_err(|error| Fail::data(error.to_string()))?;
+        let change = editing::Change {
+            field: field_name.to_string(),
+            before,
+            after: None,
+            became: editing::Became::Cleared,
+            kept: None,
+        };
+        let what = described(&change);
+        return Ok((change, what));
+    }
     let known = editing::known_as(sample, field_name, config, collection);
     if let Some(known) = &known
         && let Some(held) = &known.held
         // Text where every sample holds a number is refused as `set` refuses
-        // it: `og=1,050` was written as the text "1,050".
+        // it: `radius=1,050` was written as the text "1,050".
         && held.numeric
         && matches!(value, Value::Text(_) | Value::Boolean(_))
     {
@@ -1761,7 +2369,7 @@ pub(super) fn apply_known(
     let what = match known.from {
         editing::KnownFrom::Configuration => described(&change),
         editing::KnownFrom::Model(file) => format!(
-            "{} (new, a quantity {} declares)",
+            "{} (new, a property {} declares)",
             change.field,
             relative_to_here(&file)
         ),
@@ -1785,7 +2393,7 @@ pub(super) fn apply_known(
                 );
             }
             format!(
-                "{} (new, a quantity as the other samples hold it)",
+                "{} (new, a property as the other samples hold it)",
                 change.field
             )
         }
@@ -1802,7 +2410,7 @@ fn decimal_commas_counted(count: usize) -> String {
 pub(super) fn described(change: &editing::Change) -> String {
     let field = &change.field;
     match change.became {
-        editing::Became::Override => format!("{field} (an override: the formula stays)"),
+        editing::Became::Override => format!("{field} (typed over its formula, which stays)"),
         editing::Became::NewQuantity => {
             format!("{field} (new, declared in .samplekitrc)")
         }
@@ -1821,18 +2429,18 @@ pub(super) fn described(change: &editing::Change) -> String {
                 // no other sample holds it as a quantity, or it would have been
                 // written as one.
                 warn_gathered(
-                    "a quantity nowhere here",
+                    "a property nowhere here",
                     |count| {
                         format!(
-                            "{count} names are a quantity nowhere here, so they are written as \
+                            "{count} names are a property nowhere here, so they are written as \
                              attributes: declare each in the model or as [property.<name>] in \
-                             .samplekitrc to write it as a quantity"
+                             .samplekitrc to write it as a property"
                         )
                     },
                     format!(
-                        "'{field}' is a quantity nowhere here — no sample holds it as one, and \
+                        "'{field}' is a property nowhere here — no sample holds it as one, and \
                          neither .samplekitrc nor the model declares it — so it is written as \
-                         an attribute\n  a quantity cannot share its name with one: if it is a \
+                         an attribute\n  a property cannot share its name with one: if it is a \
                          quantity, declare it in the model or as [property.{field}] in \
                          .samplekitrc and it is written as one"
                     ),
@@ -1860,13 +2468,13 @@ fn number_declared(
     config: Option<&ProjectConfig>,
     uncertainty: bool,
 ) -> String {
-    let precision = editing::declared_precision(field, config).map(|precision| {
-        if uncertainty {
-            precision.of_uncertainty()
-        } else {
-            precision
-        }
-    });
+    let precision = match (editing::declared_precision(field, config), uncertainty) {
+        (Some(precision), true) => Some(precision.of_uncertainty()),
+        (Some(precision), false) => Some(precision),
+        // An uncertainty with nothing declared, rounded up as a table writes it.
+        (None, true) => Some(samplekit::core::formatting::Precision::general_spread()),
+        (None, false) => None,
+    };
     editing::shown_at(&Value::Number(number), precision)
 }
 
@@ -1888,4 +2496,291 @@ fn written_in(sample: &samplekit::core::sample::Sample, name: &str) -> bool {
                 .and_then(|rest| rest.strip_prefix(name))
                 .is_some_and(|rest| rest.starts_with(':'))
         })
+}
+
+/// `remove`: sample files deleted, previewed first. Their own files stay; the
+/// history keeps the samples, and `restore` gives them back.
+pub(super) fn remove(options: &Options) -> Outcome {
+    let named = !options.positionals.is_empty();
+    let narrowed = !options.filter.is_empty() || !options.query.is_empty();
+    if !named && !narrowed {
+        return Err(Fail::usage(
+            "remove wants the samples to delete: name their files, or narrow a folder with \
+             -f or --query"
+                .to_string(),
+        ));
+    }
+    let root = options
+        .positionals
+        .first()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    // A folder is every sample in it: named alone, it is refused, as a typo
+    // of a file's name would have deleted them all.
+    let folders: Vec<PathBuf> = std::iter::once(root.clone())
+        .chain(EXTRA_TARGETS.with(|extra| extra.borrow().clone()))
+        .filter(|path| path.is_dir())
+        .collect();
+    if let Some(folder) = folders.first()
+        && named
+        && !narrowed
+    {
+        return Err(Fail::usage(format!(
+            "{} is a folder, and remove deletes no folder whole: name the files, or narrow \
+             it with -f or --query",
+            relative_to_here(folder)
+        )));
+    }
+    let collection = loaded(&root)?;
+    warn_skipped(&collection, options);
+    let selected = select(&collection, options, &root)?;
+    let paths: Vec<PathBuf> = selected
+        .iter()
+        .filter_map(|entry| entry.path.clone())
+        .collect();
+    if paths.is_empty() {
+        outln!("nothing to change — no sample is selected");
+        return Ok(());
+    }
+    let own: usize = paths
+        .iter()
+        .filter_map(|path| {
+            let config = collection.config_for(path)?;
+            samplekit::config::discovery::sample_files(config, path, None).ok()
+        })
+        .map(|files| files.len())
+        .sum();
+    let them = paths.len() == 1;
+    // The links of the project leading to them are left as written, and lead
+    // nowhere once they are gone: said, file by file.
+    let incoming = samplekit::collection::renaming::links_leading_to(
+        paths
+            .first()
+            .and_then(|path| collection.config_for(path))
+            .or(collection.config()),
+        &paths,
+    );
+    let show = || {
+        for path in &paths {
+            outln!("  {}", relative_to_here(path));
+        }
+        outln!();
+        if own > 0 {
+            outln!(
+                "their own files stay: {} under [collection] files",
+                counted_as(own, "file", "files")
+            );
+        }
+        if !incoming.is_empty() {
+            outln!(
+                "{} to {}, and will lead nowhere:",
+                counted_as(incoming.len(), "link leads", "links lead"),
+                if them { "it" } else { "them" }
+            );
+            let width = incoming
+                .iter()
+                .map(|link| link.field.chars().count())
+                .max()
+                .unwrap_or(0);
+            let mut file: Option<&Path> = None;
+            for link in &incoming {
+                if file != Some(link.file.as_path()) {
+                    outln!("  {}", relative_to_here(&link.file));
+                    file = Some(link.file.as_path());
+                }
+                outln!("    {:width$}  {}", link.field, link.text);
+            }
+            outln!();
+        }
+    };
+    if !options.write {
+        outln!(
+            "remove · {}\n",
+            counted_as(paths.len(), "sample file", "sample files")
+        );
+        show();
+        outln!(
+            "samplekit restore gives {} back, as {} {}\n",
+            if them { "it" } else { "them" },
+            if them { "it" } else { "they" },
+            if them { "was" } else { "were" }
+        );
+        offer_to_apply(
+            "apply these changes?",
+            "nothing written — pass --write to apply",
+        );
+        return Ok(());
+    }
+    let mut removed: Vec<String> = Vec::new();
+    for path in &paths {
+        if super::STOP.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(super::stopped(&removed));
+        }
+        samplekit::format::document::note_written(path);
+        if let Err(error) = std::fs::remove_file(path) {
+            for name in &removed {
+                outln!("removed: {name}");
+            }
+            return Err(Fail::io(format!("{}: {error}", relative_to_here(path))));
+        }
+        removed.push(relative_to_here(path));
+    }
+    for name in &removed {
+        outln!("removed: {name}");
+    }
+    if own > 0 {
+        outln!(
+            "their own files stay: {} under [collection] files",
+            counted_as(own, "file", "files")
+        );
+    }
+    if !incoming.is_empty() {
+        outln!(
+            "{} now {} nowhere — samplekit validate lists {}",
+            counted_as(incoming.len(), "link", "links"),
+            if incoming.len() == 1 { "leads" } else { "lead" },
+            if incoming.len() == 1 { "it" } else { "them" }
+        );
+    }
+    outln!(
+        "samplekit restore gives {} back",
+        if them { "it" } else { "them" }
+    );
+    Ok(())
+}
+
+/// `rename`: a sample's file named again, its own files with it, its `name:`
+/// where it was the file's name, and every link of its project leading to it;
+/// previewed first.
+pub(super) fn rename(options: &Options, new: &str) -> Outcome {
+    let Some(target) = options.positionals.first().map(PathBuf::from) else {
+        return Err(Fail::usage(
+            "rename wants the sample to rename: samplekit FILE rename NEW".to_string(),
+        ));
+    };
+    if EXTRA_TARGETS.with(|extra| !extra.borrow().is_empty()) {
+        return Err(Fail::usage(
+            "rename renames one sample: name one file".to_string(),
+        ));
+    }
+    if target.is_dir() {
+        return Err(Fail::usage(format!(
+            "{} is a folder, and rename renames one sample: name its file",
+            relative_to_here(&target)
+        )));
+    }
+    let collection = loaded(&target)?;
+    warn_skipped(&collection, options);
+    let config = collection.config_for(&target).or(collection.config());
+    let plan = samplekit::collection::renaming::plan(config, &target, new)
+        .map_err(|error| Fail::usage(error.to_string()))?;
+    // What it was and what it becomes, painted as every preview paints them.
+    let was = |text: &str| render::paint(text, render::palette().attribute);
+    let show = |plan: &samplekit::collection::renaming::Plan| {
+        outln!(
+            "  {:<12} {}  →  {}",
+            "file",
+            was(&relative_to_here(&plan.from)),
+            was(&relative_to_here(&plan.to))
+        );
+        if let Some((before, after)) = &plan.name {
+            outln!("  {:<12} {}  →  {}", "name", was(before), was(after));
+        }
+        for (from, to) in &plan.own {
+            outln!(
+                "  {:<12} {}  →  {}",
+                "files",
+                was(&relative_to_here(from)),
+                was(&relative_to_here(to))
+            );
+        }
+        outln!();
+        if plan.links.is_empty() {
+            outln!("  no link of the project leads to it");
+        } else {
+            outln!(
+                "  {} leading to it, written again:",
+                counted_as(plan.links.len(), "link", "links")
+            );
+            let mut files: Vec<&PathBuf> = plan.links.iter().map(|change| &change.file).collect();
+            files.dedup();
+            let width = plan
+                .links
+                .iter()
+                .map(|change| change.field.chars().count() + change.item.map_or(0, |_| 4))
+                .max()
+                .unwrap_or(0)
+                .max(12);
+            for file in files {
+                outln!("  {}", relative_to_here(file));
+                for change in plan.links.iter().filter(|change| change.file == *file) {
+                    let field = match change.item {
+                        Some(at) => format!("{}[#{at}]", change.field),
+                        None => change.field.clone(),
+                    };
+                    outln!(
+                        "    {field:<width$}  {}  →  {}",
+                        was(&change.before),
+                        was(&change.after)
+                    );
+                }
+            }
+        }
+    };
+    if !options.write {
+        outln!(
+            "{} · rename to {}\n",
+            relative_to_here(&plan.from),
+            plan.to
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        );
+        show(&plan);
+        outln!();
+        offer_to_apply(
+            "apply these changes?",
+            "nothing written — pass --write to apply",
+        );
+        return Ok(());
+    }
+    let written = samplekit::collection::renaming::apply(&plan)
+        .map_err(|error| Fail::io(error.to_string()))?;
+    outln!(
+        "renamed: {}  →  {}",
+        relative_to_here(&plan.from),
+        relative_to_here(&plan.to)
+    );
+    for (from, to) in &plan.own {
+        outln!(
+            "moved: {}  →  {}",
+            relative_to_here(from),
+            relative_to_here(to)
+        );
+    }
+    let mut links: Vec<&PathBuf> = plan.links.iter().map(|change| &change.file).collect();
+    links.sort();
+    links.dedup();
+    for file in links {
+        if written.contains(file) && *file != plan.from {
+            outln!("written: {}", relative_to_here(file));
+        }
+    }
+    // The history keeps the samples, not their own files: renamed back, both
+    // go back, the links with them.
+    outln!(
+        "{}",
+        advice(&format!(
+            "samplekit {} rename {} --write renames it back, its files and links with it",
+            shell_path(&plan.to),
+            plan.from
+                .file_stem()
+                .map(|stem| stem
+                    .to_string_lossy()
+                    .trim_end_matches(".sample")
+                    .to_string())
+                .unwrap_or_default()
+        ))
+    );
+    Ok(())
 }

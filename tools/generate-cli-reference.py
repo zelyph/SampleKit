@@ -169,7 +169,10 @@ def render(words, page, shared, out):
             out.append("Commands:")
             out.append("")
             for head, said in entries:
+                # Listed, as the help lists it, without a page of its own:
+                # `samplekit help COMMAND` is that command's page.
                 if head == "help":
+                    out.append(f"- {code(' '.join([*words, head]))}: {escaped(' '.join(said))}")
                     continue
                 out.append(f"- [{code(' '.join([*words, head]))}](#{anchor([*words, head])}): "
                            f"{escaped(' '.join(said))}")

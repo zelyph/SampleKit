@@ -16,15 +16,15 @@ fn c(table: &str, column: &str) -> Node {
     )
 }
 
-/// `plato` from `malt` and `volume`, `haze` from `plato`, `rating` from
-/// `haze`. `label` hangs off nothing.
+/// `ductility` from `diameter` and `volume`, `roughness` from `ductility`, `rating` from
+/// `roughness`. `label` hangs off nothing.
 fn chain() -> DependencyGraph {
     let mut graph = DependencyGraph::new();
     graph
-        .declare(&n("plato"), &[n("malt"), n("volume")])
+        .declare(&n("ductility"), &[n("diameter"), n("volume")])
         .unwrap();
-    graph.declare(&n("haze"), &[n("plato")]).unwrap();
-    graph.declare(&n("rating"), &[n("haze")]).unwrap();
+    graph.declare(&n("roughness"), &[n("ductility")]).unwrap();
+    graph.declare(&n("rating"), &[n("roughness")]).unwrap();
     graph
 }
 
@@ -45,40 +45,40 @@ impl Generator {
 #[test]
 fn direct_dependents_are_reported() {
     let graph = chain();
-    let dependents = graph.dependents_of(&n("malt"));
+    let dependents = graph.dependents_of(&n("diameter"));
     assert_eq!(dependents.len(), 1);
-    assert!(dependents.contains(&n("plato")));
-    assert_eq!(graph.inputs_of(&n("plato")).len(), 2);
+    assert!(dependents.contains(&n("ductility")));
+    assert_eq!(graph.inputs_of(&n("ductility")).len(), 2);
 }
 
 #[test]
 fn invalidation_is_transitive() {
-    // A change three hops upstream reaches the far end.
-    let affected = chain().affected_by(&n("malt"), Change::Value);
-    assert_eq!(affected, [n("plato"), n("haze"), n("rating")]);
+    // A change three carbon upstream reaches the far end.
+    let affected = chain().affected_by(&n("diameter"), Change::Value);
+    assert_eq!(affected, [n("ductility"), n("roughness"), n("rating")]);
 }
 
 #[test]
 fn unrelated_properties_are_untouched() {
     let mut graph = chain();
     graph.declare(&n("colour"), &[n("label")]).unwrap();
-    let affected = graph.affected_by(&n("malt"), Change::Value);
+    let affected = graph.affected_by(&n("diameter"), Change::Value);
     assert!(!affected.contains(&n("label")));
     assert!(!affected.contains(&n("colour")));
     // And the changed node is never in its own list.
-    assert!(!affected.contains(&n("malt")));
+    assert!(!affected.contains(&n("diameter")));
 }
 
 #[test]
 fn each_dependent_appears_once() {
-    // A diamond: rating rests on two paths back to malt.
+    // A diamond: rating rests on two paths back to diameter.
     let mut graph = DependencyGraph::new();
-    graph.declare(&n("left"), &[n("malt")]).unwrap();
-    graph.declare(&n("right"), &[n("malt")]).unwrap();
+    graph.declare(&n("left"), &[n("diameter")]).unwrap();
+    graph.declare(&n("right"), &[n("diameter")]).unwrap();
     graph
         .declare(&n("rating"), &[n("left"), n("right")])
         .unwrap();
-    let affected = graph.affected_by(&n("malt"), Change::Value);
+    let affected = graph.affected_by(&n("diameter"), Change::Value);
     assert_eq!(affected, [n("left"), n("right"), n("rating")]);
     let unique: HashSet<&Node> = affected.iter().collect();
     assert_eq!(unique.len(), affected.len());
@@ -88,22 +88,22 @@ fn each_dependent_appears_once() {
 fn traversal_order_is_deterministic() {
     // The same graph, declared in two orders, traverses identically.
     let mut one = DependencyGraph::new();
-    one.declare(&n("zeta"), &[n("malt")]).unwrap();
-    one.declare(&n("alpha"), &[n("malt")]).unwrap();
-    one.declare(&n("mu"), &[n("malt")]).unwrap();
+    one.declare(&n("zeta"), &[n("diameter")]).unwrap();
+    one.declare(&n("alpha"), &[n("diameter")]).unwrap();
+    one.declare(&n("mu"), &[n("diameter")]).unwrap();
 
     let mut other = DependencyGraph::new();
-    other.declare(&n("mu"), &[n("malt")]).unwrap();
-    other.declare(&n("alpha"), &[n("malt")]).unwrap();
-    other.declare(&n("zeta"), &[n("malt")]).unwrap();
+    other.declare(&n("mu"), &[n("diameter")]).unwrap();
+    other.declare(&n("alpha"), &[n("diameter")]).unwrap();
+    other.declare(&n("zeta"), &[n("diameter")]).unwrap();
 
     let expected = [n("alpha"), n("mu"), n("zeta")];
-    assert_eq!(one.affected_by(&n("malt"), Change::Value), expected);
-    assert_eq!(other.affected_by(&n("malt"), Change::Value), expected);
+    assert_eq!(one.affected_by(&n("diameter"), Change::Value), expected);
+    assert_eq!(other.affected_by(&n("diameter"), Change::Value), expected);
     // And twice from one graph, in case anything iterated a hash map.
     assert_eq!(
-        one.affected_by(&n("malt"), Change::Value),
-        one.affected_by(&n("malt"), Change::Value)
+        one.affected_by(&n("diameter"), Change::Value),
+        one.affected_by(&n("diameter"), Change::Value)
     );
 }
 
@@ -118,12 +118,12 @@ fn node_order_follows_the_declaration() {
     // And the traversal breaks ties by it rather than by whatever it read first.
     let mut graph = DependencyGraph::new();
     graph
-        .declare(&c("mashing", "clarity"), &[n("malt")])
+        .declare(&c("preheating", "rigidity"), &[n("diameter")])
         .unwrap();
-    graph.declare(&n("plato"), &[n("malt")]).unwrap();
+    graph.declare(&n("ductility"), &[n("diameter")]).unwrap();
     assert_eq!(
-        graph.affected_by(&n("malt"), Change::Value),
-        [n("plato"), c("mashing", "clarity")]
+        graph.affected_by(&n("diameter"), Change::Value),
+        [n("ductility"), c("preheating", "rigidity")]
     );
 }
 
@@ -132,7 +132,7 @@ fn presentation_change_affects_nothing() {
     // Empty even on a deep graph: a unit correction is not a re-derivation.
     assert!(
         chain()
-            .affected_by(&n("malt"), Change::Presentation)
+            .affected_by(&n("diameter"), Change::Presentation)
             .is_empty()
     );
 }
@@ -188,9 +188,14 @@ fn self_dependency_is_rejected() {
     // Its own variant: the cause is different and the message says so.
     let mut graph = DependencyGraph::new();
     let error = graph
-        .declare(&n("plato"), &[n("malt"), n("plato")])
+        .declare(&n("ductility"), &[n("diameter"), n("ductility")])
         .unwrap_err();
-    assert_eq!(error, DependencyError::SelfDependency { node: n("plato") });
+    assert_eq!(
+        error,
+        DependencyError::SelfDependency {
+            node: n("ductility")
+        }
+    );
     assert!(graph.is_empty());
 }
 
@@ -199,22 +204,24 @@ fn a_cycle_can_run_through_a_column() {
     // A property, a column and back, refused with all three in the path.
     let mut graph = DependencyGraph::new();
     graph
-        .declare(&c("mashing", "clarity"), &[n("foam")])
+        .declare(&c("preheating", "rigidity"), &[n("wear")])
         .unwrap();
     graph
-        .declare(&n("mean_clarity"), &[c("mashing", "clarity")])
+        .declare(&n("mean_rigidity"), &[c("preheating", "rigidity")])
         .unwrap();
-    let error = graph.declare(&n("foam"), &[n("mean_clarity")]).unwrap_err();
+    let error = graph
+        .declare(&n("wear"), &[n("mean_rigidity")])
+        .unwrap_err();
     let DependencyError::Cycle { path } = error else {
         panic!("expected a cycle, got {error:?}");
     };
     assert_eq!(
         path,
         vec![
-            n("foam"),
-            n("mean_clarity"),
-            c("mashing", "clarity"),
-            n("foam"),
+            n("wear"),
+            n("mean_rigidity"),
+            c("preheating", "rigidity"),
+            n("wear"),
         ]
     );
 }
@@ -243,11 +250,11 @@ fn redeclaring_replaces_inputs() {
     // Declaring twice does not accumulate: re-running a model is idempotent.
     let mut graph = DependencyGraph::new();
     graph
-        .declare(&n("plato"), &[n("malt"), n("volume")])
+        .declare(&n("ductility"), &[n("diameter"), n("volume")])
         .unwrap();
-    graph.declare(&n("plato"), &[n("malt")]).unwrap();
-    assert_eq!(graph.inputs_of(&n("plato")).len(), 1);
-    assert!(graph.inputs_of(&n("plato")).contains(&n("malt")));
+    graph.declare(&n("ductility"), &[n("diameter")]).unwrap();
+    assert_eq!(graph.inputs_of(&n("ductility")).len(), 1);
+    assert!(graph.inputs_of(&n("ductility")).contains(&n("diameter")));
     // And the dropped input no longer names it.
     assert!(graph.dependents_of(&n("volume")).is_empty());
 }
@@ -257,33 +264,33 @@ fn redeclaring_replaces_inputs() {
 #[test]
 fn removing_a_name_clears_both_directions() {
     let mut graph = chain();
-    graph.remove(&n("plato"));
-    assert!(graph.dependents_of(&n("malt")).is_empty());
-    assert!(graph.inputs_of(&n("haze")).is_empty());
-    assert!(graph.inputs_of(&n("plato")).is_empty());
-    assert!(graph.dependents_of(&n("plato")).is_empty());
+    graph.remove(&n("ductility"));
+    assert!(graph.dependents_of(&n("diameter")).is_empty());
+    assert!(graph.inputs_of(&n("roughness")).is_empty());
+    assert!(graph.inputs_of(&n("ductility")).is_empty());
+    assert!(graph.dependents_of(&n("ductility")).is_empty());
     // A change to a former input reaches nothing that went with it.
-    assert!(graph.affected_by(&n("malt"), Change::Value).is_empty());
+    assert!(graph.affected_by(&n("diameter"), Change::Value).is_empty());
 }
 
 #[test]
 fn a_column_and_a_property_can_share_a_name() {
     // Two nodes, and an edge on one leaves the other alone.
     let mut graph = DependencyGraph::new();
-    graph.declare(&n("nominal"), &[n("foam")]).unwrap();
+    graph.declare(&n("nominal"), &[n("wear")]).unwrap();
     graph
-        .declare(&n("measured"), &[c("mashing", "foam")])
+        .declare(&n("measured"), &[c("preheating", "wear")])
         .unwrap();
 
-    assert_eq!(graph.affected_by(&n("foam"), Change::Value), [n("nominal")]);
+    assert_eq!(graph.affected_by(&n("wear"), Change::Value), [n("nominal")]);
     assert_eq!(
-        graph.affected_by(&c("mashing", "foam"), Change::Value),
+        graph.affected_by(&c("preheating", "wear"), Change::Value),
         [n("measured")]
     );
     // And removing one leaves the other standing.
-    graph.remove(&n("foam"));
+    graph.remove(&n("wear"));
     assert_eq!(
-        graph.affected_by(&c("mashing", "foam"), Change::Value),
+        graph.affected_by(&c("preheating", "wear"), Change::Value),
         [n("measured")]
     );
 }
@@ -294,7 +301,7 @@ fn forward_and_reverse_stay_consistent() {
     // written in one operation, and nothing may leave them disagreeing.
     let universe: Vec<Node> = (0..6)
         .map(|i| n(&format!("p{i}")))
-        .chain((0..3).map(|i| c("mashing", &format!("q{i}"))))
+        .chain((0..3).map(|i| c("preheating", &format!("q{i}"))))
         .collect();
     let mut generator = Generator(0xD00D);
     let mut graph = DependencyGraph::new();

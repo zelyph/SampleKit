@@ -30,7 +30,7 @@ fn corpus() -> Vec<Value> {
         Value::boolean(false),
         Value::boolean(true),
         Value::text(""),
-        Value::text("Dunkel 57"),
+        Value::text("Duplex 57"),
         Value::text("dc 57"),
         Value::text("\u{3b8}"),
         Value::integer(0),
@@ -355,25 +355,25 @@ fn integer_equals_number_of_the_same_magnitude() {
 
 #[test]
 fn text_equality_is_case_sensitive() {
-    // "Dunkel 57" and "dc 57" are different labels.
-    assert!(!equals(&Value::text("Dunkel 57"), &Value::text("dc 57")));
-    assert!(equals(&Value::text("Dunkel 57"), &Value::text("Dunkel 57")));
+    // "Duplex 57" and "dc 57" are different labels.
+    assert!(!equals(&Value::text("Duplex 57"), &Value::text("dc 57")));
+    assert!(equals(&Value::text("Duplex 57"), &Value::text("Duplex 57")));
 }
 
 // ------------------------------------------------------------ text operators
 
 #[test]
 fn contains_is_case_insensitive() {
-    assert_eq!(contains(&Value::text("Dunkel 57"), "du"), Ok(true));
+    assert_eq!(contains(&Value::text("Duplex 57"), "du"), Ok(true));
     assert_eq!(contains(&Value::text("du 57"), "DU"), Ok(true));
-    assert_eq!(contains(&Value::text("Dunkel 57"), "xy"), Ok(false));
+    assert_eq!(contains(&Value::text("Duplex 57"), "xy"), Ok(false));
 }
 
 #[test]
 fn starts_with_is_case_insensitive() {
-    assert_eq!(starts_with(&Value::text("Dunkel 57"), "du"), Ok(true));
+    assert_eq!(starts_with(&Value::text("Duplex 57"), "du"), Ok(true));
     assert_eq!(starts_with(&Value::text("du 57"), "DU"), Ok(true));
-    assert_eq!(starts_with(&Value::text("Dunkel 57"), "57"), Ok(false));
+    assert_eq!(starts_with(&Value::text("Duplex 57"), "57"), Ok(false));
 }
 
 #[test]

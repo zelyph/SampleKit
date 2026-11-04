@@ -1,12 +1,14 @@
 # ------------------------------------------------------------------ the model
 #
 # Your model: the Python that says what a sample has and how what is derived
-# is derived, named where it is. Nothing runs it until you allow it: the first
-# computation shows you the files and asks, and remembers your answer for this
-# version of the model. Where the file defines more than one subclass of
-# sk.Sample, name the one to use:  class = "Model"
+# is derived, named where it is. Only computing runs it — samplekit compute,
+# C in the TUI, or a script — never reading, listing or checking the samples.
+# Where the file defines more than one subclass of sk.Sample, name the one to
+# use:  class = "Model"
 
 [model]
 path = {path}
+# The environment it runs in, which holds samplekit: a folder, or an interpreter.
+python = ".venv"
 
 

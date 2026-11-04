@@ -38,10 +38,10 @@ schema_version = 1
 
 # The cells that passed.
 [query.approved]
-filter = 'status == \"approved\"'   # set by the brewery
+filter = 'status == \"approved\"'   # set by the laboratory
 
 [profile.old]
-columns = [{field = \"malt\"}]
+columns = [{field = \"diameter\"}]
 
 [unit.\"g/L\"]
 plain = \"g/L\"
@@ -53,7 +53,7 @@ fn what_was_not_touched_is_kept_as_written() {
     let path = scratch.rc(WRITTEN);
     let mut edit = ConfigurationEdit::open(&path).unwrap();
     edit.set(Kind::Query, "approved", "filter", "status == \"kept\"");
-    edit.set(Kind::Query, "strong", "filter", "brix > 3");
+    edit.set(Kind::Query, "strong", "filter", "porosity > 3");
     assert!(edit.remove(Kind::Profile, "old"));
     edit.set_setting("render", "figure_style", "plain");
     let text = edit.text();
@@ -62,11 +62,11 @@ fn what_was_not_touched_is_kept_as_written() {
         "{text}"
     );
     assert!(
-        text.contains("filter = 'status == \"kept\"'   # set by the brewery"),
+        text.contains("filter = 'status == \"kept\"'   # set by the laboratory"),
         "{text}"
     );
     assert!(
-        text.contains("[query.strong]\nfilter = \"brix > 3\""),
+        text.contains("[query.strong]\nfilter = \"porosity > 3\""),
         "{text}"
     );
     assert!(!text.contains("[profile"), "{text}");
@@ -96,7 +96,7 @@ fn a_file_changed_since_it_was_read_is_not_overwritten() {
     let scratch = Scratch::new("changed");
     let path = scratch.rc(WRITTEN);
     let mut edit = ConfigurationEdit::open(&path).unwrap();
-    edit.set(Kind::Query, "strong", "filter", "brix > 3");
+    edit.set(Kind::Query, "strong", "filter", "porosity > 3");
     fs::write(
         &path,
         format!("{WRITTEN}\n[query.theirs]\nfilter = \"a > 1\"\n"),
@@ -118,7 +118,7 @@ fn a_file_made_since_it_was_looked_for_is_not_overwritten() {
     let path = scratch.0.join(".samplekitrc");
     let mut edit = ConfigurationEdit::open(&path).unwrap();
     assert!(edit.read_text().is_none());
-    edit.set(Kind::Query, "strong", "filter", "brix > 3");
+    edit.set(Kind::Query, "strong", "filter", "porosity > 3");
     fs::write(&path, "schema_version = 1\n# theirs\n").unwrap();
     assert!(matches!(
         edit.write().unwrap_err(),
@@ -138,12 +138,12 @@ fn an_edit_writes_through_a_linked_configuration() {
     let scratch = Scratch::new("linked");
     fs::create_dir_all(scratch.0.join("shared")).unwrap();
     fs::create_dir_all(scratch.0.join("project")).unwrap();
-    let shared = scratch.0.join("shared/brewery.samplekitrc");
+    let shared = scratch.0.join("shared/laboratory.samplekitrc");
     fs::write(&shared, WRITTEN).unwrap();
     let link = scratch.0.join("project/.samplekitrc");
-    std::os::unix::fs::symlink("../shared/brewery.samplekitrc", &link).unwrap();
+    std::os::unix::fs::symlink("../shared/laboratory.samplekitrc", &link).unwrap();
     let mut edit = ConfigurationEdit::open(&link).unwrap();
-    edit.set(Kind::Query, "strong", "filter", "brix > 3");
+    edit.set(Kind::Query, "strong", "filter", "porosity > 3");
     edit.write().unwrap();
     assert!(
         fs::symlink_metadata(&link)
@@ -163,7 +163,7 @@ fn the_changes_are_the_lines_that_move() {
     let scratch = Scratch::new("changes");
     let path = scratch.rc(WRITTEN);
     let mut edit = ConfigurationEdit::open(&path).unwrap();
-    edit.set(Kind::Query, "strong", "filter", "brix > 3");
+    edit.set(Kind::Query, "strong", "filter", "porosity > 3");
     let changes = edit.changes();
     assert!(
         changes
@@ -190,20 +190,24 @@ fn settings_are_read_back_and_nested_by_their_dots() {
     std::fs::write(&path, "schema_version = 1\n").unwrap();
     let mut edit = ConfigurationEdit::open(&path).unwrap();
     edit.set_setting(
-        "workbench.colors",
+        "colors",
         "outdated",
         configuration_edit::value_of("#ff8800").unwrap(),
     );
     let text = edit.text();
-    assert!(text.contains("[workbench.colors]"), "{text}");
-    assert!(!text.contains("[workbench]\n"), "{text}");
+    assert!(text.contains("[colors]"), "{text}");
     assert_eq!(
-        edit.settings("workbench.colors"),
+        edit.settings("colors"),
         [("outdated".to_string(), "\"#ff8800\"".to_string())]
     );
     edit.checked().unwrap();
-    assert!(edit.unset_setting("workbench.colors", "outdated"));
-    assert!(edit.settings("workbench.colors").is_empty());
+    assert!(edit.unset_setting("colors", "outdated"));
+    assert!(edit.settings("colors").is_empty());
+    // A dotted section is made without an empty one above it.
+    let mut nested = ConfigurationEdit::open(&path).unwrap();
+    nested.set_setting("a.b", "c", configuration_edit::value_of("1").unwrap());
+    let text = nested.text();
+    assert!(text.contains("[a.b]") && !text.contains("[a]\n"), "{text}");
     edit.set(
         Kind::Query,
         "approved",
@@ -229,8 +233,8 @@ fn a_value_is_read_without_its_comment_and_inline_tables_are_sections() {
     let path = dir.join(".samplekitrc");
     std::fs::write(
         &path,
-        "schema_version = 1\n[render]\nstyle = \"plain\"   # the default\n\
-         [workbench]\ncolors = { failed = \"red\" }   # mine\n[matplotlib]\nfont.size = 13\n\
+        "schema_version = 1\ncolors = { failed = \"red\" }   # mine\n\
+         [render]\nstyle = \"plain\"   # the default\n[matplotlib]\nfont.size = 13\n\
          [query]\napproved = { filter = \"status == approved\" }\n",
     )
     .unwrap();
@@ -253,19 +257,19 @@ fn a_value_is_read_without_its_comment_and_inline_tables_are_sections() {
     );
     // Inline tables read, and written as sections once changed.
     assert_eq!(
-        edit.settings("workbench.colors"),
+        edit.settings("colors"),
         [("failed".to_string(), "\"red\"".to_string())]
     );
     assert_eq!(edit.entries(Kind::Query, "approved").len(), 1);
     assert!(edit.set_setting(
-        "workbench.colors",
+        "colors",
         "outdated",
         configuration_edit::value_of("yellow").unwrap()
     ));
     // Made a section: its header without the space before `=`, and the
     // comment beside it above it.
     let text = edit.text();
-    assert!(text.contains("# mine\n[workbench.colors]\n"), "{text}");
+    assert!(text.contains("# mine\n[colors]\n"), "{text}");
     assert!(text.contains("outdated = \"yellow\""), "{text}");
     // A dotted key by its whole name, changed where the file dots it.
     assert_eq!(
@@ -303,5 +307,61 @@ fn a_value_typed_half_a_list_or_with_a_comment_is_refused() {
     assert_eq!(
         configuration_edit::value_of("#ff8800").unwrap().as_str(),
         Some("#ff8800")
+    );
+}
+
+#[test]
+fn what_is_shown_is_declared_under_a_name_not_taken() {
+    use samplekit::config::project_config::ColumnSpec;
+    let scratch = Scratch::new("view");
+    let path = scratch.rc(WRITTEN);
+    let columns = [
+        ColumnSpec {
+            field: "name".to_string(),
+            label: None,
+            header: None,
+            precision: None,
+            template: None,
+        },
+        ColumnSpec {
+            field: "diameter".to_string(),
+            label: Some("D".to_string()),
+            header: None,
+            precision: None,
+            template: None,
+        },
+    ];
+    let sort = ["-diameter".to_string()];
+    let view = configuration_edit::ShownView {
+        filter: "diameter > 10",
+        columns: &columns,
+        sort: &sort,
+        group: &[],
+    };
+    let mut edit = ConfigurationEdit::open(&path).unwrap();
+    edit.declare_view(configuration_edit::Saved::Export("json"), "large", &view)
+        .unwrap();
+    let config = edit.write().unwrap();
+    assert_eq!(config.query("large").unwrap().filter, "diameter > 10");
+    let profile = config.profile("large").unwrap();
+    assert_eq!(profile.columns, columns);
+    assert_eq!(profile.sort, ["-diameter"]);
+    // Each kind's names are its own; `approved` is a query's already.
+    let mut edit = ConfigurationEdit::open(&path).unwrap();
+    assert_eq!(
+        edit.declare_view(configuration_edit::Saved::Query, "approved", &view),
+        Err("a query named approved is declared already: another name".to_string())
+    );
+    assert!(
+        edit.declare_view(configuration_edit::Saved::Profile, "approved", &view)
+            .is_ok()
+    );
+    assert_eq!(
+        edit.declare_view(configuration_edit::Saved::Export("csv"), "large", &view),
+        Err("a query named large is declared already: another name".to_string())
+    );
+    assert_eq!(
+        edit.declare_view(configuration_edit::Saved::Profile, "", &view),
+        Err("a profile needs a name, to be declared under it".to_string())
     );
 }

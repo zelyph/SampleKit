@@ -4,16 +4,14 @@
 //! cargo run --example round_trip -- <directory>
 //! ```
 //!
-//! It copies every `.md` file to a scratch directory, reports what the format
-//! makes of each one, then loads and saves each copy and reports what changed.
+//! It copies every `.md` file to a scratch directory, then loads and saves each
+//! copy and reports what changed.
 //! The source directory is never written to.
 
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
 use samplekit::format::document::{self, Destination};
-use samplekit::format::migration::{self, Action};
 
 fn main() {
     let Some(source) = std::env::args().nth(1) else {
@@ -41,45 +39,7 @@ fn main() {
     }
     println!("{} files copied to {}\n", copies.len(), scratch.display());
 
-    // 1 · what the format makes of each file
-    let plan = migration::plan(&copies);
-    let mut actions: BTreeMap<&str, usize> = BTreeMap::new();
-    let mut blocked = Vec::new();
-    for entry in &plan.entries {
-        let label = match &entry.action {
-            Action::Upgrade => "Upgrade",
-            Action::Canonicalize => "Canonicalize",
-            Action::NoChange => "NoChange",
-            Action::Blocked { reason } => {
-                blocked.push((entry.origin.path.clone(), reason.clone()));
-                "Blocked"
-            }
-        };
-        *actions.entry(label).or_default() += 1;
-    }
-    println!("READ");
-    for (label, count) in &actions {
-        println!("  {label:<14} {count}");
-    }
-    for (path, reason) in blocked.iter().take(5) {
-        let short: String = reason.chars().take(160).collect();
-        println!(
-            "  ! {}\n      {short}",
-            path.file_name().unwrap().to_string_lossy()
-        );
-    }
-    if let Some(first) = plan.entries.iter().find(|e| !e.alterations.is_empty()) {
-        println!(
-            "\n  alterations on {}:",
-            first.origin.path.file_name().unwrap().to_string_lossy()
-        );
-        for alteration in &first.alterations {
-            println!("    - {alteration}");
-        }
-    }
-
-    // 2 · load, save, compare
-    println!("\nROUND TRIP");
+    println!("ROUND TRIP");
     let (mut identical, mut differing, mut failed) = (0usize, 0usize, 0usize);
     let mut first_failure = None;
     let mut first_difference = None;

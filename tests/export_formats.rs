@@ -39,10 +39,10 @@ fn dataset(headers: &[&str], rows: Vec<Vec<Option<Value>>>) -> Dataset {
     }
 }
 
-/// One cask with a measured malt, one with none.
+/// One slab with a measured diameter, one with none.
 fn corpus() -> Dataset {
     dataset(
-        &["name", "malt_value", "malt_uncertainty"],
+        &["name", "diameter_value", "diameter_uncertainty"],
         vec![
             vec![
                 Some(Value::text("A")),
@@ -69,7 +69,7 @@ fn absent_is_empty_in_csv() {
 #[test]
 fn absent_is_null_in_json() {
     let out = formats::serialize(&corpus(), Format::Json);
-    assert!(out.contains("\"malt_value\": null"), "{out}");
+    assert!(out.contains("\"diameter_value\": null"), "{out}");
 }
 
 #[test]
@@ -91,12 +91,12 @@ fn json_objects_share_all_keys() {
 fn delimiter_in_a_field_is_quoted() {
     let out = formats::serialize(
         &dataset(
-            &["beer"],
-            vec![vec![Some(Value::text("Dunkel 57, rating 2"))]],
+            &["alloy"],
+            vec![vec![Some(Value::text("Duplex 57, rating 2"))]],
         ),
         Format::Csv,
     );
-    assert_eq!(out.lines().nth(1).unwrap(), "\"Dunkel 57, rating 2\"");
+    assert_eq!(out.lines().nth(1).unwrap(), "\"Duplex 57, rating 2\"");
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn a_list_is_a_json_array() {
 fn a_list_is_joined_in_csv_and_tsv() {
     // As tags are, `;` between items and a `;` or `\` inside escaped.
     let dataset = Dataset {
-        headers: vec!["hops".to_string()],
+        headers: vec!["carbon".to_string()],
         rows: vec![vec![Cell::List(vec![
             Value::integer(20),
             Value::text("a;b"),
@@ -254,11 +254,11 @@ fn a_list_is_joined_in_csv_and_tsv() {
     };
     assert_eq!(
         formats::serialize_result(&dataset, Format::Csv).unwrap(),
-        "hops\n20;a\\;b;1.5\n"
+        "carbon\n20;a\\;b;1.5\n"
     );
     assert_eq!(
         formats::serialize_result(&dataset, Format::Tsv).unwrap(),
-        "hops\n20;a\\;b;1.5\n"
+        "carbon\n20;a\\;b;1.5\n"
     );
 }
 
@@ -340,7 +340,7 @@ fn a_unit_is_written_beside_its_header() {
     let out = formats::serialize(&data, Format::Csv);
     assert_eq!(
         out.lines().next().unwrap(),
-        "name,malt_value [g],malt_uncertainty [g]"
+        "name,diameter_value [g],diameter_uncertainty [g]"
     );
 }
 
@@ -349,7 +349,7 @@ fn a_quantity_is_one_json_object_with_its_unit() {
     let mut data = corpus();
     data.units = vec![None, Some("g".to_string()), Some("g".to_string())];
     data.quantities = vec![samplekit::presentation::export_formats::QuantityColumns {
-        key: "malt".to_string(),
+        key: "diameter".to_string(),
         value: 1,
         uncertainty: Some(2),
         states: Vec::new(),
@@ -357,11 +357,11 @@ fn a_quantity_is_one_json_object_with_its_unit() {
     let out = formats::serialize(&data, Format::Json);
     let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert_eq!(
-        parsed[0]["malt"],
+        parsed[0]["diameter"],
         serde_json::json!({"value": 12.5, "uncertainty": 0.05, "unit": "g"}),
         "{out}"
     );
-    assert!(!out.contains("malt_uncertainty"), "{out}");
+    assert!(!out.contains("diameter_uncertainty"), "{out}");
 }
 
 #[test]
@@ -386,22 +386,22 @@ fn tags_are_an_array_in_json_and_joined_in_delimited() {
 #[test]
 fn an_uncertainty_column_empty_in_every_row_is_left_out() {
     let mut data = dataset(
-        &["name", "malt_value", "malt_uncertainty"],
+        &["name", "diameter_value", "diameter_uncertainty"],
         vec![
             vec![Some(Value::text("A")), Some(number(12.5)), None],
             vec![Some(Value::text("B")), Some(number(9.0)), None],
         ],
     );
     data.quantities = vec![samplekit::presentation::export_formats::QuantityColumns {
-        key: "malt".to_string(),
+        key: "diameter".to_string(),
         value: 1,
         uncertainty: Some(2),
         states: Vec::new(),
     }];
     let (trimmed, dropped) =
         samplekit::presentation::export_formats::without_empty_uncertainties(&data);
-    assert_eq!(dropped, ["malt_uncertainty"]);
-    assert_eq!(trimmed.headers, ["name", "malt_value"]);
+    assert_eq!(dropped, ["diameter_uncertainty"]);
+    assert_eq!(trimmed.headers, ["name", "diameter_value"]);
     assert_eq!(trimmed.quantities[0].uncertainty, None);
     let (kept, none) =
         samplekit::presentation::export_formats::without_empty_uncertainties(&corpus());
@@ -413,7 +413,7 @@ fn an_uncertainty_column_empty_in_every_row_is_left_out() {
 fn a_quantity_carries_its_state_in_json() {
     let mut data = corpus();
     data.quantities = vec![samplekit::presentation::export_formats::QuantityColumns {
-        key: "malt".to_string(),
+        key: "diameter".to_string(),
         value: 1,
         uncertainty: Some(2),
         states: vec![Some("stale".to_string()), None],
@@ -421,7 +421,7 @@ fn a_quantity_carries_its_state_in_json() {
     let out = formats::serialize(&data, Format::Json);
     let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert!(
-        parsed[0]["malt"]["unit"].is_null() && parsed[0]["malt"]["state"] == "stale",
+        parsed[0]["diameter"]["unit"].is_null() && parsed[0]["diameter"]["state"] == "stale",
         "{out}"
     );
     assert_eq!(out.matches("\"state\"").count(), 1, "{out}");
@@ -432,7 +432,7 @@ fn not_applicable_is_written_as_such_in_csv_and_tsv() {
     // An empty field read as a value nobody measured, where this one was
     // answered: `n/a` in CSV and TSV, null in JSON.
     let data = dataset(
-        &["name", "malt_value"],
+        &["name", "diameter_value"],
         vec![vec![Some(Value::text("A")), Some(Value::NotApplicable)]],
     );
     assert_eq!(
@@ -443,5 +443,62 @@ fn not_applicable_is_written_as_such_in_csv_and_tsv() {
         formats::serialize(&data, Format::Tsv).lines().nth(1),
         Some("A\tn/a")
     );
-    assert!(formats::serialize(&data, Format::Json).contains("\"malt_value\": null"));
+    assert!(formats::serialize(&data, Format::Json).contains("\"diameter_value\": null"));
+}
+
+// ------------------------------------------------------------ text formats
+
+#[test]
+fn a_latex_unit_form_is_written_in_math_mode() {
+    // `^\circ\mathrm{C}` escaped as text, or left outside math mode, did not
+    // compile; `%` beside it, unescaped where the format named a style,
+    // commented out the rest of the header.
+    use samplekit::config::project_config::TextFormat;
+    let mut data = dataset(
+        &["name", "preheat", "modulus"],
+        vec![vec![
+            Some(Value::text("a")),
+            Some(number(66.0)),
+            Some(number(5.2)),
+        ]],
+    );
+    data.units = vec![
+        None,
+        Some("^\\circ\\mathrm{C}".to_string()),
+        Some("%".to_string()),
+    ];
+    let latex = TextFormat::given("latex").unwrap();
+    let out = formats::serialize(&data, Format::Text(Box::new(latex)));
+    assert!(
+        out.contains("preheat ($^\\circ\\mathrm{C}$) & modulus (\\%)"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_text_format_escapes_what_its_language_reads() {
+    // `50%` in a LaTeX cell comments out the rest of the line; `a|b` in a
+    // Markdown one splits it.
+    use samplekit::config::project_config::TextFormat;
+    let data = dataset(
+        &["name", "yield"],
+        vec![
+            vec![Some(Value::text("a_1 & 50%")), Some(number(0.5))],
+            vec![Some(Value::text("a|b")), None],
+        ],
+    );
+    let latex = formats::serialize(
+        &data,
+        Format::Text(Box::new(TextFormat::given("latex").unwrap())),
+    );
+    assert!(latex.contains("a\\_1 \\& 50\\% & 0.5 \\\\\n"), "{latex}");
+    assert!(latex.contains("a|b & -- \\\\\n"), "{latex}");
+    let markdown = formats::serialize(
+        &data,
+        Format::Text(Box::new(TextFormat::given("markdown").unwrap())),
+    );
+    assert_eq!(
+        markdown,
+        "| name | yield |\n| --- | --- |\n| a_1 & 50% | 0.5 |\n| a\\|b |  |\n"
+    );
 }

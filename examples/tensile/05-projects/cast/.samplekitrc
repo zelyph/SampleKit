@@ -1,0 +1,6 @@
+schema_version = 1
+import = ".."
+
+[model]
+path = "../model/specimen.py"
+class = "Specimen"

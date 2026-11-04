@@ -31,11 +31,14 @@ pub const TYPING: &[(&str, &str)] = &[
     ),
     ("Ctrl+Backspace Ctrl+Delete", "take a word out"),
     ("Ctrl+Z", "undo"),
-    ("Ctrl+Shift+Z", "redo"),
+    (
+        "Ctrl+Shift+Z Alt+Z",
+        "redo; Alt+Z where the terminal sends Ctrl+Shift+Z as Ctrl+Z",
+    ),
     ("Ctrl+X Ctrl+V", "cut, paste"),
     (
         "Ctrl+C",
-        "copy what is selected; with nothing selected, close SampleKit",
+        "copy what is selected; with nothing selected, close SampleKit, asked first over a line typed and not saved",
     ),
     ("Ctrl+D", "empty the line; in the note, the line doubled"),
     (
@@ -115,6 +118,19 @@ pub fn event_of(key: Key) -> Option<Event> {
             x,
             y,
         ),
+        // Redo, as `rat-text` knows it: most terminals send Ctrl+Shift+Z as
+        // Ctrl+Z, and Alt+Z reaches every one; one that tells the keys apart
+        // says `z` with Shift held.
+        Key::Chord(pressed)
+            if matches!(pressed.code, KeyCode::Char('z' | 'Z'))
+                && (pressed.modifiers == KeyModifiers::ALT
+                    || pressed.modifiers == KeyModifiers::CONTROL | KeyModifiers::SHIFT) =>
+        {
+            Some(Event::Key(KeyEvent::new(
+                KeyCode::Char('Z'),
+                KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+            )))
+        }
         Key::Chord(pressed) => Some(Event::Key(pressed)),
         Key::Pointer(event) => Some(Event::Mouse(event)),
     }
@@ -138,6 +154,16 @@ impl Typed {
             state: Box::new(state),
         };
         typed.focus(true);
+        typed
+    }
+
+    /// `text` written and selected whole: what is typed replaces it, an
+    /// arrow or `End` keeps it to edit. A value typed over appended to it:
+    /// `66` on `64` gave `6466`.
+    pub fn new_selected(text: &str) -> Typed {
+        let mut typed = Typed::new(text);
+        let end = typed.state.len();
+        typed.state.set_selection(0, end);
         typed
     }
 
@@ -347,11 +373,147 @@ impl Written {
     }
 
     pub fn handle(&mut self, event: &Event) -> bool {
+        self.end_the_last_line();
+        let key = match event {
+            Event::Key(key) if !self.state.has_selection() => Some(key.code),
+            _ => None,
+        };
+        // A table's cells are gone through here: `rat-markdown`'s Tab left
+        // the cursor before a cell's space, and left the table from its
+        // last cell, where Shift+Tab then did nothing.
+        match key {
+            Some(KeyCode::Tab) if self.move_to_cell(true) => return true,
+            Some(KeyCode::BackTab) if self.move_to_cell(false) => return true,
+            _ => {}
+        }
         let outcome = self.state.handle(event, MarkDown::default());
         if outcome == TextOutcome::TextChanged {
             self.restyle();
+            // A header's Enter writes the line under it and left the cursor
+            // at that line's end, where what was typed next went: the table's
+            // first row is begun below it, as Enter in a table begins one.
+            if key == Some(KeyCode::Enter) && self.under_a_new_header() {
+                self.state.handle(event, MarkDown::default());
+                self.restyle();
+            }
+            if key == Some(KeyCode::Enter) {
+                self.cursor_to_a_new_rows_start();
+            }
         }
         outcome != TextOutcome::Continue
+    }
+
+    /// Whether the cursor ends a table's line of dashes the line above heads.
+    fn under_a_new_header(&self) -> bool {
+        let at = self.state.cursor();
+        if at.y == 0 || at.x != self.state.line_width(at.y) {
+            return false;
+        }
+        let line = self.state.line_at(at.y);
+        is_dashes(line.as_ref()) && table_bars(self.state.line_at(at.y - 1).as_ref()).is_some()
+    }
+
+    /// The cursor to a table's next cell, or its previous: from the last, the
+    /// next row's first, a row begun where there is none; from the first, the
+    /// previous row's last. False where the cursor is in no table.
+    fn move_to_cell(&mut self, forward: bool) -> bool {
+        let at = self.state.cursor();
+        let line = self.state.line_at(at.y).to_string();
+        let Some(bars) = table_bars(&line) else {
+            return false;
+        };
+        let x = at.x as usize;
+        // The cell the cursor is in, -1 before the first bar.
+        let cell = bars.iter().filter(|&&bar| bar < x).count() as isize - 1;
+        let cells = bars.len() as isize - 1;
+        let target = if forward { cell + 1 } else { cell - 1 };
+        if (0..cells).contains(&target) && !is_dashes(&line) {
+            self.cursor_to_cell(at.y, &line, target as usize);
+            return true;
+        }
+        // Another row, the line of dashes passed over.
+        let rows = self.state.len_lines();
+        let mut y = at.y;
+        loop {
+            let next = if forward {
+                (y + 1 < rows).then_some(y + 1)
+            } else {
+                y.checked_sub(1)
+            };
+            let Some(next) = next else { break };
+            y = next;
+            let row = self.state.line_at(y).to_string();
+            let Some(bars) = table_bars(&row) else { break };
+            if is_dashes(&row) {
+                continue;
+            }
+            let cell = if forward { 0 } else { bars.len() - 2 };
+            self.cursor_to_cell(y, &row, cell);
+            return true;
+        }
+        if forward {
+            // No row below: one begun, as Enter at a row's end begins it.
+            let end = self.state.line_width(at.y);
+            self.state.set_cursor((end, at.y), false);
+            self.state.handle(
+                &Event::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+                MarkDown::default(),
+            );
+            self.restyle();
+            self.cursor_to_a_new_rows_start();
+        }
+        true
+    }
+
+    /// A row Enter just began, under a table's row: the cursor in its first
+    /// cell. It was left in the column it had in the row above, where what
+    /// was typed next went into the last cell.
+    fn cursor_to_a_new_rows_start(&mut self) {
+        let at = self.state.cursor();
+        if at.y == 0 {
+            return;
+        }
+        let line = self.state.line_at(at.y).to_string();
+        let above = self.state.line_at(at.y - 1).to_string();
+        let empty =
+            table_bars(&line).is_some() && line.trim_end().chars().all(|c| matches!(c, '|' | ' '));
+        if empty && table_bars(&above).is_some() {
+            self.cursor_to_cell(at.y, &line, 0);
+        }
+    }
+
+    /// The cursor at the start of a cell's text, after the space that opens
+    /// it.
+    fn cursor_to_cell(&mut self, y: rat_text::upos_type, line: &str, cell: usize) {
+        let Some(bars) = table_bars(line) else { return };
+        let graphemes: Vec<&str> =
+            unicode_segmentation::UnicodeSegmentation::graphemes(line, true).collect();
+        let start = bars[cell] + 1;
+        let x = if graphemes.get(start) == Some(&" ") && start < bars[cell + 1] {
+            start + 1
+        } else {
+            start
+        };
+        self.state.set_cursor((x as rat_text::upos_type, y), false);
+        self.state.set_move_col(Some(x as i16));
+    }
+
+    /// The last line ended, the cursor where it was: the editor's line keys —
+    /// `Ctrl+D`, `Alt+2`, `Enter` — mistook a last line without its end, and
+    /// doubled `Last` into `LastLast`. Typing on the line after the note's end
+    /// leaves it unended again, so it is ended before each key.
+    fn end_the_last_line(&mut self) {
+        // Counted from the text: the area's own count holds a line more.
+        let text = self.state.text();
+        let last = text.matches('\n').count() as rat_text::upos_type;
+        if self.state.cursor().y != last || text.ends_with('\n') {
+            return;
+        }
+        let at = self.state.cursor();
+        self.state
+            .set_cursor((self.state.line_width(last), last), false);
+        self.state.insert_newline();
+        self.state.set_cursor(at, false);
     }
 
     /// What is selected copied to the clipboard; whether anything was.
@@ -379,4 +541,29 @@ impl Written {
         let text = self.state.text();
         self.state.set_styles(parse_md_styles(&text));
     }
+}
+
+/// Where a table's row has its bars, in characters: a line begun by `|` and
+/// holding two at least, an escaped `\|` none.
+fn table_bars(line: &str) -> Option<Vec<usize>> {
+    if !line.trim_start().starts_with('|') {
+        return None;
+    }
+    let graphemes: Vec<&str> =
+        unicode_segmentation::UnicodeSegmentation::graphemes(line, true).collect();
+    let bars: Vec<usize> = graphemes
+        .iter()
+        .enumerate()
+        .filter(|(at, grapheme)| **grapheme == "|" && (*at == 0 || graphemes[at - 1] != "\\"))
+        .map(|(at, _)| at)
+        .collect();
+    (bars.len() >= 2).then_some(bars)
+}
+
+/// A table's line of dashes, under its header: `|----|:--:|`.
+fn is_dashes(line: &str) -> bool {
+    let line = line.trim();
+    line.starts_with('|')
+        && line.contains('-')
+        && line.chars().all(|c| matches!(c, '|' | '-' | ':' | ' '))
 }

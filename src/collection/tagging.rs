@@ -117,27 +117,64 @@ pub fn plan(selection: &SampleList, edit: Edit) -> Plan {
 /// computed again from what it holds now, so that a tag another hand added
 /// since the plan was made is kept.
 pub fn apply(plan: &Plan) -> Result<Vec<PathBuf>, TaggingError> {
+    apply_until(plan, || false).map(|(written, _)| written)
+}
+
+/// [`apply`], stopping before the next file once `stop` says so: the files
+/// written, and whether it stopped short.
+pub fn apply_until(
+    plan: &Plan,
+    stop: impl Fn() -> bool,
+) -> Result<(Vec<PathBuf>, bool), TaggingError> {
+    // A link leaving the project, which is never written through, refused
+    // before any file is written: found as its turn came, it stopped a folder
+    // half tagged, and the files after it could never be.
+    if let Some((path, error)) = plan.changes.iter().find_map(|change| {
+        document::refuse_link_out_of_project(&change.path)
+            .err()
+            .map(|error| (change.path.clone(), error))
+    }) {
+        return Err(TaggingError {
+            path,
+            reason: format!(
+                "{error}\n  nothing was written: name the other samples, or copy the file into \
+                 the project"
+            ),
+            filesystem: false,
+            written: Vec::new(),
+        });
+    }
     let mut written = Vec::new();
     for change in &plan.changes {
-        if let Err(reason) = write_one(&change.path, &plan.edit) {
+        if stop() {
+            return Ok((written, true));
+        }
+        if let Err((reason, filesystem)) = write_one(&change.path, &plan.edit) {
             return Err(TaggingError {
                 path: change.path.clone(),
                 reason,
+                filesystem,
                 written,
             });
         }
         written.push(change.path.clone());
     }
-    Ok(written)
+    Ok((written, false))
 }
 
-fn write_one(path: &Path, edit: &Edit) -> Result<(), String> {
-    let (mut sample, origin) = document::load_sample(path).map_err(|error| error.to_string())?;
+/// The reason a file was not written, and whether the filesystem refused it.
+fn write_one(path: &Path, edit: &Edit) -> Result<(), (String, bool)> {
+    let failed = |error: document::DocumentError| {
+        let filesystem = matches!(error, document::DocumentError::Io { .. });
+        (error.to_string(), filesystem)
+    };
+    let (mut sample, origin) = document::load_sample(path).map_err(failed)?;
     let after = retagged(sample.tags(), edit);
     sample.set_tags(after);
+    crate::collection::sample_list::declare_model_units_at(&mut sample, path);
     document::save_sample(&mut sample, &Destination::Origin(origin))
         .map(|_| ())
-        .map_err(|error| error.to_string())
+        .map_err(failed)
 }
 
 // ------------------------------------------------------------------ errors
@@ -147,6 +184,9 @@ fn write_one(path: &Path, edit: &Edit) -> Result<(), String> {
 pub struct TaggingError {
     pub path: PathBuf,
     pub reason: String,
+    /// The filesystem refused it — a permission, a folder gone — rather than
+    /// what the file holds.
+    pub filesystem: bool,
     pub written: Vec<PathBuf>,
 }
 

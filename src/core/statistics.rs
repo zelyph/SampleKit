@@ -11,7 +11,7 @@ use crate::core::value::Readings;
 /// Every descriptive statistic of one series.
 ///
 /// **These field names are a public vocabulary.** They are what a filter
-/// addresses through `malt.stats.sample_stdev`, what a column emits, and what
+/// addresses through `diameter.stats.sample_stdev`, what a column emits, and what
 /// a template names when it chooses how an uncertainty is obtained. Renaming
 /// one renames it in four places at once, which is the point.
 #[derive(Debug, Clone, PartialEq)]
@@ -56,13 +56,27 @@ pub fn summarize_slice(values: &[f64]) -> Option<Summary> {
     // disagree in their last bits — from being chosen by whoever writes the
     // code. What it excludes is the textbook `sum(x^2) - sum(x)^2/n`, which
     // loses catastrophic precision on readings clustered far from zero.
+    // Taken over the values scaled to their largest, then scaled back: two
+    // finite values far apart overflowed the deltas, and a mean of 0 read
+    // `-inf`.
+    let scale = values
+        .iter()
+        .fold(0.0f64, |largest, x| largest.max(x.abs()));
+    let scale = if scale.is_finite() && scale > 1e150 {
+        scale
+    } else {
+        1.0
+    };
     let mut mean = 0.0f64;
     let mut sum_squared_deviations = 0.0f64;
     for (index, &x) in values.iter().enumerate() {
+        let x = x / scale;
         let delta = x - mean;
         mean += delta / (index + 1) as f64;
         sum_squared_deviations += delta * (x - mean);
     }
+    let mean = mean * scale;
+    let sum_squared_deviations = sum_squared_deviations * scale * scale;
 
     let mut sorted = values.to_vec();
     // `total_cmp` rather than `partial_cmp().unwrap()`: a caller that ignored
@@ -108,7 +122,15 @@ fn quantile(sorted: &[f64], p: f64) -> f64 {
     if lower == upper {
         sorted[lower]
     } else {
-        sorted[lower] + (position - lower as f64) * (sorted[upper] - sorted[lower])
+        let weight = position - lower as f64;
+        let difference = sorted[upper] - sorted[lower];
+        if difference.is_finite() {
+            sorted[lower] + weight * difference
+        } else {
+            // Weighted where the difference of two finite values far apart
+            // overflowed.
+            sorted[lower] * (1.0 - weight) + sorted[upper] * weight
+        }
     }
 }
 

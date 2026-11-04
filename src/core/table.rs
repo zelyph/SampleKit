@@ -14,7 +14,9 @@ use indexmap::IndexMap;
 use crate::core::dependency_graph::Node;
 use crate::core::formatting::Presentation;
 use crate::core::identifier::Identifier;
-use crate::core::property::{ComputeError, DeclaredStatistics, FillConflict, InputName, Property};
+use crate::core::property::{
+    ComputeError, DeclaredStatistics, FillConflict, InputName, Produced, Property,
+};
 use crate::core::uncertainty::Uncertainty;
 use crate::core::value::{Value, total_order};
 
@@ -78,7 +80,8 @@ pub trait Scope {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CellOutput {
     Value(Value),
-    Uncertainty(Uncertainty),
+    /// The uncertainty alone, or none, beside a value given apart.
+    Uncertainty(Option<Uncertainty>),
     Quantity(Value, Option<Uncertainty>),
 }
 
@@ -89,6 +92,12 @@ pub trait ComputeRow {
         row: &RowView,
         scope: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError>;
+
+    /// The one channel of each cell it fills, where it fills one alone: the
+    /// other is the file's, entered by hand. `None` for the whole cell.
+    fn produces(&self) -> Option<Produced> {
+        None
+    }
 }
 
 /// One run per table, filling every cell of one column or several.
@@ -129,6 +138,14 @@ impl Derivation {
             Derivation::Row { inputs, .. } | Derivation::Column { inputs, .. } => inputs,
         }
     }
+
+    /// The one channel it fills of each cell, or `None` for the whole cell.
+    pub fn produces(&self) -> Option<Produced> {
+        match self {
+            Derivation::Row { formula, .. } => formula.produces(),
+            Derivation::Column { .. } => None,
+        }
+    }
 }
 
 impl fmt::Debug for Derivation {
@@ -148,6 +165,10 @@ struct Row {
     cells: IndexMap<Identifier, Property>,
     /// One counter per column, this row alone.
     generations: HashMap<Identifier, u64>,
+    /// One counter per column of its cell's value alone: what a formula
+    /// filling the cell's uncertainty reads of the value beside it, which its
+    /// own write does not move.
+    value_generations: HashMap<Identifier, u64>,
     /// Per output column, the input counters its last run saw.
     recorded: HashMap<Identifier, HashMap<InputName, u64>>,
 }
@@ -380,6 +401,10 @@ pub struct Table {
     /// The derived cells held as overrides, which their derivation does not
     /// write.
     held: std::collections::HashSet<(IndexKey, Identifier)>,
+    /// Read from a file that holds it without a row — its title, its index,
+    /// its columns prepared — and so written without one, where a table no
+    /// file holds and no row fills is not.
+    prepared: bool,
 }
 
 impl fmt::Debug for Table {
@@ -458,7 +483,17 @@ impl Table {
             settled: None,
             ran: std::collections::HashSet::new(),
             held: std::collections::HashSet::new(),
+            prepared: false,
         })
+    }
+
+    /// Whether a file holds it prepared, without a row: then it is written so.
+    pub fn is_prepared(&self) -> bool {
+        self.prepared
+    }
+
+    pub fn set_prepared(&mut self, prepared: bool) {
+        self.prepared = prepared;
     }
 
     pub fn name(&self) -> &Identifier {
@@ -473,8 +508,48 @@ impl Table {
         self.title = title;
     }
 
+    /// Each column named that states no unit takes the one given: what a model
+    /// declares of a table whose file wrote its rows alone. A unit the column
+    /// states is kept; a column the table does not have is passed over. Changes
+    /// no value, and so outdates nothing.
+    pub fn declare_units(&mut self, units: &[(Identifier, String)]) {
+        for (column, unit) in units {
+            if let Some(meta) = self.columns.get_mut(column)
+                && meta.presentation.unit.is_none()
+            {
+                meta.presentation.unit = Some(unit.clone());
+            }
+        }
+    }
+
     /// Forgets what this row's derivations recorded, and what a column
     /// derivation spanning it recorded, so the next `resolve` runs them again.
+    /// One derived cell recomputed at its next resolution, its value
+    /// discarded, and what reads it outdated: `invalidate` on a cell cleared
+    /// the whole row's records, each derived column of it said never
+    /// computed, and kept the value.
+    pub fn invalidate_cell(
+        &mut self,
+        row: &RowAddress,
+        column: &Identifier,
+    ) -> Result<(), TableError> {
+        let position = self.position_of(row)?;
+        self.rows[position].recorded.remove(column);
+        self.column_recorded.remove(column);
+        if let Some(cell) = self.rows[position].cells.get_mut(column)
+            && self
+                .derivations
+                .iter()
+                .any(|derivation| derivation.outputs().contains(column))
+        {
+            cell.set_value(Value::absent());
+            cell.set_uncertainty(None);
+        }
+        self.bump_cell(position, column, true);
+        self.epoch += 1;
+        Ok(())
+    }
+
     pub fn invalidate_row(&mut self, row: &RowAddress) -> Result<(), TableError> {
         let position = self.position_of(row)?;
         self.rows[position].recorded.clear();
@@ -531,6 +606,7 @@ impl Table {
             index,
             cells: IndexMap::new(),
             generations: HashMap::new(),
+            value_generations: HashMap::new(),
             recorded: HashMap::new(),
         };
         let mut held = Vec::new();
@@ -540,14 +616,14 @@ impl Table {
                 .unwrap_or_else(|| Property::stored(Value::absent()));
             // A derived cell supplied by hand with the row is an override, as
             // one written by hand into an existing row is.
-            if self.is_derived(column) && cell.peek_value().is_some_and(|value| !value.is_absent())
-            {
+            if self.overrides(column, &cell, false) {
                 held.push(column.clone());
             }
             let mut cell = cell;
             self.declare_on(column, &mut cell);
             row.cells.insert(column.clone(), cell);
             row.generations.insert(column.clone(), 0);
+            row.value_generations.insert(column.clone(), 0);
         }
         for column in held {
             self.held.insert((key.clone(), column));
@@ -558,6 +634,71 @@ impl Table {
             self.bump_column(&column);
         }
         Ok(())
+    }
+
+    /// The row at `position` moved to where its index falls, where the other
+    /// rows run in the order of their index: a day changed from 5 to 12 goes
+    /// after 11, and a row added with day 5 before 6. A table its file holds
+    /// in another order keeps it, the row left where it is. A formula over
+    /// the column, `rate` since the row before, read the file's order, and
+    /// computed day 6 from day 12.
+    /// The last row added, moved to where its index falls: what a row
+    /// added by an edit is, where a file read keeps its own order.
+    pub fn place_last_row(&mut self) {
+        if !self.rows.is_empty() {
+            self.place_in_order(self.rows.len() - 1);
+        }
+    }
+
+    fn place_in_order(&mut self, position: usize) {
+        let before = |a: &Row, b: &Row| -> Option<std::cmp::Ordering> {
+            for (x, y) in a.index.iter().zip(&b.index) {
+                match crate::core::value::compare(x, y).ok()? {
+                    std::cmp::Ordering::Equal => continue,
+                    other => return Some(other),
+                }
+            }
+            Some(std::cmp::Ordering::Equal)
+        };
+        let others: Vec<&Row> = self
+            .rows
+            .iter()
+            .enumerate()
+            .filter(|(at, _)| *at != position)
+            .map(|(_, row)| row)
+            .collect();
+        let ordered = others.windows(2).all(|pair| {
+            before(pair[0], pair[1]).is_some_and(|order| order != std::cmp::Ordering::Greater)
+        });
+        if !ordered {
+            return;
+        }
+        let row = &self.rows[position];
+        let Some(target) = others
+            .iter()
+            .map(|other| before(other, row))
+            .collect::<Option<Vec<_>>>()
+            .map(|orders| {
+                orders
+                    .iter()
+                    .filter(|order| **order == std::cmp::Ordering::Less)
+                    .count()
+            })
+        else {
+            return;
+        };
+        if target == position {
+            return;
+        }
+        let row = self.rows.remove(position);
+        self.rows.insert(target, row);
+        self.lookup = self
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(at, row)| (IndexKey::of(&row.index), at))
+            .collect();
+        self.epoch += 1;
     }
 
     pub fn update_row(
@@ -615,19 +756,21 @@ impl Table {
                 self.rows[position].index = index;
             }
         }
+        // The cells first, at the row's place; then the row to its index's.
+        let key_now = IndexKey::of(&self.rows[position].index);
         for (column, mut cell) in supplied {
             self.declare_on(&column, &mut cell);
-            // A derived cell written by hand is an override.
-            if self.is_derived(&column) {
+            // A derived cell written by hand is an override: in the channel
+            // its formula fills, where it fills one alone.
+            if self.overrides(&column, &cell, true) {
                 self.held
                     .insert((IndexKey::of(&self.rows[position].index), column.clone()));
             }
             self.rows[position].cells.insert(column.clone(), cell);
-            *self.rows[position]
-                .generations
-                .entry(column.clone())
-                .or_insert(0) += 1;
-            self.bump_column(&column);
+            self.bump_cell(position, &column, true);
+        }
+        if let Some(&at) = self.lookup.get(&key_now) {
+            self.place_in_order(at);
         }
         Ok(())
     }
@@ -663,11 +806,7 @@ impl Table {
         }
         cell.declare_statistics(statistics.value, statistics.uncertainty);
         cell.set_records(crate::core::property::Records::none());
-        *self.rows[position]
-            .generations
-            .entry(column.clone())
-            .or_insert(0) += 1;
-        self.bump_column(column);
+        self.bump_cell(position, column, true);
         Ok(())
     }
 
@@ -680,7 +819,60 @@ impl Table {
         };
         if cell.readings().is_some() && !meta.statistics.is_empty() {
             cell.declare_statistics(meta.statistics.value, meta.statistics.uncertainty);
+            cell.take_statistic();
         }
+    }
+
+    /// A cell changed: its row's counter and its column's, and the counter of
+    /// its value where the value is what changed.
+    fn bump_cell(&mut self, position: usize, column: &Identifier, value_moved: bool) {
+        let row = &mut self.rows[position];
+        *row.generations.entry(column.clone()).or_insert(0) += 1;
+        if value_moved {
+            *row.value_generations.entry(column.clone()).or_insert(0) += 1;
+        }
+        self.bump_column(column);
+    }
+
+    /// Whether a cell written by hand into a derived column overrides its
+    /// formula. A formula filling one channel alone is overridden only where
+    /// the hand gives that channel: the other is the hand's to give. A cell
+    /// supplied whole overrides where it holds a value, or always where it was
+    /// `written` into an existing row.
+    fn overrides(&self, column: &Identifier, cell: &Property, written: bool) -> bool {
+        let Some(derivation) = self
+            .derivations
+            .iter()
+            .find(|derivation| derivation.outputs().contains(column))
+        else {
+            return false;
+        };
+        let valued = cell.peek_value().is_some_and(|value| !value.is_absent());
+        let channel = match derivation.produces() {
+            None => return written || valued,
+            Some(Produced::Value) => valued,
+            Some(Produced::Uncertainty) => cell.peek_uncertainty().flatten().is_some(),
+        };
+        // Written into a row, the cell carries the channel its formula gave
+        // beside the one the hand changed: its record says which the hand
+        // touched, marked edited where it was the formula's.
+        let records = cell.records();
+        match &records.computed {
+            Some(_) => records
+                .fingerprint
+                .as_ref()
+                .is_some_and(|fingerprint| fingerprint.is_edited()),
+            None => channel,
+        }
+    }
+
+    /// The channel the formula filling `column` gives alone, or `None` where it
+    /// gives the whole cell or nothing fills it.
+    pub fn produced_by(&self, column: &Identifier) -> Option<Produced> {
+        self.derivations
+            .iter()
+            .find(|derivation| derivation.outputs().contains(column))
+            .and_then(Derivation::produces)
     }
 
     fn bump_column(&mut self, column: &Identifier) {
@@ -700,6 +892,33 @@ impl Table {
             supplied.insert(column, cell);
         }
         Ok(supplied)
+    }
+
+    /// Cells given to a column with a unit, refused where one holds text or
+    /// true/false: a measured column holds numbers, and every formula reading
+    /// it failed on the text. Asked of what is written — a row added or
+    /// changed — never of a file read, whose text `validate` reports.
+    pub fn refuses_what_is_no_number(
+        &self,
+        cells: &[(Identifier, Property)],
+    ) -> Result<(), TableError> {
+        for (column, cell) in cells {
+            let Some(unit) = self
+                .columns
+                .get(column)
+                .and_then(|meta| meta.presentation.unit.as_ref())
+            else {
+                continue;
+            };
+            if let Some(value @ (Value::Text(_) | Value::Boolean(_))) = cell.peek_value() {
+                return Err(TableError::NumberExpected {
+                    column: column.clone(),
+                    unit: unit.clone(),
+                    value: value.clone(),
+                });
+            }
+        }
+        Ok(())
     }
 
     fn index_of(
@@ -935,16 +1154,20 @@ impl Table {
             let inputs: Vec<Node> = derivation
                 .inputs()
                 .iter()
-                .map(|input| match input {
-                    InputName::Named(name) => Node::Named(name.clone()),
-                    InputName::Cell(column) => Node::Column {
+                .filter_map(|input| match input {
+                    InputName::Named(name) => Some(Node::Named(name.clone())),
+                    // The value beside the uncertainty a formula fills is no
+                    // other node: the cell's own, which no ordering puts
+                    // before it.
+                    InputName::CellValue(column) if derivation.outputs().contains(column) => None,
+                    InputName::Cell(column) | InputName::CellValue(column) => Some(Node::Column {
                         table: self.name.clone(),
                         column: column.clone(),
-                    },
-                    InputName::Column { table, column } => Node::Column {
+                    }),
+                    InputName::Column { table, column } => Some(Node::Column {
                         table: table.clone(),
                         column: column.clone(),
-                    },
+                    }),
                 })
                 .collect();
             for output in derivation.outputs() {
@@ -975,6 +1198,14 @@ impl Table {
     /// A column's counter: what a dependent records, at column scale.
     pub fn column_generation(&self, column: &Identifier) -> u64 {
         self.column_generations.get(column).copied().unwrap_or(0)
+    }
+
+    /// Whether a formula gives `column` row by row: it reads each row's cells,
+    /// never a column whole.
+    pub fn is_derived_by_rows(&self, column: &Identifier) -> bool {
+        self.derivations.iter().any(|derivation| {
+            matches!(derivation, Derivation::Row { outputs, .. } if outputs.contains(column))
+        })
     }
 
     pub fn is_derived(&self, column: &Identifier) -> bool {
@@ -1015,6 +1246,7 @@ impl Table {
         // The rows are the file's now: none was written by a derivation.
         self.ran.clear();
         self.held.clear();
+        self.prepared |= file.prepared;
         let Table {
             title,
             columns: file_columns,
@@ -1091,6 +1323,7 @@ impl Table {
                 self.declare_on(column, &mut cell);
                 cells.insert(column.clone(), cell);
                 row.generations.entry(column.clone()).or_insert(0);
+                row.value_generations.entry(column.clone()).or_insert(0);
             }
             row.cells = cells;
             row.recorded.clear();
@@ -1145,7 +1378,12 @@ impl Table {
                     outputs, inputs, ..
                 } => (outputs.clone(), inputs.clone(), false),
             };
-            let supplied = |row: &Row| outputs.iter().all(|output| holds_value(&row.cells[output]));
+            let produces = self.derivations[at].produces();
+            let supplied = |row: &Row| {
+                outputs
+                    .iter()
+                    .all(|output| holds_channel(&row.cells[output], produces))
+            };
             if row_span {
                 for (position, from_file) in filled.iter().enumerate() {
                     if !from_file || !supplied(&self.rows[position]) {
@@ -1457,6 +1695,23 @@ impl Table {
             if outputs.iter().all(|output| self.held_at(position, output)) {
                 continue;
             }
+            // A cell of its own row it reads and nobody entered: not run — the
+            // row's outputs wait for it, as a property waits for an input.
+            // Run, it raised on the absence, and said *failed*.
+            let empty = |column: &Identifier| {
+                self.rows[position]
+                    .cells
+                    .get(column)
+                    .is_none_or(|cell| cell.value().is_ok_and(|value| value.is_absent()))
+            };
+            let waits = inputs.iter().any(|input| match input {
+                crate::core::property::InputName::Cell(column)
+                | crate::core::property::InputName::CellValue(column) => empty(column),
+                _ => false,
+            });
+            if waits {
+                continue;
+            }
             let attempt = {
                 let view = RowView {
                     row: &self.rows[position],
@@ -1495,7 +1750,13 @@ impl Table {
                     });
                 }
             };
-            check_outputs(&outputs, &produced)?;
+            // A formula that breaks its contract failed as one that raised:
+            // its cells say so. They were written empty, and said never
+            // computed.
+            if let Err(error) = check_outputs(&outputs, &produced) {
+                self.fail_row(position, &outputs, &error);
+                return Err(error);
+            }
             for (column, output) in produced {
                 if self.held_at(position, &column) {
                     continue;
@@ -1562,14 +1823,19 @@ impl Table {
                 });
             }
         };
-        check_outputs(&outputs, &produced)?;
+        if let Err(error) = check_outputs(&outputs, &produced) {
+            self.fail_column(&outputs, &error);
+            return Err(error);
+        }
         for (column, cells) in &produced {
             if cells.len() != self.rows.len() {
-                return Err(TableError::OutputLength {
+                let error = TableError::OutputLength {
                     column: column.clone(),
                     expected: self.rows.len(),
                     produced: cells.len(),
-                });
+                };
+                self.fail_column(&outputs, &error);
+                return Err(error);
             }
         }
         for (column, cells) in produced {
@@ -1588,6 +1854,8 @@ impl Table {
 
     /// A cell goes stale for exactly the counters it recorded, which is what
     /// makes the two granularities need no rule of their own.
+    /// The counters of `inputs` as they stand; a cell read by its value, by
+    /// its value's counter alone.
     fn counters(
         &self,
         inputs: &[InputName],
@@ -1598,6 +1866,9 @@ impl Table {
         for input in inputs {
             let generation = match input {
                 InputName::Named(name) => scope.generation(name),
+                InputName::CellValue(column) => position
+                    .and_then(|position| self.rows[position].value_generations.get(column).copied())
+                    .unwrap_or(0),
                 InputName::Cell(column) => position
                     .and_then(|position| self.rows[position].generations.get(column).copied())
                     .unwrap_or(0),
@@ -1613,14 +1884,59 @@ impl Table {
         counters
     }
 
+    /// The cells a row's derivation fills, at `position`, failed by `error`:
+    /// said as a formula's `ValueError`, which is what the model's author
+    /// reads it as.
+    fn fail_row(&mut self, position: usize, outputs: &[Identifier], error: &TableError) {
+        let message = format!("ValueError: {error}");
+        for column in outputs {
+            if self.held_at(position, column) {
+                continue;
+            }
+            if let Some(cell) = self.rows[position].cells.get_mut(column) {
+                let mut records = cell.records().clone();
+                records.failure = Some(message.clone());
+                cell.set_records(records);
+            }
+        }
+    }
+
+    /// Every cell of `column` not held by a hand, its failure `message`
+    /// recorded: a formula stopped from outside, as by `--timeout`.
+    pub fn fail_cells(&mut self, column: &Identifier, message: &str) {
+        for position in 0..self.rows.len() {
+            if self.held_at(position, column) {
+                continue;
+            }
+            if let Some(cell) = self.rows[position].cells.get_mut(column) {
+                let mut records = cell.records().clone();
+                records.failure = Some(message.to_string());
+                cell.set_records(records);
+            }
+        }
+    }
+
+    /// Every cell a column's derivation fills, failed by `error`.
+    fn fail_column(&mut self, outputs: &[Identifier], error: &TableError) {
+        for position in 0..self.rows.len() {
+            self.fail_row(position, outputs, error);
+        }
+    }
+
     fn write(&mut self, position: usize, column: &Identifier, output: CellOutput) {
         let cell = self.rows[position]
             .cells
             .get_mut(column)
             .expect("every row has every column");
+        let value_moved = !matches!(output, CellOutput::Uncertainty(_));
         match output {
             CellOutput::Value(value) => cell.set_value(value),
-            CellOutput::Uncertainty(uncertainty) => cell.set_uncertainty(Some(uncertainty)),
+            // The record the run replaces goes, as a value written clears it:
+            // what this run read is recorded afresh.
+            CellOutput::Uncertainty(uncertainty) => {
+                cell.set_uncertainty(uncertainty);
+                cell.set_records(crate::core::property::Records::none());
+            }
             CellOutput::Quantity(value, uncertainty) => {
                 cell.set_value(value);
                 cell.set_uncertainty(uncertainty);
@@ -1629,17 +1945,22 @@ impl Table {
         self.ran
             .insert((IndexKey::of(&self.rows[position].index), column.clone()));
         // Writing a cell bumps both scales: its row's entry and its column's.
-        *self.rows[position]
-            .generations
-            .entry(column.clone())
-            .or_insert(0) += 1;
-        self.bump_column(column);
+        self.bump_cell(position, column, value_moved);
     }
 }
 
 /// Whether a cell holds a value that reading it would not compute.
 fn holds_value(cell: &Property) -> bool {
     cell.is_resolved() && cell.value().is_ok_and(|value| !value.is_absent())
+}
+
+/// Whether a cell holds what its formula gives: the whole, or the one channel
+/// it `produces`.
+fn holds_channel(cell: &Property, produces: Option<Produced>) -> bool {
+    match produces {
+        Some(Produced::Uncertainty) => cell.peek_uncertainty().flatten().is_some(),
+        _ => holds_value(cell),
+    }
 }
 
 fn check_outputs<T>(
@@ -1667,7 +1988,7 @@ fn check_input(
 ) -> Result<(), TableError> {
     match (derivation, input) {
         (_, InputName::Named(_)) => Ok(()),
-        (Derivation::Row { .. }, InputName::Cell(column)) => {
+        (Derivation::Row { .. }, InputName::Cell(column) | InputName::CellValue(column)) => {
             if columns.contains_key(column) {
                 Ok(())
             } else {
@@ -1690,10 +2011,12 @@ fn check_input(
             input: input.clone(),
             span: "row",
         }),
-        (Derivation::Column { .. }, InputName::Cell(_)) => Err(TableError::WrongInputScope {
-            input: input.clone(),
-            span: "column",
-        }),
+        (Derivation::Column { .. }, InputName::Cell(_) | InputName::CellValue(_)) => {
+            Err(TableError::WrongInputScope {
+                input: input.clone(),
+                span: "column",
+            })
+        }
     }
 }
 
@@ -1726,7 +2049,7 @@ pub fn nearest_index(available: &[Value], wanted: &Value) -> Option<Value> {
 
 /// By numeric proximity for indexes; a text index by its spelling — the same
 /// letters in another case first, then by edit distance — so that
-/// `tasting.score[lea]` names `'Lea'`. Any other index has no nearest.
+/// `inspection.score[lea]` names `'Lea'`. Any other index has no nearest.
 fn nearest(available: &[Value], wanted: &Value) -> Option<Value> {
     if let Value::Text(text) = wanted {
         let texts: Vec<&str> = available
@@ -1814,6 +2137,12 @@ pub enum TableError {
     MissingIndexValue {
         column: Identifier,
     },
+    /// Text, or true/false, given a column with a unit.
+    NumberExpected {
+        column: Identifier,
+        unit: String,
+        value: Value,
+    },
     OutputMismatch {
         expected: Vec<Identifier>,
         produced: Vec<Identifier>,
@@ -1874,7 +2203,7 @@ impl fmt::Display for TableError {
             TableError::ReservedColumnName { name } => write!(
                 f,
                 "'{name}' cannot be a column name: it prefixes a derivation's \
-                 own-row inputs, as in row.wort"
+                 own-row inputs, as in row.tension"
             ),
             TableError::IndexColumnNotDeclared { index } => write!(
                 f,
@@ -1943,6 +2272,20 @@ impl fmt::Display for TableError {
                 f,
                 "this row has no value for '{column}', which is an index column: \
                  nothing would identify it"
+            ),
+            TableError::NumberExpected {
+                column,
+                unit,
+                value,
+            } => write!(
+                f,
+                "'{column}' is measured in {unit}, and {} is no number: give the number alone",
+                match value {
+                    Value::Text(text) => format!("\"{text}\""),
+                    Value::Boolean(true) => "true".to_string(),
+                    Value::Boolean(false) => "false".to_string(),
+                    other => format!("{other:?}"),
+                }
             ),
             TableError::OutputMismatch { expected, produced } => write!(
                 f,

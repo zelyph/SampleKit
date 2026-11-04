@@ -144,7 +144,7 @@ fn parse_spec(specifier: &str) -> Result<ParsedSpec, String> {
         // fill, an alignment or a sign.
         return Err(
             "a width, a fill, an alignment or a sign belongs to the column rather \
-                    than to the quantity: write .2f and let the table choose its own width"
+                    than to the property: write .2f and let the table choose its own width"
                 .to_string(),
         );
     }
@@ -184,6 +184,9 @@ fn parse_spec(specifier: &str) -> Result<ParsedSpec, String> {
 pub struct Precision {
     value: Spec,
     uncertainty: Spec,
+    /// Whether both numbers are spreads, rounded up: an uncertainty standing
+    /// alone, in a column or a file of its own.
+    spread: bool,
 }
 
 impl Precision {
@@ -193,6 +196,7 @@ impl Precision {
         Ok(Precision {
             value: parsed.clone(),
             uncertainty: parsed,
+            spread: false,
         })
     }
 
@@ -201,6 +205,7 @@ impl Precision {
         Ok(Precision {
             value: Spec::new(value)?,
             uncertainty: Spec::new(uncertainty)?,
+            spread: false,
         })
     }
 
@@ -214,12 +219,21 @@ impl Precision {
 
     /// The uncertainty's specifier for both numbers: what writes an
     /// uncertainty standing alone, in a column or a file of its own, as the
-    /// quantity writes it.
+    /// quantity writes it, rounded up.
     pub fn of_uncertainty(&self) -> Precision {
         Precision {
             value: self.uncertainty.clone(),
             uncertainty: self.uncertainty.clone(),
+            spread: true,
         }
+    }
+
+    /// The general form a table writes a spread in where nothing is declared,
+    /// six significant digits, rounded up.
+    pub fn general_spread() -> Precision {
+        Precision::both(".6g")
+            .expect("a specifier written here parses")
+            .of_uncertainty()
     }
 
     /// Whether one specifier describes both numbers.
@@ -255,7 +269,18 @@ pub struct Presentation {
 pub struct Resolved {
     pub unit: Option<String>,
     pub symbol: Option<String>,
-    pub separator: String,
+    /// The style's form of a property, `{value}`, `{uncertainty}`, `{unit}`
+    /// and `{symbol}` placed; `None`, the built-in `12.50 ± 0.05 g`.
+    pub property: Option<String>,
+    /// The piece `{uncertainty}` stands for in the style's forms.
+    pub uncertainty: Option<String>,
+    /// The style's form of a property with no unit.
+    pub unitless: Option<String>,
+    /// The unit as the style writes it beside a value, outside any form —
+    /// escaped as its text is, a LaTeX form in math mode; `None`, `unit`.
+    pub unit_alone: Option<String>,
+    /// The unit as the style writes it where its form places `{unit}`.
+    pub unit_in_form: Option<String>,
     pub precision: Option<Precision>,
 }
 
@@ -266,7 +291,11 @@ impl Resolved {
         Resolved {
             unit: p.unit.clone(),
             symbol: p.symbol.clone(),
-            separator: "\u{b1}".to_string(),
+            property: None,
+            uncertainty: None,
+            unitless: None,
+            unit_alone: None,
+            unit_in_form: None,
             precision: p.precision.clone(),
         }
     }
@@ -288,8 +317,8 @@ pub fn format_value(value: &Value, r: &Resolved) -> String {
         Value::Date(date) => date.iso(),
         Value::DateTime(date_time) => date_time.iso(),
         Value::Integer(integer) => render_integer(spec_for_value(r), *integer),
-        Value::Number(number) => match spec_for_value(r) {
-            Some(spec) => render(spec, *number),
+        Value::Number(number) => match &r.precision {
+            Some(precision) => render(precision.value(), *number, precision.spread),
             None => general(*number, 6, false),
         },
     }
@@ -308,12 +337,12 @@ pub fn format_quantity(value: &Value, uncertainty: Option<&Uncertainty>, r: &Res
 ///
 /// **A declared precision is applied as it is written, everywhere**: a screen,
 /// a table, an export and a template round alike, so that what is read on one
-/// is what is found in the other. A magnitude the specifier rounds to zero is
-/// written as zero; `validate` is where that is noted.
+/// is what is found in the other. **An uncertainty is rounded up, never
+/// understated**: `0.00006` at `.3f` is `0.001`, never `0.000`.
 pub fn format_uncertainty(uncertainty: &Uncertainty, r: &Resolved) -> String {
     match &r.precision {
-        Some(precision) => render(precision.uncertainty(), uncertainty.magnitude()),
-        None => general(uncertainty.magnitude(), 6, false),
+        Some(precision) => render(precision.uncertainty(), uncertainty.magnitude(), true),
+        None => general_rounded(uncertainty.magnitude(), 6, false, true),
     }
 }
 
@@ -339,6 +368,7 @@ fn quantity(value: &Value, uncertainty: Option<&Uncertainty>, r: &Resolved) -> S
                         .expect("a value spec means a precision")
                         .uncertainty(),
                     u.magnitude(),
+                    true,
                 )
             }),
         ),
@@ -349,17 +379,95 @@ fn quantity(value: &Value, uncertainty: Option<&Uncertainty>, r: &Resolved) -> S
         (None, None) => (format_value(value, r), None),
     };
 
+    // The unit as the style writes it beside the quantity: `\%`, never the
+    // `%` that begins a LaTeX comment.
+    let alone = r
+        .unit_alone
+        .as_deref()
+        .or(r.unit.as_deref())
+        .filter(|unit| !unit.is_empty());
+    // The style's own form, where it declares one: `\SI{12.5 \pm 0.05}{\gram}`.
+    if let Some(mut filled) = filled_property(
+        &StyleForms {
+            property: r.property.as_deref(),
+            uncertainty: r.uncertainty.as_deref(),
+            unitless: r.unitless.as_deref(),
+        },
+        &rendered,
+        rendered_uncertainty.as_deref(),
+        r.unit_in_form.as_deref().or(r.unit.as_deref()),
+        r.symbol.as_deref(),
+    ) {
+        // **A form that does not place the unit leaves it to follow**: a
+        // given style puts it in a table's header, and a value written
+        // alone — `view`, a script's property — lost it, `$6.8 \pm 0.1$`.
+        if let Some(unit) = alone
+            && !r
+                .property
+                .as_deref()
+                .is_some_and(|form| form.contains("{unit}"))
+        {
+            filled.push(' ');
+            filled.push_str(unit);
+        }
+        return filled;
+    }
     if let Some(uncertainty_text) = rendered_uncertainty {
-        rendered.push(' ');
-        rendered.push_str(&r.separator);
-        rendered.push(' ');
+        rendered.push_str(" \u{b1} ");
         rendered.push_str(&uncertainty_text);
     }
-    if let Some(unit) = r.unit.as_deref().filter(|unit| !unit.is_empty()) {
+    if let Some(unit) = alone {
         rendered.push(' ');
         rendered.push_str(unit);
     }
     rendered
+}
+
+/// A style's forms of a property: the whole, its piece for an uncertainty,
+/// and its form with no unit.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct StyleForms<'a> {
+    pub property: Option<&'a str>,
+    pub uncertainty: Option<&'a str>,
+    pub unitless: Option<&'a str>,
+}
+
+/// A value written in a style's forms, `None` where the style declares
+/// none. `unitless` stands for `property` where there is no unit; in either,
+/// `{uncertainty}` is the piece `uncertainty` says — nothing where there is
+/// no uncertainty — or the number itself where no piece is declared. A value
+/// with no uncertainty and no piece to leave out is the caller's to write.
+pub fn filled_property(
+    forms: &StyleForms,
+    value: &str,
+    uncertainty: Option<&str>,
+    unit: Option<&str>,
+    symbol: Option<&str>,
+) -> Option<String> {
+    let unit = unit.filter(|unit| !unit.is_empty());
+    let template = match (unit, forms.unitless) {
+        (None, Some(unitless)) => unitless,
+        // With no uncertainty and no piece to leave out, the value as the
+        // caller writes it.
+        _ => match (uncertainty, forms.uncertainty) {
+            (None, None) => return None,
+            _ => forms.property?,
+        },
+    };
+    let uncertainty = match (uncertainty, forms.uncertainty) {
+        (Some(number), Some(piece)) => piece.replace("{uncertainty}", number),
+        (Some(number), None) => number.to_string(),
+        (None, _) => String::new(),
+    };
+    Some(
+        template
+            .replace("{value}", value)
+            .replace("{uncertainty}", &uncertainty)
+            .replace("{unit}", unit.unwrap_or(""))
+            .replace("{symbol}", symbol.unwrap_or(""))
+            .trim_end()
+            .to_string(),
+    )
 }
 
 fn spec_for_value(r: &Resolved) -> Option<&Spec> {
@@ -375,40 +483,245 @@ fn render_integer(spec: Option<&Spec>, integer: i64) -> String {
     match spec {
         None => integer.to_string(),
         Some(spec) if spec.kind == SpecKind::Integer => integer.to_string(),
-        Some(spec) => render(spec, integer as f64),
+        Some(spec) => render(spec, integer as f64, false),
     }
 }
 
-fn render(spec: &Spec, x: f64) -> String {
+/// A number rounded to zero is written without a sign: `-0.000` read as a
+/// mistake, and the sign of a zero rounded is no information.
+fn unsigned_zero(text: String) -> String {
+    match text.strip_prefix('-') {
+        Some(rest)
+            if rest
+                .chars()
+                .take_while(|c| !matches!(c, 'e' | 'E'))
+                .all(|c| c == '0' || c == '.') =>
+        {
+            rest.to_string()
+        }
+        _ => text,
+    }
+}
+
+/// A number through a specifier. **Every number is rounded on its shortest
+/// decimal writing**, so that two results equal in decimal are written alike:
+/// rounded on the binary value, `6.9125` was `6.912` once and `6.913` another
+/// time. **A value is rounded to the nearest, a half away from zero**,
+/// `6.9125` at three decimals `6.913`; **an uncertainty, `up`, is rounded up,
+/// never understated**, `0.121` at two `0.13` and `0.00006` at three `0.001`.
+fn render(spec: &Spec, x: f64, up: bool) -> String {
     match spec.kind {
         // Python's default for `f` and `e` with no precision is six.
-        SpecKind::Fixed => format!("{x:.*}", spec.precision.unwrap_or(6)),
-        SpecKind::Exponential => exponential(x, spec.precision.unwrap_or(6), spec.upper),
-        SpecKind::General => general(x, spec.precision.unwrap_or(6), spec.upper),
-        // `d` on a number is `.0f` without a decimal point: it rounds, half to
-        // even, like every other path here.
-        SpecKind::Integer => format!("{x:.0}"),
+        SpecKind::Fixed => fixed_rounded(x, spec.precision.unwrap_or(6), up),
+        SpecKind::Exponential => unsigned_zero(exponential_signed(
+            x,
+            spec.precision.unwrap_or(6),
+            spec.upper,
+            up,
+        )),
+        SpecKind::General => general_rounded(x, spec.precision.unwrap_or(6), spec.upper, up),
+        // `d` on a number is `.0f` without a decimal point.
+        SpecKind::Integer => fixed_rounded(x, 0, up),
     }
+}
+
+/// The shortest decimal writing of `x`'s magnitude: its digits, without
+/// leading zeros, and the power of ten of the first; `None` for zero, and for
+/// what is not finite.
+fn shortest_digits(x: f64) -> Option<(Vec<u8>, i32)> {
+    if x == 0.0 || !x.is_finite() {
+        return None;
+    }
+    let written = format!("{:e}", x.abs());
+    let (mantissa, exponent) = written.split_once('e')?;
+    let digits: Vec<u8> = mantissa
+        .bytes()
+        .filter(u8::is_ascii_digit)
+        .map(|digit| digit - b'0')
+        .collect();
+    Some((digits, exponent.parse().ok()?))
+}
+
+/// `digits` cut to their first `keep`, a half up on what is cut, or `up`
+/// whatever is cut: the digits kept, one more where a carry added one.
+///
+/// **Rounded up, the digits past the fifteenth significant one are dropped
+/// first, to the nearest**: they are the arithmetic's, and `0.1 + 0.2`, written
+/// `0.30000000000000004`, would be `0.31` at two decimals. Only where the cut
+/// falls among the digits: a precision keeping them all, `.17g`, writes every
+/// one.
+fn cut(digits: &[u8], keep: usize, up: bool) -> Vec<u8> {
+    const HELD: usize = 15;
+    if up && digits.len() > HELD && keep < digits.len() {
+        let held = cut(digits, HELD, false);
+        // A carry past the first digit, `9.99…`, puts every place one further.
+        return match held.len() > HELD {
+            true => cut(&held, keep + 1, true),
+            false => cut(&held, keep, true),
+        };
+    }
+    let mut kept: Vec<u8> = digits.iter().take(keep).copied().collect();
+    kept.resize(keep, 0);
+    let rest = digits.get(keep..).unwrap_or(&[]);
+    let carry = match up {
+        true => rest.iter().any(|digit| *digit != 0),
+        false => rest.first().is_some_and(|first| *first >= 5),
+    };
+    if carry {
+        let mut at = kept.len();
+        loop {
+            if at == 0 {
+                kept.insert(0, 1);
+                break;
+            }
+            at -= 1;
+            if kept[at] == 9 {
+                kept[at] = 0;
+            } else {
+                kept[at] += 1;
+                break;
+            }
+        }
+    }
+    kept
+}
+
+/// A spread — an uncertainty, a standard error — through a declared precision's
+/// uncertainty specifier, rounded up.
+pub fn spread_at(x: f64, precision: &Precision) -> String {
+    render(precision.uncertainty(), x, true)
+}
+
+/// `x` with `decimals` places, rounded a half up on its shortest decimal
+/// writing.
+pub fn fixed(x: f64, decimals: usize) -> String {
+    fixed_rounded(x, decimals, false)
+}
+
+/// A spread with `decimals` places, rounded up: never understated.
+pub fn fixed_up(x: f64, decimals: usize) -> String {
+    fixed_rounded(x, decimals, true)
+}
+
+fn fixed_rounded(x: f64, decimals: usize, up: bool) -> String {
+    unsigned_zero(fixed_signed(x, decimals, up))
+}
+
+fn fixed_signed(x: f64, decimals: usize, up: bool) -> String {
+    let Some((digits, exponent)) = shortest_digits(x) else {
+        // Zero, and what is not finite, as Rust writes them.
+        return format!("{x:.decimals$}");
+    };
+    let sign = if x < 0.0 { "-" } else { "" };
+    // The digits before the cut: those of the integer part and `decimals`.
+    let keep = exponent + 1 + decimals as i32;
+    let kept: Vec<u8> = if keep < 0 {
+        // Every digit is cut, and the first lies two places or more below the
+        // last one kept: less than a half of it, and rounded up one of it.
+        vec![u8::from(up)]
+    } else {
+        let mut kept = cut(&digits, keep as usize, up);
+        if kept.is_empty() {
+            kept.push(0);
+        }
+        kept
+    };
+    // Written right-aligned on the last place kept.
+    let mut text: String = kept.iter().map(|digit| char::from(b'0' + digit)).collect();
+    if text.len() <= decimals {
+        text = format!("{}{text}", "0".repeat(decimals + 1 - text.len()));
+    }
+    let point = text.len() - decimals;
+    let (whole, fraction) = text.split_at(point);
+    let whole = whole.trim_start_matches('0');
+    let whole = if whole.is_empty() { "0" } else { whole };
+    if decimals == 0 {
+        format!("{sign}{whole}")
+    } else {
+        format!("{sign}{whole}.{fraction}")
+    }
+}
+
+/// `x` to `significant` digits, rounded on its shortest decimal writing: the
+/// mantissa's digits and the exponent after rounding.
+fn significant_digits(x: f64, significant: usize, up: bool) -> Option<(Vec<u8>, i32)> {
+    let (digits, exponent) = shortest_digits(x)?;
+    let kept = cut(&digits, significant, up);
+    // A carry past the first digit renormalises: 9.99 at two digits is 1.0e1.
+    if kept.len() > significant {
+        Some((kept[..significant].to_vec(), exponent + 1))
+    } else {
+        Some((kept, exponent))
+    }
+}
+
+fn mantissa_of(digits: &[u8]) -> String {
+    let mut text: String = digits
+        .iter()
+        .take(1)
+        .map(|digit| char::from(b'0' + digit))
+        .collect();
+    if digits.len() > 1 {
+        text.push('.');
+        text.extend(digits[1..].iter().map(|digit| char::from(b'0' + digit)));
+    }
+    text
 }
 
 /// Rust writes `1.234e5`; Python writes `1.234e+05`. The specifiers are
 /// Python's, so the output is Python's.
 fn exponential(x: f64, precision: usize, upper: bool) -> String {
-    let (mantissa, exponent) = split_exponential(&format!("{x:.*e}", precision));
-    join_exponential(&mantissa, exponent, upper)
+    unsigned_zero(exponential_signed(x, precision, upper, false))
+}
+
+fn exponential_signed(x: f64, precision: usize, upper: bool, up: bool) -> String {
+    // A number that is no number is written as one is everywhere: rendering
+    // never fails, where it panicked here.
+    if !x.is_finite() {
+        return format!("{x}");
+    }
+    let Some((digits, exponent)) = significant_digits(x, precision + 1, up) else {
+        let (mantissa, exponent) = split_exponential(&format!("{x:.*e}", precision));
+        return join_exponential(&mantissa, exponent, upper);
+    };
+    let sign = if x < 0.0 { "-" } else { "" };
+    join_exponential(&format!("{sign}{}", mantissa_of(&digits)), exponent, upper)
 }
 
 /// The general format, as Python defines it: significant digits, fixed
 /// notation when the exponent is in `-4..precision` and scientific otherwise,
 /// with trailing zeros removed either way.
 fn general(x: f64, precision: usize, upper: bool) -> String {
+    general_rounded(x, precision, upper, false)
+}
+
+fn general_rounded(x: f64, precision: usize, upper: bool, up: bool) -> String {
+    unsigned_zero(general_signed(x, precision, upper, up))
+}
+
+fn general_signed(x: f64, precision: usize, upper: bool, up: bool) -> String {
     let significant = precision.max(1);
-    let (mantissa, exponent) = split_exponential(&format!("{x:.*e}", significant - 1));
+    let Some((_, exponent)) = significant_digits(x, significant, up) else {
+        return strip_trailing_zeros(&format!("{x:.*}", significant - 1));
+    };
     if exponent < -4 || exponent >= significant as i32 {
-        join_exponential(&strip_trailing_zeros(&mantissa), exponent, upper)
+        strip_trailing_zeros_of_exponential(&unsigned_zero(exponential_signed(
+            x,
+            significant - 1,
+            upper,
+            up,
+        )))
     } else {
         let decimals = (significant as i32 - 1 - exponent).max(0) as usize;
-        strip_trailing_zeros(&format!("{x:.*}", decimals))
+        strip_trailing_zeros(&fixed_rounded(x, decimals, up))
+    }
+}
+
+/// `1.200e+05` as `1.2e+05`: the mantissa's trailing zeros, not the exponent's.
+fn strip_trailing_zeros_of_exponential(text: &str) -> String {
+    match text.find(['e', 'E']) {
+        Some(at) => format!("{}{}", strip_trailing_zeros(&text[..at]), &text[at..]),
+        None => strip_trailing_zeros(text),
     }
 }
 
@@ -435,12 +748,29 @@ fn strip_trailing_zeros(text: &str) -> String {
     }
 }
 
+/// The decimal places the convention may write an uncertainty to, fewest
+/// first: two significant digits at most, one at least, and two when the
+/// first is a 1, which rounded alone loses up to a third of its size. `None`
+/// for zero, or what is not a finite number: there is no place to lend.
+pub fn uncertainty_places(uncertainty: f64) -> Option<(i32, i32)> {
+    if uncertainty == 0.0 {
+        return None;
+    }
+    let (two, exponent_two) = significant_digits(uncertainty.abs(), 2, true)?;
+    let (one, exponent_one) = significant_digits(uncertainty.abs(), 1, true)?;
+    let most = 1 - exponent_two;
+    if two.first() == Some(&1) || one.first() == Some(&1) {
+        return Some((most, most));
+    }
+    Some((-exponent_one, most))
+}
+
 /// The significant digits convention, used when nothing declares a precision:
 /// the uncertainty to two significant digits, and the value rounded to the same
 /// decimal place.
 ///
 /// ```text
-/// value 12.4987, uncertainty 0.0523   ->   "12.499 +- 0.052"
+/// value 12.4987, uncertainty 0.0523   ->   "12.499 +- 0.053"
 /// value 1284.3,  uncertainty 27.0     ->   "1284 +- 27"
 /// ```
 ///
@@ -453,30 +783,38 @@ fn by_convention(value: f64, uncertainty: f64) -> (String, String) {
         // go through the general form rather than through a made-up one.
         return (general(value, 6, false), general(uncertainty, 6, false));
     }
-    // Formatting to one decimal in scientific notation *is* rounding to two
-    // significant digits, and it renormalises: 0.0999 becomes 1.0e-1, so the
-    // exponent read back is the one after rounding.
-    let two_significant = format!("{uncertainty:.1e}");
-    let (_, exponent) = split_exponential(&two_significant);
-    let rounded: f64 = two_significant
+    // Two significant digits of the uncertainty, rounded up and renormalised:
+    // 0.0991 is 0.10, so the exponent read back is the one after rounding.
+    let Some((digits, exponent)) = significant_digits(uncertainty, 2, true) else {
+        return (general(value, 6, false), general(uncertainty, 6, false));
+    };
+    let rounded: f64 = format!("{}e{exponent}", mantissa_of(&digits))
         .parse()
-        .expect("a number Rust wrote is a number Rust reads");
+        .expect("a number written here reads back");
     let decimals = 1 - exponent;
     if decimals >= 0 {
         let decimals = decimals as usize;
-        (
-            format!("{value:.*}", decimals),
-            format!("{rounded:.*}", decimals),
-        )
+        (fixed(value, decimals), fixed(rounded, decimals))
     } else {
         // Two significant digits land above the decimal point: both numbers are
         // rounded to that power of ten. `1284.3 +- 270` reads `1280 +- 270`.
         let scale = 10f64.powi(-decimals);
-        (
-            // Half to even, as every other path here rounds.
-            format!("{:.0}", (value / scale).round_ties_even() * scale),
-            format!("{rounded:.0}"),
-        )
+        let value: f64 = fixed(value / scale, 0)
+            .parse::<f64>()
+            .unwrap_or(value / scale)
+            * scale;
+        // **Past what a double holds exactly, the digits are the significant
+        // ones, in scientific notation**: written whole, 6.02e23 ± 3e20 read
+        // 601999999999999995805696, digits no measurement gave.
+        if value.abs() >= 1e15 {
+            let (_, value_exponent) = split_exponential(&format!("{value:e}"));
+            let digits = (value_exponent + decimals).max(0) as usize;
+            return (
+                exponential(value, digits, false),
+                exponential(rounded, 1, false),
+            );
+        }
+        (fixed(value, 0), fixed(rounded, 0))
     }
 }
 

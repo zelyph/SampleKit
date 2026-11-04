@@ -13,12 +13,12 @@ fn a_value_is_changed_after_its_preview() {
     // Its name and its tags first, then as the file holds them: the attribute.
     assert_eq!(workbench.entries()[0].field, "name");
     assert_eq!(workbench.entries()[1].field, "tags");
-    assert_eq!(workbench.entries()[2].field, "beer");
+    assert_eq!(workbench.entries()[2].field, "alloy");
     let screen_text = screen(&mut workbench);
-    assert!(screen_text.contains("malt"), "{screen_text}");
+    assert!(screen_text.contains("diameter"), "{screen_text}");
     assert!(screen_text.contains("A note on C1"), "{screen_text}");
-    // On malt: e, a new number, Enter previews, y writes.
-    move_to(&mut workbench, "malt");
+    // On diameter: e, a new number, Enter previews, y writes.
+    move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
     for _ in 0..8 {
         workbench.key(Key::Backspace);
@@ -107,7 +107,7 @@ fn the_hints_fit_the_terminal_and_always_name_help() {
             .collect::<String>()
             .trim_end()
             .to_string();
-        assert!(last.ends_with("? help"), "{width}: {last}");
+        assert!(last.ends_with("? all keys"), "{width}: {last}");
         assert!(last.chars().count() <= width as usize, "{width}: {last}");
     }
 }
@@ -166,7 +166,7 @@ fn f_goes_to_a_query() {
     let scratch = rich("goto");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     assert_eq!(workbench.view.len(), 4);
-    keys(&mut workbench, "f/schwarz\n");
+    keys(&mut workbench, "f/cobalt\n");
     assert_eq!(workbench.view.len(), 2, "{}", workbench.message);
     // A filter in force says first how it is cleared.
     let line = samplekit::tui::view::hint_line(workbench.place(), true, 100);
@@ -260,8 +260,8 @@ fn a_state_too_long_for_the_pane_is_its_mark() {
     fs::write(
         scratch.0.join("S.md"),
         "---\nschema_version: 1\nname: S\nproperties:\n  \
-         malt: {v: 13.0, fingerprint: aaaaaaaaaaaa}\n  a_rather_long_quantity_name:\n    \
-         v: 3.0\n    computed: {malt: bbbbbbbbbbbb}\n    fingerprint: cccccccccccc\n---\n",
+         diameter: {v: 13.0, fingerprint: aaaaaaaaaaaa}\n  a_rather_long_quantity_name:\n    \
+         v: 3.0\n    computed: {diameter: bbbbbbbbbbbb}\n    fingerprint: cccccccccccc\n---\n",
     )
     .unwrap();
     let mut workbench = Workbench::open(&scratch.0).unwrap();
@@ -300,7 +300,7 @@ fn a_long_list_scrolls_to_its_cursor() {
     for at in 0..40 {
         rc.push_str(&format!(
             "[query.q{at:02}-with-a-name-long-enough-to-fill-the-whole-window-width]\n\
-             filter = 'malt > 0'\n"
+             filter = 'diameter > 0'\n"
         ));
     }
     fs::write(scratch.0.join(".samplekitrc"), rc).unwrap();
@@ -322,7 +322,7 @@ fn the_rows_move_only_when_the_cursor_leaves_them() {
     for at in 0..40 {
         fs::write(
             scratch.0.join(format!("s{at:02}.md")),
-            format!("---\nschema_version: 1\nname: s{at:02}\nproperties:\n  malt: {at}\n---\n"),
+            format!("---\nschema_version: 1\nname: s{at:02}\nproperties:\n  diameter: {at}\n---\n"),
         )
         .unwrap();
     }
@@ -352,56 +352,18 @@ fn the_rows_move_only_when_the_cursor_leaves_them() {
 fn the_whole_choice_shows_at_the_foot_of_the_picker() {
     let scratch = rich("choice");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
-    keys(&mut workbench, "s/malt r\u{1b}/beer");
+    keys(&mut workbench, "s/diameter r\u{1b}/alloy");
     let drawn = screen(&mut workbench);
-    // Narrowed to beer, and malt still said, with its way.
-    assert!(drawn.contains("sorted by  malt ↓"), "{drawn}");
-}
-
-#[test]
-fn the_tags_are_a_value_edited_whole() {
-    let scratch = rich("tags");
-    let mut workbench = Workbench::open(&scratch.0).unwrap();
-    open_named(&mut workbench, "D1");
-    assert_eq!(workbench.entries()[1].field, "tags");
-    // Not in the note any more.
-    let drawn = screen(&mut workbench);
-    assert!(!drawn.contains("tags:"), "{drawn}");
-    move_to(&mut workbench, "tags");
-    keys(&mut workbench, "e");
-    let Mode::Prompt { text, .. } = &workbench.mode else {
-        panic!("the tags' prompt");
-    };
-    assert!(text.is_empty(), "{text}");
-    keys(&mut workbench, "reference, checked\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("a preview: {}", workbench.message);
-    };
-    assert_eq!(lines, &["+ reference", "+ checked"]);
-    keys(&mut workbench, "y");
-    keys(&mut workbench, "e");
-    for _ in 0.."reference, checked".len() {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "checked\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("a preview: {}", workbench.message);
-    };
-    assert_eq!(lines, &["- reference"]);
-    keys(&mut workbench, "y");
-    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
-    assert!(
-        written.contains("checked") && !written.contains("reference"),
-        "{written}"
-    );
+    // Narrowed to alloy, and diameter still said, with its way.
+    assert!(drawn.contains("sorted by  diameter ↓"), "{drawn}");
 }
 
 #[test]
 fn a_narrow_table_cuts_its_headers_names_first_then_units() {
     use samplekit::tui::view::fitted;
     let headers = [
-        "Hopping [g/100L]".to_string(),
-        "Expected darkness [EBC]".to_string(),
+        "Heating [g/100L]".to_string(),
+        "Expected darkness [HV]".to_string(),
     ];
     let values = [4, 5];
     // Room enough: nothing is cut.
@@ -412,21 +374,21 @@ fn a_narrow_table_cuts_its_headers_names_first_then_units() {
     assert!(cut[1].starts_with("Exp") && cut[1].contains('…'), "{cut:?}");
     // Every name at its few characters before any unit goes.
     let cut = fitted(&headers, &values, 24);
-    assert_eq!(cut, ["Hop… [g/100L]", "Exp… [EBC]"]);
+    assert_eq!(cut, ["Hea… [g/100L]", "Expe… [HV]"]);
     // Then the units, and never narrower than the values.
     let cut = fitted(&headers, &values, 4);
-    assert_eq!(cut, ["Hop…", "Exp…"]);
+    assert_eq!(cut, ["Hea…", "Exp…"]);
 }
 
 #[test]
 fn a_table_cells_header_cuts_its_table_first() {
     use samplekit::tui::view::fitted;
-    let headers = ["tasting.foaminess[50] [%]".to_string()];
-    let cut = fitted(&headers, &[6], 22);
-    assert_eq!(cut, ["tas….foaminess[50] [%]"]);
+    let headers = ["inspection.waviness[50] [%]".to_string()];
+    let cut = fitted(&headers, &[6], 21);
+    assert_eq!(cut, ["ins….waviness[50] [%]"]);
     // Then the column's own name, the unit last.
     let cut = fitted(&headers, &[6], 14);
-    assert_eq!(cut, ["tas….foam… [%]"]);
+    assert_eq!(cut, ["ins….wavi… [%]"]);
 }
 
 #[test]
@@ -440,7 +402,7 @@ fn values_line_up_on_their_plus_minus() {
     let lined = aligned(&cells);
     assert_eq!(lined, [" 4.10 ± 0.01 mg", "14.21 mg", "123.4 ± 1.2 mg"]);
     // A column with no ± is left as it is.
-    let text = ["WLP001".to_string(), "US05".to_string()];
+    let text = ["WQ-001".to_string(), "UT05".to_string()];
     assert_eq!(aligned(&text), text);
 }
 
@@ -452,14 +414,133 @@ fn s_summarises_the_columns_shown() {
     assert!(workbench.summarised);
     let drawn = screen(&mut workbench);
     assert!(drawn.contains("summary of 4 samples"), "{drawn}");
-    // malt over 12, 10, 11 and D1's 9: a mean of 10.5, four of four.
-    let malt = drawn
+    // diameter over 12, 10, 11 and D1's 9: a mean of 10.5, four of four.
+    let diameter = drawn
         .lines()
-        .find(|line| line.contains("malt"))
+        .find(|line| line.contains("diameter"))
         .unwrap_or_default();
-    assert!(malt.contains("4/4") && malt.contains("10.5"), "{drawn}");
+    assert!(
+        diameter.contains("4/4") && diameter.contains("10.5"),
+        "{drawn}"
+    );
     keys(&mut workbench, "S");
     assert!(!workbench.summarised);
+}
+
+#[test]
+fn s_summarises_each_project_apart() {
+    // Over two projects, `S` pooled their samples, where `--summary` writes
+    // one table per project.
+    let scratch = rich("summary-projects");
+    fs::write(scratch.0.join("more/.samplekitrc"), "schema_version = 1\n").unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    keys(&mut workbench, "S");
+    let drawn = drawn_sized(&mut workbench, 120, 30).join("\n");
+    assert!(drawn.contains("project"), "{drawn}");
+    let diameters: Vec<&str> = drawn
+        .lines()
+        .filter(|line| line.contains("diameter"))
+        .collect();
+    // 12, 10 and 11 in one, D1's 9 in the other.
+    assert!(
+        diameters
+            .iter()
+            .any(|line| line.contains("3/3") && line.contains("11")),
+        "{drawn}"
+    );
+    assert!(
+        diameters
+            .iter()
+            .any(|line| line.contains("1/1") && line.contains('9')),
+        "{drawn}"
+    );
+}
+
+#[test]
+fn the_names_go_when_the_picker_takes_them_away() {
+    // `name` is a column like the others: shown first while it is chosen, and
+    // gone when the picker takes it away.
+    let scratch = rich("names-away");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    assert!(screen(&mut workbench).contains("D1"));
+    keys(&mut workbench, "c");
+    let Mode::Picker { items, .. } = &mut workbench.mode else {
+        panic!("columns");
+    };
+    for item in items.iter_mut() {
+        if item.0 == "name" {
+            item.1 = false;
+        }
+    }
+    keys(&mut workbench, "\n");
+    assert!(
+        !workbench
+            .profile
+            .columns()
+            .iter()
+            .any(|column| column.field == "name")
+    );
+    let drawn = screen(&mut workbench);
+    assert!(!drawn.contains("D1"), "{drawn}");
+}
+
+#[test]
+fn a_narrow_summary_leaves_columns_out_whole() {
+    // At 80 columns and less, a count and a mean were cut from their left,
+    // `2` for `11/12` and `053` for `1.053`.
+    let scratch = rich("summary-narrow");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    keys(&mut workbench, "S");
+    let drawn = drawn_sized(&mut workbench, 44, 20).join("\n");
+    assert!(drawn.contains("4/4"), "{drawn}");
+    assert!(drawn.contains("median, min, max"), "{drawn}");
+}
+
+#[test]
+fn a_long_state_is_cut_not_every_state_dropped() {
+    // Where one state did not fit, every state went, `current` included: at
+    // 120 columns none was read just when a value was outdated.
+    let scratch = rich("long-state");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "D1");
+    let drawn = drawn_sized(&mut workbench, 90, 20).join("\n");
+    let diameter = drawn
+        .lines()
+        .find(|line| line.contains("diameter"))
+        .unwrap_or_default();
+    assert!(
+        diameter.contains("no stat") && diameter.contains('…'),
+        "{drawn}"
+    );
+}
+
+#[test]
+fn what_a_small_screen_cuts_is_marked() {
+    // At 40×16 the quantity's window lost its advice, and the configuration
+    // its values and its keys, all without a sign.
+    let scratch = rich("small-cut");
+    let rc = fs::read_to_string(scratch.0.join(".samplekitrc")).unwrap();
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        rc.replace(
+            "recursive = true",
+            "recursive = true\nexclude = [\"README.md\", \"drafts/**\", \"old/**\"]",
+        ),
+    )
+    .unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "D1");
+    move_to(&mut workbench, "diameter");
+    keys(&mut workbench, "e");
+    let drawn = drawn_sized(&mut workbench, 40, 16).join("\n");
+    assert!(drawn.contains('…'), "{drawn}");
+    keys(&mut workbench, "\u{1b}\u{1b}\u{1b}P\n");
+    let drawn = drawn_sized(&mut workbench, 40, 16).join("\n");
+    let exclude = drawn
+        .lines()
+        .find(|line| line.contains("exclude"))
+        .unwrap_or_default();
+    assert!(exclude.contains('…'), "{drawn}");
 }
 
 #[test]
@@ -544,7 +625,7 @@ fn a_short_confirmation_does_not_scroll_and_d_keeps_the_cursor_on_a_row() {
     let scratch = rich("bounds");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "malt");
+    move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
     workbench.key(Key::Backspace);
     keys(&mut workbench, "9\n");
@@ -552,7 +633,7 @@ fn a_short_confirmation_does_not_scroll_and_d_keeps_the_cursor_on_a_row() {
     keys(&mut workbench, "jjjjj");
     screen(&mut workbench);
     assert_eq!(workbench.confirm_scroll, 0);
-    keys(&mut workbench, "n\u{1b}");
+    keys(&mut workbench, "n\u{1b}\u{1b}");
     // The last row of a section removed: the cursor on the one before.
     keys(&mut workbench, "P");
     workbench.key(Key::Right);
@@ -569,7 +650,7 @@ fn the_note_is_shown_as_markdown_and_edited_as_its_text() {
     let path = scratch.0.join("C1.md");
     let text = fs::read_to_string(&path).unwrap().replace(
         "A note on C1.",
-        "# Batch 7\n\nMashed **twice**, then:\n\n- boiled\n- hopped\n",
+        "# Batch 7\n\nPolished **twice**, then:\n\n- soaked\n- treated\n",
     );
     fs::write(&path, text).unwrap();
     let mut workbench = Workbench::open(&scratch.0).unwrap();
@@ -577,14 +658,36 @@ fn the_note_is_shown_as_markdown_and_edited_as_its_text() {
     let shown = screen(&mut workbench);
     // Rendered: the emphasis is a style, not two stars.
     assert!(shown.contains("Batch 7"), "{shown}");
-    assert!(shown.contains("Mashed twice"), "{shown}");
+    assert!(shown.contains("Polished twice"), "{shown}");
     assert!(!shown.contains("**"), "{shown}");
-    assert!(shown.contains("boiled"), "{shown}");
+    assert!(shown.contains("soaked"), "{shown}");
     // Edited as typed: every character there.
     keys(&mut workbench, "N");
     let editing = screen(&mut workbench);
-    assert!(editing.contains("Mashed **twice**"), "{editing}");
+    assert!(editing.contains("Polished **twice**"), "{editing}");
     assert!(editing.contains("# Batch 7"), "{editing}");
+}
+
+#[test]
+fn a_long_line_of_the_note_wraps_at_words_while_edited() {
+    // Edited, the note scrolled sideways: each line's beginning went out of
+    // sight, `londe steel`, `ighter steel for summer`.
+    let scratch = Scratch::new("note-wraps");
+    let path = scratch.0.join("C1.md");
+    let text = fs::read_to_string(&path).unwrap().replace(
+        "A note on C1.",
+        "A blonde steel poured a little lighter than the last, for the long days of summer, \
+         with a second dose of carbon at the end.",
+    );
+    fs::write(&path, text).unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    keys(&mut workbench, "N");
+    // The cursor at the end of the text, where a line scrolled furthest.
+    workbench.key(Key::End);
+    let editing = drawn_sized(&mut workbench, 60, 30).join("\n");
+    assert!(editing.contains("A blonde steel"), "{editing}");
+    assert!(editing.contains("carbon at the end."), "{editing}");
 }
 
 #[test]
@@ -671,14 +774,14 @@ fn a_computation_shows_its_progress_then_its_outcome_in_the_title_bar() {
     workbench.run = Some(RunStatus {
         done: 2,
         total: 4,
-        now: "C3 · malt".to_string(),
+        now: "C3 · diameter".to_string(),
         outcome: None,
     });
     // On the title bar, the first line, whatever the screen: steps are values.
     let drawn = screen(&mut workbench);
     let title = drawn.lines().next().unwrap();
     assert!(
-        title.contains("⟳ [██████░░░░░░] 2/4 · C3 · malt"),
+        title.contains("⟳ [██████░░░░░░] 2/4 · C3 · diameter"),
         "{drawn}"
     );
     open_named(&mut workbench, "C1");
@@ -751,7 +854,7 @@ fn the_history_shows_what_a_snapshot_changed_beside_it() {
     let scratch = Scratch::new("history-view");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     keys(&mut workbench, "\n");
-    move_to(&mut workbench, "malt");
+    move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
     for _ in 0..8 {
         workbench.key(Key::Backspace);
@@ -816,11 +919,17 @@ fn the_quantitys_window_names_its_unit() {
     let scratch = Scratch::new("quantity-unit");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "malt");
+    move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
     let drawn = screen(&mut workbench);
-    assert!(drawn.contains("value (g)"), "{drawn}");
-    assert!(drawn.contains("the number alone"), "{drawn}");
+    // The line typed says it, over the window whose column says it too.
+    assert!(
+        drawn.contains("diameter in g — the number alone"),
+        "{drawn}"
+    );
+    keys(&mut workbench, "\u{1b}");
+    let drawn = screen(&mut workbench);
+    assert!(drawn.contains("value [g]"), "{drawn}");
 }
 
 #[test]
@@ -838,9 +947,9 @@ fn the_control_screen_titles_its_marks() {
     let scratch = Scratch::new("control-marks");
     fs::write(
         scratch.0.join("C3.md"),
-        "---\nschema_version: 1\nname: C3\nbeer: schwarz\nproperties:\n  \
-         malt: {v: 11.0, u: 0.1, unit: g, fingerprint: 000000000000}\n  \
-         twice: {v: 22.0, computed: {malt: 111111111111}, fingerprint: 222222222222}\n---\n",
+        "---\nschema_version: 1\nname: C3\nalloy: cobalt\nproperties:\n  \
+         diameter: {v: 11.0, u: 0.1, unit: g, fingerprint: '000000000000'}\n  \
+         twice: {v: 22.0, computed: {diameter: '111111111111'}, fingerprint: '222222222222'}\n---\n",
     )
     .unwrap();
     let mut workbench = Workbench::open(&scratch.0).unwrap();
@@ -868,7 +977,7 @@ fn at_80_columns_the_collection_hints_new_and_undo() {
     let line = samplekit::tui::view::hint_line(samplekit::tui::model::Place::Collection, false, 78);
     assert!(line.contains("N new"), "{line}");
     assert!(line.contains("u undo"), "{line}");
-    assert!(line.ends_with("? help"), "{line}");
+    assert!(line.ends_with("? all keys"), "{line}");
 }
 
 /// A screen drawn at a size, its lines.
@@ -895,10 +1004,10 @@ fn a_stale_mark_stays_in_sight_at_80_columns() {
     fs::write(
         scratch.0.join("S.md"),
         "---\nschema_version: 1\nname: S\nproperties:\n  \
-         a_long_measured_quantity: {v: 1.0, u: 0.1, unit: g, fingerprint: 000000000000}\n  \
+         a_long_measured_quantity: {v: 1.0, u: 0.1, unit: g, fingerprint: '000000000000'}\n  \
          another_rather_long_derived_quantity:\n    v: 123456.789\n    u: 1234.5\n    \
-         unit: kg/hL\n    computed: {a_long_measured_quantity: 111111111111}\n    \
-         fingerprint: 222222222222\n---\n",
+         unit: kg/hL\n    computed: {a_long_measured_quantity: '111111111111'}\n    \
+         fingerprint: '222222222222'\n---\n",
     )
     .unwrap();
     let mut workbench = Workbench::open(&scratch.0).unwrap();
@@ -921,12 +1030,12 @@ fn the_note_editor_names_its_own_keys() {
     let scratch = Scratch::new("note-keys");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "malt");
+    move_to(&mut workbench, "diameter");
     keys(&mut workbench, "N");
     let lines = drawn_sized(&mut workbench, 100, 20);
     let foot = lines.last().unwrap();
     assert!(foot.contains("Esc done"), "{foot}");
-    assert!(!foot.contains("? help"), "{foot}");
+    assert!(!foot.contains("? all keys"), "{foot}");
     // The value's own keys are not said while the note takes them.
     assert!(
         !lines.iter().any(|line| line.contains("e edit")),
@@ -940,7 +1049,7 @@ fn the_history_wraps_and_its_hints_read_from_their_start() {
     let scratch = Scratch::new("history-wrap");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "malt");
+    move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
     for _ in 0..8 {
         workbench.key(Key::Backspace);
@@ -972,7 +1081,7 @@ fn windows_keep_enter_and_esc_and_lie_within_the_main_frame() {
     for (width, typed, wanted) in [
         (40u16, "/", ["Enter", "Esc cancel"]),
         (80, "s", ["Enter sort", "Esc cancel"]),
-        (60, "p", ["Enter draw", "Esc cancel"]),
+        (60, "p", ["Enter run", "Esc cancel"]),
     ] {
         keys(&mut workbench, typed);
         let lines = drawn_sized(&mut workbench, width, 12);
@@ -986,7 +1095,7 @@ fn windows_keep_enter_and_esc_and_lie_within_the_main_frame() {
             lines[9].contains("of 3 samples") || lines[10].contains("of 3 samples"),
             "{drawn}"
         );
-        assert!(lines[11].trim_end().ends_with("? help"), "{drawn}");
+        assert!(lines[11].trim_end().ends_with("? all keys"), "{drawn}");
         keys(&mut workbench, "\u{1b}\u{1b}");
     }
 }
@@ -1000,7 +1109,7 @@ fn a_narrow_sample_shows_its_values() {
     // One line taller than it was drawn, for the name's line.
     let drawn = drawn_sized(&mut workbench, 40, 13).join("\n");
     assert!(drawn.contains("12.0"), "{drawn}");
-    assert!(drawn.contains("schwarz"), "{drawn}");
+    assert!(drawn.contains("cobalt"), "{drawn}");
 }
 
 #[test]
@@ -1012,7 +1121,7 @@ fn a_list_fills_its_view_when_the_terminal_grows() {
         fs::write(
             scratch.0.join(format!("S{at:02}.md")),
             format!(
-                "---\nschema_version: 1\nname: S{at:02}\nproperties:\n  malt: {{v: 1.0, unit: g}}\n---\n"
+                "---\nschema_version: 1\nname: S{at:02}\nproperties:\n  diameter: {{v: 1.0, unit: g}}\n---\n"
             ),
         )
         .unwrap();
@@ -1033,7 +1142,7 @@ fn the_title_cuts_its_path_before_the_computation() {
     workbench.run = Some(RunStatus {
         done: 1,
         total: 4,
-        now: "C2 · malt".to_string(),
+        now: "C2 · diameter".to_string(),
         outcome: None,
     });
     let lines = drawn_sized(&mut workbench, 80, 12);
@@ -1049,13 +1158,13 @@ fn the_names_are_headed_as_the_summary_heads_them() {
     let scratch = Scratch::new("name-header");
     fs::write(
         scratch.0.join(".samplekitrc"),
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"name\", label = \"Brew\"}, \
-         {field = \"malt\"}]\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"name\", label = \"Piece\"}, \
+         {field = \"diameter\"}]\n",
     )
     .unwrap();
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     let drawn = drawn_sized(&mut workbench, 80, 12).join("\n");
-    assert!(drawn.contains("Brew"), "{drawn}");
+    assert!(drawn.contains("Piece"), "{drawn}");
     assert!(!drawn.contains("│ name"), "{drawn}");
 }
 
@@ -1162,20 +1271,20 @@ fn each_group_is_headed_by_its_values() {
     // A line across the table where each group begins, as a project's.
     let scratch = Scratch::new("group-headings");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
-    keys(&mut workbench, "g/beer \n");
+    keys(&mut workbench, "g/alloy \n");
     let drawn = screen(&mut workbench);
-    let bock = drawn.find("── beer = bock").expect(&drawn);
-    let schwarz = drawn.find("── beer = schwarz").expect(&drawn);
-    assert!(bock < drawn.find("C2").unwrap(), "{drawn}");
-    assert!(drawn.find("C2").unwrap() < schwarz, "{drawn}");
-    assert!(schwarz < drawn.find("C1").unwrap(), "{drawn}");
+    let chrome = drawn.find("── alloy = chrome").expect(&drawn);
+    let cobalt = drawn.find("── alloy = cobalt").expect(&drawn);
+    assert!(chrome < drawn.find("C2").unwrap(), "{drawn}");
+    assert!(drawn.find("C2").unwrap() < cobalt, "{drawn}");
+    assert!(cobalt < drawn.find("C1").unwrap(), "{drawn}");
     // `S` summarises each group, its values first.
     keys(&mut workbench, "S");
     let drawn = screen(&mut workbench);
-    let bock = drawn.find("bock").expect(&drawn);
-    let schwarz = drawn.find("schwarz").expect(&drawn);
-    assert!(bock < schwarz, "{drawn}");
-    assert!(drawn.contains("beer"), "{drawn}");
+    let chrome = drawn.find("chrome").expect(&drawn);
+    let cobalt = drawn.find("cobalt").expect(&drawn);
+    assert!(chrome < cobalt, "{drawn}");
+    assert!(drawn.contains("alloy"), "{drawn}");
     assert!(drawn.contains("1/1") && drawn.contains("2/2"), "{drawn}");
 }
 
@@ -1199,7 +1308,7 @@ fn the_keys_take_two_lines_where_one_cannot_hold_them() {
         assert!(lines[at - 4].contains('└'), "{width}\n{drawn}");
         assert!(lines[at - 3].contains("of 4 samples"), "{width}\n{drawn}");
         assert!(
-            lines[at - 1].trim_end().ends_with("? help"),
+            lines[at - 1].trim_end().ends_with("? all keys"),
             "{width}\n{drawn}"
         );
         let said: Vec<String> = lines[at - 2..]
@@ -1217,7 +1326,7 @@ fn the_keys_take_two_lines_where_one_cannot_hold_them() {
         }
         let kept = said.len() - 1;
         assert_eq!(said[..kept], every[..kept], "{width}\n{drawn}");
-        assert!(kept >= 6, "{width}\n{drawn}");
+        assert!(kept >= 5, "{width}\n{drawn}");
     }
     // Where one line holds them, one line: the sample's at 100 columns.
     open_named(&mut workbench, "C1");
@@ -1226,7 +1335,22 @@ fn the_keys_take_two_lines_where_one_cannot_hold_them() {
     assert!(lines[27].contains('└'), "{drawn}");
     assert!(lines[28].contains("of 4 samples"), "{drawn}");
     assert!(lines[29].contains("Esc back"), "{drawn}");
-    assert!(lines[29].trim_end().ends_with("? help"), "{drawn}");
+    assert!(lines[29].trim_end().ends_with("? all keys"), "{drawn}");
+}
+
+#[test]
+fn an_80_column_foot_keeps_update_model_and_remove_filter_on_or_not() {
+    // At 80 columns, or with a filter on, `C`, `M` and `D` were given up
+    // before the basket's keys.
+    use samplekit::tui::model::Place;
+    use samplekit::tui::view::foot_lines;
+    for filtered in [false, true] {
+        let foot = foot_lines(Place::Collection, filtered, false, 80).join("\n");
+        for key in ["C update", "M model", "D remove"] {
+            assert!(foot.contains(key), "{filtered}: {key}\n{foot}");
+        }
+        assert!(foot.trim_end().ends_with("? all keys"), "{foot}");
+    }
 }
 
 #[test]
@@ -1297,8 +1421,9 @@ fn prose_is_shown_at_a_reading_width() {
     // Where a value came from.
     workbench.key(Key::Esc);
     open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "malt");
-    keys(&mut workbench, "\n");
+    move_to(&mut workbench, "diameter");
+    // Its window, then where it came from.
+    keys(&mut workbench, "\n\n");
     let Mode::Panel { title, .. } = &workbench.mode else {
         panic!("where the value came from");
     };
@@ -1309,6 +1434,7 @@ fn prose_is_shown_at_a_reading_width() {
     // A list keeps its width.
     workbench.key(Key::Esc);
     workbench.key(Key::Esc);
+    workbench.key(Key::Esc);
     keys(&mut workbench, "s");
     let lines = drawn_sized(&mut workbench, 300, 50);
     let (sort, _) = framed_width(&lines, " sort by, first to last ");
@@ -1316,7 +1442,7 @@ fn prose_is_shown_at_a_reading_width() {
     // What a snapshot changed.
     workbench.key(Key::Esc);
     open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "malt");
+    move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
     for _ in 0..8 {
         workbench.key(Key::Backspace);
@@ -1429,7 +1555,7 @@ fn the_foots_keys_are_coloured_and_what_they_do_muted() {
         samplekit::tui::theme::Theme::default().muted
     );
     assert!(drawn_as_key(&buffer, "N new", 0));
-    assert!(drawn_as_key(&buffer, "? help", 0));
+    assert!(drawn_as_key(&buffer, "? all keys", 0));
     // A frame's keys too: a sample's `e edit`.
     keys(&mut workbench, "\n");
     let buffer = buffer_of(&mut workbench, 120, 30);
@@ -1595,7 +1721,11 @@ fn a_window_stays_inside_the_main_frame() {
             );
         }
         // Where a value came from, and a quantity's window, over a sample.
-        for (typed, title) in [("\n\n", "┌ name — where"), ("\njjje", "┌ malt ")] {
+        // Its window first, then where it came from.
+        for (typed, title) in [
+            ("\njjj\n\n", "┌ diameter — where"),
+            ("\njjj\n", "┌ diameter "),
+        ] {
             let mut workbench = Workbench::open(&scratch.0).unwrap();
             open_named(&mut workbench, "C1");
             keys(&mut workbench, &typed[1..]);
@@ -1720,34 +1850,23 @@ fn a_drag_selects_in_a_line_typed_and_a_double_click_a_word() {
         Mode::Filter { text, .. } => text.text().to_string(),
         _ => panic!("the filter"),
     };
-    // Pressed on `beer`, dragged to its end, let go: typing replaces it.
-    keys(&mut workbench, "/beer == schwarz");
-    let (x, y, _) = drawn_where(&mut workbench, "beer == schwarz");
+    // Pressed on `alloy`, dragged to its end, let go: typing replaces it.
+    keys(&mut workbench, "/alloy == cobalt");
+    let (x, y, _) = drawn_where(&mut workbench, "alloy == cobalt");
     workbench.key(Key::Click(x, y));
-    workbench.key(pointer(MouseEventKind::Drag(MouseButton::Left), x + 4, y));
-    workbench.key(pointer(MouseEventKind::Up(MouseButton::Left), x + 4, y));
-    keys(&mut workbench, "malt");
-    assert_eq!(typed(&workbench), "malt == schwarz");
+    workbench.key(pointer(MouseEventKind::Drag(MouseButton::Left), x + 5, y));
+    workbench.key(pointer(MouseEventKind::Up(MouseButton::Left), x + 5, y));
+    keys(&mut workbench, "diameter");
+    assert_eq!(typed(&workbench), "diameter == cobalt");
     // A double click selects the word under it.
-    keys(&mut workbench, "\u{1b}/malt == schwarz");
-    let (x, y, _) = drawn_where(&mut workbench, "schwarz");
+    keys(&mut workbench, "\u{1b}/diameter == cobalt");
+    let (x, y, _) = drawn_where(&mut workbench, "cobalt");
     workbench.key(Key::Click(x + 2, y));
     workbench.key(pointer(MouseEventKind::Up(MouseButton::Left), x + 2, y));
     workbench.key(Key::Click(x + 2, y));
     workbench.key(pointer(MouseEventKind::Up(MouseButton::Left), x + 2, y));
-    keys(&mut workbench, "bock");
-    assert_eq!(typed(&workbench), "malt == bock");
-    // In the quantity's window a click on another field types there.
-    keys(&mut workbench, "\u{1b}");
-    open_named(&mut workbench, "D1");
-    move_to(&mut workbench, "malt");
-    keys(&mut workbench, "e");
-    let (x, y, _) = drawn_where(&mut workbench, "uncertainty");
-    workbench.key(Key::Click(x + 20, y));
-    let Mode::Quantity { on, .. } = &workbench.mode else {
-        panic!("the quantity's window");
-    };
-    assert_eq!(*on, 1);
+    keys(&mut workbench, "chrome");
+    assert_eq!(typed(&workbench), "diameter == chrome");
 }
 
 #[test]
@@ -1779,4 +1898,106 @@ fn the_cursor_of_a_line_typed_is_the_terminals_and_a_selection_is_reversed() {
     let view = workbench.note_view.expect("drawn while edited");
     let cursor = terminal.get_cursor_position().unwrap();
     assert_eq!((cursor.x, cursor.y), (view.x, view.y));
+}
+
+#[test]
+fn a_tables_unit_heads_its_column_and_a_list_window_is_headed() {
+    // Each cell of a table carried its unit and no header did, where `view`
+    // heads its columns; a list's window had no header at all.
+    let scratch = rich("units-headed");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "D1");
+    move_to(&mut workbench, "runs");
+    workbench.key(Key::Right);
+    let drawn = screen(&mut workbench);
+    assert!(drawn.contains("load [N]"), "{drawn}");
+    assert!(!drawn.contains("3.5 N"), "{drawn}");
+    // The readings' window: a column headed `reading [g]`, titled as a table.
+    workbench.key(Key::Esc);
+    workbench.key(Key::Home);
+    move_to(&mut workbench, "diameter");
+    keys(&mut workbench, "\nlle");
+    let drawn = screen(&mut workbench);
+    assert!(drawn.contains("reading [g]"), "{drawn}");
+    assert!(drawn.contains("diameter · readings · 2"), "{drawn}");
+    // A line typed there is titled by its address.
+    keys(&mut workbench, "e");
+    let drawn = screen(&mut workbench);
+    assert!(drawn.contains("diameter.readings[1] ="), "{drawn}");
+}
+
+#[test]
+fn a_tables_window_is_as_large_as_it_needs() {
+    // A table's window took nearly the whole screen, where a value's took
+    // half: a table of two short columns is no larger than a value's window.
+    let scratch = rich("table-size");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "D1");
+    move_to(&mut workbench, "diameter");
+    keys(&mut workbench, "\n");
+    let buffer = buffer_of(&mut workbench, 120, 40);
+    let (top, bottom, _, _) = window_in_frame(&buffer, "┌ diameter ");
+    let value_height = bottom - top;
+    keys(&mut workbench, "\u{1b}");
+    move_to(&mut workbench, "runs");
+    workbench.key(Key::Right);
+    let buffer = buffer_of(&mut workbench, 120, 40);
+    let (top, bottom, _, _) = window_in_frame(&buffer, "┌ runs");
+    assert_eq!(bottom - top, value_height);
+}
+
+#[test]
+fn a_value_waiting_behind_a_failure_is_marked_waiting() {
+    // *waits for young_modulus, which failed* held the word failed, and was
+    // marked ✗ beside the colour of waiting, where `v` says waiting.
+    use samplekit::tui::view::state_mark;
+    assert_eq!(state_mark("waits for young_modulus, which failed"), "∅");
+    assert_eq!(state_mark("failed — ValueError"), "✗");
+    assert_eq!(state_mark("never computed"), "∅");
+}
+
+#[test]
+fn a_scripts_window_shows_what_it_printed_and_the_line_answering_it() {
+    let scratch = Scratch::new("script-window");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let (_sender, events) = std::sync::mpsc::channel();
+    workbench.scripting = Some(samplekit::tui::model::ScriptRunning {
+        name: "asked".to_string(),
+        events,
+        input: None,
+        printed: "scaling C1\nFactor? ".to_string(),
+    });
+    workbench.mode = Mode::Script {
+        line: samplekit::tui::typing::Typed::new("0.5"),
+    };
+    let drawn = screen(&mut workbench);
+    assert!(drawn.contains(" run asked "), "{drawn}");
+    assert!(drawn.contains("scaling C1"), "{drawn}");
+    // What is typed goes on where the question stops, as in a terminal.
+    assert!(drawn.contains("Factor? 0.5"), "{drawn}");
+    assert!(drawn.contains("Enter answers"), "{drawn}");
+}
+
+#[test]
+fn a_menu_item_too_long_for_its_window_is_cut_with_its_mark() {
+    let scratch = Scratch::new("cut-item");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let long = format!(
+        "  scale   on each sample   {}",
+        "a very long description ".repeat(6)
+    );
+    workbench.mode = Mode::Picker {
+        purpose: samplekit::tui::model::Choosing::Declare(Vec::new()),
+        items: vec![(long.clone(), false), ("  short".to_string(), false)],
+        cursor: 1,
+        query: samplekit::tui::typing::Typed::unfocused(""),
+        typing: false,
+    };
+    let drawn = screen(&mut workbench);
+    let row = drawn
+        .lines()
+        .find(|line| line.contains("scale   on each sample"))
+        .expect("the item drawn");
+    assert!(row.contains('…'), "{drawn}");
+    assert!(!row.contains(&long), "{drawn}");
 }

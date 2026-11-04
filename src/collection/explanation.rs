@@ -64,7 +64,7 @@ pub enum Origin {
 /// One input as the record holds it, and how it stands now.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Input {
-    /// As the record names it: `foam`, `row.co2`, `mashing.wort`.
+    /// As the record names it: `wear`, `row.co2`, `preheating.tension`.
     pub name: String,
     /// The field a surface renders its value from — the explained row's cell
     /// for a row input — or `None` for a whole column, which is `cells` long.
@@ -104,7 +104,33 @@ pub struct TableColumn {
 pub enum ColumnKind {
     Index,
     Measured,
-    Computed { from: Vec<String> },
+    Computed {
+        from: Vec<String>,
+    },
+    /// One the model computes, that no cell holds a value of yet: said
+    /// *measured* until a computation, which it is not.
+    NeverComputed {
+        from: Vec<String>,
+    },
+}
+
+impl ColumnKind {
+    /// As `explain` and the workbench say it.
+    pub fn said(&self) -> String {
+        match self {
+            ColumnKind::Index => "index".to_string(),
+            ColumnKind::Measured => "measured".to_string(),
+            ColumnKind::Computed { from } if from.is_empty() => "computed".to_string(),
+            ColumnKind::Computed { from } => format!("computed from {}", from.join(", ")),
+            ColumnKind::NeverComputed { from } if from.is_empty() => {
+                "computed by the model, never computed yet".to_string()
+            }
+            ColumnKind::NeverComputed { from } => format!(
+                "computed by the model from {}, never computed yet",
+                from.join(", ")
+            ),
+        }
+    }
 }
 
 /// Why a question cannot be answered about one number.
@@ -134,7 +160,7 @@ pub fn explain(
         && let Ok(name) = Identifier::new(field_name)
         && sample.table(&name).is_ok()
     {
-        return Ok(Explanation::Table(table(sample, &name)));
+        return Ok(Explanation::Table(table(sample, &name, config)));
     }
     let field = fields::parse(field_name).map_err(ExplainError::Unknown)?;
     let subject = Subject {
@@ -184,6 +210,21 @@ pub fn explain(
                 None,
                 trace,
             );
+        }
+        // A cell its formula failed on: the failure is the answer, with the
+        // traceback its log keeps under the column's name. It was said
+        // never computed.
+        if let Field::Cell {
+            table, row, column, ..
+        } = &field
+            && let Some(message) = sample
+                .table(table)
+                .ok()
+                .and_then(|held| held.at(row, column).ok())
+                .and_then(|cell| cell.records().failure.clone())
+        {
+            let trace = failure_trace(config, path, &format!("{table}.{column}"));
+            return explained(Origin::Failed { message }, None, trace);
         }
         return explained(Origin::Nothing, None, None);
     }
@@ -255,9 +296,14 @@ pub fn explain(
                 .collect(),
         },
     };
+    // A cell that held a value when its formula failed: the traceback its log
+    // keeps under the column's name, which was said not kept.
     let trace = match (&state, &field) {
         (Some(Freshness::Failed { .. }), Field::Named { name, .. }) => {
             failure_trace(config, path, name.as_str())
+        }
+        (Some(Freshness::Failed { .. }), Field::Cell { table, column, .. }) => {
+            failure_trace(config, path, &format!("{table}.{column}"))
         }
         _ => None,
     };
@@ -287,7 +333,7 @@ fn described_input(
             state: states.get(input_name).cloned().map(InputState::Of),
         },
         // A row input is a cell of the row explained.
-        InputName::Cell(column) => {
+        InputName::Cell(column) | InputName::CellValue(column) => {
             let (spelled, state) = match field {
                 Field::Cell { table, row, .. } => {
                     let spelled = match (field_name.find('['), field_name.rfind(']')) {
@@ -343,8 +389,15 @@ fn described_input(
     }
 }
 
-/// What a table is.
-pub fn table(sample: &Sample, name: &Identifier) -> TableExplanation {
+/// What a table is: each column, as its first row and the model say it.
+pub fn table(
+    sample: &Sample,
+    name: &Identifier,
+    config: Option<&ProjectConfig>,
+) -> TableExplanation {
+    let described = config
+        .and_then(crate::config::model_runtime::current_description)
+        .and_then(|described| described.tables.get(name.as_str()).cloned());
     let Ok(held) = sample.table(name) else {
         return TableExplanation {
             name: name.clone(),
@@ -370,6 +423,21 @@ pub fn table(sample: &Sample, name: &Identifier) -> TableExplanation {
                 ColumnKind::Computed {
                     from: recorded.keys().map(ToString::to_string).collect(),
                 }
+            } else if let Some(reads) = described.as_ref().and_then(|described| {
+                use crate::config::model_runtime::Origin;
+                let declared = described
+                    .columns
+                    .iter()
+                    .find(|declared| declared.name == column.as_str())?;
+                match declared.derived().unwrap_or(&declared.value) {
+                    Origin::Formula { reads }
+                    | Origin::Quantity { reads }
+                    | Origin::Rows { reads, .. }
+                    | Origin::Columns { reads, .. } => Some(reads.clone()),
+                    _ => None,
+                }
+            }) {
+                ColumnKind::NeverComputed { from: reads }
             } else {
                 ColumnKind::Measured
             };
@@ -419,4 +487,185 @@ pub fn failure_trace(
     let end = rest.find("\n## ").map_or(rest.len(), |at| at + 1);
     let block = rest[..end].trim_end();
     (!block.is_empty()).then(|| block.to_string())
+}
+
+/// What a value the model owes, and this sample does not hold, rests on: what
+/// the model computes it from, and the inputs nobody entered, followed through
+/// the values the model computes — `modulus` waits for `notch`, never for `modulus`'s
+/// own reader of it — or the statistic of readings the sample holds.
+/// How many readings `sample` holds for `name`: none where it holds no such
+/// quantity.
+pub fn readings_held(sample: &crate::core::sample::Sample, name: &str) -> usize {
+    crate::core::identifier::Identifier::new(name)
+        .ok()
+        .and_then(|name| sample.property(&name).ok())
+        .and_then(|handle| handle.readings())
+        .map_or(0, |readings| readings.as_slice().len())
+}
+
+/// What a value with nothing stored says, where its readings are stored and
+/// no statistic of them is: *nothing is stored here* was said of a file
+/// holding two readings.
+pub fn nothing_stored(sample: &crate::core::sample::Sample, name: &str) -> String {
+    match readings_held(sample, name) {
+        0 => "nothing is stored here".to_string(),
+        count => format!(
+            "{count} readings are stored here, and no statistic of them is recorded: they give \
+             no value until compute takes the one the model declares, or one is written beside \
+             them"
+        ),
+    }
+}
+
+pub fn owed_lines(
+    described: &crate::config::model_runtime::ModelDescription,
+    property: &crate::config::model_runtime::DescribedProperty,
+    name: &str,
+    sample: &crate::core::sample::Sample,
+    shown: &str,
+) -> Vec<String> {
+    let holds = |input: &str| -> bool {
+        crate::core::identifier::Identifier::new(input)
+            .ok()
+            .is_some_and(|input| {
+                sample.property(&input).is_ok_and(|handle| {
+                    handle.peek(|held| {
+                        held.readings().is_some()
+                            || held.peek_value().is_some_and(|value| !value.is_absent())
+                    })
+                }) || sample.attribute(&input).is_ok()
+            })
+            || (input.contains('.') && {
+                let table = input.split('.').next().unwrap_or(input);
+                crate::core::identifier::Identifier::new(table)
+                    .ok()
+                    .is_some_and(|table| {
+                        sample
+                            .table(&table)
+                            .is_ok_and(|held| held.rows().next().is_some())
+                    })
+            })
+    };
+    // The inputs nobody entered, each once, through what the model computes.
+    fn missing_of(
+        described: &crate::config::model_runtime::ModelDescription,
+        name: &str,
+        holds: &dyn Fn(&str) -> bool,
+        seen: &mut Vec<String>,
+        missing: &mut Vec<String>,
+    ) {
+        let Some(property) = described.property(name) else {
+            return;
+        };
+        for input in &property.reads {
+            if seen.contains(input) {
+                continue;
+            }
+            seen.push(input.clone());
+            if holds(input) {
+                continue;
+            }
+            match described.property(input) {
+                Some(upstream) if upstream.value.is_formula() => {
+                    missing_of(described, input, holds, seen, missing);
+                }
+                Some(upstream)
+                    if matches!(
+                        upstream.value,
+                        crate::config::model_runtime::Origin::Statistic { .. }
+                    ) =>
+                {
+                    missing.push(format!("{input}.readings"));
+                }
+                _ => missing.push(input.clone()),
+            }
+        }
+    }
+    let mut lines = Vec::new();
+    match &property.value {
+        crate::config::model_runtime::Origin::Statistic { statistic } => {
+            if holds(name) {
+                lines.push(format!(
+                    "its model takes it as the {statistic} of its readings, and it was never \
+                     taken: samplekit {shown} compute --write"
+                ));
+            } else {
+                lines.push(format!(
+                    "its model takes it as the {statistic} of its readings, and this sample \
+                     holds none: samplekit {shown} set {name}.readings=<values> gives them"
+                ));
+            }
+        }
+        crate::config::model_runtime::Origin::Entered if readings_held(sample, name) > 0 => lines
+            .push(format!(
+                "entered or measured, and the model takes no statistic of its readings: \
+                 samplekit {shown} set {name}=<value> gives it one beside them"
+            )),
+        crate::config::model_runtime::Origin::Entered => lines.push(format!(
+            "entered or measured, and this sample holds none: samplekit {shown} set \
+             {name}=<value> gives it one"
+        )),
+        _ => {
+            if !property.reads.is_empty() {
+                lines.push(format!(
+                    "the model computes it from {}",
+                    property.reads.join(", ")
+                ));
+            }
+            // An input whose formula failed gives it nothing: it waits for
+            // that one, as `compute` and `status` say — *never computed*
+            // promised a run that failed again.
+            let failed: Vec<&String> = property
+                .reads
+                .iter()
+                .filter(|input| {
+                    crate::core::identifier::Identifier::new(input.as_str())
+                        .ok()
+                        .and_then(|input| sample.property(&input).ok())
+                        .is_some_and(|handle| {
+                            handle.has_failed() || handle.records().failure.is_some()
+                        })
+                })
+                .collect();
+            let mut missing = Vec::new();
+            missing_of(described, name, &holds, &mut Vec::new(), &mut missing);
+            // Its own readings are `notch.readings`, as `set` writes them.
+            for input in &mut missing {
+                if input == "readings" {
+                    *input = format!("{name}.readings");
+                }
+            }
+            if let Some(first) = failed.first() {
+                lines.push(format!(
+                    "it waits for {}, which failed: samplekit {shown} explain {first} says why",
+                    failed
+                        .iter()
+                        .map(|input| input.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" and ")
+                ));
+            } else if missing.is_empty() {
+                lines.push(format!(
+                    "it was never computed: samplekit {shown} compute --write computes it"
+                ));
+            } else {
+                let first = &missing[0];
+                let giving = match first.split_once('.') {
+                    Some((quantity, "readings")) => {
+                        format!("{quantity}.readings=<values> gives them")
+                    }
+                    Some((table, _)) => format!("--add-row {table} <column>=<value> … adds a row"),
+                    None => format!("{first}=<value> gives it one"),
+                };
+                lines.push(format!(
+                    "it waits for {}, which nobody entered here",
+                    missing.join(" and ")
+                ));
+                lines.push(format!(
+                    "samplekit {shown} set {giving}, then samplekit {shown} compute --write"
+                ));
+            }
+        }
+    }
+    lines
 }

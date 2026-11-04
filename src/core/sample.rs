@@ -31,9 +31,11 @@ use crate::core::value::{Readings, Value, ValueKind};
 /// would make the key ambiguous, and resolving it by looking up whichever
 /// exists is the failure principle 4 names. `project` is the project a sample
 /// belongs to, a field every sample answers, and `state` how it stands, as
-/// `status` and `validate` say.
-pub const RESERVED: [&str; 7] = [
-    "name", "tags", "path", "filename", "readings", "project", "state",
+/// `status` and `validate` say. `note` is the text below the frontmatter,
+/// which `set note=` and Python's `sample.note` write: an attribute of that
+/// name could be reached by neither.
+pub const RESERVED: [&str; 8] = [
+    "name", "tags", "path", "filename", "readings", "project", "state", "note",
 ];
 
 /// A sample fact: one scalar, or one ordered homogeneous list of scalars.
@@ -210,8 +212,8 @@ impl SampleCore {
     /// recorded for it **and** is itself current.
     ///
     /// Comparing the direct inputs alone would miss the case that matters:
-    /// `malt` changes, nobody reads `plato`, and `haze` then finds
-    /// `plato`'s counter unchanged and answers with a stale value.
+    /// `diameter` changes, nobody reads `ductility`, and `roughness` then finds
+    /// `ductility`'s counter unchanged and answers with a stale value.
     fn is_current(&self, node: &Node) -> bool {
         // Nothing reruns an override's formula, so nothing upstream of it can
         // make it, or what reads it, out of date.
@@ -274,7 +276,10 @@ impl PropertyHandle {
     /// cache is cleared before the formula is consulted.
     pub fn value(&self) -> Result<Value, ComputeError> {
         self.refresh();
-        if self.inputs_not_applicable() {
+        // Settled *not applicable* only where reading computes: read, the
+        // value is as the file holds it, outdated — it was replaced by `n/a`
+        // and said current, and saved then as edited.
+        if crate::core::property::reads_compute() && self.inputs_not_applicable() {
             return self.finish(Ok(Value::NotApplicable));
         }
         let outcome = self.property.borrow().value();
@@ -283,7 +288,7 @@ impl PropertyHandle {
 
     pub fn uncertainty(&self) -> Result<Option<Uncertainty>, ComputeError> {
         self.refresh();
-        if self.inputs_not_applicable() {
+        if crate::core::property::reads_compute() && self.inputs_not_applicable() {
             return self.finish(Ok(None));
         }
         let outcome = self.property.borrow().uncertainty();
@@ -367,6 +372,11 @@ impl PropertyHandle {
         self.core.record(&self.node());
     }
 
+    /// See [`Property::adopt_declared_unit`].
+    pub fn adopt_declared_unit(&self) {
+        self.property.borrow_mut().adopt_declared_unit();
+    }
+
     fn node(&self) -> Node {
         Node::Named(self.name.clone())
     }
@@ -432,6 +442,18 @@ impl PropertyHandle {
     pub fn hold_as_edited(&self) {
         self.property.borrow_mut().hold_as_edited();
         self.sync_edited();
+    }
+
+    /// [`Self::hold_as_edited`], of an override its file held unmarked.
+    pub fn hold_as_edited_unmarked(&self) {
+        self.property.borrow_mut().hold_as_edited_unmarked();
+        self.sync_edited();
+    }
+
+    /// The declared statistic of its readings taken, as a computation takes
+    /// it: their value and their spread, both.
+    pub fn take_statistic(&self) {
+        self.property.borrow_mut().take_statistic();
     }
 
     /// The record beside a value written next to readings vouches for it.
@@ -548,6 +570,10 @@ pub struct Sample {
     /// Tags its file holds that are not identifiers, kept to be written back
     /// and reported.
     unusable_tags: Vec<String>,
+    /// Where each unusable tag stood among them all, so that a write keeps
+    /// the order the file wrote: put after the others, `[2024, batch_1]` was
+    /// written `[batch_1, "2024"]`.
+    unusable_at: Vec<usize>,
     /// Tables its file holds that could not be read, with why.
     set_aside: Vec<(Identifier, String)>,
     attributes: IndexMap<Identifier, AttributeValue>,
@@ -828,6 +854,14 @@ impl Sample {
         Ok(())
     }
 
+    /// [`Table::declare_units`] on the table `name`, where the sample holds
+    /// it: the units a model declares of a table whose file wrote none.
+    pub fn declare_table_units(&mut self, name: &Identifier, units: &[(Identifier, String)]) {
+        if let Some(table) = self.tables.get_mut(name) {
+            table.declare_units(units);
+        }
+    }
+
     pub fn table(&self, name: &Identifier) -> Result<&Table, SampleError> {
         self.tables
             .get(name)
@@ -862,7 +896,11 @@ impl Sample {
     ) -> Result<(), SampleError> {
         let columns: Vec<Identifier> = {
             let held = self.table_mut(table)?;
+            held.refuses_what_is_no_number(&cells)
+                .map_err(SampleError::Table)?;
             held.add_row(cells).map_err(SampleError::Table)?;
+            // Added by an edit: placed where its index falls.
+            held.place_last_row();
             held.column_names().into_iter().cloned().collect()
         };
         for column in columns {
@@ -882,9 +920,10 @@ impl Sample {
         cells: Vec<(Identifier, Property)>,
     ) -> Result<(), SampleError> {
         let written: Vec<Identifier> = cells.iter().map(|(column, _)| column.clone()).collect();
-        self.table_mut(table)?
-            .update_row(row, cells)
+        let held = self.table_mut(table)?;
+        held.refuses_what_is_no_number(&cells)
             .map_err(SampleError::Table)?;
+        held.update_row(row, cells).map_err(SampleError::Table)?;
         for column in written {
             self.core.bump(&Node::Column {
                 table: table.clone(),
@@ -910,6 +949,18 @@ impl Sample {
             column: column.clone(),
         });
         Ok(())
+    }
+
+    /// A held table's derived cell recomputed at its next resolution.
+    pub fn invalidate_cell(
+        &mut self,
+        table: &Identifier,
+        row: &RowAddress,
+        column: &Identifier,
+    ) -> Result<(), SampleError> {
+        self.table_mut(table)?
+            .invalidate_cell(row, column)
+            .map_err(SampleError::Table)
     }
 
     /// A held table's row recomputed at its next resolution.
@@ -970,6 +1021,18 @@ impl Sample {
         self.table_mut(table)?
             .set_cell_records(row, column, records)
             .map_err(SampleError::Table)
+    }
+
+    /// Every cell of a table's column a formula fills, failed by `message`,
+    /// as a raise in its formula fails them: `--timeout` stopped it.
+    pub fn fail_column(
+        &mut self,
+        table: &Identifier,
+        column: &Identifier,
+        message: &str,
+    ) -> Result<(), SampleError> {
+        self.table_mut(table)?.fail_cells(column, message);
+        Ok(())
     }
 
     fn table_mut(&mut self, name: &Identifier) -> Result<&mut Table, SampleError> {
@@ -1062,7 +1125,19 @@ impl Sample {
     }
 
     pub fn set_unusable_tags(&mut self, tags: Vec<String>) {
+        self.unusable_at = (0..tags.len()).map(|at| self.tags.len() + at).collect();
         self.unusable_tags = tags;
+    }
+
+    /// The unusable tags, each where it stood among all the tags.
+    pub fn set_unusable_tags_at(&mut self, tags: Vec<(usize, String)>) {
+        self.unusable_at = tags.iter().map(|(at, _)| *at).collect();
+        self.unusable_tags = tags.into_iter().map(|(_, tag)| tag).collect();
+    }
+
+    /// Where each unusable tag stood among all the tags, in their order.
+    pub fn unusable_at(&self) -> &[usize] {
+        &self.unusable_at
     }
 
     /// Tables its file held that could not be read, with why: a sample holding
@@ -1078,8 +1153,8 @@ impl Sample {
     // -------------------------------------------------------- dependencies
 
     /// A property may derive from a table column, which is why `inputs` is a
-    /// `Node`: *the mean gravity across the fermentation* is as ordinary
-    /// as an alcohol from two gravities.
+    /// `Node`: *the mean hardness across the ageing* is as ordinary
+    /// as a modulus from two hardnesses.
     pub fn declare_dependencies(
         &mut self,
         dependent: &Identifier,
@@ -1219,6 +1294,7 @@ impl Sample {
             file_name,
             tags,
             unusable_tags,
+            unusable_at,
             set_aside,
             attributes,
             properties,
@@ -1236,6 +1312,7 @@ impl Sample {
             self.set_tags(tags);
         }
         self.unusable_tags = unusable_tags;
+        self.unusable_at = unusable_at;
         self.set_aside = set_aside;
         self.note = note;
         for (name, value) in attributes {
@@ -1701,6 +1778,16 @@ impl fmt::Display for SampleError {
                     None => Ok(()),
                 }
             }
+            // The note's name, said with what to do: `set note=` and
+            // `sample.note` write the note, never an attribute.
+            SampleError::NameCollision {
+                name,
+                existing: NameKind::Reserved,
+            } if name.as_str() == "note" => write!(
+                f,
+                "'note' is the note's name, the text below the frontmatter, and no \
+                 attribute's: rename it in the file, as remarks: or comment:"
+            ),
             SampleError::NameCollision { name, existing } => write!(
                 f,
                 "'{name}' is already {existing}: properties, tables and attributes \

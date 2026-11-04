@@ -44,6 +44,12 @@ fn has_produced(handle: &crate::core::sample::PropertyHandle) -> bool {
     handle.peek(|property| {
         (!property.is_computed() || property.peek_value().is_some())
             && (!property.has_uncertainty_formula() || property.peek_uncertainty().is_some())
+            // A declared statistic nothing took has given nothing: recorded
+            // here, a save from Python wrote `computed` over readings with no
+            // value, which every command then read as a value edited by hand.
+            && (property.declared_location().is_none()
+                || property.statistic_taken()
+                || property.written_value().is_some())
     })
 }
 
@@ -389,6 +395,15 @@ pub enum Freshness {
 /// *judging* side reads it back from the file's own records, never from the
 /// property.
 fn declared_of(handle: &crate::core::sample::PropertyHandle) -> Option<DeclaredStatistics> {
+    // The model's statistic is stated once it was taken, as a save states it:
+    // stated before, the next read took it.
+    if handle.peek(|property| {
+        property.declared_location().is_some()
+            && !property.statistic_taken()
+            && property.written_value().is_none()
+    }) {
+        return None;
+    }
     let declared = DeclaredStatistics {
         value: handle.peek(crate::core::property::Property::declared_location),
         uncertainty: handle.peek(crate::core::property::Property::declared_convention),
@@ -658,14 +673,15 @@ pub fn record_table(
                     input: column.clone(),
                 })?;
             let shape = schema::property_as_is(cell);
+            let produced = held.produced_by(&column);
             per_row.push((
                 index,
                 Records {
                     failure: None,
-                    fingerprint: Some(of(&shape)),
+                    fingerprint: Some(own_digest(&shape, Some(&computed), produced)),
                     computed: Some(computed),
-                    // A cell has one number, so there is no channel to name.
-                    produced: None,
+                    // The one channel its formula fills, where it fills one.
+                    produced,
                     // No column declares a statistic.
                     statistics: None,
                     channel_only: IndexMap::new(),
@@ -677,6 +693,19 @@ pub fn record_table(
     Ok(out)
 }
 
+/// A cell of the same row as a formula reads it: whole, `row.force`, or by
+/// its value alone, `row.force.v`.
+fn cell_read(input: &InputName, cell: &Property) -> Fingerprint {
+    let shape = schema::property_as_is(cell);
+    match input {
+        InputName::CellValue(_) => of(&PropertySchema {
+            uncertainty: None,
+            ..shape
+        }),
+        _ => of(&shape),
+    }
+}
+
 fn cell_input(
     sample: &Sample,
     table: &crate::core::table::Table,
@@ -686,15 +715,14 @@ fn cell_input(
 ) -> Result<InputRecord, FingerprintError> {
     match input {
         // This row's cell, which is what makes each cell answerable on its own.
-        InputName::Cell(column) => {
+        InputName::Cell(column) | InputName::CellValue(column) => {
             let cell = row
                 .cell(column)
                 .map_err(|_| FingerprintError::UnknownInput {
                     dependent: dependent.clone(),
                     input: column.clone(),
                 })?;
-            let shape = schema::property_as_is(cell);
-            Ok(InputRecord::Digest(of(&shape)))
+            Ok(InputRecord::Digest(cell_read(input, cell)))
         }
         // A sample-level input appears, with the same digest, in every cell of
         // the column that reads it. That is not redundancy: it is what makes
@@ -983,7 +1011,7 @@ fn compare(
                     (Ok(_), InputRecord::Literal(_)) => changed_kind.push(input.clone()),
                 }
             }
-            InputName::Cell(_) | InputName::Column { .. } => {
+            InputName::Cell(_) | InputName::CellValue(_) | InputName::Column { .. } => {
                 // A cell's own-row inputs are compared by `check_cell`, which
                 // has the row; a whole column by its digest below.
                 if let InputName::Column { table, column } = input {
@@ -1179,6 +1207,11 @@ pub fn check_cell_among(
     judged(check_cell(sample, table, column, index))
 }
 
+/// A row's index values, as a cell is addressed by them.
+fn index_of(row: &crate::core::table::RowView) -> Vec<Value> {
+    row.index().into_iter().cloned().collect()
+}
+
 fn judge_cell(
     sample: &Sample,
     table: &Identifier,
@@ -1189,13 +1222,20 @@ fn judge_cell(
     cell: &Property,
 ) -> Result<Freshness, FingerprintError> {
     let records = cell.records().clone();
+    // What its formula fills of it: the whole, or one channel alone, the other
+    // the hand's; as the model says, or else as its record does.
+    let produced = held.produced_by(column).or(records.produced);
+    let filled = match produced {
+        Some(Produced::Uncertainty) => cell.peek_uncertainty().flatten().is_some(),
+        _ => cell.peek_value().is_some_and(|value| !value.is_absent()),
+    };
     // A derived cell holding a value that no record explains and no formula
     // wrote in this session: record missing, as a property is.
     if records.computed.is_none()
         && records.failure.is_none()
         && held.is_derived(column)
         && !held.ran(address, column).unwrap_or(false)
-        && cell.peek_value().is_some_and(|value| !value.is_absent())
+        && filled
     {
         return Ok(Freshness::RecordMissing);
     }
@@ -1236,12 +1276,12 @@ fn judge_cell(
                     continue;
                 }
             },
-            InputName::Cell(other) => match row.cell(other) {
+            InputName::Cell(other) | InputName::CellValue(other) => match row.cell(other) {
                 Err(_) => {
                     missing.push(input.clone());
                     continue;
                 }
-                Ok(cell) => InputRecord::Digest(of(&schema::property_as_is(cell))),
+                Ok(cell) => InputRecord::Digest(cell_read(input, cell)),
             },
             InputName::Named(_) | InputName::Column { .. } => {
                 let node = match input {
@@ -1250,7 +1290,7 @@ fn judge_cell(
                         table: table.clone(),
                         column: column.clone(),
                     },
-                    InputName::Cell(_) => unreachable!(),
+                    InputName::Cell(_) | InputName::CellValue(_) => unreachable!(),
                 };
                 match input_record(sample, column, &node) {
                     Err(FingerprintError::UnknownInput { .. }) => {
@@ -1263,13 +1303,46 @@ fn judge_cell(
             }
         };
         if !same_record(&current, recorded) {
-            changed.push(input.clone());
+            // Its own row's cell emptied since is named as its column's: what
+            // waits for it is then said to wait for that cell,
+            // `ageing.hardness[4]`, which `row.hardness` could not name.
+            match input {
+                InputName::Cell(other)
+                    if row.cell(other).is_ok_and(|cell| {
+                        cell.peek_value().is_none_or(|value| value.is_absent())
+                    }) =>
+                {
+                    changed.push(InputName::Column {
+                        table: table.clone(),
+                        column: other.clone(),
+                    });
+                }
+                _ => changed.push(input.clone()),
+            }
         // A cell reading a value that is itself stale rests on it, as a
         // property does.
         } else if let InputName::Named(name) = input
             && sample.property(name).is_ok()
             && !matches!(
                 check_property(sample, name)?,
+                Freshness::Source
+                    | Freshness::Current
+                    | Freshness::Edited
+                    | Freshness::RecordMissing
+            )
+        {
+            upstream.push(input.clone());
+        // A cell of its own row a formula gives, itself not current: what
+        // reads it rests on it, as on a property.
+        } else if let InputName::Cell(other) = input
+            && other != column
+            // Derived by the model, or by its record where no model is read.
+            && (held.is_derived(other)
+                || row
+                    .cell(other)
+                    .is_ok_and(|cell| cell.records().computed.is_some()))
+            && !matches!(
+                check_cell(sample, table, other, &index_of(row))?,
                 Freshness::Source
                     | Freshness::Current
                     | Freshness::Edited
@@ -1339,6 +1412,12 @@ pub fn stamp(sample: &mut Sample) -> Result<Vec<String>, FingerprintError> {
             // collection, and writing anything else into one of its samples
             // used to convert the lot, silently.
             if handle.peek(Property::is_record_missing) {
+                continue;
+            }
+            // An override the file held unmarked, unchanged since, is
+            // written as the file had it: its digest no longer matching says
+            // it was typed, as it did when read.
+            if handle.peek(Property::held_unmarked) {
                 continue;
             }
             let mut records = handle.records();
@@ -1513,11 +1592,18 @@ pub fn stamp(sample: &mut Sample) -> Result<Vec<String>, FingerprintError> {
                                 computed.insert(input.clone(), record);
                             }
                             let cell = row.cell(column).map_err(|_| missing(column))?;
+                            // A formula filling one channel alone vouches for
+                            // that channel: the other is the hand's to change.
+                            let produced = held.produced_by(column);
                             Records {
                                 failure: None,
-                                fingerprint: Some(of(&schema::property_as_is(cell))),
+                                fingerprint: Some(own_digest(
+                                    &schema::property_as_is(cell),
+                                    Some(&computed),
+                                    produced,
+                                )),
                                 computed: Some(computed),
-                                produced: None,
+                                produced,
                                 // No column declares a statistic.
                                 statistics: None,
                                 channel_only: IndexMap::new(),
@@ -1672,10 +1758,16 @@ pub fn is_cell_stale(
         .records()
         .computed
         .is_some();
+    // As a property's: an override, a value without its record and a failure
+    // are each said under their own word, none of them outdated.
     if carried {
         return Ok(!matches!(
             check_cell(sample, table, column, index)?,
-            Freshness::Current | Freshness::Source
+            Freshness::Current
+                | Freshness::Source
+                | Freshness::Edited
+                | Freshness::RecordMissing
+                | Freshness::Failed { .. }
         ));
     }
     Ok(sample
@@ -1699,6 +1791,56 @@ fn inputs_unchanged(freshness: &Freshness) -> bool {
 /// edited is named, and one recorded plainly is followed in turn — never past
 /// an override, whose own record describes its formula, not what it rests on.
 /// Nearest first, each once.
+/// The same for one cell, `table.column[index]`: what its column's formula
+/// reads that is edited — a property, or a cell of its row — and what those
+/// rest on, each as its field is written.
+pub fn edited_upstream_of_cell(
+    sample: &Sample,
+    table: &Identifier,
+    column: &Identifier,
+    index: &[crate::core::value::Value],
+) -> Vec<String> {
+    use crate::core::property::InputName;
+    use crate::core::table::RowAddress;
+    let Ok(held) = sample.table(table) else {
+        return Vec::new();
+    };
+    let mut found: Vec<String> = Vec::new();
+    for input in held.inputs_of(column).unwrap_or_default() {
+        match input {
+            InputName::Named(name) => {
+                let edited = sample.property(name).is_ok_and(|handle| handle.is_edited())
+                    || matches!(
+                        check_property(sample, name),
+                        Ok(Freshness::Edited | Freshness::RecordMissing)
+                    );
+                if edited && !found.contains(&name.to_string()) {
+                    found.push(name.to_string());
+                }
+                for further in edited_upstream(sample, name) {
+                    if !found.contains(&further.to_string()) {
+                        found.push(further.to_string());
+                    }
+                }
+            }
+            InputName::Cell(cell_column) | InputName::CellValue(cell_column) => {
+                let edited = held
+                    .at(&RowAddress::Index(index.to_vec()), cell_column)
+                    .is_ok_and(|cell| cell.is_edited());
+                if edited {
+                    let shown: Vec<String> = index
+                        .iter()
+                        .map(crate::collection::editing::shown_value)
+                        .collect();
+                    found.push(format!("{table}.{cell_column}[{}]", shown.join(", ")));
+                }
+            }
+            InputName::Column { .. } => {}
+        }
+    }
+    found
+}
+
 pub fn edited_upstream(sample: &Sample, name: &Identifier) -> Vec<Identifier> {
     let mut found = Vec::new();
     let mut visited = Vec::new();
@@ -1728,10 +1870,16 @@ fn follow_edits(
             let Node::Named(input) = node else {
                 continue;
             };
-            if sample
+            // Edited as `status` says it too: a value written over the
+            // statistic of its readings is, and was found by none of this.
+            let edited = sample
                 .property(&input)
                 .is_ok_and(|handle| handle.is_edited())
-            {
+                || matches!(
+                    check_property(sample, &input),
+                    Ok(Freshness::Edited | Freshness::RecordMissing)
+                );
+            if edited {
                 if !found.contains(&input) {
                     found.push(input);
                 }
@@ -1748,7 +1896,12 @@ fn follow_edits(
         let (InputName::Named(input), InputRecord::Digest(digest)) = (input, record) else {
             continue;
         };
-        if digest.is_edited() {
+        if digest.is_edited()
+            || matches!(
+                check_property(sample, input),
+                Ok(Freshness::Edited | Freshness::RecordMissing)
+            )
+        {
             if !found.contains(input) {
                 found.push(input.clone());
             }
@@ -1822,7 +1975,7 @@ pub enum FingerprintError {
     },
 }
 
-/// `plato → haze → plato`, as `DependencyError::Cycle` draws it.
+/// `ductility → roughness → ductility`, as `DependencyError::Cycle` draws it.
 fn drawn(path: &[Identifier]) -> String {
     let names: Vec<String> = path.iter().map(Identifier::to_string).collect();
     names.join(" \u{2192} ")

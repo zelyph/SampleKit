@@ -16,7 +16,7 @@ import pytest
 import warnings
 
 import samplekit as sk
-from conftest import BINARY, MODEL
+from conftest import BINARY, MODEL, sample_text
 
 
 def quoted(path):
@@ -31,28 +31,28 @@ def names(samples):
     return [sample.name for sample in samples]
 
 
-def boil(**derivations):
+def soak(**derivations):
     """A temperature-indexed table whose rows are not in index order."""
     return sk.Table(
-        {"T": sk.Column(unit="degC"), "srm": sk.Column(unit="-"), "R": sk.Column(unit="lintner")},
-        "T",
-        title="Boil",
+        {"T": sk.Property(unit="degC"), "hrc": sk.Property(unit="-"), "R": sk.Property(unit="lintner")},
+        index="T",
+        title="Soak",
         rows=[
-            {"T": 30, "srm": sk.Property(0.3, uncertainty=0.03), "R": 3.0},
-            {"T": 10, "srm": sk.Property(0.1, uncertainty=0.01), "R": 1.0},
-            {"T": 20, "srm": sk.Property(0.2, uncertainty=0.02), "R": 2.0},
+            {"T": 30, "hrc": sk.Property(0.3, uncertainty=0.03), "R": 3.0},
+            {"T": 10, "hrc": sk.Property(0.1, uncertainty=0.01), "R": 1.0},
+            {"T": 20, "hrc": sk.Property(0.2, uncertainty=0.02), "R": 2.0},
         ],
         **derivations,
     )
 
 
 def quantity_sample(project):
-    project.config('schema_version = 1\n\n[property.malt]\nprecision = ".3f"\n')
+    project.config('schema_version = 1\n\n[property.diameter]\nprecision = ".3f"\n')
     return sk.Sample(
         project.sample(
             "q.md",
             name="ph",
-            properties={"malt": "{v: 3.1551234, u: 0.00123, unit: g}"},
+            properties={"diameter": "{v: 3.1551234, u: 0.00123, unit: g}"},
         )
     )
 
@@ -62,21 +62,21 @@ def quantity_sample(project):
 
 def test_sort_mutates_and_returns_none(collection):
     samples = sk.SampleList(collection.root)
-    assert samples.sort("malt") is None
+    assert samples.sort("diameter") is None
     assert names(samples) == ["C", "A", "B"]
 
 
 def test_sort_actually_reorders(collection):
     samples = sk.SampleList(collection.root)
     before = names(samples)
-    samples.sort("-malt")
+    samples.sort("-diameter")
     assert names(samples) == ["B", "A", "C"]
     assert names(samples) != before
 
 
 def test_sorted_returns_a_new_collection(collection):
     samples = sk.SampleList(collection.root)
-    ordered = samples.sorted("-malt")
+    ordered = samples.sorted("-diameter")
     assert ordered is not samples
     assert names(ordered) == ["B", "A", "C"]
     assert names(samples) == ["A", "B", "C"]
@@ -85,7 +85,7 @@ def test_sorted_returns_a_new_collection(collection):
 def test_unknown_sort_key_raises_key_error(collection):
     samples = sk.SampleList(collection.root)
     with pytest.raises(KeyError):
-        samples.sort("plto")
+        samples.sort("dutility")
     assert names(samples) == ["A", "B", "C"]
 
 
@@ -93,27 +93,27 @@ def test_unknown_sort_key_raises_key_error(collection):
 
 
 def test_at_addresses_by_index_value():
-    table = boil()
-    assert table.at(20, "srm").value == 0.2
+    table = soak()
+    assert table.at(20, "hrc").value == 0.2
     assert table[0]["T"].value == 30
 
 
 def test_table_metadata_is_attribute_access():
-    table = boil()
-    assert table.column_names == ["T", "srm", "R"]
+    table = soak()
+    assert table.column_names == ["T", "hrc", "R"]
     assert table.index_values == [30, 10, 20]
-    assert table.data_columns == ["srm", "R"]
+    assert table.data_columns == ["hrc", "R"]
     assert table.index == "T"
     assert table.index_unit == "degC"
-    assert table.title == "Boil"
+    assert table.title == "Soak"
 
 
 def test_property_carries_value_and_uncertainty():
-    table = boil()
-    cell = table.at(20, "srm")
+    table = soak()
+    cell = table.at(20, "hrc")
     assert (cell.value, cell.uncertainty) == (0.2, 0.02)
-    assert table.values("srm") == [0.3, 0.1, 0.2]
-    assert table.uncertainties("srm") == [0.03, 0.01, 0.02]
+    assert table.values("hrc") == [0.3, 0.1, 0.2]
+    assert table.uncertainties("hrc") == [0.03, 0.01, 0.02]
 
 
 # ----------------------------------------------------------- properties
@@ -136,21 +136,23 @@ def test_float_and_int_forward_to_the_value():
 
 
 def test_str_renders_the_quantity_as_a_terminal_does(project):
-    assert str(quantity_sample(project).malt) == "3.155 ± 0.001 g"
+    # The uncertainty rounded to the nearest, as the value is.
+    assert str(quantity_sample(project).diameter) == "3.155 ± 0.002 g"
 
 
 def test_an_empty_format_specifier_equals_str(project):
-    malt = quantity_sample(project).malt
-    assert f"{malt}" == str(malt)
-    assert format(malt, "") == str(malt)
+    diameter = quantity_sample(project).diameter
+    assert f"{diameter}" == str(diameter)
+    assert format(diameter, "") == str(diameter)
 
 
 def test_a_format_specifier_renders_like_a_command_line_column(project, cli):
     sample = quantity_sample(project)
-    shown = f"{sample.malt:.2f}"
-    # An uncertainty the precision rounds away keeps two significant figures.
-    assert shown.startswith("3.16 ± 0.00") and "<" not in shown
-    assert shown.removesuffix(" g") in cli(sample.path, "-c", "malt:.2f", "--width", "120")
+    shown = f"{sample.diameter:.2f}"
+    # An uncertainty below the last place is rounded up to it, never written as
+    # zero nor as a bound.
+    assert shown.startswith("3.16 ± 0.01") and "<" not in shown
+    assert shown.removesuffix(" g") in cli(sample.path, "-c", "diameter:.2f", "--width", "120")
 
 
 def test_an_unsupported_format_specifier_raises_value_error():
@@ -171,23 +173,23 @@ def test_an_absent_value_prints_as_a_dash():
 
 
 def test_a_text_property_prints_verbatim():
-    prop = sk.Property("Pilsner 350")
-    assert str(prop) == "Pilsner 350"
-    assert f"{prop:.2f}" == "Pilsner 350"
+    prop = sk.Property("Inconel 350")
+    assert str(prop) == "Inconel 350"
+    assert f"{prop:.2f}" == "Inconel 350"
 
 
 def test_arithmetic_uses_the_value_and_returns_a_bare_number():
-    ebc = sk.Property(9.5, uncertainty=0.1)
-    srm = sk.Property(0.001)
-    result = ebc * (1 - 1j * srm)
+    hv = sk.Property(9.5, uncertainty=0.1)
+    hrc = sk.Property(0.001)
+    result = hv * (1 - 1j * hrc)
     assert type(result) is complex
     assert result == 9.5 * (1 - 1j * 0.001)
-    assert ebc + 1 == 10.5
+    assert hv + 1 == 10.5
     assert 2 ** sk.Property(3) == 8
-    assert -ebc == -9.5
+    assert -hv == -9.5
     assert abs(sk.Property(-2.0)) == 2.0
     assert round(sk.Property(2.567), 1) == 2.6
-    assert type(ebc / 2) is float
+    assert type(hv / 2) is float
 
 
 def test_arithmetic_on_an_absent_value_names_the_property():
@@ -212,17 +214,17 @@ def test_an_absent_property_equals_no_value():
 def test_unknown_property_raises_key_error_with_a_suggestion(collection):
     sample = sk.Sample(collection.root / "A.md")
     with pytest.raises(KeyError) as caught:
-        sample["mal"]
-    assert "did you mean: malt?" in str(caught.value)
+        sample["diametr"]
+    assert "did you mean: diameter?" in str(caught.value)
 
 
 def test_unknown_attribute_raises_attribute_error_with_a_suggestion(collection):
     sample = sk.Sample(collection.root / "A.md")
     with pytest.raises(AttributeError) as caught:
-        sample.mal
-    assert "did you mean: malt?" in str(caught.value)
-    assert hasattr(sample, "mal") is False
-    assert getattr(sample, "mal", 7) == 7
+        sample.diametr
+    assert "did you mean: diameter?" in str(caught.value)
+    assert hasattr(sample, "diametr") is False
+    assert getattr(sample, "diametr", 7) == 7
 
 
 def test_a_property_without_a_value_is_returned(project):
@@ -233,10 +235,10 @@ def test_a_property_without_a_value_is_returned(project):
 
 def test_membership_tests_a_name():
     sample = sk.Sample()
-    sample.malt = sk.Property(1.0)
-    sample.mashing = boil()
-    assert "malt" in sample
-    assert "mashing" in sample
+    sample.diameter = sk.Property(1.0)
+    sample.preheating = soak()
+    assert "diameter" in sample
+    assert "preheating" in sample
     assert "nothing" not in sample
 
 
@@ -244,15 +246,15 @@ def test_deleting_by_attribute_or_item_removes_the_property(project):
     sample = sk.Sample(
         project.sample(
             "d.md",
-            properties={"malt": "1.0", "plato": "2.0", "volume": "3.0"},
+            properties={"diameter": "1.0", "ductility": "2.0", "volume": "3.0"},
         )
     )
-    del sample.malt
-    del sample["plato"]
+    del sample.diameter
+    del sample["ductility"]
     sample.save()
     text = sample.path.read_text()
-    assert "malt" not in text
-    assert "plato" not in text
+    assert "diameter" not in text
+    assert "ductility" not in text
     assert "volume" in text
 
 
@@ -260,11 +262,11 @@ def test_iterating_a_sample_yields_names_in_declaration_order(project):
     sample = sk.Sample(
         project.sample(
             "o.md",
-            attributes={"batch": 7, "maltster": "jo"},
-            properties={"volume": "3.0", "malt": "1.0"},
+            attributes={"batch": 7, "machinist": "jo"},
+            properties={"volume": "3.0", "diameter": "1.0"},
         )
     )
-    assert list(sample) == ["batch", "maltster", "volume", "malt"]
+    assert list(sample) == ["batch", "machinist", "volume", "diameter"]
     assert list(sample.keys()) == list(sample)
     assert [name for name, _ in sample.items()] == list(sample)
 
@@ -274,13 +276,13 @@ def test_iterating_a_sample_yields_names_in_declaration_order(project):
 
 def test_assigning_a_property_or_a_table_registers_it(tmp_path):
     sample = sk.Sample()
-    sample.malt = sk.Property(1.5, unit="g")
-    sample.mashing = boil()
+    sample.diameter = sk.Property(1.5, unit="g")
+    sample.preheating = soak()
     path = tmp_path / "s.md"
     sample.save(path)
     text = path.read_text()
-    assert "properties:\n  malt:" in text
-    assert "tables:\n  mashing:" in text
+    assert "properties:\n  diameter:" in text
+    assert "tables:\n  preheating:" in text
 
 
 def test_assigning_a_plain_value_creates_an_attribute(tmp_path):
@@ -315,11 +317,11 @@ def test_assigning_an_unstorable_object_suggests_an_underscore():
 
 def test_assigning_a_different_kind_to_a_name_is_refused():
     sample = sk.Sample()
-    sample.malt = sk.Property(3.1)
+    sample.diameter = sk.Property(3.1)
     with pytest.raises(TypeError) as caught:
-        sample.malt = 3.2
-    assert "s.malt.value" in str(caught.value)
-    assert sample.malt.value == 3.1
+        sample.diameter = 3.2
+    assert "s.diameter.value" in str(caught.value)
+    assert sample.diameter.value == 3.1
 
 
 def test_an_attribute_without_a_value_is_kept_and_not_written(tmp_path):
@@ -331,7 +333,7 @@ def test_an_attribute_without_a_value_is_kept_and_not_written(tmp_path):
     path = tmp_path / "s.md"
     sample.save(path)
     text = path.read_text()
-    assert "maltster" not in text
+    assert "machinist" not in text
     assert "temperatures" not in text
 
 
@@ -462,16 +464,16 @@ def test_name_note_and_tags_use_their_descriptors(tmp_path):
     sample.note = "  verbatim\n\ttext  \n"
     sample.tags = ["reference"]
     sample.tags.append("reference")
-    sample.tags.append("keg")
+    sample.tags.append("billet")
     with pytest.raises(ValueError):
         sample.tags.append("not a tag")
-    assert sample.tags == ["reference", "keg"]
+    assert sample.tags == ["reference", "billet"]
     path = tmp_path / "s.md"
     sample.save(path)
     again = sk.Sample(path)
     assert again.name == "C43"
     assert again.note == "  verbatim\n\ttext  \n"
-    assert again.tags == ["reference", "keg"]
+    assert again.tags == ["reference", "billet"]
 
 
 def test_brackets_never_reach_private_state():
@@ -483,27 +485,20 @@ def test_brackets_never_reach_private_state():
         sample["_x"]
 
 
-def test_removed_accessors_name_their_replacement():
-    sample = sk.Sample()
-    with pytest.raises(AttributeError) as caught:
-        sample.get_property("malt")
-    assert 's["name"]' in str(caught.value)
-
-
 # ------------------------------------------------------------- filtering
 
 
 def test_filter_chains(collection):
     samples = sk.SampleList(collection.root)
-    chained = samples.filter("period == 6").filter(lambda sample: sample.beer == "Pilsner")
+    chained = samples.filter("period == 6").filter(lambda sample: sample.alloy == "Inconel")
     assert names(chained) == ["A"]
 
 
 def test_filter_shares_samples_with_the_parent(collection):
     samples = sk.SampleList(collection.root)
-    subset = samples.filter("beer == Pilsner")
-    subset[0].malt.value = 99.0
-    assert samples["A"].malt.value == 99.0
+    subset = samples.filter("alloy == Inconel")
+    subset[0].diameter.value = 99.0
+    assert samples["A"].diameter.value == 99.0
 
 
 # ---------------------------------------------------------------- loading
@@ -511,18 +506,18 @@ def test_filter_shares_samples_with_the_parent(collection):
 
 def test_constructing_with_a_path_loads_the_file(collection):
     sample = sk.Sample(collection.root / "A.md")
-    assert sample.malt.value == 12.5
+    assert sample.diameter.value == 12.5
     assert sample.name == "A"
 
 
 def test_the_file_is_loaded_after_the_class_init(project):
     project.model()
-    sample_path = project.sample("s.md", properties={"malt": "{v: 12.5, unit: g}"})
+    sample_path = project.sample("s.md", properties={"diameter": "{v: 12.5, unit: g}"})
     namespace = {"__file__": str(project.root / "model.py")}
     exec(MODEL, namespace)
     sample = namespace["Model"](sample_path)
-    assert sample.malt.value == 12.5
-    assert sample.malt.unit == "g"
+    assert sample.diameter.value == 12.5
+    assert sample.diameter.unit == "g"
     sample.compute()
     assert sample.double.value == 25.0
 
@@ -539,22 +534,194 @@ def test_a_sample_without_a_path_is_new(project):
     sample = namespace["Model"](name="C43")
     assert sample.path is None
     assert sample.name == "C43"
-    assert sample.malt.value is None
+    assert sample.diameter.value is None
 
 
 def test_the_project_model_applies_without_consent(project):
     project.model()
     project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
-    sample = sk.Sample(project.sample("s.md", properties={"malt": "2.0"}))
+    sample = sk.Sample(project.sample("s.md", properties={"diameter": "2.0"}))
     assert type(sample).__name__ == "Model"
     assert isinstance(sample, sk.Sample)
     assert project.imported()
 
 
+def test_explain_on_a_fresh_copy_says_what_the_model_reads(project, cli):
+    # With no description written yet — a fresh copy, a snapshot read with
+    # --at — explain borrowed what a value reads from another sample's file.
+    project.model()
+    project.config(
+        'schema_version = 1\n\n[model]\npath = "model.py"\n'
+        f"python = {json.dumps(sys.prefix)}\n"
+    )
+    sample = project.sample("s.md", name="s", properties={"diameter": "2.0"})
+    said = cli(sample, "explain", "double")
+    assert "the model computes it from diameter" in said, said
+    assert "file records" not in said, said
+
+
+def test_a_file_written_for_a_command_is_said_in_its_journal(project, tmp_path):
+    # The model's worker writes what its command computes: those files went
+    # unseen by that command's snapshot and by every other command meanwhile.
+    project.config("schema_version = 1\n")
+    sample = project.sample("s.md", name="s", properties={"diameter": "2.0"})
+    journal = tmp_path / "writing-1.lock"
+    journal.write_text("1\n")
+    script = (
+        "import samplekit as sk\n"
+        f"s = sk.Sample({str(sample)!r})\n"
+        "s.diameter.value = 3.0\n"
+        "s.save()\n"
+    )
+    env = dict(os.environ, SAMPLEKIT_JOURNALS=str(journal), SAMPLEKIT_HISTORY="off")
+    subprocess.run([sys.executable, "-c", script], check=True, env=env)
+    assert f"wrote {sample.resolve()}" in journal.read_text().splitlines()
+
+
+TABLED = """\
+import samplekit as sk
+
+
+class Model(sk.Sample):
+    def __init__(self, path=None, name=None):
+        super().__init__(path, name=name)
+        self.diameter = sk.Property()
+        self.double = sk.Property(compute_value=lambda: self.diameter.value * 2)
+        self.set_dependencies("double", depends_on=["diameter"])
+        self.t = sk.Table(
+            {
+                "d": sk.Property(),
+                "g": sk.Property(),
+                "a": sk.Property(compute=self._a, depends_on=["row.g"]),
+            },
+            index="d",
+        )
+
+    def _a(self, row):
+        return {"a": row.g.value * 10}
+"""
+
+TABLE_ROWS = (
+    "tables:\n  t:\n    index: d\n    columns:\n      d: {}\n      g: {}\n      a: {}\n"
+    "    rows:\n      - {d: 1, g: 1.0}\n      - {d: 2, g: 2.0}\n"
+)
+
+
+def _tabled(project):
+    project.model(TABLED)
+    project.config(
+        'schema_version = 1\n\n[model]\npath = "model.py"\n'
+        f"python = {json.dumps(sys.prefix)}\n"
+    )
+
+
+def test_a_cell_emptied_is_waited_for_on_every_surface(project, cli):
+    # `status` said outdated — row.g, `compute` waits for t.g[2], and a table's
+    # state column outdated: one state, said three ways.
+    _tabled(project)
+    path = project.root / "s.md"
+    path.write_text(sample_text(name="s", properties={"diameter": "2.0"}) .replace("---\n# Notes", TABLE_ROWS + "---\n# Notes"))
+    cli(path, "compute", "--write")
+    cli(path, "set", "t.g[2]=", "--write")
+    said = cli(path, "status")
+    assert "waits for t.g[2]" in said, said
+    assert "outdated" not in said, said
+    assert "waits for t.g[2]" in cli(path, "explain", "t.a[2]")
+    assert "waiting" in cli(path, "-c", "name,t.a[2]", "--status")
+    assert sk.Sample(path).t.at(2, "a").state == "waiting"
+
+
+def test_a_value_typed_where_its_formula_never_ran_is_an_override(project, cli):
+    # Typed over a formula never run, it was written as a value entered: the
+    # workbench said *record missing*, `status` *waits for diameter*, `explain`
+    # *entered or measured*.
+    _tabled(project)
+    path = project.sample("s.md", name="s")
+    assert "typed over its formula" in cli(path, "set", "double=5")
+    cli(path, "set", "double=5", "--write")
+    listed = json.loads(cli(path, "status", "--json"))
+    assert [(entry["value"], entry["state"]) for entry in listed] == [("double", "edited")]
+    assert sk.Sample(path).double.state == "edited"
+    assert "by hand" in cli(path, "explain", "double")
+
+
+def test_a_formula_returning_none_fails(project):
+    # `None` was written as no value, and said never computed after each run.
+    project.model(TABLED.replace("self.diameter.value * 2", "None"))
+    project.config(
+        'schema_version = 1\n\n[model]\npath = "model.py"\n'
+        f"python = {json.dumps(sys.prefix)}\n"
+    )
+    path = project.sample("s.md", name="s", properties={"diameter": "2.0"})
+    ran = subprocess.run(
+        [str(BINARY), str(path), "compute", "--write"], capture_output=True, text=True
+    )
+    assert ran.returncode != 0, ran.stdout
+    said = ran.stdout + ran.stderr
+    assert "returned None" in said and "sk.NA" in said, said
+
+
+def test_a_column_the_model_computes_is_said_so_before_it_ran(project, cli):
+    # A column no formula has filled yet was said measured.
+    _tabled(project)
+    path = project.root / "s.md"
+    path.write_text(sample_text(name="s").replace("---\n# Notes", TABLE_ROWS + "---\n# Notes"))
+    said = cli(path, "explain", "t")
+    assert "computed by the model from row.g, never computed yet" in said, said
+
+
+def _exported(project):
+    _tabled(project)
+    with open(project.root / ".samplekitrc", "a") as rc:
+        rc.write(
+            '\n[profile.p]\ncolumns = [{field = "name"}, {field = "double"}]\n'
+            '[export.e]\nprofile = "p"\nformat = "csv"\noutput = "out/e.csv"\n'
+        )
+    return project.sample("s.md", name="s", properties={"diameter": "2.0"})
+
+
+def _export(project, *arguments):
+    return subprocess.run(
+        [str(BINARY), str(project.root), "export", "e", *arguments],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_an_export_of_values_never_computed_exits_2_unless_accepted(project):
+    # Written empty, and said nowhere: the export exited 0.
+    _exported(project)
+    previewed = _export(project)
+    said = previewed.stdout + previewed.stderr
+    assert "1 never computed, written empty" in said, said
+    written = _export(project, "--write")
+    assert written.returncode == 2, written.stderr
+    assert "--accept never_computed" in written.stderr, written.stderr
+    assert _export(project, "--write", "--accept", "never-computed").returncode == 0
+    refused = _export(project, "--write", "--accept", "stale")
+    assert refused.returncode == 1, refused.stderr
+
+
+def test_an_export_after_its_formula_changed_is_outdated(project, cli):
+    # The formula changed since the values were computed: `status` said so,
+    # and the export wrote them and exited 0.
+    path = _exported(project)
+    cli(path, "compute", "--write")
+    assert _export(project, "--write").returncode == 0
+    project.model(TABLED.replace("self.diameter.value * 2", "self.diameter.value * 3"))
+    previewed = _export(project)
+    said = previewed.stdout + previewed.stderr
+    assert "1 outdated" in said, said
+    written = _export(project, "--write")
+    assert written.returncode == 2, written.stderr
+    assert "--accept outdated" in written.stderr, written.stderr
+    assert _export(project, "--write", "--accept", "outdated").returncode == 0
+
+
 def test_model_false_loads_the_data_alone(project):
     project.model()
     project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
-    sample = sk.Sample(project.sample("s.md", properties={"malt": "2.0"}), model=False)
+    sample = sk.Sample(project.sample("s.md", properties={"diameter": "2.0"}), model=False)
     assert type(sample) is sk.Sample
     assert "double" not in sample
     assert not project.imported()
@@ -569,7 +736,7 @@ class Override(sk.Sample):
 def test_an_explicit_model_overrides_the_project_model(project):
     project.model()
     project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
-    sample = sk.Sample(project.sample("s.md", properties={"malt": "2.0"}), model=Override)
+    sample = sk.Sample(project.sample("s.md", properties={"diameter": "2.0"}), model=Override)
     assert type(sample) is Override
     assert not project.imported()
 
@@ -593,21 +760,21 @@ def test_removed_loaders_name_the_constructor():
 def test_to_csv_is_byte_identical_to_the_command_line(collection, cli):
     samples = sk.SampleList(collection.root)
     root = collection.root
-    assert samples.to_csv(profile="platos") == cli(root, "--profile", "platos", "--csv")
-    assert samples.to_tsv(profile="platos") == cli(root, "--profile", "platos", "--tsv")
-    assert samples.to_json(profile="platos") == cli(root, "--profile", "platos", "--json")
-    assert samples.to_csv(columns=["name", "malt:.2f"]) == cli(root, "-c", "name,malt:.2f", "--csv")
+    assert samples.to_csv(profile="ductilities") == cli(root, "--profile", "ductilities", "--csv")
+    assert samples.to_tsv(profile="ductilities") == cli(root, "--profile", "ductilities", "--tsv")
+    assert samples.to_json(profile="ductilities") == cli(root, "--profile", "ductilities", "--json")
+    assert samples.to_csv(columns=["name", "diameter:.2f"]) == cli(root, "-c", "name,diameter:.2f", "--csv")
 
 
 def test_to_dict_keys_are_the_export_columns_without_their_unit(collection):
     samples = sk.SampleList(collection.root)
-    header = samples.to_csv(profile="platos").splitlines()[0].split(",")
-    assert list(samples.to_dict(profile="platos")) == [name.split(" [")[0] for name in header]
+    header = samples.to_csv(profile="ductilities").splitlines()[0].split(",")
+    assert list(samples.to_dict(profile="ductilities")) == [name.split(" [")[0] for name in header]
 
 
 def test_to_dict_keeps_full_precision(collection):
     samples = sk.SampleList(collection.root)
-    assert samples.to_dict(columns=["malt:.3f"])["malt_value"] == [12.5, 13.1234, 11.0]
+    assert samples.to_dict(columns=["diameter:.3f"])["diameter_value"] == [12.5, 13.1234, 11.0]
 
 
 def test_to_csv_without_a_path_returns_the_text(collection):
@@ -643,32 +810,32 @@ def test_a_whole_list_is_json_and_joined_by_delimited_exports(project):
 def test_an_export_without_columns_or_profile_lists_the_profiles(collection):
     with pytest.raises(ValueError) as caught:
         sk.SampleList(collection.root).to_csv()
-    assert "platos" in str(caught.value)
+    assert "ductilities" in str(caught.value)
 
 
 def test_export_regenerates_a_declared_export(collection, cli):
-    written = sk.SampleList(collection.root).export("malts")
-    assert written == collection.root / "malts.csv"
+    written = sk.SampleList(collection.root).export("diameters")
+    assert written == collection.root / "diameters.csv"
     by_command = collection.root / "by-command.csv"
     # The command line previews and writes on --write; the Python `export` is
     # the call itself, so it writes.
-    cli("export", "malts", collection.root, "-o", by_command, "--write")
+    cli(collection.root, "export", "diameters", "-o", by_command, "--write")
     assert written.read_bytes() == by_command.read_bytes()
 
 
 def test_a_list_over_two_projects_writes_each_row_at_its_own_precision(tmp_path):
     # Python wrote raw numbers over two projects, where the command line
     # writes each row as its own project declares.
-    for project, precision, malt in (("one", ".1f", 1.23456), ("two", ".3f", 2.34567)):
+    for project, precision, diameter in (("one", ".1f", 1.23456), ("two", ".3f", 2.34567)):
         (tmp_path / project).mkdir()
         (tmp_path / project / ".samplekitrc").write_text(
-            f'schema_version = 1\n[property.malt]\nprecision = "{precision}"\n'
+            f'schema_version = 1\n[property.diameter]\nprecision = "{precision}"\n'
         )
         (tmp_path / project / "s.md").write_text(
-            f"---\nschema_version: 1\nname: {project}\nproperties:\n  malt: {malt}\n---\n"
+            f"---\nschema_version: 1\nname: {project}\nproperties:\n  diameter: {diameter}\n---\n"
         )
     both = sk.load(tmp_path / "two") + sk.load(tmp_path / "one")
-    text = both.to_csv(columns=["name", "malt"])
+    text = both.to_csv(columns=["name", "diameter"])
     # No uncertainty column: no sample fills one.
     assert "one,1.2\n" in text, text
     assert "two,2.346\n" in text, text
@@ -676,16 +843,16 @@ def test_a_list_over_two_projects_writes_each_row_at_its_own_precision(tmp_path)
 
 def test_a_figure_over_two_projects_draws_both(tmp_path):
     # Python refused a list spanning two projects; it draws them all.
-    for project, malt in (("one", 1.0), ("two", 2.0)):
+    for project, diameter in (("one", 1.0), ("two", 2.0)):
         (tmp_path / project).mkdir()
         (tmp_path / project / ".samplekitrc").write_text("schema_version = 1\n")
         for n in (1, 2):
             (tmp_path / project / f"s{n}.md").write_text(
                 f"---\nschema_version: 1\nname: {project}{n}\nproperties:\n"
-                f"  malt: {{v: {malt * n}, unit: g}}\n  volume: {{v: {n}.0, unit: L}}\n---\n"
+                f"  diameter: {{v: {diameter * n}, unit: g}}\n  volume: {{v: {n}.0, unit: L}}\n---\n"
             )
     both = sk.load(tmp_path / "one") + sk.load(tmp_path / "two")
-    (drawn,) = sk.plot(both, x="volume", y="malt", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(both, x="volume", y="diameter", output=tmp_path / "f.png")
     # The second project's heaviest, 4 g, is on the figure.
     ys = [y for line in drawn.axes[0].lines for y in line.get_ydata()]
     assert max(ys) == 4.0 and min(ys) == 1.0, ys
@@ -694,37 +861,37 @@ def test_a_figure_over_two_projects_draws_both(tmp_path):
 def test_an_output_makes_its_folder(project, tmp_path):
     # Every output's folder is made, declared or given, as the command line
     # makes it.
-    from conftest import PLATOS
+    from conftest import DUCTILITIES
 
-    project.config(PLATOS + '\n[export.nested]\nprofile = "platos"\nformat = "csv"\noutput = "out/malts.csv"\n')
-    project.sample("A.md", name="A", properties={"malt": "{v: 15.0, unit: g}"})
+    project.config(DUCTILITIES + '\n[export.nested]\nprofile = "ductilities"\nformat = "csv"\noutput = "out/diameters.csv"\n')
+    project.sample("A.md", name="A", properties={"diameter": "{v: 15.0, unit: g}"})
     samples = sk.SampleList(project.root)
     written = samples.export("nested")
-    assert written == project.root / "out" / "malts.csv"
+    assert written == project.root / "out" / "diameters.csv"
     assert written.exists()
-    elsewhere = samples.export("nested", output=project.root / "elsewhere" / "malts.csv")
+    elsewhere = samples.export("nested", output=project.root / "elsewhere" / "diameters.csv")
     assert elsewhere.read_text() == written.read_text()
-    samples.to_csv(project.root / "csv" / "deeper" / "malts.csv", columns=["malt"])
-    assert (project.root / "csv" / "deeper" / "malts.csv").exists()
+    samples.to_csv(project.root / "csv" / "deeper" / "diameters.csv", columns=["diameter"])
+    assert (project.root / "csv" / "deeper" / "diameters.csv").exists()
     figures = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    sk.plot(figures, "malt_volume", output=tmp_path / "figs" / "fig.png")
+    sk.plot(figures, "diameter_volume", output=tmp_path / "figs" / "fig.png")
     assert (tmp_path / "figs" / "fig.png").read_bytes().startswith(b"\x89PNG")
 
 
 def test_export_applies_the_query_it_declares(project):
     # An export may carry its own selection, in Python as on the command line.
-    from conftest import PLATOS
+    from conftest import DUCTILITIES
 
-    project.config(PLATOS + '\n[export.heavy]\nprofile = "platos"\nformat = "csv"\noutput = "heavy.csv"\nquery = "heavy"\n')
-    project.sample("A.md", name="A", properties={"malt": "{v: 15.0, unit: g}"})
-    project.sample("B.md", name="B", properties={"malt": "{v: 5.0, unit: g}"})
+    project.config(DUCTILITIES + '\n[export.heavy]\nprofile = "ductilities"\nformat = "csv"\noutput = "heavy.csv"\nquery = "heavy"\n')
+    project.sample("A.md", name="A", properties={"diameter": "{v: 15.0, unit: g}"})
+    project.sample("B.md", name="B", properties={"diameter": "{v: 5.0, unit: g}"})
     samples = sk.SampleList(project.root)
     assert samples.project.exports.heavy.query == "heavy"
     written = samples.export("heavy")
     rows = written.read_text().splitlines()
     assert len(rows) == 2, rows
     assert rows[1].startswith("A,"), rows
-    everything = samples.export("malts", output=project.root / "all.csv")
+    everything = samples.export("diameters", output=project.root / "all.csv")
     assert len(everything.read_text().splitlines()) == 3
 
 
@@ -734,10 +901,10 @@ def test_export_applies_the_query_it_declares(project):
 def test_project_entries_are_accepted_wherever_a_name_is(collection, tmp_path):
     samples = sk.SampleList(collection.root)
     project = samples.project
-    assert samples.to_csv(profile=project.profiles.platos) == samples.to_csv(profile="platos")
+    assert samples.to_csv(profile=project.profiles.ductilities) == samples.to_csv(profile="ductilities")
     assert names(samples.query(project.queries.heavy)) == names(samples.query("heavy"))
-    out = samples.export(project.exports.malts, output=tmp_path / "entry.csv")
-    assert out.read_text() == samples.to_csv(profile="platos")
+    out = samples.export(project.exports.diameters, output=tmp_path / "entry.csv")
+    assert out.read_text() == samples.to_csv(profile="ductilities")
 
 
 def test_project_is_read_only(collection):
@@ -747,30 +914,30 @@ def test_project_is_read_only(collection):
         project.profiles = None
     assert ".samplekitrc" in str(caught.value)
     with pytest.raises(AttributeError):
-        project.profiles.platos = None
+        project.profiles.ductilities = None
     assert (collection.root / ".samplekitrc").read_text() == config
 
 
 def test_project_names_complete_in_a_console(collection):
     profiles = sk.SampleList(collection.root).project.profiles
-    assert "platos" in dir(profiles)
-    assert profiles._ipython_key_completions_() == ["platos"]
+    assert "ductilities" in dir(profiles)
+    assert profiles._ipython_key_completions_() == ["ductilities"]
 
 
 def test_unknown_project_name_suggests_the_nearest(collection):
     profiles = sk.SampleList(collection.root).project.profiles
     with pytest.raises(AttributeError) as caught:
-        profiles.pltaos
-    assert "did you mean: platos?" in str(caught.value)
+        profiles.ductilites
+    assert "did you mean: ductilities?" in str(caught.value)
     with pytest.raises(KeyError) as caught:
-        profiles["pltaos"]
-    assert "did you mean: platos?" in str(caught.value)
+        profiles["ductilites"]
+    assert "did you mean: ductilities?" in str(caught.value)
 
 
 def test_outside_a_project_a_lookup_says_no_configuration_was_found(project):
-    sample = sk.Sample(project.sample("s.md", properties={"malt": "1.0"}))
+    sample = sk.Sample(project.sample("s.md", properties={"diameter": "1.0"}))
     with pytest.raises(AttributeError) as caught:
-        sample.project.profiles.platos
+        sample.project.profiles.ductilities
     assert "no .samplekitrc" in str(caught.value)
     assert sample.project.root is None
 
@@ -803,16 +970,6 @@ def test_sample_list_is_a_read_only_sequence(collection):
     assert samples.count(first) == 1
 
 
-def test_removed_list_members_name_their_replacement(collection):
-    samples = sk.SampleList(collection.root)
-    with pytest.raises(AttributeError) as caught:
-        samples.append(sk.Sample())
-    message = str(caught.value)
-    assert "+" in message
-    assert "SampleList([...])" in message
-    assert "list(samples)" in message
-
-
 def test_item_assignment_and_deletion_are_refused(collection):
     samples = sk.SampleList(collection.root)
     with pytest.raises(TypeError):
@@ -827,9 +984,9 @@ def test_adding_lists_keeps_order_and_shares_samples(collection):
     first, rest = samples[:1], samples[1:]
     joined = first + rest
     assert names(joined) == ["A", "B", "C"]
-    joined[0].malt.value = 1.0
-    assert first[0].malt.value == 1.0
-    assert samples[0].malt.value == 1.0
+    joined[0].diameter.value = 1.0
+    assert first[0].diameter.value == 1.0
+    assert samples[0].diameter.value == 1.0
 
 
 def test_in_place_add_rebinds_and_leaves_the_original(collection):
@@ -856,15 +1013,15 @@ def test_a_list_built_from_samples_refuses_a_duplicate():
 
 
 def two_projects(tmp_path):
-    from conftest import PLATOS, Project
+    from conftest import DUCTILITIES, Project
 
     lists = []
     for name in ("first", "second"):
         root = tmp_path / name
         root.mkdir()
         project = Project(root)
-        project.config(PLATOS)
-        project.sample(f"{name}.md", name=name, properties={"malt": "1.0"})
+        project.config(DUCTILITIES)
+        project.sample(f"{name}.md", name=name, properties={"diameter": "1.0"})
         lists.append(sk.SampleList(root))
     return lists
 
@@ -877,12 +1034,46 @@ def test_a_list_spanning_two_projects_has_no_single_project(tmp_path):
     assert "second" in str(caught.value)
 
 
+def test_a_folder_above_projects_reads_each_sample_with_its_own(tmp_path):
+    # Loaded from the folder above, each sample was given that folder's
+    # configuration: its project was the root's, and its model none.
+    (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
+    two_projects(tmp_path)
+    (tmp_path / "first" / "model.py").write_text(
+        "import samplekit as sk\n\nclass Poured(sk.Sample):\n    pass\n"
+    )
+    rc = tmp_path / "first" / ".samplekitrc"
+    # A literal string: a Windows path's backslashes are no escapes there.
+    rc.write_text(rc.read_text() + f"[model]\npath = \"model.py\"\npython = '{sys.executable}'\n")
+    loaded = {sample.name: sample for sample in sk.load(tmp_path)}
+    assert loaded["first"].project.root == tmp_path / "first"
+    assert loaded["second"].project.root == tmp_path / "second"
+    assert type(loaded["first"]).__name__ == "Poured"
+    assert type(loaded["second"]) is sk.Sample
+
+
+def test_a_folder_above_projects_reads_each_by_its_own_collection_rules(tmp_path):
+    # From the folder above, a project's `exclude` was not applied: a draft the
+    # command line left out was loaded.
+    (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
+    project = tmp_path / "p"
+    project.mkdir()
+    (project / ".samplekitrc").write_text(
+        'schema_version = 1\n[collection]\nexclude = ["draft-*"]\n'
+    )
+    for name in ("a", "draft-b"):
+        (project / f"{name}.md").write_text(
+            f"---\nschema_version: 1\nname: {name}\n---\n"
+        )
+    assert [sample.name for sample in sk.load(tmp_path)] == ["a"]
+
+
 def test_a_declared_name_on_a_list_spanning_two_projects_is_refused(tmp_path):
     first, second = two_projects(tmp_path)
     mixed = first + second
     with pytest.raises(ValueError):
-        mixed.to_csv(profile="platos")
-    text = mixed.to_csv(profile=first.project.profiles.platos)
+        mixed.to_csv(profile="ductilities")
+    text = mixed.to_csv(profile=first.project.profiles.ductilities)
     assert text.startswith("name,")
 
 
@@ -891,8 +1082,8 @@ def test_a_declared_name_on_a_list_spanning_two_projects_is_refused(tmp_path):
 
 def test_mutation_through_a_property_reaches_the_sample(collection):
     sample = sk.Sample(collection.root / "A.md")
-    malt = sample.malt
-    malt.value = 20.0
+    diameter = sample.diameter
+    diameter.value = 20.0
     sample.save()
     assert "v: 20.0" in sample.path.read_text()
 
@@ -901,10 +1092,10 @@ def test_saving_preserves_the_note(project):
     note = "# Notes  \n\n\tIndented, trailing spaces   \r\nno final newline"
     path = project.root / "n.md"
     path.write_bytes(
-        b"---\nschema_version: 1\nproperties:\n  malt: 1.0\n---\n" + note.encode()
+        b"---\nschema_version: 1\nproperties:\n  diameter: 1.0\n---\n" + note.encode()
     )
     sample = sk.Sample(path)
-    sample.malt.value = 2.0
+    sample.diameter.value = 2.0
     sample.save()
     assert path.read_bytes().endswith(note.encode())
 
@@ -918,7 +1109,7 @@ def test_a_loaded_sample_remembers_its_path(collection):
 def test_save_without_a_path_rewrites_the_file_read(collection):
     other = (collection.root / "B.md").read_text()
     sample = sk.Sample(collection.root / "A.md")
-    sample.malt.value = 21.0
+    sample.diameter.value = 21.0
     sample.save()
     assert "v: 21.0" in (collection.root / "A.md").read_text()
     assert (collection.root / "B.md").read_text() == other
@@ -941,7 +1132,7 @@ def test_save_to_a_path_moves_the_sample_there(collection, tmp_path):
     sample.save(moved)
     assert sample.path == moved
     assert sample.project.root == elsewhere
-    sample.malt.value = 1.0
+    sample.diameter.value = 1.0
     sample.save()
     assert "v: 1.0" in moved.read_text()
     assert original.read_text() == before
@@ -983,8 +1174,8 @@ def test_save_refuses_a_file_removed_since_it_was_read(collection):
 
 def test_dir_lists_property_names(collection):
     listing = dir(sk.Sample(collection.root / "A.md"))
-    assert "malt" in listing
-    assert "beer" in listing
+    assert "diameter" in listing
+    assert "alloy" in listing
 
 
 # ------------------------------------------------------------ computation
@@ -993,42 +1184,234 @@ def test_dir_lists_property_names(collection):
 class Shapes(sk.Sample):
     def __init__(self, path=None):
         super().__init__(path)
-        self.malt = sk.Property(12.0)
+        self.diameter = sk.Property(12.0)
         self.volume = sk.Property(4.0)
-        self.plato = sk.Property(compute=lambda: self.malt.value / self.volume.value)
-        self.malt_tolerance = sk.Property(12.0, compute_uncertainty=lambda: 0.1, depends_on=[])
-        self.joint = sk.Property(compute_quantity=lambda: (self.malt.value * 2, 0.5), depends_on=["malt"])
-        self.set_dependencies("plato", depends_on=["malt", "volume"])
-        self.mashing = sk.Table(
-            {"T": sk.Column(), "R": sk.Column(), "G": sk.Column(), "N": sk.Column()},
-            "T",
+        self.ductility = sk.Property(compute_value=lambda: self.diameter.value / self.volume.value)
+        self.diameter_tolerance = sk.Property(12.0, compute_uncertainty=lambda: 0.1, depends_on=[])
+        self.joint = sk.Property(compute=lambda: (self.diameter.value * 2, 0.5), depends_on=["diameter"])
+        self.set_dependencies("ductility", depends_on=["diameter", "volume"])
+        self.preheating = sk.Table(
+            {
+                "T": sk.Property(),
+                "R": sk.Property(),
+                "G": sk.Property(compute=lambda row: 1 / row.R.value, depends_on=["row.R"]),
+                "N": sk.Property(compute_column=lambda columns: [value / max(columns["R"].values) for value in columns["R"].values], depends_on=["preheating.R"]),
+            },
+            index="T",
             rows=[{"T": 10, "R": 2.0}, {"T": 20, "R": 4.0}],
-            compute_rows=[("G", ["row.R"], lambda row: 1 / row.R.value)],
-            compute_columns=[
-                (
-                    "N",
-                    ["mashing.R"],
-                    lambda columns: [value / max(columns["R"].values) for value in columns["R"].values],
-                )
-            ],
         )
 
 
 def test_all_five_computation_shapes_are_expressible(tmp_path):
     sample = Shapes()
     sample.compute()
-    assert sample.plato.value == 3.0
-    assert sample.malt_tolerance.uncertainty == 0.1
+    assert sample.ductility.value == 3.0
+    assert sample.diameter_tolerance.uncertainty == 0.1
     assert (sample.joint.value, sample.joint.uncertainty) == (24.0, 0.5)
-    assert sample.mashing.values("G") == [0.5, 0.25]
-    assert sample.mashing.values("N") == [0.5, 1.0]
+    assert sample.preheating.values("G") == [0.5, 0.25]
+    assert sample.preheating.values("N") == [0.5, 1.0]
     path = tmp_path / "shapes.md"
     sample.save(path)
     text = path.read_text()
     # A record names the channel its formula produced.
-    assert "computed: {v: {malt:" in text or "computed: {malt:" in text, text
+    assert "computed: {v: {diameter:" in text or "computed: {diameter:" in text, text
     assert "u: 0.5" in text
 
+
+
+
+def test_a_column_declares_its_formula_as_a_property_does():
+    # Three ways to give a cell: a value, a dict of them, a Property for one
+    # with its uncertainty; and the column's formula declared on the table.
+    class Pull(sk.Sample):
+        def __init__(self, path=None, name=None):
+            super().__init__(path, name=name)
+            self.area = sk.Property(value=2.0)
+            self.curve = sk.Table(
+                {
+                    "strain": sk.Property(),
+                    "force": sk.Property(),
+                    "stress": sk.Property(
+                        compute=lambda row: row.force.value / self.area.value,
+                        depends_on=["row.force", "area"],
+                    ),
+                    "spread": sk.Property(
+                        compute=lambda row: (row.force.value, 0.1),
+                        depends_on=["row.force"],
+                    ),
+                    "low": sk.Property(),
+                    "high": sk.Property(),
+                },
+                index="strain",
+                rows=[{"strain": 0, "force": 1.0}, {"strain": 1, "force": 3.0}],
+                computed=[
+                    sk.ComputedColumns(["low", "high"], compute=lambda row: {
+                        "low": (row.force.value - 1, 0.5),
+                        "high": row.force.value + 1,
+                    }, depends_on=["row.force"]),
+                ],
+            )
+
+    sample = Pull()
+    sample.compute()
+    assert sample.curve.values("stress") == [0.5, 1.5]
+    assert sample.curve.values("spread") == [1.0, 3.0]
+    assert sample.curve.uncertainties("spread") == [0.1, 0.1]
+    assert sample.curve.uncertainties("low") == [0.5, 0.5]
+    assert sample.curve.values("high") == [2.0, 4.0]
+    # A whole column's formula takes pairs too.
+    table = sk.Table(
+        {
+            "t": sk.Property(),
+            "x": sk.Property(),
+            "y": sk.Property(compute_column=lambda columns: [(v * 2, 0.2) for v in columns["x"].values], depends_on=["t.x"]),
+        },
+        index="t",
+        rows=[{"t": 0, "x": 1.0}, {"t": 1, "x": 2.0}],
+    )
+    holder = sk.Sample()
+    holder.t = table
+    holder.compute()
+    assert holder.t.uncertainties("y") == [0.2, 0.2]
+    # Each half alone, beside the other entered; and both, each its formula's.
+    halves = sk.Table(
+        {
+            "t": sk.Property(),
+            "x": sk.Property(),
+            "doubled": sk.Property(
+                compute_value=lambda row: 2 * row.x.value, depends_on=["row.x"]
+            ),
+            "rated": sk.Property(
+                compute_uncertainty=lambda row: 0.1 * row.x.value, depends_on=["row.x"]
+            ),
+            # None is no uncertainty, as a property's formula gives it.
+            "plain": sk.Property(compute_uncertainty=lambda row: None, depends_on=[]),
+            "both": sk.Property(
+                compute_value=lambda row: 3 * row.x.value,
+                compute_uncertainty=lambda row: 0.5,
+                depends_on={"v": ["row.x"], "u": []},
+            ),
+            # In sequence, as a property's two: the uncertainty is given the
+            # value just computed.
+            "scaled": sk.Property(
+                compute_value=lambda row: 10 * row.x.value,
+                compute_uncertainty=lambda row: 0.01 * row.scaled.value,
+                depends_on={"v": ["row.x"], "u": ["row.scaled.v"]},
+            ),
+        },
+        index="t",
+        rows=[{"t": 0, "x": 1.0, "doubled": sk.Property(None, 0.3), "rated": 7.0, "plain": 4.0}],
+    )
+    holder.h = halves
+    holder.compute()
+    doubled, rated, both = (holder.h.at(0, column) for column in ("doubled", "rated", "both"))
+    assert (doubled.value, doubled.uncertainty) == (2.0, 0.3)
+    assert (rated.value, rated.uncertainty) == (7.0, 0.1)
+    assert (both.value, both.uncertainty) == (3.0, 0.5)
+    assert holder.h.at(0, "scaled").uncertainty == pytest.approx(0.1)
+    assert holder.h.at(0, "plain").uncertainty is None
+    assert holder.h.at(0, "plain").state == "current"
+    # What it reads is said, and one formula a column.
+    with pytest.raises(ValueError, match="depends_on"):
+        sk.Table({"t": sk.Property(), "y": sk.Property(compute=lambda row: 1.0)}, index="t")
+    with pytest.raises(ValueError, match="keep one"):
+        sk.Table(
+            {"t": sk.Property(), "y": sk.Property(compute=lambda row: 1.0, depends_on=[])},
+            index="t",
+            computed=[
+                sk.ComputedColumns("y", compute=lambda row: 2.0, depends_on=[]),
+            ],
+        )
+
+def test_a_table_names_its_index():
+    columns = {"day": sk.Property(unit="d"), "hour": sk.Property(unit="h"), "g": sk.Property()}
+    # A bare second argument did not say what it was.
+    with pytest.raises(TypeError, match="index="):
+        sk.Table(columns, "day")
+    with pytest.raises(TypeError, match="names its index"):
+        sk.Table(columns)
+    table = sk.Table(columns, index=["day", "hour"], rows=[{"day": 1, "hour": 6, "g": 1.05}])
+    assert table.at((1, 6), "g").value == 1.05
+
+
+def test_computed_columns_fill_several_columns_at_once():
+    def bounds(row):
+        return {"low": row.force.value - 1, "high": (row.force.value + 1, 0.5)}
+
+    def spread(columns):
+        values = columns["force"].values
+        return {"least": [min(values)] * len(values), "most": [max(values)] * len(values)}
+
+    table = sk.Table(
+        {name: sk.Property() for name in ("strain", "force", "low", "high", "least", "most")},
+        index="strain",
+        rows=[{"strain": 0, "force": 1.0}, {"strain": 1, "force": 3.0}],
+        computed=[
+            sk.ComputedColumns(["low", "high"], compute=bounds, depends_on=["row.force"]),
+            sk.ComputedColumns(["least", "most"], compute_column=spread, depends_on=["t.force"]),
+        ],
+    )
+    holder = sk.Sample()
+    holder.t = table
+    holder.compute()
+    assert holder.t.values("low") == [0.0, 2.0]
+    assert holder.t.uncertainties("high") == [0.5, 0.5]
+    assert holder.t.values("most") == [3.0, 3.0]
+    with pytest.raises(ValueError, match="compute="):
+        sk.ComputedColumns(["low"], depends_on=[])
+    with pytest.raises(ValueError, match="not both"):
+        sk.ComputedColumns(["low"], compute=bounds, compute_column=spread, depends_on=[])
+    with pytest.raises(ValueError, match="depends_on"):
+        sk.ComputedColumns(["low"], compute=bounds)
+    with pytest.raises(ValueError, match="keep one"):
+        sk.Table(
+            {"t": sk.Property(), "y": sk.Property(compute=lambda row: 1.0, depends_on=[])},
+            index="t",
+            computed=[sk.ComputedColumns(["y"], compute=lambda row: {"y": 2.0}, depends_on=[])],
+        )
+
+
+def test_compute_column_fills_a_tables_column_only():
+    sample = sk.Sample()
+    with pytest.raises(ValueError, match="compute="):
+        sample.x = sk.Property(compute_column=lambda columns: [1.0], depends_on=[])
+    with pytest.raises(ValueError, match="compute_column"):
+        sk.Property(compute=lambda: 1.0, compute_column=lambda columns: [1.0])
+    with pytest.raises(ValueError, match="compute_column"):
+        sk.Property(value=sk.stats.mean, compute_column=lambda columns: [1.0])
+
+
+def test_compute_gives_the_property_whole(tmp_path):
+    # `compute` was a value's formula; the property's, from one call, was
+    # `compute_quantity`.
+    class Bar(sk.Sample):
+        def __init__(self, path=None, name=None):
+            super().__init__(path, name=name)
+            self.alone = sk.Property(unit="mm", compute=lambda: 2.5, depends_on=[])
+            self.pair = sk.Property(unit="mm", compute=lambda: (2.5, 0.1), depends_on=[])
+            self.half = sk.Property(
+                unit="mm", compute_value=lambda: 2.5, uncertainty=0.2, depends_on=[]
+            )
+
+    sample = Bar()
+    sample.compute()
+    assert (sample.alone.value, sample.alone.uncertainty) == (2.5, None)
+    assert (sample.pair.value, sample.pair.uncertainty) == (2.5, 0.1)
+    # A value computed beside an uncertainty given apart keeps it.
+    assert (sample.half.value, sample.half.uncertainty) == (2.5, 0.2)
+    path = tmp_path / "bar.md"
+    sample.save(path)
+    text = path.read_text()
+    # Each is one formula's: its record names no channel.
+    assert "  alone:\n    v: 2.5\n    unit: mm\n    computed: {}\n" in text, text
+    assert "  pair:\n    v: 2.5\n    u: 0.1\n    unit: mm\n    computed: {}\n" in text, text
+    # The value alone is the formula's, the uncertainty the hand's.
+    assert "u: 0.2\n    unit: mm\n    computed: {v: {}}\n" in text, text
+    for extra in ({"uncertainty": 0.1}, {"compute_uncertainty": lambda: 0.1}):
+        with pytest.raises(ValueError, match="compute_value"):
+            sk.Property(compute=lambda: 2.5, **extra)
+    with pytest.raises(ValueError, match="compute_value"):
+        sk.Property(compute=lambda: 2.5, compute_value=lambda: 2.5)
 
 def test_a_multi_output_table_callback_runs_once():
     calls = {"row": 0, "column": 0}
@@ -1043,11 +1426,13 @@ def test_a_multi_output_table_callback_runs_once():
         return {"low": [v - 1 for v in values], "high": [v + 1 for v in values]}
 
     table = sk.Table(
-        {name: sk.Column() for name in ("T", "R", "ph", "pitch", "low", "high")},
-        "T",
+        {name: sk.Property() for name in ("T", "R", "ph", "pitch", "low", "high")},
+        index="T",
         rows=[{"T": 1, "R": 1.0}, {"T": 2, "R": 2.0}],
-        compute_rows=[(["ph", "pitch"], ["row.R"], fit)],
-        compute_columns=[(["low", "high"], ["t.R"], normalize)],
+        computed=[
+            sk.ComputedColumns(["ph", "pitch"], compute=fit, depends_on=["row.R"]),
+            sk.ComputedColumns(["low", "high"], compute_column=normalize, depends_on=["t.R"]),
+        ],
     )
     sample = sk.Sample()
     sample.t = table
@@ -1060,10 +1445,12 @@ def test_a_multi_output_table_callback_runs_once():
 def test_a_table_callback_refuses_an_output_mismatch():
     sample = sk.Sample()
     sample.t = sk.Table(
-        {name: sk.Column() for name in ("T", "R", "ph", "pitch")},
-        "T",
+        {name: sk.Property() for name in ("T", "R", "ph", "pitch")},
+        index="T",
         rows=[{"T": 1, "R": 1.0}],
-        compute_rows=[(["ph", "pitch"], ["row.R"], lambda row: {"ph": 1.0})],
+        computed=[
+            sk.ComputedColumns(["ph", "pitch"], compute=lambda row: {"ph": 1.0}, depends_on=["row.R"]),
+        ],
     )
     with pytest.raises(ValueError) as caught:
         sample.compute("t")
@@ -1075,17 +1462,19 @@ def test_a_table_callback_refuses_an_output_mismatch():
         sample.compute("t")
 
     sample.u = sk.Table(
-        {name: sk.Column() for name in ("T", "R", "N")},
-        "T",
+        {name: sk.Property() for name in ("T", "R", "N")},
+        index="T",
         rows=[{"T": 1, "R": 1.0}, {"T": 2, "R": 2.0}],
-        compute_columns=[("N", ["u.R"], lambda columns: [1.0])],
+        computed=[
+            sk.ComputedColumns("N", compute_column=lambda columns: [1.0], depends_on=["u.R"]),
+        ],
     )
     with pytest.raises(ValueError):
         sample.compute("u")
 
 
 def test_stats_returns_a_typed_summary(collection):
-    summary = sk.SampleList(collection.root).stats("malt")
+    summary = sk.SampleList(collection.root).stats("diameter")
     assert isinstance(summary, sk.Summary)
     assert not isinstance(summary, dict)
     assert summary.count == 3
@@ -1103,82 +1492,16 @@ def test_stats_returns_a_typed_summary(collection):
         assert getattr(summary, statistic) is not None
 
 
-# ---------------------------------------------------------------- inventory
-
-
-V1_KEPT = {
-    "Property": ["value", "uncertainty", "readings", "unit", "symbol", "text",
-                 "is_computed", "format", "invalidate"],
-    "Column": ["unit"],
-    "Table": ["add", "extend", "update", "at", "values", "uncertainties", "column_names",
-              "index_values", "data_columns", "index", "index_unit", "title"],
-    "Sample": ["save", "set_dependencies", "dependencies", "dependents", "affected_by_change",
-               "name", "tags", "note", "path", "filename", "project"],
-    "SampleList": ["filter", "sort", "sorted", "query", "stats", "save_all", "index", "count"],
-}
-
-V1_DIAGNOSED = {
-    "Property": {"data": "readings"},
-    "Table": {"cell": "at(index, column)", "column": "values(column)"},
-    "Sample": {"get_property": 's["name"]', "set_property": "Property(...)",
-               "set_value": ".value", "set_uncertainty": ".uncertainty", "set_unit": ".unit",
-               "set_symbol": ".symbol", "has_property": "in s", "remove_property": "del s",
-               "get_table": 's["name"]', "set_table": "Table(...)", "remove_table": "del s",
-               "property_names": "list(s)", "table_names": "list(s)", "notes": "note",
-               "load_data": "Sample(path)", "render_view": "samplekit view",
-               "render_report": "samplekit view", "view_names": "samplekit view",
-               "view_definition": "samplekit view"},
-    "SampleList": {"append": "SampleList([...])", "extend": "SampleList([...])",
-                   "insert": "SampleList([...])", "pop": "SampleList([...])",
-                   "clear": "SampleList([...])", "remove": "SampleList([...])",
-                   "copy": "SampleList([...])", "names": "sample.name",
-                   "query_names": "project.queries", "sort_multi": "sort([",
-                   "to_records": "to_dict", "to_dataframe": "to_dict"},
-}
-
-V1_ABSENT = {
-    # A precision is the project's to declare, and a column's symbol too.
-    "Property": ["unit_math", "symbol_math", "precision_unc", "is_valid", "precision"],
-    "Column": ["unit_math", "symbol_math", "precision_unc", "precision", "symbol"],
-}
-
-
-def inventory_instances(collection):
-    sample = sk.Sample(collection.root / "A.md")
-    return {
-        "Property": sample.malt,
-        "Column": sk.Column(unit="degC"),
-        "Table": boil(),
-        "Sample": sample,
-        "SampleList": sk.SampleList(collection.root),
-    }
-
-
-def test_the_v1_public_inventory_is_either_present_or_diagnosed(collection):
-    instances = inventory_instances(collection)
-    for owner, members in V1_KEPT.items():
-        for member in members:
-            assert hasattr(instances[owner], member), f"{owner}.{member}"
-    for owner, members in V1_DIAGNOSED.items():
-        for member, replacement in members.items():
-            with pytest.raises(AttributeError) as caught:
-                getattr(instances[owner], member)
-            assert replacement in str(caught.value), f"{owner}.{member}: {caught.value}"
-    for owner, members in V1_ABSENT.items():
-        for member in members:
-            assert not hasattr(instances[owner], member), f"{owner}.{member}"
-
-
 # ------------------------------------------------------------------ added
 
 
 def test_filter_takes_an_expression_or_a_function(collection):
     samples = sk.SampleList(collection.root)
-    by_expression = samples.filter("beer == Pilsner")
-    by_function = samples.filter(lambda sample: sample.beer == "Pilsner")
+    by_expression = samples.filter("alloy == Inconel")
+    by_function = samples.filter(lambda sample: sample.alloy == "Inconel")
     assert names(by_expression) == names(by_function) == ["A", "C"]
     with pytest.raises(KeyError):
-        samples.filter("bere == Pilsner")
+        samples.filter("bere == Inconel")
 
 
 def test_a_list_of_paths_is_refused_naming_the_constructor(collection):
@@ -1189,22 +1512,25 @@ def test_a_list_of_paths_is_refused_naming_the_constructor(collection):
 
 def test_a_table_assigned_under_another_name_than_its_column_inputs_is_refused():
     table = sk.Table(
-        {"T": sk.Column(), "R": sk.Column(), "N": sk.Column()},
-        "T",
-        compute_columns=[("N", ["boil.R"], lambda columns: columns["R"].values)],
+        {
+            "T": sk.Property(),
+            "R": sk.Property(),
+            "N": sk.Property(compute_column=lambda columns: columns["R"].values, depends_on=["soak.R"]),
+        },
+        index="T",
     )
     sample = sk.Sample()
     with pytest.raises(ValueError) as caught:
-        sample.mashing = table
-    assert "boil" in str(caught.value)
-    assert "mashing" in str(caught.value)
+        sample.preheating = table
+    assert "soak" in str(caught.value)
+    assert "preheating" in str(caught.value)
 
 
 
 
 # ------------------------------------------------------ recomputing
 
-RUNS = {"plato": 0, "haze": 0, "clarity": 0, "spread": 0, "flatness": 0}
+RUNS = {"ductility": 0, "roughness": 0, "rigidity": 0, "spread": 0, "flatness": 0}
 
 
 def reset_runs():
@@ -1212,45 +1538,48 @@ def reset_runs():
         RUNS[name] = 0
 
 
-class Platos(sk.Sample):
+class Ductilities(sk.Sample):
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.malt = sk.Property(unit="g")
+        self.diameter = sk.Property(unit="g")
         self.volume = sk.Property(unit="L")
-        self.plato = sk.Property(compute=self._plato)
-        self.haze = sk.Property(compute=self._haze)
-        self.set_dependencies("plato", depends_on=["malt", "volume"])
-        self.set_dependencies("haze", depends_on=["plato"])
+        self.ductility = sk.Property(compute_value=self._ductility)
+        self.roughness = sk.Property(compute_value=self._roughness)
+        self.set_dependencies("ductility", depends_on=["diameter", "volume"])
+        self.set_dependencies("roughness", depends_on=["ductility"])
 
-    def _plato(self):
-        RUNS["plato"] += 1
-        return self.malt.value / self.volume.value
+    def _ductility(self):
+        RUNS["ductility"] += 1
+        return self.diameter.value / self.volume.value
 
-    def _haze(self):
-        RUNS["haze"] += 1
-        return 1 - self.plato.value / 4.0
+    def _roughness(self):
+        RUNS["roughness"] += 1
+        return 1 - self.ductility.value / 4.0
 
 
-class Boil(sk.Sample):
+class Soak(sk.Sample):
     def __init__(self, path=None):
         super().__init__(path)
-        self.foam = sk.Property(2.0)
-        self.mashing = sk.Table(
-            {"T": sk.Column(), "R": sk.Column(), "G": sk.Column()},
-            "T",
+        self.wear = sk.Property(2.0)
+        self.preheating = sk.Table(
+            {
+                "T": sk.Property(),
+                "R": sk.Property(),
+                "G": sk.Property(compute=self._rigidity, depends_on=["row.R", "wear"]),
+            },
+            index="T",
             rows=[{"T": 10, "R": 2.0}, {"T": 20, "R": 4.0}],
-            compute_rows=[("G", ["row.R", "foam"], self._clarity)],
         )
 
-    def _clarity(self, row):
-        RUNS["clarity"] += 1
-        return 1 / row.R.value / self.foam.value
+    def _rigidity(self, row):
+        RUNS["rigidity"] += 1
+        return 1 / row.R.value / self.wear.value
 
 
-def saved_platos(directory, file="d.md", malt=12.0):
-    """Platos computed from malt and a volume of 4, saved, and runs reset."""
-    sample = Platos(name=file)
-    sample.malt.value = malt
+def saved_ductilities(directory, file="d.md", diameter=12.0):
+    """Ductilities computed from diameter and a volume of 4, saved, and runs reset."""
+    sample = Ductilities(name=file)
+    sample.diameter.value = diameter
     sample.volume.value = 4.0
     sample.compute()
     path = directory / file
@@ -1259,7 +1588,7 @@ def saved_platos(directory, file="d.md", malt=12.0):
     return path
 
 
-def edit_malt(path, before="12.0", after="16.0"):
+def edit_diameter(path, before="12.0", after="16.0"):
     text = path.read_text()
     edited = text.replace(f"v: {before}", f"v: {after}", 1)
     assert edited != text
@@ -1268,47 +1597,32 @@ def edit_malt(path, before="12.0", after="16.0"):
 
 
 def test_a_value_stale_on_disk_is_served_and_reported_stale(tmp_path):
-    path = saved_platos(tmp_path)
-    edit_malt(path)
-    sample = Platos(path)
-    assert sample.plato.value == 3.0
-    assert sample.plato.is_outdated
-    assert sample.haze.is_outdated
-    assert not sample.malt.is_outdated
-    assert RUNS["plato"] == 0 and RUNS["haze"] == 0
-
-
-def test_the_former_names_of_outdated_still_answer(tmp_path):
-    """*stale* was renamed *outdated*: a script written against
-    `stale()` and `is_stale` goes on getting the same answers."""
-    path = saved_platos(tmp_path)
-    edit_malt(path)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        sample = Platos(path)
-        assert sample.stale() == sample.outdated() == ["plato", "haze"]
-        assert sample.plato.is_stale and sample.plato.is_outdated
-        assert not sample.malt.is_stale
-        sample.compute()
-        assert sample.stale() == sample.outdated() == []
+    path = saved_ductilities(tmp_path)
+    edit_diameter(path)
+    sample = Ductilities(path)
+    assert sample.ductility.value == 3.0
+    assert sample.ductility.is_outdated
+    assert sample.roughness.is_outdated
+    assert not sample.diameter.is_outdated
+    assert RUNS["ductility"] == 0 and RUNS["roughness"] == 0
 
 
 def test_saving_runs_no_formula(tmp_path):
-    path = saved_platos(tmp_path)
-    edit_malt(path)
-    sample = Platos(path)
+    path = saved_ductilities(tmp_path)
+    edit_diameter(path)
+    sample = Ductilities(path)
     sample.save()
-    assert RUNS["plato"] == 0 and RUNS["haze"] == 0
-    reloaded = Platos(path)
-    assert reloaded.plato.value == 3.0
-    assert reloaded.plato.is_outdated
+    assert RUNS["ductility"] == 0 and RUNS["roughness"] == 0
+    reloaded = Ductilities(path)
+    assert reloaded.ductility.value == 3.0
+    assert reloaded.ductility.is_outdated
 
-    fresh = Platos(name="fresh")
-    fresh.malt.value = 1.0
+    fresh = Ductilities(name="fresh")
+    fresh.diameter.value = 1.0
     fresh.volume.value = 8.0
     fresh.save(tmp_path / "fresh.md")
     text = (tmp_path / "fresh.md").read_text()
-    assert RUNS["plato"] == 0
+    assert RUNS["ductility"] == 0
     assert "0.125" not in text
     assert "computed" not in text
 
@@ -1316,66 +1630,66 @@ def test_saving_runs_no_formula(tmp_path):
 
 
 def test_compute_without_names_runs_stale_and_never_computed_values(tmp_path):
-    path = saved_platos(tmp_path)
-    edit_malt(path)
-    sample = Platos(path)
+    path = saved_ductilities(tmp_path)
+    edit_diameter(path)
+    sample = Ductilities(path)
     sample.compute()
-    assert (RUNS["plato"], RUNS["haze"]) == (1, 1)
-    assert sample.plato.value == 4.0
+    assert (RUNS["ductility"], RUNS["roughness"]) == (1, 1)
+    assert sample.ductility.value == 4.0
     assert sample.outdated() == []
     sample.compute()
-    assert (RUNS["plato"], RUNS["haze"]) == (1, 1)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (1, 1)
     sample.compute(rerun=True)
-    assert (RUNS["plato"], RUNS["haze"]) == (2, 2)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (2, 2)
 
-    fresh = Platos(name="fresh")
-    fresh.malt.value = 1.0
+    fresh = Ductilities(name="fresh")
+    fresh.diameter.value = 1.0
     fresh.volume.value = 8.0
     fresh.compute()
-    assert (RUNS["plato"], RUNS["haze"]) == (3, 3)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (3, 3)
     fresh.save(tmp_path / "fresh.md")
     assert "0.125" in (tmp_path / "fresh.md").read_text()
 
 
 def test_a_list_recomputes_every_sample(tmp_path):
-    first = saved_platos(tmp_path, "a.md")
-    second = saved_platos(tmp_path, "b.md", malt=8.0)
-    edit_malt(first)
-    edit_malt(second, "8.0", "20.0")
-    samples = sk.SampleList([Platos(first), Platos(second)])
+    first = saved_ductilities(tmp_path, "a.md")
+    second = saved_ductilities(tmp_path, "b.md", diameter=8.0)
+    edit_diameter(first)
+    edit_diameter(second, "8.0", "20.0")
+    samples = sk.SampleList([Ductilities(first), Ductilities(second)])
     samples.compute()
-    assert RUNS["plato"] == 2
-    assert [sample.plato.value for sample in samples] == [4.0, 5.0]
-    samples.compute("plato")
-    assert RUNS["plato"] == 2
-    samples.compute("plato", rerun=True)
-    assert RUNS["plato"] == 4
+    assert RUNS["ductility"] == 2
+    assert [sample.ductility.value for sample in samples] == [4.0, 5.0]
+    samples.compute("ductility")
+    assert RUNS["ductility"] == 2
+    samples.compute("ductility", rerun=True)
+    assert RUNS["ductility"] == 4
 
 
 def test_stale_lists_properties_and_columns(tmp_path):
-    boil = Boil()
-    boil.compute()
-    path = tmp_path / "boil.md"
-    boil.save(path)
+    soak = Soak()
+    soak.compute()
+    path = tmp_path / "soak.md"
+    soak.save(path)
     text = path.read_text()
-    edited = re.sub(r"(?m)^(  foam: (?:\{v: )?)2\.0", r"\g<1>4.0", text)
+    edited = re.sub(r"(?m)^(  wear: (?:\{v: )?)2\.0", r"\g<1>4.0", text)
     assert edited != text
     path.write_text(edited)
     reset_runs()
-    stale = Boil(path)
-    assert stale.outdated() == ["mashing.G"]
-    assert stale.mashing.at(10, "G").is_outdated
+    stale = Soak(path)
+    assert stale.outdated() == ["preheating.G"]
+    assert stale.preheating.at(10, "G").is_outdated
     stale.compute()
-    assert RUNS["clarity"] == 2
+    assert RUNS["rigidity"] == 2
     assert stale.outdated() == []
 
 
 def test_a_recomputation_that_changed_nothing_reruns_nothing_downstream(tmp_path):
-    sample = Platos(saved_platos(tmp_path))
-    sample.plato.compute(rerun=True)
-    assert RUNS["plato"] == 1
-    assert sample.haze.value == 0.25
-    assert RUNS["haze"] == 0
+    sample = Ductilities(saved_ductilities(tmp_path))
+    sample.ductility.compute(rerun=True)
+    assert RUNS["ductility"] == 1
+    assert sample.roughness.value == 0.25
+    assert RUNS["roughness"] == 0
 
 
 class ForgetsPath(sk.Sample):
@@ -1402,96 +1716,96 @@ def test_a_path_not_forwarded_to_super_init_is_refused(collection):
 class Chain(sk.Sample):
     def __init__(self, path=None):
         super().__init__(path)
-        self.malt = sk.Property(10.0)
-        self.grist = sk.Property(compute=lambda: self.malt.value * 2)
-        self.brix = sk.Property(compute=lambda: self.grist.value / 4)
-        self.vfi = sk.Property(compute=lambda: self.brix.value + 1)
-        self.set_dependencies("grist", depends_on=["malt"])
-        self.set_dependencies("brix", depends_on=["grist"])
-        self.set_dependencies("vfi", depends_on=["brix"])
+        self.diameter = sk.Property(10.0)
+        self.swarf = sk.Property(compute_value=lambda: self.diameter.value * 2)
+        self.porosity = sk.Property(compute_value=lambda: self.swarf.value / 4)
+        self.vfi = sk.Property(compute_value=lambda: self.porosity.value + 1)
+        self.set_dependencies("swarf", depends_on=["diameter"])
+        self.set_dependencies("porosity", depends_on=["swarf"])
+        self.set_dependencies("vfi", depends_on=["porosity"])
 
 
-def entered_platos():
-    sample = Platos()
-    sample.malt.value = 12.0
+def entered_ductilities():
+    sample = Ductilities()
+    sample.diameter.value = 12.0
     sample.volume.value = 4.0
     sample.compute()
-    assert sample.haze.value == 0.25
+    assert sample.roughness.value == 0.25
     reset_runs()
     return sample
 
 
 def test_assigning_a_computed_value_overrides_it():
-    sample = entered_platos()
-    sample.plato.value = 2.0
-    assert sample.plato.is_computed
-    assert sample.plato.is_edited
-    assert not sample.plato.is_outdated
-    assert sample.edited() == ["plato"]
+    sample = entered_ductilities()
+    sample.ductility.value = 2.0
+    assert sample.ductility.is_computed
+    assert sample.ductility.is_edited
+    assert not sample.ductility.is_outdated
+    assert sample.edited() == ["ductility"]
     sample.compute()
-    assert sample.haze.value == 0.5
-    sample.malt.value = 40.0
+    assert sample.roughness.value == 0.5
+    sample.diameter.value = 40.0
     sample.compute()
-    assert sample.plato.value == 2.0
-    assert sample.haze.value == 0.5
-    assert (RUNS["plato"], RUNS["haze"]) == (0, 1)
+    assert sample.ductility.value == 2.0
+    assert sample.roughness.value == 0.5
+    assert (RUNS["ductility"], RUNS["roughness"]) == (0, 1)
 
 
 
 
 def test_computing_a_named_value_computes_its_stale_inputs_first(tmp_path):
-    path = saved_platos(tmp_path)
-    edit_malt(path)
-    sample = Platos(path)
-    assert sample.plato.is_outdated and sample.haze.is_outdated
-    sample.haze.compute()
-    assert (RUNS["plato"], RUNS["haze"]) == (1, 1)
-    assert sample.plato.value == 4.0
-    assert sample.haze.value == 0.0
+    path = saved_ductilities(tmp_path)
+    edit_diameter(path)
+    sample = Ductilities(path)
+    assert sample.ductility.is_outdated and sample.roughness.is_outdated
+    sample.roughness.compute()
+    assert (RUNS["ductility"], RUNS["roughness"]) == (1, 1)
+    assert sample.ductility.value == 4.0
+    assert sample.roughness.value == 0.0
     assert sample.outdated() == []
     reset_runs()
-    sample.compute("haze", rerun=True)
-    assert (RUNS["plato"], RUNS["haze"]) == (0, 1)
+    sample.compute("roughness", rerun=True)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (0, 1)
 
 
 def test_an_override_round_trips_through_a_file(tmp_path):
-    path = saved_platos(tmp_path)
-    sample = Platos(path)
-    sample.plato.value = 2.0
+    path = saved_ductilities(tmp_path)
+    sample = Ductilities(path)
+    sample.ductility.value = 2.0
     sample.compute()
-    assert sample.haze.value == 0.5
+    assert sample.roughness.value == 0.5
     sample.save()
     text = path.read_text()
     assert re.search(r"(?m)^    fingerprint: \{edited: [0-9a-f]{12}\}$", text), text
-    assert re.search(r"computed: \{v: \{plato: \{edited: [0-9a-f]{12}\}\}\}", text), text
-    reloaded = Platos(path)
-    assert reloaded.plato.is_edited
-    assert reloaded.plato.value == 2.0
-    assert not reloaded.haze.is_outdated
-    assert reloaded.haze.edited_upstream == ["plato"]
-    assert RUNS["plato"] == 0
+    assert re.search(r"computed: \{v: \{ductility: \{edited: [0-9a-f]{12}\}\}\}", text), text
+    reloaded = Ductilities(path)
+    assert reloaded.ductility.is_edited
+    assert reloaded.ductility.value == 2.0
+    assert not reloaded.roughness.is_outdated
+    assert reloaded.roughness.edited_upstream == ["ductility"]
+    assert RUNS["ductility"] == 0
 
-    hand = saved_platos(tmp_path, file="hand.md")
+    hand = saved_ductilities(tmp_path, file="hand.md")
     text = hand.read_text()
-    edited = re.sub(r"(?m)^(  plato:\n    v: )3\.0$", r"\g<1>3.5", text)
+    edited = re.sub(r"(?m)^(  ductility:\n    v: )3\.0$", r"\g<1>3.5", text)
     assert edited != text, text
     hand.write_text(edited)
-    held = Platos(hand)
-    assert held.plato.is_edited
+    held = Ductilities(hand)
+    assert held.ductility.is_edited
     held.compute(rerun=True)
-    assert held.plato.value == 3.5
-    assert RUNS["plato"] == 0
+    assert held.ductility.value == 3.5
+    assert RUNS["ductility"] == 0
 
 
 def test_edited_upstream_names_the_overrides_a_value_rests_on():
     sample = Chain()
-    sample.grist.value = 8.0
+    sample.swarf.value = 8.0
     sample.compute()
     assert sample.vfi.value == 3.0
-    assert sample.vfi.edited_upstream == ["grist"]
-    assert sample.brix.edited_upstream == ["grist"]
-    assert sample.grist.edited_upstream == []
-    sample.grist.compute(force=True)
+    assert sample.vfi.edited_upstream == ["swarf"]
+    assert sample.porosity.edited_upstream == ["swarf"]
+    assert sample.swarf.edited_upstream == []
+    sample.swarf.compute(force=True)
     sample.compute()
     assert sample.vfi.value == 6.0
     assert sample.vfi.edited_upstream == []
@@ -1532,118 +1846,115 @@ def test_compute_runs_an_uncertainty_formula_beside_an_entered_value(tmp_path):
     assert RUNS["spread"] == 3
 
 
-class Carbonation(sk.Sample):
+class Nitridation(sk.Sample):
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.conditioning = sk.Table(
-            {"day": sk.Column(), "venting": sk.Column(), "carbonation": sk.Column()},
-            "day",
+        self.tempering = sk.Table(
+            {
+                "day": sk.Property(),
+                "venting": sk.Property(),
+                "nitridation": sk.Property(compute_column=lambda columns: [v / columns["venting"].values[0] for v in columns["venting"].values], depends_on=["tempering.venting"]),
+            },
+            index="day",
             rows=[{"day": 1, "venting": 2.0}, {"day": 2, "venting": 1.5}],
-            compute_columns=[
-                (
-                    "carbonation",
-                    ["conditioning.venting"],
-                    lambda columns: [v / columns["venting"].values[0] for v in columns["venting"].values],
-                )
-            ],
         )
-        self.flatness = sk.Property(compute=self._flatness)
-        self.set_dependencies("flatness", depends_on=["conditioning.carbonation"])
+        self.flatness = sk.Property(compute_value=self._flatness)
+        self.set_dependencies("flatness", depends_on=["tempering.nitridation"])
 
     def _flatness(self):
         RUNS["flatness"] += 1
-        return self.conditioning.values("carbonation")[-1]
+        return self.tempering.values("nitridation")[-1]
 
 
 
 
 def test_compute_runs_what_is_named_when_it_is_pending(tmp_path):
-    sample = Platos(saved_platos(tmp_path))
-    sample.plato.compute()
-    sample.compute("plato", "haze")
-    assert (RUNS["plato"], RUNS["haze"]) == (0, 0)
-    sample.plato.compute(rerun=True)
-    assert RUNS["plato"] == 1
-    sample.compute("plato", "haze", rerun=True)
-    assert (RUNS["plato"], RUNS["haze"]) == (2, 1)
+    sample = Ductilities(saved_ductilities(tmp_path))
+    sample.ductility.compute()
+    sample.compute("ductility", "roughness")
+    assert (RUNS["ductility"], RUNS["roughness"]) == (0, 0)
+    sample.ductility.compute(rerun=True)
+    assert RUNS["ductility"] == 1
+    sample.compute("ductility", "roughness", rerun=True)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (2, 1)
     with pytest.raises(ValueError):
-        sample.compute("malt")
+        sample.compute("diameter")
     with pytest.raises(KeyError) as caught:
-        sample.compute("plto")
-    assert "plato" in str(caught.value)
+        sample.compute("dutility")
+    assert "ductility" in str(caught.value)
 
-    stale = Platos(edit_and_return(saved_platos(tmp_path, "s.md")))
+    stale = Ductilities(edit_and_return(saved_ductilities(tmp_path, "s.md")))
     reset_runs()
-    stale.compute("haze")
-    assert (RUNS["plato"], RUNS["haze"]) == (1, 1)
+    stale.compute("roughness")
+    assert (RUNS["ductility"], RUNS["roughness"]) == (1, 1)
 
-    boil = Boil()
-    boil.compute()
+    soak = Soak()
+    soak.compute()
     reset_runs()
-    boil.compute("mashing.G")
-    boil.mashing.at(10, "G").compute()
-    boil.compute("mashing")
-    assert RUNS["clarity"] == 0
-    boil.compute("mashing.G", rerun=True)
-    assert RUNS["clarity"] == 2
-    boil.mashing.at(10, "G").compute(rerun=True)
-    assert RUNS["clarity"] == 3
-    boil.compute("mashing", rerun=True)
-    assert RUNS["clarity"] == 5
+    soak.compute("preheating.G")
+    soak.preheating.at(10, "G").compute()
+    soak.compute("preheating")
+    assert RUNS["rigidity"] == 0
+    soak.compute("preheating.G", rerun=True)
+    assert RUNS["rigidity"] == 2
+    soak.preheating.at(10, "G").compute(rerun=True)
+    assert RUNS["rigidity"] == 3
+    soak.compute("preheating", rerun=True)
+    assert RUNS["rigidity"] == 5
 
 
 def edit_and_return(path):
-    edit_malt(path)
+    edit_diameter(path)
     return path
 
 
 def test_compute_gives_an_override_back_only_when_forced():
-    sample = entered_platos()
-    sample.plato.value = 2.0
+    sample = entered_ductilities()
+    sample.ductility.value = 2.0
     sample.compute()
     sample.compute(rerun=True)
-    sample.plato.compute()
-    sample.compute("plato", rerun=True)
-    assert sample.plato.value == 2.0
-    assert sample.plato.is_edited
-    assert RUNS["plato"] == 0
-    sample.plato.compute(force=True)
-    assert RUNS["plato"] == 1
-    assert not sample.plato.is_edited
+    sample.ductility.compute()
+    sample.compute("ductility", rerun=True)
+    assert sample.ductility.value == 2.0
+    assert sample.ductility.is_edited
+    assert RUNS["ductility"] == 0
+    sample.ductility.compute(force=True)
+    assert RUNS["ductility"] == 1
+    assert not sample.ductility.is_edited
     assert sample.edited() == []
-    assert sample.plato.value == 3.0
+    assert sample.ductility.value == 3.0
     sample.compute()
-    assert sample.haze.value == 0.25
+    assert sample.roughness.value == 0.25
 
 
 def test_property_state_names_where_a_value_stands(tmp_path):
-    path = saved_platos(tmp_path)
-    edit_malt(path)
-    sample = Platos(path)
-    assert sample.malt.state == "entered"
-    assert sample.plato.state == "outdated"
+    path = saved_ductilities(tmp_path)
+    edit_diameter(path)
+    sample = Ductilities(path)
+    assert sample.diameter.state == "entered"
+    assert sample.ductility.state == "outdated"
     sample.compute()
-    assert sample.plato.state == "current"
-    sample.plato.value = 2.0
-    assert sample.plato.state == "edited"
+    assert sample.ductility.state == "current"
+    sample.ductility.value = 2.0
+    assert sample.ductility.state == "edited"
 
-    fresh = Platos(name="fresh")
-    assert fresh.plato.state == "never computed"
-    fresh.malt.value = 1.0
+    fresh = Ductilities(name="fresh")
+    assert fresh.ductility.state == "never_computed"
+    fresh.diameter.value = 1.0
     fresh.volume.value = 0.0
     with pytest.raises(ZeroDivisionError):
-        fresh.plato.compute()
-    assert fresh.plato.state == "failed"
+        fresh.ductility.compute()
+    assert fresh.ductility.state == "failed"
 
-    boil = Boil()
-    assert boil.mashing.at(10, "G").state == "never computed"
-    boil.compute()
-    assert boil.mashing.at(10, "G").state == "current"
-    assert boil.mashing.at(10, "R").state == "entered"
+    soak = Soak()
+    assert soak.preheating.at(10, "G").state == "never_computed"
+    soak.compute()
+    assert soak.preheating.at(10, "G").state == "current"
+    assert soak.preheating.at(10, "R").state == "entered"
 
 
 def test_a_list_warns_of_a_file_it_could_not_read(project):
-    project.sample("A.md", name="A", properties={"malt": 12.0})
+    project.sample("A.md", name="A", properties={"diameter": 12.0})
     (project.root / "broken.md").write_text("---\nschema_version: 1\nname: {a: 1}\n---\n")
     with pytest.warns(UserWarning, match="broken.md was not read"):
         samples = sk.SampleList(project.root, model=False)
@@ -1660,11 +1971,11 @@ def test_new_creates_a_sample_of_the_project_model_at_a_path(project):
     assert sample.path == path
     assert sample.name == "CC-10"
     assert not path.exists()
-    sample.malt.value = 2.0
+    sample.diameter.value = 2.0
     sample.save()
     again = sk.Sample(path)
     assert again.name == "CC-10"
-    assert again.malt.value == 2.0
+    assert again.diameter.value == 2.0
     again.compute()
     assert again.double.value == 4.0
 
@@ -1685,7 +1996,7 @@ def test_new_writes_no_name(project):
 def test_new_refuses_a_path_that_exists(project):
     project.model()
     project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
-    path = project.sample("s.md", properties={"malt": "2.0"})
+    path = project.sample("s.md", properties={"diameter": "2.0"})
     with pytest.raises(FileExistsError, match=r"Sample\(path\)"):
         sk.Sample.new(path)
     assert not project.imported()
@@ -1694,12 +2005,12 @@ def test_new_refuses_a_path_that_exists(project):
 def test_new_on_a_model_class_creates_that_class(project):
     namespace = {"__file__": str(project.root / "model.py")}
     exec(MODEL, namespace)
-    cask = namespace["Model"]
-    sample = cask.new(project.root / "B.md", name="Bee")
-    assert type(sample) is cask
+    slab = namespace["Model"]
+    sample = slab.new(project.root / "B.md", name="Bee")
+    assert type(sample) is slab
     assert sample.name == "Bee"
     with pytest.raises(FileNotFoundError, match="does not exist"):
-        cask.new(project.root / "missing" / "C.md")
+        slab.new(project.root / "missing" / "C.md")
 
 
 def test_a_created_file_written_meanwhile_is_not_overwritten(project):
@@ -1748,17 +2059,17 @@ import samplekit as sk
 class Aged(sk.Sample):
     def __init__(self, path=None, name=None, first=2.0):
         super().__init__(path, name=name)
-        self.conditioning = sk.Table(
-            {"day": sk.Column(), "venting": sk.Column(), "carbonation": sk.Column()},
-            "day",
+        self.tempering = sk.Table(
+            {
+                "day": sk.Property(),
+                "venting": sk.Property(),
+                "nitridation": sk.Property(compute_column=lambda columns: [v / columns["venting"].values[0] for v in columns["venting"].values], depends_on=["tempering.venting"]),
+            },
+            index="day",
             rows=[{"day": 1, "venting": first}, {"day": 2, "venting": 1.0}],
-            compute_columns=[
-                ("carbonation", ["conditioning.venting"],
-                 lambda columns: [v / columns["venting"].values[0] for v in columns["venting"].values])
-            ],
         )
-        self.flatness = sk.Property(compute=lambda: self.conditioning.at(2, "carbonation").value)
-        self.set_dependencies("flatness", depends_on=["conditioning.carbonation"])
+        self.flatness = sk.Property(compute_value=lambda: self.tempering.at(2, "nitridation").value)
+        self.set_dependencies("flatness", depends_on=["tempering.nitridation"])
 """
 
 
@@ -1792,7 +2103,7 @@ def test_every_public_class_and_method_has_a_docstring():
                     undocumented.append(f"{klass.__name__}.{member}")
     # The attributes a script reads first say what they hold too.
     attributes = {
-        sk.Property: ["value", "uncertainty", "unit", "symbol", "v", "u", "text", "is_computed"],
+        sk.Property: ["value", "uncertainty", "unit", "symbol", "v", "u", "is_computed"],
         sk.Sample: ["name", "path", "filename", "note", "tags", "project"],
         sk.Table: ["index", "title"],
         sk.Export: ["filename", "path"],
@@ -1812,7 +2123,7 @@ def test_a_table_update_stales_what_reads_the_table(project):
     sample.save(path)
     again = aged(path)
     assert again.flatness.state == "current"
-    again.conditioning.update(2, venting=0.5)
+    again.tempering.update(2, venting=0.5)
     assert again.flatness.state == "outdated"
     assert "flatness" in again.outdated()
 
@@ -1821,74 +2132,77 @@ def test_a_table_update_stales_what_reads_the_table(project):
 
 def test_an_export_includes_what_its_declaration_includes(project):
     project.config(
-        'schema_version = 1\n\n[profile.malts]\ncolumns = [{field = "name"}, {field = "malt"}]\n\n'
-        '[export.malts]\nprofile = "malts"\nformat = "csv"\noutput = "malts.csv"\nfilename = true\n'
+        'schema_version = 1\n\n[profile.diameters]\ncolumns = [{field = "name"}, {field = "diameter"}]\n\n'
+        '[export.diameters]\nprofile = "diameters"\nformat = "csv"\noutput = "diameters.csv"\nfilename = true\n'
     )
-    project.sample("A.md", name="A", properties={"malt": "12.5"})
-    written = sk.SampleList(project.root).export("malts", output=project.root / "out.csv")
+    project.sample("A.md", name="A", properties={"diameter": "12.5"})
+    written = sk.SampleList(project.root).export("diameters", output=project.root / "out.csv")
     with open(written) as handle:
         assert "filename" in handle.readline()
 
 
 def test_sorted_takes_a_comma_list(collection):
     samples = sk.SampleList(collection.root, model=False)
-    written = [sample.name for sample in samples.sorted("-period,malt")]
-    assert written == [sample.name for sample in samples.sorted(["-period", "malt"])]
+    written = [sample.name for sample in samples.sorted("-period,diameter")]
+    assert written == [sample.name for sample in samples.sorted(["-period", "diameter"])]
     assert written == ["A", "B", "C"]
 
 
 def test_a_table_not_yet_assigned_holds_no_derived_value_until_computed():
     table = sk.Table(
-        {"T": sk.Column(), "R": sk.Column(), "G": sk.Column()},
-        "T",
+        {
+            "T": sk.Property(),
+            "R": sk.Property(),
+            "G": sk.Property(compute=lambda row: 1 / row.R.value, depends_on=["row.R"]),
+        },
+        index="T",
         rows=[{"T": 10, "R": 2.0}, {"T": 20, "R": 4.0}],
-        compute_rows=[("G", ["row.R"], lambda row: 1 / row.R.value)],
     )
     assert table.values("G") == [None, None]
     # It is what it is: never computed, not current.
-    assert table.at(10, "G").state == "never computed"
+    assert table.at(10, "G").state == "never_computed"
     assert table.at(10, "R").state == "entered"
     sample = sk.Sample()
-    sample.mashing = table
+    sample.preheating = table
     sample.compute()
-    assert sample.mashing.values("G") == [0.5, 0.25]
-    assert sample.mashing.at(10, "G").state == "current"
+    assert sample.preheating.values("G") == [0.5, 0.25]
+    assert sample.preheating.at(10, "G").state == "current"
 
 
 
 def test_reading_a_value_never_runs_its_formula():
     reset_runs()
-    sample = Platos()
-    sample.malt.value = 12.0
+    sample = Ductilities()
+    sample.diameter.value = 12.0
     sample.volume.value = 4.0
     with pytest.warns(UserWarning, match="never computed"):
-        assert sample.plato.value is None
-    assert len(sk.SampleList([sample]).filter("plato > 1")) == 0
-    assert RUNS["plato"] == 0
+        assert sample.ductility.value is None
+    assert len(sk.SampleList([sample]).filter("ductility > 1")) == 0
+    assert RUNS["ductility"] == 0
     sample.compute()
-    assert sample.plato.value == 3.0
+    assert sample.ductility.value == 3.0
 
 
 def test_changing_an_input_leaves_a_dependent_stale_until_computed():
-    sample = Platos()
-    sample.malt.value = 12.0
+    sample = Ductilities()
+    sample.diameter.value = 12.0
     sample.volume.value = 4.0
     sample.compute()
     reset_runs()
-    sample.malt.value = 16.0
-    assert sample.plato.is_outdated
+    sample.diameter.value = 16.0
+    assert sample.ductility.is_outdated
     with pytest.warns(UserWarning, match="outdated"):
-        assert sample.plato.value == 3.0
-    assert RUNS["plato"] == 0
+        assert sample.ductility.value == 3.0
+    assert RUNS["ductility"] == 0
     sample.compute()
-    assert sample.plato.value == 4.0
-    assert RUNS["plato"] == 1
-    assert not sample.plato.is_outdated
+    assert sample.ductility.value == 4.0
+    assert RUNS["ductility"] == 1
+    assert not sample.ductility.is_outdated
 
 
 def test_a_value_reading_a_derived_column_is_not_computed_twice():
     reset_runs()
-    sample = Carbonation(name="r")
+    sample = Nitridation(name="r")
     sample.compute()
     assert RUNS["flatness"] == 1
     assert sample.flatness.value == 0.75
@@ -1903,15 +2217,18 @@ def test_a_list_filter_runs_no_formula(project):
     assert [sample.name for sample in samples.filter("name == Good")] == ["Good"]
 
 
-def test_to_csv_headers_use_the_project_unit_spelling(project, cli):
-    from conftest import PLATOS
+def test_to_csv_headers_spell_units_as_the_files_do(project, cli):
+    # `plain` is the screen's form: a CSV is read back by programs, and
+    # writes the unit as the files spell it, as the command line does.
+    from conftest import DUCTILITIES
 
-    project.config(PLATOS + '\n[unit.g]\nplain = "gram"\n')
-    project.sample("A.md", name="A", properties={"malt": "{v: 12.5, u: 0.05, unit: g}"})
+    project.config(DUCTILITIES + '\n[unit.g]\nplain = "gram"\n')
+    project.sample("A.md", name="A", properties={"diameter": "{v: 12.5, u: 0.05, unit: g}"})
     samples = sk.SampleList(project.root)
-    written = samples.to_csv(columns=["name", "malt"])
-    assert "[gram]" in written.splitlines()[0]
-    assert written == cli(project.root, "-c", "name,malt", "--csv")
+    written = samples.to_csv(columns=["name", "diameter"])
+    assert "[g]" in written.splitlines()[0]
+    assert "gram" not in written
+    assert written == cli(project.root, "-c", "name,diameter", "--csv")
 
 
 CHAIN = """\
@@ -1921,16 +2238,16 @@ from samplekit import Property, Sample
 class Chain(Sample):
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.malt = Property()
-        self.double = Property(compute=lambda: self.malt.value + 1.0)
-        self.quadruple = Property(compute=lambda: self.double.value * 2)
-        self.set_dependencies("double", depends_on=["malt"])
+        self.diameter = Property()
+        self.double = Property(compute_value=lambda: self.diameter.value + 1.0)
+        self.quadruple = Property(compute_value=lambda: self.double.value * 2)
+        self.set_dependencies("double", depends_on=["diameter"])
         self.set_dependencies("quadruple", depends_on=["double"])
 """
 
 
 def test_a_failed_compute_keeps_the_values_it_did_not_reach(project):
-    sample_path = project.sample("s.md", properties={"malt": "{v: 1.5}"})
+    sample_path = project.sample("s.md", properties={"diameter": "{v: 1.5}"})
     namespace = {"__file__": str(project.root / "model.py")}
     exec(CHAIN, namespace)
     sample = namespace["Chain"](sample_path)
@@ -1939,7 +2256,7 @@ def test_a_failed_compute_keeps_the_values_it_did_not_reach(project):
     sample = namespace["Chain"](sample_path)
     # A date, which the formula cannot add to: text is refused where a number
     # is held.
-    sample.malt.value = datetime.date(2026, 9, 27)
+    sample.diameter.value = datetime.date(2026, 9, 27)
     with pytest.raises(TypeError):
         sample.compute()
     sample.save()
@@ -1959,7 +2276,7 @@ def test_not_current_answers_what_status_answers(project):
     every broken formula, because `outdated()` is documented as *every
     outdated value* and a failed value is not outdated.
     """
-    sample_path = project.sample("s.md", properties={"malt": "{v: 1.5}"})
+    sample_path = project.sample("s.md", properties={"diameter": "{v: 1.5}"})
     namespace = {"__file__": str(project.root / "model.py")}
     exec(CHAIN, namespace)
     sample = namespace["Chain"](sample_path)
@@ -1970,7 +2287,7 @@ def test_not_current_answers_what_status_answers(project):
     assert fresh.not_current() == {}
     assert fresh.double.failure is None
 
-    fresh.malt.value = datetime.date(2026, 9, 27)
+    fresh.diameter.value = datetime.date(2026, 9, 27)
     with pytest.raises(TypeError):
         fresh.compute()
     fresh.save()
@@ -1986,7 +2303,7 @@ def test_not_current_answers_what_status_answers(project):
 
 def test_export_to_a_dash_writes_to_standard_output(collection, capsys, monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    sk.SampleList(collection.root).export("malts", output="-")
+    sk.SampleList(collection.root).export("diameters", output="-")
     assert "name" in capsys.readouterr().out
     assert not (tmp_path / "-").exists()
 
@@ -2003,8 +2320,8 @@ def test_a_value_read_without_its_model_says_how_it_stands(project):
         "s.md",
         name="S",
         properties={
-            "malt": "{v: 1.0, fingerprint: aaaaaaaaaaaa}",
-            "double": "{v: 2.0, computed: {malt: aaaaaaaaaaaa}, fingerprint: bbbbbbbbbbbb}",
+            "diameter": "{v: 1.0, fingerprint: aaaaaaaaaaaa}",
+            "double": "{v: 2.0, computed: {diameter: aaaaaaaaaaaa}, fingerprint: bbbbbbbbbbbb}",
         },
     )
     assert sk.Sample(path, model=False).double.state == "edited"
@@ -2013,43 +2330,48 @@ def test_a_value_read_without_its_model_says_how_it_stands(project):
 def test_a_text_is_refused_on_a_property_with_a_unit(project):
     sample = quantity_sample(project)
     with pytest.raises(ValueError) as caught:
-        sample.malt.value = "abc"
+        sample.diameter.value = "abc"
     assert "is measured in g" in str(caught.value)
 
 
 def test_a_model_declares_the_statistics_of_its_readings(project):
-    sample_path = project.sample("s.md", properties={"malt": "{v: 5.0, readings: [1.0, 2.0, 9.0]}"})
+    sample_path = project.sample("s.md", properties={"diameter": "{v: 5.0, readings: [1.0, 2.0, 9.0]}"})
 
-    class Dosed(sk.Sample):
+    class Doped(sk.Sample):
         def __init__(self, path=None, name=None):
             super().__init__(path, name=name)
-            self.malt = sk.Property(unit="g", value=sk.stats.median, uncertainty=sk.stats.sample_stdev)
+            self.diameter = sk.Property(unit="g", value=sk.stats.median, uncertainty=sk.stats.sample_stdev)
 
     # The written value outranks the declared statistic; the uncertainty is the
     # declared one, since the file writes none.
-    dosed = Dosed(sample_path)
-    assert dosed.malt.value == 5.0
-    assert dosed.malt.uncertainty == pytest.approx(19**0.5)
-    assert sk.Sample(sample_path, model=False).malt.value == 5.0
-    # With no value written, the declared statistic stands for the readings.
-    unwritten = project.sample("u.md", properties={"malt": "{readings: [1.0, 2.0, 9.0]}"})
-    assert Dosed(unwritten).malt.value == 2.0
+    doped = Doped(sample_path)
+    assert doped.diameter.value == 5.0
+    assert doped.diameter.uncertainty == pytest.approx(19**0.5)
+    assert sk.Sample(sample_path, model=False).diameter.value == 5.0
+    # With no value written, the declared statistic is owed: reading computes
+    # nothing, as the command line says it, and compute() takes it.
+    unwritten = project.sample("u.md", properties={"diameter": "{readings: [1.0, 2.0, 9.0]}"})
+    owed = Doped(unwritten)
+    assert owed.diameter.value is None
+    assert owed.diameter.state == "never_computed"
+    owed.compute()
+    assert owed.diameter.value == 2.0
     # Without the model no statistic is declared, and no mean stands in.
-    assert sk.Sample(unwritten, model=False).malt.value is None
+    assert sk.Sample(unwritten, model=False).diameter.value is None
 
 
-class _Dosed(sk.Sample):
-    """`malt` by declared statistics, and `twice` reading it."""
+class _Doped(sk.Sample):
+    """`diameter` by declared statistics, and `twice` reading it."""
 
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.malt = sk.Property(unit="g", value=sk.stats.mean, uncertainty=sk.stats.standard_error)
-        self.twice = sk.Property(compute=lambda: 2 * self.malt.value, depends_on=["malt"])
+        self.diameter = sk.Property(unit="g", value=sk.stats.mean, uncertainty=sk.stats.standard_error)
+        self.twice = sk.Property(compute_value=lambda: 2 * self.diameter.value, depends_on=["diameter"])
 
 
-def _dosed(project):
-    path = project.sample("w.md", properties={"malt": "{readings: [1.0, 2.0, 3.0], unit: g}"})
-    sample = _Dosed(path)
+def _doped(project):
+    path = project.sample("w.md", properties={"diameter": "{readings: [1.0, 2.0, 3.0], unit: g}"})
+    sample = _Doped(path)
     sample.compute()
     sample.save()
     return path
@@ -2058,32 +2380,32 @@ def _dosed(project):
 def test_a_declared_statistic_reloaded_untouched_is_not_edited(project):
     # A file always writes a value beside its readings, so *written* is the
     # ordinary shape of a reloaded sample, not an override.
-    sample = _Dosed(_dosed(project))
+    sample = _Doped(_doped(project))
     assert sample.edited() == []
     assert sample.outdated() == []
-    assert sample.malt.state == "current"
+    assert sample.diameter.state == "current"
     assert sample._plan([], False, False) == []
 
 
 def test_a_corrected_reading_is_stale_and_an_ordinary_compute_runs_it(project):
-    # A dosing corrected by hand, from Python: the verdict the command line gives, and a
+    # A doping corrected by hand, from Python: the verdict the command line gives, and a
     # plain compute — no force — gives the value back to its statistic.
-    path = _dosed(project)
+    path = _doped(project)
     text = path.read_text().replace("[1.0, 2.0, 3.0]", "[1.0, 2.0, 6.0]")
     assert "6.0" in text
     path.write_text(text)
     with pytest.warns(UserWarning, match="outdated"):
-        sample = _Dosed(path)
-        assert sample.malt.state == "outdated"
-        assert sample.malt.value == 2.0
+        sample = _Doped(path)
+        assert sample.diameter.state == "outdated"
+        assert sample.diameter.value == 2.0
     assert sample.edited() == []
-    assert sample.outdated() == ["malt", "twice"]
+    assert sample.outdated() == ["diameter", "twice"]
     sample.compute()
-    assert sample.malt.value == 3.0
+    assert sample.diameter.value == 3.0
     assert sample.twice.value == 6.0
     assert sample.outdated() == []
     sample.save()
-    assert _Dosed(path).malt.state == "current"
+    assert _Doped(path).diameter.state == "current"
 
 
 class _Ratio(sk.Sample):
@@ -2093,7 +2415,7 @@ class _Ratio(sk.Sample):
         super().__init__(path, name=name)
         self.a = sk.Property()
         self.b = sk.Property()
-        self.ratio = sk.Property(compute=lambda: self.a.value / self.b.value, depends_on=["a", "b"])
+        self.ratio = sk.Property(compute_value=lambda: self.a.value / self.b.value, depends_on=["a", "b"])
 
 
 def test_a_failure_computed_earlier_reads_as_no_value_over_a_list(project):
@@ -2116,50 +2438,50 @@ def test_readings_assigned_in_python_are_stale_and_compute_takes_them(project):
     # The readings assigned from Python kept the old mean as the value, read
     # as entered, and compute() never took the new one: a file saved so said
     # current over a value its readings did not give. As `set --readings`.
-    path = _dosed(project)
-    sample = _Dosed(path)
-    sample.malt.readings = [4.0, 5.0, 6.0]
-    assert sample.malt.state == "outdated"
-    assert sample.outdated() == ["malt", "twice"]
+    path = _doped(project)
+    sample = _Doped(path)
+    sample.diameter.readings = [4.0, 5.0, 6.0]
+    assert sample.diameter.state == "outdated"
+    assert sample.outdated() == ["diameter", "twice"]
     sample.compute()
-    assert sample.malt.value == 5.0
+    assert sample.diameter.value == 5.0
     assert sample.twice.value == 10.0
     sample.save()
-    assert _Dosed(path).outdated() == []
+    assert _Doped(path).outdated() == []
 
 
 def test_readings_changed_in_place_are_the_propertys(project):
     # `readings` was a copy: append changed nothing, without a word.
-    path = _dosed(project)
-    sample = _Dosed(path)
-    readings = sample.malt.readings
+    path = _doped(project)
+    sample = _Doped(path)
+    readings = sample.diameter.readings
     readings.append(6.0)
-    assert list(sample.malt.readings) == [1.0, 2.0, 3.0, 6.0]
+    assert list(sample.diameter.readings) == [1.0, 2.0, 3.0, 6.0]
     sample.compute()
-    assert sample.malt.value == 3.0
+    assert sample.diameter.value == 3.0
     with pytest.raises(ValueError):
-        sample.malt.readings.clear()
-    assert list(sample.malt.readings) == [1.0, 2.0, 3.0, 6.0]
+        sample.diameter.readings.clear()
+    assert list(sample.diameter.readings) == [1.0, 2.0, 3.0, 6.0]
 
 
 def test_a_value_written_over_a_statistic_is_kept_until_forced(project):
     # The readings stand, the writing outranks them and survives a save, a
     # reload and an ordinary compute; force gives the statistic back.
-    path = _dosed(project)
-    sample = _Dosed(path)
-    sample.malt.value = 4.75
-    assert list(sample.malt.readings) == [1.0, 2.0, 3.0]
-    assert sample.edited() == ["malt"]
+    path = _doped(project)
+    sample = _Doped(path)
+    sample.diameter.value = 4.75
+    assert list(sample.diameter.readings) == [1.0, 2.0, 3.0]
+    assert sample.edited() == ["diameter"]
     sample.compute()
     sample.save()
-    reloaded = _Dosed(path)
-    assert reloaded.malt.value == 4.75
-    assert reloaded.malt.state == "edited"
-    assert reloaded.edited() == ["malt"]
+    reloaded = _Doped(path)
+    assert reloaded.diameter.value == 4.75
+    assert reloaded.diameter.state == "edited"
+    assert reloaded.edited() == ["diameter"]
     reloaded.compute()
-    assert reloaded.malt.value == 4.75
+    assert reloaded.diameter.value == 4.75
     reloaded.compute(force=True)
-    assert reloaded.malt.value == 2.0
+    assert reloaded.diameter.value == 2.0
     assert reloaded.edited() == []
 
 
@@ -2194,21 +2516,21 @@ def test_load_reads_a_directory_or_a_file(collection):
 
 
 def test_a_table_says_how_a_column_is_read():
-    table = sk.Table({"day": sk.Column(), "carbonation": sk.Column()}, "day")
+    table = sk.Table({"day": sk.Property(), "nitridation": sk.Property()}, index="day")
     with pytest.raises(TypeError, match="values"):
-        table["carbonation"]
+        table["nitridation"]
     with pytest.raises(TypeError, match="tuple"):
-        table.at([1, 2], "carbonation")
+        table.at([1, 2], "nitridation")
 
 
 def test_a_sample_is_addressed_as_the_command_line_addresses_it(project):
-    path = project.sample("s.md", name="S", properties={"malt": "{v: 1.5, u: 0.1}"})
+    path = project.sample("s.md", name="S", properties={"diameter": "{v: 1.5, u: 0.1}"})
     sample = sk.Sample(path)
     assert sample["name"] == "S"
-    assert sample["malt.u"] == 0.1
-    assert isinstance(sample["malt"], sk.Property)
+    assert sample["diameter.u"] == 0.1
+    assert isinstance(sample["diameter"], sk.Property)
     with pytest.raises(KeyError):
-        sample["malt.nothing"]
+        sample["diameter.nothing"]
 
 
 def test_a_datetime_keeps_its_microseconds():
@@ -2219,21 +2541,23 @@ def test_a_datetime_keeps_its_microseconds():
 
 
 def test_a_table_formula_reads_a_table_it_declares(tmp_path):
-    class Kettle(sk.Sample):
+    class Crucible(sk.Sample):
         def __init__(self, path=None, name=None):
             super().__init__(path, name=name)
-            self.raw = sk.Table({"T": sk.Column(), "f": sk.Column()}, "T")
-            self.refs = sk.Table({"T": sk.Column()}, "T")
+            self.raw = sk.Table({"T": sk.Property(), "f": sk.Property()}, index="T")
+            self.refs = sk.Table({"T": sk.Property()}, index="T")
             self.shifted = sk.Table(
-                {"T": sk.Column(), "g": sk.Column(), "h": sk.Column(), "k": sk.Column()},
-                "T",
-                compute_columns=[("g", ["shifted.T", "raw.f"], self._doubled)],
-                compute_rows=[
-                    ("h", ["row.T", "raw.f"], self._peak),
+                {
+                    "T": sk.Property(),
+                    "g": sk.Property(compute_column=self._doubled, depends_on=["shifted.T", "raw.f"]),
+                    "h": sk.Property(compute=self._peak, depends_on=["row.T", "raw.f"]),
                     # `refs.T` names a column `shifted` declares too: both
                     # qualifiers are its own until the table is assigned.
-                    ("k", ["row.T", "refs.T"], lambda row: len(self.refs.values("T"))),
-                ],
+                    "k": sk.Property(
+                        compute=lambda row: len(self.refs.values("T")), depends_on=["row.T", "refs.T"]
+                    ),
+                },
+                index="T",
             )
 
         def _doubled(self, columns):
@@ -2243,7 +2567,7 @@ def test_a_table_formula_reads_a_table_it_declares(tmp_path):
         def _peak(self, row):
             return max(self.raw.values("f")) + row.T.value
 
-    sample = Kettle(name="c")
+    sample = Crucible(name="c")
     sample.raw.add(T=20, f=1.0)
     sample.raw.add(T=30, f=2.0)
     sample.refs.add(T=0)
@@ -2260,27 +2584,29 @@ def test_a_table_formula_reads_a_table_it_declares(tmp_path):
     assert sample.shifted.values("h") == [25.0, 35.0]
     path = tmp_path / "c.md"
     sample.save(path)
-    assert Kettle(path).shifted.at(20, "g").state == "current"
+    assert Crucible(path).shifted.at(20, "g").state == "current"
 
 
 def test_a_sample_saves_again_when_a_table_precedes_the_one_it_reads(tmp_path):
     import re
 
-    class Kettle(sk.Sample):
+    class Crucible(sk.Sample):
         def __init__(self, path=None, name=None):
             super().__init__(path, name=name)
             self.shifted = sk.Table(
-                {"T": sk.Column(), "g": sk.Column()},
-                "T",
-                compute_columns=[("g", ["shifted.T", "raw.f"], self._doubled)],
+                {
+                    "T": sk.Property(),
+                    "g": sk.Property(compute_column=self._doubled, depends_on=["shifted.T", "raw.f"]),
+                },
+                index="T",
             )
-            self.raw = sk.Table({"T": sk.Column(), "f": sk.Column()}, "T")
+            self.raw = sk.Table({"T": sk.Property(), "f": sk.Property()}, index="T")
 
         def _doubled(self, columns):
             f = dict(zip(self.raw.values("T"), self.raw.values("f")))
             return [2 * f[T] for T in columns["T"].values]
 
-    sample = Kettle(name="c")
+    sample = Crucible(name="c")
     sample.raw.add(T=20, f=1.0)
     sample.raw.add(T=30, f=2.0)
     sample.shifted.add(T=20)
@@ -2293,8 +2619,8 @@ def test_a_sample_saves_again_when_a_table_precedes_the_one_it_reads(tmp_path):
     assert text.index("shifted:") < text.index("raw:")
     path.write_text(re.sub(r", computed: \{[^}]*\}, fingerprint: [0-9a-f]+", "", text))
     assert "computed:" not in path.read_text()
-    Kettle(path).save()
-    assert Kettle(path).shifted.values("g") == [2.0, 4.0]
+    Crucible(path).save()
+    assert Crucible(path).shifted.values("g") == [2.0, 4.0]
 
 
 def test_a_cell_edited_by_hand_says_so(tmp_path):
@@ -2302,9 +2628,12 @@ def test_a_cell_edited_by_hand_says_so(tmp_path):
         def __init__(self, path=None, name=None):
             super().__init__(path, name=name)
             self.t = sk.Table(
-                {"T": sk.Column(), "x": sk.Column(), "y": sk.Column()},
-                "T",
-                compute_rows=[("y", ["row.x"], self._y)],
+                {
+                    "T": sk.Property(),
+                    "x": sk.Property(),
+                    "y": sk.Property(compute=self._y, depends_on=["row.x"]),
+                },
+                index="T",
             )
 
         def _y(self, row):
@@ -2333,15 +2662,15 @@ class Declared(sk.Sample):
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
         self.a = sk.Property(unit="g")
-        self.q = sk.Property(compute=self._q, depends_on=["p"])
-        self.p = sk.Property(compute=self._p, depends_on=["a"])
+        self.q = sk.Property(compute_value=self._q, depends_on=["p"])
+        self.p = sk.Property(compute_value=self._p, depends_on=["a"])
 
     def _p(self):
-        RUNS["plato"] += 1
+        RUNS["ductility"] += 1
         return self.a.value * 2
 
     def _q(self):
-        RUNS["haze"] += 1
+        RUNS["roughness"] += 1
         return self.p.value + 1
 
 
@@ -2367,21 +2696,12 @@ def test_declarations_are_settled_when_a_sample_is_made(tmp_path):
         def __init__(self, path=None, name=None):
             super().__init__(path, name=name)
             self.a = sk.Property(unit="g")
-            self.r = sk.Property(compute=lambda: self.a.value)
+            self.r = sk.Property(compute_value=lambda: self.a.value)
 
     with pytest.raises(ValueError, match="does not say what it reads: r"):
         Undeclared(name="u")
     with pytest.raises(ValueError, match="does not say what it reads: r"):
         Undeclared.new(tmp_path / "u.md")
-
-    # An input only a file could supply is named as such.
-    class FileFed(sk.Sample):
-        def __init__(self, path=None, name=None):
-            super().__init__(path, name=name)
-            self.r = sk.Property(compute=lambda: 1.0, depends_on=["malt"])
-
-    with pytest.raises(KeyError, match="has no file to supply it"):
-        FileFed(name="f")
 
 
 def test_compute_runs_values_in_dependency_order(tmp_path):
@@ -2391,10 +2711,10 @@ def test_compute_runs_values_in_dependency_order(tmp_path):
     sample = Declared(name="d")
     sample.a.value = 1.0
     sample.compute()
-    assert (RUNS["plato"], RUNS["haze"]) == (1, 1)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (1, 1)
     sample.a.value = 2.0
     sample.compute()
-    assert (RUNS["plato"], RUNS["haze"]) == (2, 2)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (2, 2)
     assert sample.q.value == 5.0
 
 
@@ -2410,13 +2730,13 @@ def test_a_loaded_value_is_current_by_either_declaration_route(tmp_path):
     loaded = Declared(tmp_path / "d.md")
     assert loaded.p.state == "current"
     loaded.q.compute(rerun=True)
-    assert (RUNS["plato"], RUNS["haze"]) == (0, 1)
+    assert (RUNS["ductility"], RUNS["roughness"]) == (0, 1)
 
-    retained = Carbonation(name="r")
+    retained = Nitridation(name="r")
     retained.compute()
     retained.save(tmp_path / "r.md")
     reset_runs()
-    again = Carbonation(tmp_path / "r.md")
+    again = Nitridation(tmp_path / "r.md")
     assert again.flatness.state == "current"
     again.compute()
     assert RUNS["flatness"] == 0
@@ -2426,17 +2746,17 @@ def test_a_row_added_with_a_derived_cell_holds_it():
     # The rule covers a cell supplied with its row as it covers one updated.
     sample = Shapes()
     sample.compute()
-    sample.mashing.add(T=30, R=8.0, G=99.0)
-    assert sample.mashing.at(30, "G").state == "edited"
+    sample.preheating.add(T=30, R=8.0, G=99.0)
+    assert sample.preheating.at(30, "G").state == "edited"
     sample.compute()
-    assert sample.mashing.at(30, "G").value == 99.0
-    assert sample.edited() == ["mashing.G"]
+    assert sample.preheating.at(30, "G").value == 99.0
+    assert sample.edited() == ["preheating.G"]
     sample.compute(force=True)
-    assert sample.mashing.at(30, "G").value == 0.125
-    sample.mashing.add(T=40, R=16.0)
-    assert sample.mashing.at(40, "G").state == "never computed"
+    assert sample.preheating.at(30, "G").value == 0.125
+    sample.preheating.add(T=40, R=16.0)
+    assert sample.preheating.at(40, "G").state == "never_computed"
     sample.compute()
-    assert sample.mashing.at(40, "G").value == 0.0625
+    assert sample.preheating.at(40, "G").value == 0.0625
 
 
 def test_replacing_a_property_replaces_its_declaration():
@@ -2445,7 +2765,7 @@ def test_replacing_a_property_replaces_its_declaration():
     sample = Declared(name="d")
     sample.a.value = 1.0
     sample.b = sk.Property(2.0)
-    sample.p = sk.Property(compute=lambda: sample.b.value * 3, depends_on=["b"])
+    sample.p = sk.Property(compute_value=lambda: sample.b.value * 3, depends_on=["b"])
     assert sample.dependencies("p") == ["b"]
     assert sample.dependents("a") == []
     assert sample.dependencies("q") == ["p"]
@@ -2454,7 +2774,7 @@ def test_replacing_a_property_replaces_its_declaration():
     assert sample.p.state == "current"
     sample.b.value = 4.0
     assert sample.p.state == "outdated"
-    sample.p = sk.Property(compute=lambda: 1.0)
+    sample.p = sk.Property(compute_value=lambda: 1.0)
     with pytest.raises(ValueError, match="does not say what it reads: p"):
         sample.compute()
 
@@ -2462,20 +2782,20 @@ def test_replacing_a_property_replaces_its_declaration():
 def test_a_list_reads_stale_values_in_silence(tmp_path):
     # A read never raises, and a list filters, tabulates and summarises what it
     # holds without a warning per row; the sample reports on request.
-    sample = Platos(name="s")
-    sample.malt.value = 12.0
+    sample = Ductilities(name="s")
+    sample.diameter.value = 12.0
     sample.volume.value = 4.0
     sample.compute()
-    sample.malt.value = 16.0
+    sample.diameter.value = 16.0
     samples = sk.SampleList([sample])
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        assert [s.name for s in samples.filter("plato > 1")] == ["s"]
-        assert samples.to_dict(columns=["plato"])["plato_value"] == [3.0]
-        assert samples.stats("plato").mean == 3.0
-    assert sample.outdated() == ["plato", "haze"]
+        assert [s.name for s in samples.filter("ductility > 1")] == ["s"]
+        assert samples.to_dict(columns=["ductility"])["ductility_value"] == [3.0]
+        assert samples.stats("ductility").mean == 3.0
+    assert sample.outdated() == ["ductility", "roughness"]
     with pytest.warns(UserWarning, match="outdated"):
-        assert sample.plato.value == 3.0
+        assert sample.ductility.value == 3.0
 
 
 def test_an_uncertainty_reads_its_own_value(tmp_path):
@@ -2512,6 +2832,161 @@ def test_an_uncertainty_reads_its_own_value(tmp_path):
     reloaded.save()
     assert Gauge(written).reading.state == "current"
 
+    # Typed by hand, the uncertainty is an override, saved as one, and stays
+    # one when the value beside it is corrected.
+    typed = Gauge(written)
+    typed.reading.uncertainty = 3.0
+    typed.save()
+    typed = Gauge(written)
+    assert typed.reading.state == "edited"
+    typed.reading.value = 260.0
+    typed.compute()
+    assert typed.reading.uncertainty == 3.0
+    assert typed.reading.state == "edited"
+    assert typed.outdated() == []
+
+
+def test_a_cell_uncertainty_reads_the_value_beside_it(tmp_path):
+    # The same instrument, its readings a column: each cell's value entered,
+    # its uncertainty ±0.5 % of it.
+    class Pull(sk.Sample):
+        def __init__(self, path=None, name=None):
+            super().__init__(path, name=name)
+            self.curve = sk.Table(
+                {
+                    "strain": sk.Property(unit="%"),
+                    "force": sk.Property(
+                        unit="kN", compute_uncertainty=self._rated, depends_on=["row.force.v"]
+                    ),
+                },
+                index="strain",
+            )
+
+        def _rated(self, row):
+            return 0.005 * row.force.value
+
+    sample = Pull(name="p")
+    sample.curve.add(strain=0, force=10.0)
+    sample.curve.add(strain=1, force=20.0)
+    # Entered by hand, a value beside a computed uncertainty overrides nothing.
+    assert sample.curve.at(0, "force").state == "never_computed"
+    sample.compute()
+    assert sample.curve.uncertainties("force") == [0.05, 0.1]
+    written = tmp_path / "p.md"
+    sample.save(written)
+    assert "computed: {u: {row.force.v: " in written.read_text()
+
+    # Reloaded it is current; a corrected value stales its uncertainty, which
+    # an ordinary compute repairs.
+    reloaded = Pull(written)
+    assert reloaded.outdated() == []
+    reloaded.curve.update(1, force=21.0)
+    assert reloaded.outdated() == ["curve.force"]
+    reloaded.compute()
+    assert reloaded.curve.at(1, "force").uncertainty == pytest.approx(0.105)
+    assert reloaded.curve.at(1, "force").value == 21.0
+    reloaded.save()
+    assert Pull(written).outdated() == []
+    # A value assigned to the cell itself is no override either.
+    again = Pull(written)
+    again.curve.at(0, "force").value = 11.0
+    assert again.curve.at(0, "force").state != "edited"
+    again.compute()
+    assert again.curve.at(0, "force").uncertainty == pytest.approx(0.055)
+    # An uncertainty typed by hand is an override, and stays one when the
+    # value beside it is corrected, until compute(force=True).
+    again.curve.at(0, "force").uncertainty = 0.2
+    again.curve.update(0, force=13.0)
+    again.compute()
+    assert again.curve.at(0, "force").uncertainty == 0.2
+    assert again.curve.at(0, "force").state == "edited"
+    # Saved and read again, it is still an override, its record kept, and no
+    # outdated value.
+    again.save()
+    kept = Pull(written)
+    assert kept.curve.at(0, "force").state == "edited"
+    assert kept.outdated() == []
+    assert "fingerprint: {edited: " in written.read_text()
+    kept.compute(force=True)
+    assert kept.curve.at(0, "force").uncertainty == pytest.approx(0.065)
+
+    # Its own cell, read whole, is its own result: refused, naming the channel.
+    with pytest.raises(ValueError, match=r"row\.force\.v"):
+        sk.Table(
+            {"strain": sk.Property(), "force": sk.Property(
+                compute_uncertainty=lambda row: 0.1, depends_on=["row.force"])},
+            index="strain",
+        )
+
+
+def test_a_cell_reading_a_stale_cell_of_its_row_is_outdated(tmp_path):
+    # A true stress read from the stress beside it: the area corrected stales
+    # the stress, and what rests on it with it, as a property reading another.
+    class Pull(sk.Sample):
+        def __init__(self, path=None, name=None):
+            super().__init__(path, name=name)
+            self.area = sk.Property(2.0)
+            self.curve = sk.Table(
+                {
+                    "strain": sk.Property(),
+                    "force": sk.Property(),
+                    "stress": sk.Property(
+                        compute=lambda row: row.force.value / self.area.value,
+                        depends_on=["row.force", "area"],
+                    ),
+                    "true": sk.Property(
+                        compute=lambda row: 2 * row.stress.value, depends_on=["row.stress"]
+                    ),
+                },
+                index="strain",
+            )
+
+    sample = Pull(name="p")
+    sample.curve.add(strain=0, force=10.0)
+    sample.compute()
+    written = tmp_path / "p.md"
+    sample.save(written)
+    reloaded = Pull(written)
+    reloaded.area.value = 4.0
+    assert reloaded.outdated() == ["curve.stress", "curve.true"]
+    reloaded.save()
+    assert Pull(written).curve.at(0, "true").state == "outdated"
+
+
+def test_a_cell_typed_in_python_is_saved_as_an_override(tmp_path):
+    # A computed cell written from a script was saved bare: the command line
+    # read it *record missing*, and no ✎ said a hand had typed it.
+    class Pull(sk.Sample):
+        def __init__(self, path=None, name=None):
+            super().__init__(path, name=name)
+            self.curve = sk.Table(
+                {
+                    "strain": sk.Property(),
+                    "force": sk.Property(),
+                    "stress": sk.Property(
+                        compute=lambda row: 2 * row.force.value, depends_on=["row.force"]
+                    ),
+                },
+                index="strain",
+            )
+
+    sample = Pull(name="p")
+    sample.curve.add(strain=0, force=1.0)
+    sample.curve.add(strain=1, force=2.0)
+    sample.compute()
+    written = tmp_path / "p.md"
+    sample.save(written)
+    typed = Pull(written)
+    typed.curve.update(0, stress=9.0)
+    typed.curve.at(1, "stress").value = 8.0
+    typed.save()
+    assert written.read_text().count("fingerprint: {edited: ") == 2
+    reloaded = Pull(written)
+    assert [cell.state for cell in reloaded.curve.stress] == ["edited", "edited"]
+    assert reloaded.outdated() == []
+    reloaded.compute(force=True)
+    assert reloaded.curve.values("stress") == [2.0, 4.0]
+
 
 def test_a_declaration_says_what_each_formula_reads(tmp_path):
     # One depends_on, a mapping keyed by channel where a property has two
@@ -2522,7 +2997,7 @@ def test_a_declaration_says_what_each_formula_reads(tmp_path):
             self.src = sk.Property(unit="mL")
             self.p = sk.Property(
                 unit="mL",
-                compute=lambda: self.src.value * 2,
+                compute_value=lambda: self.src.value * 2,
                 compute_uncertainty=self._pct,
                 depends_on={"v": ["src"], "u": ["src", "p.v"]},
             )
@@ -2552,7 +3027,7 @@ def test_a_declaration_says_what_each_formula_reads(tmp_path):
         class M(sk.Sample):
             def __init__(self, path=None, name=None):
                 self.p = sk.Property(
-                    compute=(lambda: 1.0) if computes_value else None,
+                    compute_value=(lambda: 1.0) if computes_value else None,
                     compute_uncertainty=lambda: 0.1,
                     depends_on=depends_on,
                 )
@@ -2591,11 +3066,11 @@ def test_a_value_read_per_channel_stays_current_once_saved(tmp_path):
         def __init__(self, path=None, name=None):
             self.src = sk.Property()
             self.p = sk.Property(
-                compute=lambda: self.src.value * 2,
+                compute_value=lambda: self.src.value * 2,
                 compute_uncertainty=lambda: abs(self.p.value) * 0.01,
                 depends_on={"v": ["src"], "u": ["src", "p.v"]},
             )
-            self.q = sk.Property(compute=lambda: self.p.value + 1, depends_on=["p"])
+            self.q = sk.Property(compute_value=lambda: self.p.value + 1, depends_on=["p"])
             super().__init__(path, name=name)
 
     sample = Cell(name="c")
@@ -2636,8 +3111,8 @@ def test_a_record_written_before_channels_is_not_frozen_by_a_save(tmp_path):
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property()
-            self.p = sk.Property(compute=lambda: self.a.value * 2, depends_on=["a"])
-            self.q = sk.Property(compute=lambda: 1.0, depends_on=[])
+            self.p = sk.Property(compute_value=lambda: self.a.value * 2, depends_on=["a"])
+            self.q = sk.Property(compute_value=lambda: 1.0, depends_on=[])
             super().__init__(path, name=name)
 
     sample = Model(written)
@@ -2678,8 +3153,8 @@ def test_a_value_changed_by_hand_is_not_blessed_when_its_channel_is_named(tmp_pa
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property()
-            self.p = sk.Property(compute=lambda: self.a.value * 2, depends_on=["a"])
-            self.q = sk.Property(compute=lambda: 1.0, depends_on=[])
+            self.p = sk.Property(compute_value=lambda: self.a.value * 2, depends_on=["a"])
+            self.q = sk.Property(compute_value=lambda: 1.0, depends_on=[])
             super().__init__(path, name=name)
 
     sample = Model(written)
@@ -2701,7 +3176,7 @@ def test_a_refused_declaration_changes_nothing():
             super().__init__(path, name=name)
 
     sample = Model(name="t")
-    wanted = sk.Property(compute=lambda: sample.src.value * 2, depends_on=["srcc"])
+    wanted = sk.Property(compute_value=lambda: sample.src.value * 2, depends_on=["srcc"])
     with pytest.raises(KeyError, match="srcc"):
         sample.p = wanted
     assert "p" not in sample
@@ -2709,9 +3184,9 @@ def test_a_refused_declaration_changes_nothing():
     assert wanted.is_computed
 
     # The same over an existing property: it is left as it was.
-    sample.p = sk.Property(compute=lambda: sample.src.value * 2, depends_on=["src"])
+    sample.p = sk.Property(compute_value=lambda: sample.src.value * 2, depends_on=["src"])
     with pytest.raises(ValueError, match="names one channel of another value"):
-        sample.p = sk.Property(compute=lambda: 1.0, depends_on={"v": ["src.v"]})
+        sample.p = sk.Property(compute_value=lambda: 1.0, depends_on={"v": ["src.v"]})
     assert sample.dependencies("p") == ["src"]
     sample.compute()
     assert sample.p.value == 6.0
@@ -2725,7 +3200,7 @@ def test_the_later_declaration_wins():
             self.a = sk.Property(1.0)
             self.b = sk.Property(2.0)
             self.c = sk.Property(
-                compute=lambda: self.a.value + self.b.value, depends_on=["a"]
+                compute_value=lambda: self.a.value + self.b.value, depends_on=["a"]
             )
             super().__init__(path, name=name)
             self.set_dependencies("c", depends_on=["a", "b"])
@@ -2750,15 +3225,15 @@ def test_a_channel_is_declared_only_where_a_formula_reads():
         return Model(name="m")
 
     with pytest.raises(ValueError, match="uncertainty of 'p' has no formula"):
-        declare({"v": ["src"], "u": ["p.v"]}, compute=lambda: 1.0)
+        declare({"v": ["src"], "u": ["p.v"]}, compute_value=lambda: 1.0)
     with pytest.raises(ValueError, match="value of 'p' has no formula"):
         declare({"v": ["src"], "u": ["p.v"]}, compute_uncertainty=lambda: 0.1)
     # One list naming the value a value-only formula computes is a self-read,
     # and says so — not the advice to declare per channel.
     with pytest.raises(ValueError, match="cannot read what it produces"):
-        declare(["p.v"], compute=lambda: 1.0)
+        declare(["p.v"], compute_value=lambda: 1.0)
     with pytest.raises(ValueError, match="in one formula"):
-        declare(["p.v"], compute_quantity=lambda: (1.0, 0.1))
+        declare(["p.v"], compute=lambda: (1.0, 0.1))
     # Any mapping reads as one, not only a dict.
     from types import MappingProxyType
 
@@ -2771,7 +3246,7 @@ def test_a_channel_is_declared_only_where_a_formula_reads():
     assert sample.p.uncertainty == 0.1
     # A dotted name that is neither a value nor a table says both.
     with pytest.raises(KeyError, match="neither a value nor a table"):
-        declare(["nope.v"], compute=lambda: 1.0)
+        declare(["nope.v"], compute_value=lambda: 1.0)
 
 
 def test_reading_never_computes_on_any_thread():
@@ -2785,7 +3260,7 @@ def test_reading_never_computes_on_any_thread():
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property(2.0)
-            self.z = sk.Property(compute=self._z, depends_on=["a"])
+            self.z = sk.Property(compute_value=self._z, depends_on=["a"])
             super().__init__(path, name=name)
 
         def _z(self):
@@ -2804,7 +3279,7 @@ def test_reading_never_computes_on_any_thread():
     worker = threading.Thread(target=read)
     worker.start()
     worker.join()
-    assert seen == {"value": None, "state": "never computed"}
+    assert seen == {"value": None, "state": "never_computed"}
     assert runs == []
 
 
@@ -2815,7 +3290,7 @@ def test_a_formula_cannot_change_the_value_it_is_producing():
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property(2.0)
-            self.z = sk.Property(compute=self._z, depends_on=["a"])
+            self.z = sk.Property(compute_value=self._z, depends_on=["a"])
             super().__init__(path, name=name)
 
         def _z(self):
@@ -2823,7 +3298,7 @@ def test_a_formula_cannot_change_the_value_it_is_producing():
             return 1.0
 
     sample = Model(name="s")
-    with pytest.raises(RuntimeError, match="cannot change the value it is producing"):
+    with pytest.raises(ValueError, match="a formula writes only the value it returns"):
         sample.compute()
     assert sample.z.state == "failed"
 
@@ -2843,9 +3318,12 @@ def test_a_row_formula_printing_its_table_raises_an_ordinary_error():
         return {"y": row["x"] * 2}
 
     table = sk.Table(
-        {"i": sk.Column(), "x": sk.Column(), "y": sk.Column()},
-        "i",
-        compute_rows=[(["y"], ["row.x"], y)],
+        {
+            "i": sk.Property(),
+            "x": sk.Property(),
+            "y": sk.Property(compute=y, depends_on=["row.x"]),
+        },
+        index="i",
     )
     table.add(i=1, x=3.0)
     with pytest.raises(Exception) as raised:
@@ -2873,9 +3351,12 @@ def test_not_current_covers_tables_and_a_cell_says_it_failed():
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
             self.t = sk.Table(
-                {"i": sk.Column(), "x": sk.Column(), "g": sk.Column()},
-                "i",
-                compute_rows=[(["g"], ["row.x"], lambda row: {"g": 1 / row["x"]})],
+                {
+                    "i": sk.Property(),
+                    "x": sk.Property(),
+                    "g": sk.Property(compute=lambda row: {"g": 1 / row["x"]}, depends_on=["row.x"]),
+                },
+                index="i",
             )
             super().__init__(path, name=name)
 
@@ -2895,7 +3376,7 @@ def test_a_failed_computation_says_which_value_and_which_sample():
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property(0.0)
-            self.inverse = sk.Property(compute=lambda: 1 / self.a.value, depends_on=["a"])
+            self.inverse = sk.Property(compute_value=lambda: 1 / self.a.value, depends_on=["a"])
             super().__init__(path, name=name)
 
     sample = Model(name="S2")
@@ -2918,8 +3399,8 @@ def test_a_formula_returning_an_array_is_told_what_it_returned():
 
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
-            self.one = sk.Property(compute=lambda: np.array([3.5]), depends_on=[])
-            self.many = sk.Property(compute=lambda: np.array([1.0, 2.0]), depends_on=[])
+            self.one = sk.Property(compute_value=lambda: np.array([3.5]), depends_on=[])
+            self.many = sk.Property(compute_value=lambda: np.array([1.0, 2.0]), depends_on=[])
             super().__init__(path, name=name)
 
     sample = Model(name="s")
@@ -2938,7 +3419,7 @@ def test_a_model_declares_no_precision():
     # TOML reads `table.column` as a table inside another.
     with pytest.raises(TypeError,
                        match=r'\[property\."<table>\.<column>"\] precision.*\.samplekitrc'):
-        sk.Column(unit="degC", precision=".1f")
+        sk.Property(unit="degC", precision=".1f")
     # None says nothing, and is what a keyword left out passes.
     assert sk.Property(value=1.0, precision=None).value == 1.0
 
@@ -2951,11 +3432,10 @@ def test_a_model_declares_no_symbol():
         sk.Property(value=1.0, symbol="m")
     with pytest.raises(TypeError,
                        match=r'\[property\."<table>\.<column>"\] symbol = "T" in \.samplekitrc'):
-        sk.Column(unit="degC", symbol="T")
+        sk.Property(unit="degC", symbol="T")
     # None says nothing, and is what a keyword left out passes.
     assert sk.Property(value=1.0, symbol=None).value == 1.0
-    assert sk.Column(unit="degC", symbol=None).unit == "degC"
-    assert not hasattr(sk.Column(unit="degC"), "symbol")
+    assert sk.Property(unit="degC", symbol=None).unit == "degC"
 
 
 def test_a_list_carries_on_past_a_failure_and_raises_them_together(tmp_path):
@@ -2964,7 +3444,7 @@ def test_a_list_carries_on_past_a_failure_and_raises_them_together(tmp_path):
     class Model(sk.Sample):
         def __init__(self, path=None, name=None, a=1.0):
             self.a = sk.Property(a)
-            self.inverse = sk.Property(compute=lambda: 1 / self.a.value, depends_on=["a"])
+            self.inverse = sk.Property(compute_value=lambda: 1 / self.a.value, depends_on=["a"])
             super().__init__(path, name=name)
 
     samples = sk.SampleList([Model(name="Z1", a=0.0), Model(name="OK", a=4.0),
@@ -2994,7 +3474,7 @@ def test_an_interruption_is_not_a_failure(tmp_path):
     class Model(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property(1.0)
-            self.slow = sk.Property(compute=self._slow, depends_on=["a"])
+            self.slow = sk.Property(compute_value=self._slow, depends_on=["a"])
             super().__init__(path, name=name)
 
         def _slow(self):
@@ -3018,23 +3498,23 @@ def test_an_interruption_is_not_a_failure(tmp_path):
 
 FIGURE_RC = (
     "schema_version = 1\n"
-    "[figure.malt_volume]\nx = \"volume\"\ny = \"malt\"\ngroup = \"beer\"\n"
-    "[figure.ebc]\nkind = \"line\"\nx = \"measurements.f\"\ny = \"measurements.ebc\"\n"
+    "[figure.diameter_volume]\nx = \"volume\"\ny = \"diameter\"\ngroup = \"alloy\"\n"
+    "[figure.hv]\nkind = \"line\"\nx = \"measurements.f\"\ny = \"measurements.hv\"\n"
 )
 
 
 def figure_samples(tmp_path, rc=FIGURE_RC):
     (tmp_path / ".samplekitrc").write_text(rc)
     paths = []
-    for name, malt, beer in [("C1", 12.0, "schwarz"), ("C2", 10.0, "bock"),
-                                 ("C3", 11.0, "schwarz")]:
+    for name, diameter, alloy in [("C1", 12.0, "cobalt"), ("C2", 10.0, "chrome"),
+                                 ("C3", 11.0, "cobalt")]:
         path = tmp_path / f"{name}.md"
         path.write_text(
-            f"---\nschema_version: 1\nname: {name}\nbeer: {beer}\nproperties:\n"
-            f"  malt: {{v: {malt}, u: 0.1, unit: g}}\n  volume: {{v: {malt / 3}, unit: L}}\n"
-            "tables:\n  measurements:\n    index: f\n    columns:\n      f: {unit: brix}\n"
-            "      ebc: {}\n    rows:\n      - {f: 8.0, ebc: {v: 5.1, u: 0.05}}\n"
-            "      - {f: 9.0, ebc: {v: 5.3, u: 0.05}}\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nalloy: {alloy}\nproperties:\n"
+            f"  diameter: {{v: {diameter}, u: 0.1, unit: g}}\n  volume: {{v: {diameter / 3}, unit: L}}\n"
+            "tables:\n  measurements:\n    index: f\n    columns:\n      f: {unit: porosity}\n"
+            "      hv: {}\n    rows:\n      - {f: 8.0, hv: {v: 5.1, u: 0.05}}\n"
+            "      - {f: 9.0, hv: {v: 5.3, u: 0.05}}\n---\n"
         )
         paths.append(path)
     return paths
@@ -3043,7 +3523,7 @@ def figure_samples(tmp_path, rc=FIGURE_RC):
 class Plotted(sk.Sample):
     @sk.figure
     def mass_bar(self, ax):
-        ax.bar(["malt"], [self.malt.value])
+        ax.bar(["diameter"], [self.diameter.value])
 
     @sk.figure(subplots=(1, 2))
     def pair(self, axes):
@@ -3052,18 +3532,18 @@ class Plotted(sk.Sample):
 
     @sk.figure
     @classmethod
-    def malts(cls, samples, ax):
+    def diameters(cls, samples, ax):
         cls.received = [sample.name for sample in samples]
-        ax.bar([sample.name for sample in samples], [sample.malt.value for sample in samples])
+        ax.bar([sample.name for sample in samples], [sample.diameter.value for sample in samples])
 
 
 def test_a_figure_method_is_marked_as_one():
     from samplekit._figures import figures_of
 
     found = figures_of(Plotted)
-    assert set(found) == {"mass_bar", "pair", "malts"}
+    assert set(found) == {"mass_bar", "pair", "diameters"}
     assert not found["mass_bar"].collection
-    assert found["malts"].collection
+    assert found["diameters"].collection
     assert found["pair"].subplots == (1, 2)
 
 
@@ -3079,7 +3559,7 @@ def test_a_model_figure_draws_into_the_axes_it_is_given(tmp_path):
 
 def test_a_collection_figure_receives_the_list(tmp_path):
     samples = sk.SampleList([Plotted(path) for path in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, "malts", output=tmp_path / "all.png")
+    (drawn,) = sk.plot(samples, "diameters", output=tmp_path / "all.png")
     assert Plotted.received == ["C1", "C2", "C3"]
     assert len(drawn.axes[0].patches) == 3
 
@@ -3087,7 +3567,7 @@ def test_a_collection_figure_receives_the_list(tmp_path):
 def test_plot_writes_the_format_its_extension_names(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
     for name, magic in [("f.pdf", b"%PDF"), ("f.svg", b"<?xml"), ("f.png", b"\x89PNG")]:
-        sk.plot(samples, "malt_volume", output=tmp_path / name)
+        sk.plot(samples, "diameter_volume", output=tmp_path / name)
         assert (tmp_path / name).read_bytes().startswith(magic), name
 
 
@@ -3096,46 +3576,161 @@ def test_plot_refuses_to_overwrite_unless_asked(tmp_path):
     target = tmp_path / "f.png"
     target.write_text("kept")
     with pytest.raises(FileExistsError):
-        sk.plot(samples, "malt_volume", output=target)
+        sk.plot(samples, "diameter_volume", output=target)
     assert target.read_text() == "kept"
-    sk.plot(samples, "malt_volume", output=target, overwrite=True)
+    sk.plot(samples, "diameter_volume", output=target, overwrite=True)
     assert target.read_bytes().startswith(b"\x89PNG")
 
 
 def test_a_declared_figure_draws_a_series_per_group_with_error_bars(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, "malt_volume", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, "diameter_volume", output=tmp_path / "f.png")
     ax = drawn.axes[0]
     labels = sorted(ax.get_legend_handles_labels()[1])
-    assert labels == ["bock", "schwarz"]
+    assert labels == ["chrome", "cobalt"]
     # Numbers group in their order, not as text: 3.3 before 12.0.
-    (numeric,) = sk.plot(samples, x="volume", y="malt", group="malt",
+    (numeric,) = sk.plot(samples, x="volume", y="diameter", group="diameter",
                          output=tmp_path / "n.png")
     assert numeric.axes[0].get_legend_handles_labels()[1] == ["10", "11", "12"]
     # One errorbar container per series, each carrying its vertical bars.
     assert len(ax.containers) == 2
     assert all(container.has_yerr for container in ax.containers)
     assert ax.get_xlabel() == "volume [L]"
-    assert ax.get_ylabel() == "malt [g]"
+    assert ax.get_ylabel() == "diameter [g]"
     # No title unless one is declared: a report gives the caption.
     assert ax.get_title() == ""
 
 
 def test_a_declared_figure_over_a_table_draws_a_curve_per_sample(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, "ebc", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, "hv", output=tmp_path / "f.png")
     ax = drawn.axes[0]
     assert sorted(ax.get_legend_handles_labels()[1]) == ["C1", "C2", "C3"]
     assert ax.get_xlabel().startswith("measurements.f")
 
 
+def test_an_export_of_a_figure_draws_it_to_its_file(tmp_path):
+    # As samplekit export does: the figure drawn to the export's output, its
+    # query narrowing the list.
+    rc = FIGURE_RC + (
+        "[query.dark]\nfilter = \"alloy == cobalt\"\n"
+        "[export.curves]\nfigure = \"diameter_volume\"\noutput = \"figs/curves.png\"\n"
+        "query = \"dark\"\n"
+    )
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
+    entry = samples.project.exports.curves
+    assert (entry.figure, entry.profile, entry.format) == ("diameter_volume", None, None)
+    written = samples.export("curves")
+    assert written == tmp_path / "figs" / "curves.png"
+    assert written.read_bytes().startswith(b"\x89PNG")
+    with pytest.raises(FileExistsError):
+        samples.export("curves")
+    samples.export(entry, output=tmp_path / "other.png")
+    assert (tmp_path / "other.png").read_bytes().startswith(b"\x89PNG")
+
+
+def _data_line(ax):
+    """The line of a series drawn with its error bars: its points."""
+    return ax.containers[0].lines[0]
+
+
+def test_what_the_project_declares_wins_over_samplekits_choice(tmp_path):
+    # Undeclared: a round marker, caps of 3 points.
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
+    (drawn,) = sk.plot(samples, "hv", output=tmp_path / "a.png")
+    assert _data_line(drawn.axes[0]).get_marker() == "o"
+    assert drawn.axes[0].containers[0].lines[1][0].get_markersize() == 6.0
+    # Declared: the project's marker, caps and outside legend's size.
+    rc = FIGURE_RC + (
+        "[matplotlib]\n\"lines.marker\" = \"None\"\n\"errorbar.capsize\" = 0\n"
+        "\"legend.fontsize\" = 15\n"
+    )
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
+    (drawn,) = sk.plot(samples, "hv", output=tmp_path / "b.png", legend="outside")
+    ax = drawn.axes[0]
+    assert _data_line(ax).get_marker() == "None"
+    assert ax.containers[0].lines[1] == ()
+    assert ax.get_legend().get_texts()[0].get_fontsize() == 15
+    # A scatter keeps no line between its points.
+    (scatter,) = sk.plot(samples, "diameter_volume", output=tmp_path / "c.png")
+    assert _data_line(scatter.axes[0]).get_linestyle() == "None"
+
+
+def test_a_marker_in_the_property_cycle_is_the_projects(tmp_path):
+    rc = FIGURE_RC + (
+        "[matplotlib]\n\"axes.prop_cycle\" = \"cycler(color=['k', 'r', 'b'], "
+        "marker=['s', '^', 'v'])\"\n"
+    )
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
+    (drawn,) = sk.plot(samples, "hv", output=tmp_path / "f.png")
+    markers = [container.lines[0].get_marker() for container in drawn.axes[0].containers]
+    assert markers == ["s", "^", "v"]
+
+
+def test_style_sheets_and_fonts_are_the_projects(tmp_path):
+    import matplotlib
+
+    (tmp_path / "paper.mplstyle").write_text("lines.linewidth: 4\n")
+    (tmp_path / "fonts").mkdir()
+    shipped = pathlib.Path(matplotlib.get_data_path()) / "fonts" / "ttf" / "DejaVuSerif.ttf"
+    (tmp_path / "fonts" / "Serif.ttf").write_bytes(shipped.read_bytes())
+    rc = FIGURE_RC + (
+        "[matplotlib]\nstyle = [\"ggplot\", \"paper.mplstyle\"]\n"
+        "fonts = [\"fonts/*.ttf\"]\n\"lines.linewidth\" = 2\n"
+    )
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
+    sheets = samples.project.matplotlib["style"]
+    assert sheets[0] == "ggplot"
+    assert pathlib.Path(sheets[1]).resolve() == (tmp_path / "paper.mplstyle").resolve()
+    (drawn,) = sk.plot(samples, "hv", output=tmp_path / "f.png")
+    ax = drawn.axes[0]
+    # The sheets in order, then the section's own keys, which win.
+    assert matplotlib.colors.to_hex(ax.get_facecolor()) == "#e5e5e5"
+    assert _data_line(ax).get_linewidth() == 2
+    for written, said in [
+        ("style = \"nonesuch\"", "matplotlib has no style sheet 'nonesuch'"),
+        ("style = \"gone.mplstyle\"", "gone.mplstyle is not there"),
+        ("fonts = [\"nothing/*.otf\"]", "finds no file"),
+    ]:
+        rc = FIGURE_RC + f"[matplotlib]\n{written}\n"
+        samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
+        with pytest.raises(ValueError, match=re.escape(said)):
+            sk.plot(samples, "hv", output=tmp_path / "g.png", overwrite=True)
+
+
+def test_a_figures_own_settings_apply_to_it_alone(tmp_path):
+    rc = FIGURE_RC.replace(
+        "y = \"measurements.hv\"\n",
+        "y = \"measurements.hv\"\nmatplotlib = { \"lines.marker\" = \"s\" }\n",
+    )
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
+    assert samples.project.figures.hv.matplotlib == {"lines.marker": "s"}
+    (own,) = sk.plot(samples, "hv", output=tmp_path / "a.png")
+    (other,) = sk.plot(samples, "diameter_volume", output=tmp_path / "b.png")
+    assert _data_line(own.axes[0]).get_marker() == "s"
+    assert _data_line(other.axes[0]).get_marker() == "o"
+
+
+def test_a_model_figures_own_settings_apply_to_it(tmp_path):
+    class Thick(sk.Sample):
+        @sk.figure(matplotlib={"lines.linewidth": 5})
+        def thick(self, ax):
+            ax.plot([0, 1], [0, 1])
+
+    samples = sk.SampleList([Thick(p) for p in figure_samples(tmp_path)[:1]])
+    (drawn,) = sk.plot(samples, "thick", output=tmp_path / "f.png")
+    assert drawn.axes[0].lines[0].get_linewidth() == 5
+    with pytest.raises(TypeError, match="a dict of matplotlib's settings"):
+        sk.figure(matplotlib="lines.linewidth: 5")(lambda self, ax: None)
+
+
 def test_a_figure_name_both_declared_and_in_the_model_is_refused(tmp_path):
-    rc = FIGURE_RC + "[figure.mass_bar]\nx = \"volume\"\ny = \"malt\"\n"
+    rc = FIGURE_RC + "[figure.mass_bar]\nx = \"volume\"\ny = \"diameter\"\n"
     samples = sk.SampleList([Plotted(p) for p in figure_samples(tmp_path, rc)])
     with pytest.raises(ValueError, match="both"):
         sk.plot(samples[0], "mass_bar", output=tmp_path / "f.png")
-    with pytest.raises(KeyError, match="malt_volume"):
-        sk.plot(samples, "malt_volum", output=tmp_path / "f.png")
+    with pytest.raises(KeyError, match="diameter_volume"):
+        sk.plot(samples, "diameter_volum", output=tmp_path / "f.png")
 
 
 def test_an_instance_figure_over_several_samples_with_an_output_is_refused(tmp_path):
@@ -3151,42 +3746,56 @@ def test_a_window_over_ssh_without_a_display_is_refused(tmp_path, monkeypatch):
     monkeypatch.delenv("DISPLAY", raising=False)
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     with pytest.raises(RuntimeError, match="output="):
-        sk.plot(samples, "malt_volume")
+        sk.plot(samples, "diameter_volume")
+
+
+def test_a_window_the_workbench_cannot_open_says_its_file_is_asked(tmp_path, monkeypatch):
+    # Drawn from the workbench, the advice named `-o`, an option of the command
+    # line.
+    from samplekit import _figures
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
+    monkeypatch.setenv("SSH_CONNECTION", "10.0.0.2 51000 10.0.0.1 22")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.setattr(_figures, "COMMAND_LINE", True)
+    monkeypatch.setattr(_figures, "WORKBENCH", True)
+    with pytest.raises(RuntimeError, match="the workbench asks its file next"):
+        sk.plot(samples, "diameter_volume")
 
 
 def test_the_project_lists_its_figures(tmp_path):
-    rc = FIGURE_RC.replace("group = \"beer\"\n", "group = \"beer\"\nquery = \"light\"\n")
-    rc += "[query.light]\nfilter = \"malt < 12\"\n"
+    rc = FIGURE_RC.replace("group = \"alloy\"\n", "group = \"alloy\"\nquery = \"light\"\n")
+    rc += "[query.light]\nfilter = \"diameter < 12\"\n"
     sample = sk.Sample(figure_samples(tmp_path, rc)[0], model=False)
-    declared = sample.project.figures.malt_volume
-    assert (declared.kind, declared.x, declared.y) == ("scatter", "volume", "malt")
-    assert (declared.group, declared.query) == ("beer", "light")
-    assert list(sample.project.figures) == ["malt_volume", "ebc"]
+    declared = sample.project.figures.diameter_volume
+    assert (declared.kind, declared.x, declared.y) == ("scatter", "volume", "diameter")
+    assert (declared.group, declared.query) == ("alloy", "light")
+    assert list(sample.project.figures) == ["diameter_volume", "hv"]
 
 
 STYLED_RC = FIGURE_RC + (
     "[style.figure]\n[style.math]\n"
     "[unit.g]\nfigure = '$\\mathrm{g}$'\nmath = '\\si{\\gram}'\n"
-    "[property.malt]\nsymbol = \"m\"\nsymbol_figure = '$m$'\n"
+    "[property.diameter]\nsymbol = \"m\"\nsymbol_figure = '$m$'\n"
 )
 
 
 def test_an_axis_is_labelled_in_the_figure_style(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False)
                              for p in figure_samples(tmp_path, STYLED_RC)])
-    (plain,) = sk.plot(samples, "malt_volume", output=tmp_path / "p.png")
+    (plain,) = sk.plot(samples, "diameter_volume", output=tmp_path / "p.png")
     assert plain.axes[0].get_ylabel() == "m [g]"
-    (styled,) = sk.plot(samples, "malt_volume", style="figure", output=tmp_path / "s.png")
+    (styled,) = sk.plot(samples, "diameter_volume", style="figure", output=tmp_path / "s.png")
     assert styled.axes[0].get_ylabel() == "$m$ [$\\mathrm{g}$]"
-    (given,) = sk.plot(samples, "malt_volume", y_label="Malt", title="T",
+    (given,) = sk.plot(samples, "diameter_volume", y_label="Diameter", title="T",
                        output=tmp_path / "g.png")
-    assert given.axes[0].get_ylabel() == "Malt"
+    assert given.axes[0].get_ylabel() == "Diameter"
     assert given.axes[0].get_title() == "T"
 
 
 def test_a_table_cell_is_an_axis(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, x="malt", y="measurements.ebc[8.0]", output=tmp_path / "c.png")
+    (drawn,) = sk.plot(samples, x="diameter", y="measurements.hv[8.0]", output=tmp_path / "c.png")
     ax = drawn.axes[0]
     (container,) = ax.containers
     assert container.has_yerr
@@ -3197,7 +3806,7 @@ def test_a_label_with_latex_outside_math_is_refused(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False)
                              for p in figure_samples(tmp_path, STYLED_RC)])
     with pytest.raises(ValueError, match=r"\\si\{\\gram\}"):
-        sk.plot(samples, "malt_volume", style="math", output=tmp_path / "m.png")
+        sk.plot(samples, "diameter_volume", style="math", output=tmp_path / "m.png")
     assert not (tmp_path / "m.png").exists()
 
 
@@ -3205,10 +3814,10 @@ def test_a_group_colours_the_curves_of_a_table(tmp_path):
     # Grouped, a curve takes its group's colour, and the legend names each group
     # once, in the groups' order.
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, "ebc", group="beer", output=tmp_path / "g.png")
+    (drawn,) = sk.plot(samples, "hv", group="alloy", output=tmp_path / "g.png")
     ax = drawn.axes[0]
-    assert ax.get_legend_handles_labels()[1] == ["bock", "schwarz"]
-    # Three curves, two colours: the two schwarz samples share theirs.
+    assert ax.get_legend_handles_labels()[1] == ["chrome", "cobalt"]
+    # Three curves, two colours: the two cobalt samples share theirs.
     colours = [container.lines[0].get_color() for container in ax.containers]
     assert len(colours) == 3 and len(set(colours)) == 2
 
@@ -3220,7 +3829,7 @@ def test_the_projects_matplotlib_settings_shape_every_figure(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
     assert samples.project.matplotlib == {"axes.labelsize": 21}
     before = matplotlib.rcParams["axes.labelsize"]
-    (drawn,) = sk.plot(samples, "malt_volume", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, "diameter_volume", output=tmp_path / "f.png")
     ax = drawn.axes[0]
     assert ax.xaxis.label.get_size() == 21 and ax.yaxis.label.get_size() == 21
     assert matplotlib.rcParams["axes.labelsize"] == before
@@ -3233,7 +3842,7 @@ def test_an_unknown_matplotlib_setting_is_refused_naming_the_nearest(tmp_path):
         rc = FIGURE_RC + f"[matplotlib]\n{written}\n"
         samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(folder, rc)])
         with pytest.raises(ValueError, match=re.escape(said)):
-            sk.plot(samples, "malt_volume", output=folder / "f.png")
+            sk.plot(samples, "diameter_volume", output=folder / "f.png")
 
 
 def test_project_style_false_leaves_matplotlib_its_own(tmp_path):
@@ -3241,19 +3850,19 @@ def test_project_style_false_leaves_matplotlib_its_own(tmp_path):
 
     rc = FIGURE_RC + '[matplotlib]\n"axes.labelsize" = 21\n'
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
-    (drawn,) = sk.plot(samples, "malt_volume", output=tmp_path / "f.png", project_style=False)
+    (drawn,) = sk.plot(samples, "diameter_volume", output=tmp_path / "f.png", project_style=False)
     default = matplotlib.font_manager.FontProperties(
         size=matplotlib.rcParams["axes.labelsize"]).get_size_in_points()
     assert drawn.axes[0].xaxis.label.get_size() == default
 
 
 def test_limits_scales_and_aspect_set_the_axes(tmp_path):
-    rc = FIGURE_RC.replace('group = "beer"\n',
-                           'group = "beer"\nx_limits = [0, 10]\naspect = "equal"\n')
+    rc = FIGURE_RC.replace('group = "alloy"\n',
+                           'group = "alloy"\nx_limits = [0, 10]\naspect = "equal"\n')
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
-    declared = samples.project.figures.malt_volume
+    declared = samples.project.figures.diameter_volume
     assert declared.x_limits == (0.0, 10.0) and declared.aspect == "equal"
-    (drawn,) = sk.plot(samples, "malt_volume", y_scale="log", y_limits=(1, None),
+    (drawn,) = sk.plot(samples, "diameter_volume", y_scale="log", y_limits=(1, None),
                        output=tmp_path / "f.png")
     ax = drawn.axes[0]
     assert ax.get_xlim() == (0.0, 10.0)
@@ -3265,17 +3874,17 @@ def test_limits_scales_and_aspect_set_the_axes(tmp_path):
 def test_a_bound_a_log_axis_cannot_take_is_refused(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
     with pytest.raises(ValueError, match="at or below zero"):
-        sk.plot(samples, "malt_volume", y_scale="log", y_limits=(0, 20),
+        sk.plot(samples, "diameter_volume", y_scale="log", y_limits=(0, 20),
                 output=tmp_path / "f.png")
     assert not (tmp_path / "f.png").exists()
 
 
 def test_a_group_no_sample_knows_is_refused_naming_the_nearest(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    with pytest.raises(KeyError, match="did you mean: beer"):
-        sk.plot(samples, x="volume", y="malt", group="beet", output=tmp_path / "f.png")
+    with pytest.raises(KeyError, match="did you mean: alloy"):
+        sk.plot(samples, x="volume", y="diameter", group="alloi", output=tmp_path / "f.png")
     with pytest.raises(KeyError, match="names a column"):
-        sk.plot(samples, "malt_volume", group="measurements.ebc", output=tmp_path / "f.png")
+        sk.plot(samples, "diameter_volume", group="measurements.hv", output=tmp_path / "f.png")
     assert not (tmp_path / "f.png").exists()
 
 
@@ -3285,43 +3894,56 @@ def test_an_output_without_a_format_matplotlib_writes_is_refused(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
     (tmp_path / "fig.png").write_text("precious")
     with pytest.raises(ValueError, match="has none"):
-        sk.plot(samples, "malt_volume", output=tmp_path / "fig")
+        sk.plot(samples, "diameter_volume", output=tmp_path / "fig")
     with pytest.raises(ValueError, match="writes no '.xyz'"):
-        sk.plot(samples, "malt_volume", output=tmp_path / "fig.xyz")
+        sk.plot(samples, "diameter_volume", output=tmp_path / "fig.xyz")
     assert (tmp_path / "fig.png").read_text() == "precious"
 
 
 def test_one_axis_holds_one_unit(tmp_path):
     figure_samples(tmp_path)
     (tmp_path / "C4.md").write_text(
-        "---\nschema_version: 1\nname: C4\nbeer: schwarz\nproperties:\n"
-        "  malt: {v: 0.011, unit: kg}\n  volume: {v: 4.0, unit: L}\n---\n"
+        "---\nschema_version: 1\nname: C4\nalloy: cobalt\nproperties:\n"
+        "  diameter: {v: 0.011, unit: kg}\n  volume: {v: 4.0, unit: L}\n---\n"
     )
     samples = sk.SampleList([sk.Sample(p, model=False) for p in sorted(tmp_path.glob("*.md"))])
     with pytest.raises(ValueError, match="in g in C1 and in kg in C4"):
-        sk.plot(samples, x="volume", y="malt", output=tmp_path / "f.png")
+        sk.plot(samples, x="volume", y="diameter", output=tmp_path / "f.png")
+
+
+def test_one_axis_holds_the_unit_a_project_declares(tmp_path):
+    # A file writing no unit is in the one [property.*] declares: kilograms
+    # beside grams on one axis are refused, as the table refuses them.
+    figure_samples(tmp_path, FIGURE_RC + '\n[property.diameter]\nunit = "kg"\n')
+    (tmp_path / "C4.md").write_text(
+        "---\nschema_version: 1\nname: C4\nalloy: cobalt\nproperties:\n"
+        "  diameter: {v: 0.011}\n  volume: {v: 4.0, unit: L}\n---\n"
+    )
+    samples = sk.SampleList([sk.Sample(p, model=False) for p in sorted(tmp_path.glob("*.md"))])
+    with pytest.raises(ValueError, match="in g in C1 and in kg in C4"):
+        sk.plot(samples, x="volume", y="diameter", output=tmp_path / "f.png")
 
 
 def test_an_uncertainty_axis_is_labelled_as_one(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, x="malt", y="malt.u", output=tmp_path / "f.png")
-    assert drawn.axes[0].get_xlabel() == "malt [g]"
-    assert drawn.axes[0].get_ylabel() == "u(malt) [g]"
+    (drawn,) = sk.plot(samples, x="diameter", y="diameter.u", output=tmp_path / "f.png")
+    assert drawn.axes[0].get_xlabel() == "diameter [g]"
+    assert drawn.axes[0].get_ylabel() == "u(diameter) [g]"
 
 
 def test_limits_are_finite_and_a_log_axis_takes_neither_bound_at_zero(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
     for limits in [(float("nan"), 5), (0, float("inf")), (3, 3)]:
         with pytest.raises(ValueError):
-            sk.plot(samples, "malt_volume", x_limits=limits, output=tmp_path / "f.png")
+            sk.plot(samples, "diameter_volume", x_limits=limits, output=tmp_path / "f.png")
     with pytest.raises(ValueError, match="has -1"):
-        sk.plot(samples, "malt_volume", y_scale="log", y_limits=(None, -1),
+        sk.plot(samples, "diameter_volume", y_scale="log", y_limits=(None, -1),
                 output=tmp_path / "f.png")
 
 
 def test_a_bar_carries_both_uncertainties(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, x="malt", y="volume", kind="bar", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, x="diameter", y="volume", kind="bar", output=tmp_path / "f.png")
     from matplotlib.container import BarContainer
 
     (bars,) = [c for c in drawn.axes[0].containers if isinstance(c, BarContainer)]
@@ -3330,7 +3952,7 @@ def test_a_bar_carries_both_uncertainties(tmp_path):
 
 def test_an_empty_title_or_label_draws_none(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (drawn,) = sk.plot(samples, "malt_volume", title="", y_label="",
+    (drawn,) = sk.plot(samples, "diameter_volume", title="", y_label="",
                        output=tmp_path / "f.png")
     assert drawn.axes[0].get_title() == ""
     assert drawn.axes[0].get_ylabel() == ""
@@ -3404,6 +4026,11 @@ class Pyplotted(sk.Sample):
 
 
 def test_a_figure_drawn_with_pyplot_is_refused_and_leaves_nothing_open(tmp_path):
+    # Drawn off screen, as the tests beside it are: a window of the desktop's
+    # backend failed in Pillow before the refusal was reached.
+    import matplotlib
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     path = figure_samples(tmp_path)[0]
@@ -3433,7 +4060,7 @@ def test_a_saved_failure_keeps_its_traceback_beside_the_project(tmp_path):
     class Broken(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property(0.0)
-            self.inverse = sk.Property(compute=self._inverse, depends_on=["a"])
+            self.inverse = sk.Property(compute_value=self._inverse, depends_on=["a"])
             super().__init__(path, name=name)
 
         def _inverse(self):
@@ -3454,20 +4081,20 @@ def test_a_saved_failure_keeps_its_traceback_beside_the_project(tmp_path):
 
 def test_an_empty_selection_keeps_its_project(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    empty = samples.filter("malt > 1000")
+    empty = samples.filter("diameter > 1000")
     assert len(empty) == 0
     assert empty.project.root == samples.project.root
-    assert "malt_volume" in empty.project.figures
+    assert "diameter_volume" in empty.project.figures
     with pytest.raises(ValueError, match="no sample to draw"):
-        sk.plot(empty, "malt_volume", output=tmp_path / "f.png")
+        sk.plot(empty, "diameter_volume", output=tmp_path / "f.png")
 
 
 def test_two_columns_writing_one_header_are_refused(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    with pytest.raises(ValueError, match="both write a column 'malt_uncertainty'"):
-        samples.to_dict(columns=["malt", "malt.u"])
-    cells = samples.to_dict(columns=["measurements.ebc[8.0].u", "measurements.f[8.0].unit"])
-    assert list(cells) == ["measurements.ebc[8.0]_uncertainty", "measurements.f[8.0]_unit"]
+    with pytest.raises(ValueError, match="'diameter' writes its uncertainty already, as 'diameter_uncertainty'"):
+        samples.to_dict(columns=["diameter", "diameter.u"])
+    cells = samples.to_dict(columns=["measurements.hv[8.0].u", "measurements.f[8.0].unit"])
+    assert list(cells) == ["measurements.hv[8.0]_uncertainty", "measurements.f[8.0]_unit"]
 
 
 def test_a_sample_whose_formula_is_its_own_method_is_freed():
@@ -3479,7 +4106,7 @@ def test_a_sample_whose_formula_is_its_own_method_is_freed():
     class Doubled(sk.Sample):
         def __init__(self, path=None, name=None):
             self.a = sk.Property(2.0)
-            self.b = sk.Property(compute=self._double, depends_on=["a"])
+            self.b = sk.Property(compute_value=self._double, depends_on=["a"])
             super().__init__(path, name=name)
 
         def _double(self):
@@ -3498,8 +4125,8 @@ def many_samples(tmp_path, count=12, rc=FIGURE_RC):
     (tmp_path / ".samplekitrc").write_text(rc)
     for index in range(count):
         (tmp_path / f"M{index:02}.md").write_text(
-            f"---\nschema_version: 1\nname: M{index:02}\nbeer: m{index % 3}\n"
-            f"batch: b{index}\nproperties:\n  malt: {{v: {10 + index}.5, unit: g}}\n"
+            f"---\nschema_version: 1\nname: M{index:02}\nalloy: m{index % 3}\n"
+            f"batch: b{index}\nproperties:\n  diameter: {{v: {10 + index}.5, unit: g}}\n"
             f"  volume: {{v: {index}.0, unit: L}}\n---\n"
         )
     return sk.SampleList([sk.Sample(p, model=False) for p in sorted(tmp_path.glob("M*.md"))])
@@ -3508,24 +4135,24 @@ def many_samples(tmp_path, count=12, rc=FIGURE_RC):
 def test_what_a_figure_leaves_out_is_said(tmp_path):
     samples = many_samples(tmp_path, 4)
     with pytest.warns(UserWarning, match="1 of 4 samples not drawn: volume at or below zero"):
-        (drawn,) = sk.plot(samples, x="volume", y="malt", x_scale="log",
+        (drawn,) = sk.plot(samples, x="volume", y="diameter", x_scale="log",
                            output=tmp_path / "f.png")
     assert len(drawn.axes[0].lines) >= 1
 
 
 def test_a_numeric_group_of_many_values_is_a_colour_scale(tmp_path):
     samples = many_samples(tmp_path)
-    (drawn,) = sk.plot(samples, x="volume", y="malt", group="malt", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, x="volume", y="diameter", group="diameter", output=tmp_path / "f.png")
     assert len(drawn.axes) == 2  # the axes and the colour bar
     assert drawn.axes[0].get_legend() is None
     with pytest.raises(ValueError, match="makes 12 groups"):
-        sk.plot(samples, x="volume", y="malt", group="batch", output=tmp_path / "g.png")
+        sk.plot(samples, x="volume", y="diameter", group="batch", output=tmp_path / "g.png")
 
 
 def test_a_groups_legend_reads_in_its_precision_and_is_titled(tmp_path):
     rc = FIGURE_RC + '[property.volume]\nprecision = ".0f"\nsymbol = "V"\n'
     samples = many_samples(tmp_path, 3, rc)
-    (drawn,) = sk.plot(samples, x="malt", y="malt", group="volume", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, x="diameter", y="diameter", group="volume", output=tmp_path / "f.png")
     legend = drawn.axes[0].get_legend()
     assert [text.get_text() for text in legend.get_texts()] == ["0", "1", "2"]
     assert legend.get_title().get_text() == "V [L]"
@@ -3533,53 +4160,53 @@ def test_a_groups_legend_reads_in_its_precision_and_is_titled(tmp_path):
 
 def test_bars_stand_side_by_side_and_one_series_takes_one_bar_per_x(tmp_path):
     samples = many_samples(tmp_path, 6)
-    (drawn,) = sk.plot(samples, x="beer", y="malt", group="batch", kind="bar",
+    (drawn,) = sk.plot(samples, x="alloy", y="diameter", group="batch", kind="bar",
                        output=tmp_path / "f.png")
     ticks = [label.get_text() for label in drawn.axes[0].get_xticklabels()]
     assert ticks == ["m0", "m1", "m2"]
-    with pytest.raises(ValueError, match="two bars at beer = m0"):
-        sk.plot(samples, x="beer", y="malt", kind="bar", output=tmp_path / "g.png")
+    with pytest.raises(ValueError, match="two bars at alloy = m0"):
+        sk.plot(samples, x="alloy", y="diameter", kind="bar", output=tmp_path / "g.png")
 
 
 def test_a_box_plot_draws_the_values_per_category(tmp_path):
     samples = many_samples(tmp_path, 6)
-    (drawn,) = sk.plot(samples, x="beer", y="malt", kind="box", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, x="alloy", y="diameter", kind="box", output=tmp_path / "f.png")
     ticks = [label.get_text() for label in drawn.axes[0].get_xticklabels()]
     # Each with how many samples its box holds.
     assert ticks == ["m0\n(2)", "m1\n(2)", "m2\n(2)"]
     with pytest.raises(ValueError, match="box plot"):
-        sk.plot(samples, x="beer", y="malt", kind="box", group="batch",
+        sk.plot(samples, x="alloy", y="diameter", kind="box", group="batch",
                 output=tmp_path / "g.png")
 
 
 def test_a_legend_is_placed_and_a_figure_sized(tmp_path):
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
     # Centimetres, converted for matplotlib.
-    (drawn,) = sk.plot(samples, "malt_volume", legend="none", figsize=(10.16, 7.62),
+    (drawn,) = sk.plot(samples, "diameter_volume", legend="none", figsize=(10.16, 7.62),
                        output=tmp_path / "f.png")
     assert drawn.axes[0].get_legend() is None
     assert tuple(drawn.get_size_inches()) == pytest.approx((4.0, 3.0))
     with pytest.raises(ValueError, match="legend is one of"):
-        sk.plot(samples, "malt_volume", legend="left-ish", output=tmp_path / "g.png")
+        sk.plot(samples, "diameter_volume", legend="left-ish", output=tmp_path / "g.png")
 
 
 def test_a_figure_size_written_as_text_is_in_centimetres_too(tmp_path):
     # `"figure.figsize" = "15, 10"` reached matplotlib as inches.
     rc = FIGURE_RC + '[matplotlib]\n"figure.figsize" = "10.16, 7.62"\n'
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
-    (drawn,) = sk.plot(samples, "malt_volume", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, "diameter_volume", output=tmp_path / "f.png")
     assert tuple(drawn.get_size_inches()) == pytest.approx((4.0, 3.0))
     # A size out of reason is said: centimetres are meant.
     with pytest.warns(UserWarning, match="sizes are in centimetres"):
-        sk.plot(samples, "malt_volume", figsize=(160, 20), output=tmp_path / "g.png")
+        sk.plot(samples, "diameter_volume", figsize=(160, 20), output=tmp_path / "g.png")
 
 
 def test_a_project_names_the_style_its_figures_read_in(tmp_path):
     rc = (FIGURE_RC + "[render]\nfigure_style = \"figure\"\n[style.figure]\n"
-          "[property.malt]\nsymbol_figure = '$m$'\n")
+          "[property.diameter]\nsymbol_figure = '$m$'\n")
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path, rc)])
     assert samples.project.render.figure_style == "figure"
-    (drawn,) = sk.plot(samples, "malt_volume", output=tmp_path / "f.png")
+    (drawn,) = sk.plot(samples, "diameter_volume", output=tmp_path / "f.png")
     assert drawn.axes[0].get_ylabel() == "$m$ [g]"
 
 
@@ -3599,7 +4226,7 @@ def test_a_figure_of_one_sample_writes_a_file_per_sample(tmp_path):
     with pytest.raises(FileExistsError):
         sk.plot(samples, "small", output=tmp_path / "{name}.png")
     with pytest.raises(ValueError, match="a file per sample"):
-        sk.plot(samples, "malt_volume", output=tmp_path / "{name}.pdf")
+        sk.plot(samples, "diameter_volume", output=tmp_path / "{name}.pdf")
 
 
 # The system's opener is replaced by a script named `xdg-open`, which only Linux calls.
@@ -3612,7 +4239,7 @@ def test_a_samples_files_are_found_by_its_name_and_opened_by_the_system(tmp_path
     )
     for name in ["B2", "B24", "B24-2"]:
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\nproperties:\n  malt: 1.0\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: 1.0\n---\n"
         )
     images = tmp_path.parent / "images"
     (images / "reports").mkdir(parents=True, exist_ok=True)
@@ -3666,10 +4293,10 @@ def test_an_override_without_the_model_keeps_its_record_as_set_does(tmp_path):
     # read without its model lost its record and read current.
     path = tmp_path / "e.md"
     path.write_text(
-        "---\nschema_version: 1\nname: E\nproperties:\n  ibu:\n    v: 12.0\n"
+        "---\nschema_version: 1\nname: E\nproperties:\n  hb:\n    v: 12.0\n"
         "    u: 0.005773502691896258\n    unit: mL\n    computed: {u: {}}\n"
         "    fingerprint: 18debc327c6f\n  headspace:\n    v: 1.1309733552923256\n"
-        "    unit: hL\n    computed: {v: {ibu: fce15bfbafe1}}\n"
+        "    unit: hL\n    computed: {v: {hb: fce15bfbafe1}}\n"
         "    fingerprint: 5bcbffb74128\n---\n"
     )
     sample = sk.Sample(path, model=False)
@@ -3677,7 +4304,7 @@ def test_an_override_without_the_model_keeps_its_record_as_set_does(tmp_path):
     assert sample.edited() == ["headspace"]
     sample.save()
     text = path.read_text()
-    assert "computed: {v: {ibu: fce15bfbafe1}}" in text
+    assert "computed: {v: {hb: fce15bfbafe1}}" in text
     assert "fingerprint: {edited:" in text
 
 
@@ -3685,22 +4312,25 @@ def test_a_column_never_computed_says_so_when_read():
     # Loose end 23: a property never computed warns when read, and a table's
     # column read as a column of None said nothing.
     table = sk.Table(
-        {"T": sk.Column(), "R": sk.Column(), "G": sk.Column()},
-        "T",
+        {
+            "T": sk.Property(),
+            "R": sk.Property(),
+            "G": sk.Property(compute=lambda row: 1 / row.R.value, depends_on=["row.R"]),
+        },
+        index="T",
         rows=[{"T": 10, "R": 2.0}, {"T": 20, "R": 4.0}],
-        compute_rows=[("G", ["row.R"], lambda row: 1 / row.R.value)],
     )
     sample = sk.Sample()
-    sample.mashing = table
-    with pytest.warns(UserWarning, match="mashing.G was never computed"):
-        assert sample.mashing.G.values == [None, None]
+    sample.preheating = table
+    with pytest.warns(UserWarning, match="preheating.G was never computed"):
+        assert sample.preheating.G.values == [None, None]
     with pytest.warns(UserWarning, match="never computed"):
-        assert sample.mashing.values("G") == [None, None]
+        assert sample.preheating.values("G") == [None, None]
     sample.compute()
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        assert sample.mashing.G.values == [0.5, 0.25]
-        assert sample.mashing.values("R") == [2.0, 4.0]
+        assert sample.preheating.G.values == [0.5, 0.25]
+        assert sample.preheating.values("R") == [2.0, 4.0]
 
 
 def test_a_sample_saved_from_python_is_a_snapshot(tmp_path):
@@ -3708,9 +4338,9 @@ def test_a_sample_saved_from_python_is_a_snapshot(tmp_path):
     # a save that changes nothing takes none.
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
     path = tmp_path / "c1.md"
-    path.write_text("---\nschema_version: 1\nname: C1\nproperties:\n  malt: 1.0\n---\n")
+    path.write_text("---\nschema_version: 1\nname: C1\nproperties:\n  diameter: 1.0\n---\n")
     sample = sk.Sample(path, model=False)
-    sample.malt.value = 2.0
+    sample.diameter.value = 2.0
     sample.save()
     sample.save()
 
@@ -3723,12 +4353,40 @@ def test_a_sample_saved_from_python_is_a_snapshot(tmp_path):
 
     # One snapshot for the script's saves, taken at keep() or when it ends.
     assert not (tmp_path / ".samplekit/history").exists()
-    sk.keep("malt corrected")
+    sk.keep("diameter corrected")
     # The message given still names what ran — here, pytest.
     said = messages()
     assert len(said) == 2, said
-    assert said[0].startswith("python ") and said[0].endswith(" · malt corrected"), said
+    assert said[0].startswith("python ") and said[0].endswith(" · diameter corrected"), said
     assert said[1] == "the project as SampleKit first kept it"
+
+
+def test_a_save_into_a_folder_made_a_project_brings_its_history(tmp_path):
+    # A save there was refused until a terminal answered the offer: the
+    # snapshots the project above kept of the folder are brought, and said.
+    (tmp_path / ".samplekitrc").write_text(
+        "schema_version = 1\n[collection]\nrecursive = true\n"
+    )
+    (tmp_path / "sub").mkdir()
+    path = tmp_path / "sub" / "s.md"
+    path.write_text("---\nschema_version: 1\nname: S\nproperties:\n  diameter: 1.0\n---\n")
+    sample = sk.Sample(path, model=False)
+    sample.diameter.value = 2.0
+    sample.save()
+    sk.keep("from above")
+    (tmp_path / "sub" / ".samplekitrc").write_text("schema_version = 1\n")
+    sample = sk.Sample(path, model=False)
+    sample.diameter.value = 3.0
+    with pytest.warns(UserWarning, match="brought from the history of"):
+        sample.save()
+    sk.keep("from the folder")
+    said = subprocess.run(
+        ["git", "--git-dir", str(tmp_path / "sub/.samplekit/history"), "log", "--all",
+         "--format=%s"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    assert "from above" in said, said
+    assert "from the folder" in said, said
 
 
 def test_a_script_is_one_snapshot_with_its_source_kept(tmp_path):
@@ -3737,14 +4395,14 @@ def test_a_script_is_one_snapshot_with_its_source_kept(tmp_path):
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
     for name in ("c1", "c2", "c3"):
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\nproperties:\n  malt: 1.0\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: 1.0\n---\n"
         )
     script = tmp_path / "raise.py"
     script.write_text(
         "import samplekit as sk\n"
         "for name in ('c1', 'c2', 'c3'):\n"
         f"    s = sk.Sample({str(tmp_path)!r} + '/' + name + '.md', model=False)\n"
-        "    s.malt.value = 2.0\n"
+        "    s.diameter.value = 2.0\n"
         "    s.save()\n"
     )
     subprocess.run([sys.executable, str(script)], check=True, cwd=tmp_path)
@@ -3773,19 +4431,19 @@ def test_a_script_is_kept_as_it_ran_when_it_first_saved(tmp_path):
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
     for name in ("c1", "c2"):
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\nproperties:\n  malt: 1.0\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: 1.0\n---\n"
         )
     script = tmp_path / "fix.py"
     script.write_text(
         "import pathlib, sys\n"
         "import samplekit as sk\n"
         f"s = sk.Sample({str(tmp_path / 'c1.md')!r}, model=False)\n"
-        "s.malt.value = 2.0\n"
+        "s.diameter.value = 2.0\n"
         "s.save()\n"
         "pathlib.Path(__file__).write_text('# rewritten after it ran\\n')\n"
         "sk.keep('first pass')\n"
         f"s = sk.Sample({str(tmp_path / 'c2.md')!r}, model=False)\n"
-        "s.malt.value = 3.0\n"
+        "s.diameter.value = 3.0\n"
         "s.save()\n"
     )
     subprocess.run([sys.executable, str(script), "two words"], check=True, cwd=tmp_path)
@@ -3809,7 +4467,7 @@ def test_a_script_is_kept_as_it_ran_when_it_first_saved(tmp_path):
     inline = (
         "import samplekit as sk\n"
         f"s = sk.Sample({str(tmp_path / 'c2.md')!r}, model=False)\n"
-        "s.malt.value = 4.0\n"
+        "s.diameter.value = 4.0\n"
         "s.save()\n"
     )
     subprocess.run([sys.executable, "-c", inline], check=True, cwd=tmp_path)
@@ -3825,13 +4483,13 @@ def test_a_snapshot_taken_meanwhile_is_not_taken_back(tmp_path):
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
     for name in ("c1", "c2"):
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\nproperties:\n  malt: 1.0\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: 1.0\n---\n"
         )
     other = tmp_path / "other.py"
     other.write_text(
         "import samplekit as sk\n"
         f"s = sk.Sample({str(tmp_path / 'c2.md')!r}, model=False)\n"
-        "s.malt.value = 3.0\n"
+        "s.diameter.value = 3.0\n"
         "s.save()\n"
     )
     script = tmp_path / "outer.py"
@@ -3839,7 +4497,7 @@ def test_a_snapshot_taken_meanwhile_is_not_taken_back(tmp_path):
         "import subprocess, sys\n"
         "import samplekit as sk\n"
         f"s = sk.Sample({str(tmp_path / 'c1.md')!r}, model=False)\n"
-        "s.malt.value = 2.0\n"
+        "s.diameter.value = 2.0\n"
         "s.save()\n"
         f"subprocess.run([sys.executable, {str(other)!r}], check=True)\n"
     )
@@ -3848,17 +4506,28 @@ def test_a_snapshot_taken_meanwhile_is_not_taken_back(tmp_path):
     ids = subprocess.run(git + ["log", "--reverse", "--format=%H"], capture_output=True,
                          text=True, check=True).stdout.split()
 
-    def malt(snapshot, name):
+    def diameter(snapshot, name):
         import re
         text = subprocess.run(git + ["show", f"{snapshot}:{name}.md"], capture_output=True,
                               text=True, check=True).stdout
-        return float(re.search(r"malt:\s*\{?\s*(?:v:\s*)?([-0-9.]+)", text).group(1))
+        return float(re.search(r"diameter:\s*\{?\s*(?:v:\s*)?([-0-9.]+)", text).group(1))
 
     # Oldest first: once c2 holds 3.0, no later snapshot takes it back.
-    seen = [malt(snapshot, "c2") for snapshot in ids]
+    seen = [diameter(snapshot, "c2") for snapshot in ids]
     assert 3.0 in seen, seen
     assert 1.0 not in seen[seen.index(3.0):], seen
-    assert malt(ids[-1], "c1") == 2.0 and malt(ids[-1], "c2") == 3.0
+    assert diameter(ids[-1], "c1") == 2.0 and diameter(ids[-1], "c2") == 3.0
+
+
+def kept_digest(path):
+    """A written file's digest as the history takes it: in a file holding
+    text, CRLF as LF, which a figure written on Windows holds."""
+    import hashlib
+
+    held = path.read_bytes()
+    if b"\0" not in held:
+        held = held.replace(b"\r\n", b"\n")
+    return hashlib.sha256(held).hexdigest()
 
 
 def output_record(history, digest):
@@ -3879,15 +4548,15 @@ def test_a_file_written_from_python_is_tied_to_its_snapshot(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
-    for name, malt in [("c1", 1.0), ("c2", 2.0)]:
+    for name, diameter in [("c1", 1.0), ("c2", 2.0)]:
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\nproperties:\n  malt: {malt}\n  volume: {malt * 2}\n---\n")
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: {diameter}\n  volume: {diameter * 2}\n---\n")
     samples = sk.load(tmp_path)
-    samples.to_csv(tmp_path / "table.csv", columns=["name", "malt"])
-    sk.plot(samples, x="volume", y="malt", output=tmp_path / "figure.svg")
+    samples.to_csv(tmp_path / "table.csv", columns=["name", "diameter"])
+    sk.plot(samples, x="volume", y="diameter", output=tmp_path / "figure.svg")
 
     def tag(path):
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        digest = kept_digest(path)
         history = tmp_path / ".samplekit/history"
         out = subprocess.run(
             ["git", "--git-dir", str(history), "cat-file", "-p",
@@ -3899,7 +4568,7 @@ def test_a_file_written_from_python_is_tied_to_its_snapshot(tmp_path):
     assert "python " in tag(tmp_path / "table.csv")
     assert " · to_csv" in tag(tmp_path / "table.csv")
     assert "written: table.csv" in tag(tmp_path / "table.csv")
-    assert " · plot malt against volume" in tag(tmp_path / "figure.svg")
+    assert " · plot diameter against volume" in tag(tmp_path / "figure.svg")
     assert "samplekit snapshot " in (tmp_path / "figure.svg").read_text()
 
 
@@ -3907,27 +4576,27 @@ def test_compute_goes_on_past_a_failure_and_waits_for_what_nobody_entered():
     # As samplekit compute does. A formula over an input nobody entered waits,
     # said as a warning; one that fails does not stop the others, and is raised
     # at the end, the others named.
-    class Brew(sk.Sample):
+    class Piece(sk.Sample):
         def __init__(self, path=None, name=None):
-            self.og = sk.Property(1.05)
-            self.fg = sk.Property()
+            self.radius = sk.Property(1.05)
+            self.notch = sk.Property()
             self.volume = sk.Property(20.0)
-            self.abv = sk.Property(compute=lambda: (self.og.value - self.fg.value) * 131.25,
-                                   depends_on=["og", "fg"])
-            self.broken = sk.Property(compute=lambda: 1 / 0, depends_on=["og"])
-            self.points = sk.Property(compute=lambda: (self.og.value - 1) * 1000,
-                                      depends_on=["og"])
-            self.total = sk.Property(compute=lambda: self.points.value * self.volume.value,
+            self.modulus = sk.Property(compute_value=lambda: (self.radius.value - self.notch.value) * 131.25,
+                                   depends_on=["radius", "notch"])
+            self.broken = sk.Property(compute_value=lambda: 1 / 0, depends_on=["radius"])
+            self.points = sk.Property(compute_value=lambda: (self.radius.value - 1) * 1000,
+                                      depends_on=["radius"])
+            self.total = sk.Property(compute_value=lambda: self.points.value * self.volume.value,
                                      depends_on=["points", "volume"])
             super().__init__(path, name=name)
 
-    brew = Brew(name="b")
-    with pytest.warns(UserWarning, match="'abv' waits for fg"):
+    piece = Piece(name="b")
+    with pytest.warns(UserWarning, match="'modulus' waits for notch"):
         with pytest.raises(ZeroDivisionError):
-            brew.compute()
-    assert brew.points.value == pytest.approx(50.0)
-    assert brew.total.value == pytest.approx(1000.0)
-    assert brew.abv.value is None
+            piece.compute()
+    assert piece.points.value == pytest.approx(50.0)
+    assert piece.total.value == pytest.approx(1000.0)
+    assert piece.modulus.value is None
 
 
 def test_not_applicable_is_one_value_python_reads_and_writes(tmp_path):
@@ -3936,24 +4605,81 @@ def test_not_applicable_is_one_value_python_reads_and_writes(tmp_path):
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
     ran = []
 
-    class Brew(sk.Sample):
+    class Piece(sk.Sample):
         def __init__(self, path=None, name=None):
-            self.og = sk.Property(1.05)
-            self.fg = sk.Property()
-            self.abv = sk.Property(compute=lambda: ran.append(1) or (self.og.value - self.fg.value),
-                                   depends_on=["og", "fg"])
+            self.radius = sk.Property(1.05)
+            self.notch = sk.Property()
+            self.modulus = sk.Property(compute_value=lambda: ran.append(1) or (self.radius.value - self.notch.value),
+                                   depends_on=["radius", "notch"])
             super().__init__(path, name=name)
 
-    brew = Brew(name="b")
-    brew.fg.value = sk.NA
-    brew.compute()
-    assert brew.abv.value is sk.NA
+    piece = Piece(name="b")
+    piece.notch.value = sk.NA
+    piece.compute()
+    assert piece.modulus.value is sk.NA
     assert ran == []
     path = tmp_path / "b.md"
-    brew.save(path)
-    assert "fg: n/a" in path.read_text() or "v: n/a" in path.read_text()
-    assert Brew(path).fg.value is sk.NA
+    piece.save(path)
+    assert "notch: n/a" in path.read_text() or "v: n/a" in path.read_text()
+    assert Piece(path).notch.value is sk.NA
     assert str(sk.NA) == "n/a" and not sk.NA
+
+
+def test_save_all_stops_at_ctrl_c(collection):
+    # The KeyboardInterrupt raised inside a sample's save was lost there, and
+    # the list went on to its end.
+    import signal
+
+    class Pressing(sk.Sample):
+        def save(self, *arguments, **keywords):
+            super().save(*arguments, **keywords)
+            # Raised in this process as Ctrl-C raises it: os.kill would end
+            # the process on Windows.
+            signal.raise_signal(signal.SIGINT)
+
+    samples = sk.SampleList([Pressing(path) for path in sorted(collection.root.glob("*.md"))])
+    for sample in samples:
+        sample.tags = list(sample.tags) + ["late"]
+    with pytest.raises(KeyboardInterrupt, match="1 of the list written"):
+        samples.save_all()
+    assert sum("late" in path.read_text() for path in collection.root.glob("*.md")) == 1
+
+
+def test_reading_a_value_whose_input_does_not_apply_computes_nothing(project):
+    # Read, it was replaced by n/a and said current; saved, it was edited.
+    _tabled(project)
+    path = project.sample("s.md", name="s", properties={"diameter": "2.0"})
+    subprocess.run([str(BINARY), str(path), "compute", "--write"], check=True, capture_output=True)
+    subprocess.run(
+        [str(BINARY), str(path), "set", "diameter=n/a", "--write"], check=True, capture_output=True
+    )
+    sample = sk.Sample(path)
+    with pytest.warns(UserWarning):
+        assert sample.double.value == 4.0
+    assert sample.double.state == "outdated"
+    sample.compute()
+    assert sample.double.value is sk.NA
+
+
+def test_python_raises_as_its_docstrings_say(project):
+    # `#-1` of an empty table raised ValueError where `#0` raised IndexError;
+    # two units compared raised ValueError where `filter` says TypeError; a
+    # tag given twice was dropped without a word.
+    project.config("schema_version = 1\n")
+    path = project.root / "s.md"
+    path.write_text(
+        sample_text(name="s", properties={"volume": "{v: 20, unit: L}", "mass": "{v: 2, unit: kg}"})
+        .replace("---\n# Notes", "tables:\n  t:\n    index: d\n    columns:\n      d: {}\n      g: {}\n    rows: []\n---\n# Notes")
+    )
+    sample = sk.Sample(path)
+    for address in ("t.g[#0]", "t.g[#-1]"):
+        with pytest.raises(IndexError):
+            sample[address]
+    with pytest.raises(TypeError, match="one unit"):
+        sk.SampleList(project.root).filter("volume > mass")
+    with pytest.warns(UserWarning, match="given more than once"):
+        sample.tags = ["a", "a", "b"]
+    assert list(sample.tags) == ["a", "b"]
 
 
 def test_a_figure_leaves_out_a_value_not_applicable(tmp_path):
@@ -3961,68 +4687,68 @@ def test_a_figure_leaves_out_a_value_not_applicable(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
-    for name, malt in [("a", "1.0"), ("b", "n/a"), ("c", "3.0")]:
+    for name, diameter in [("a", "1.0"), ("b", "n/a"), ("c", "3.0")]:
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\nproperties:\n  malt: {malt}\n  volume: 2.0\n---\n")
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: {diameter}\n  volume: 2.0\n---\n")
     with pytest.warns(UserWarning, match="1 of 3 samples not drawn"):
-        sk.plot(sk.load(tmp_path), x="volume", y="malt", output=tmp_path / "f.svg")
+        sk.plot(sk.load(tmp_path), x="volume", y="diameter", output=tmp_path / "f.svg")
 
 
 # ------------------------------------------------- review of 2026-09-27
 
 
-class Tasted(sk.Sample):
-    """A brew whose score is the mean of a tasting table, and whose alcohol
-    reads a final gravity: either may be empty."""
+class Inspected(sk.Sample):
+    """A piece whose score is the mean of a inspection table, and whose modulus
+    reads a final hardness: either may be empty."""
 
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.og = sk.Property(1.05)
-        self.fg = sk.Property()
-        self.abv = sk.Property(compute=self._abv, depends_on=["og", "fg"])
-        self.tasting = sk.Table({"taster": sk.Column(), "score": sk.Column()}, "taster")
-        self.score = sk.Property(compute=self._score, depends_on=["tasting.score"])
+        self.radius = sk.Property(1.05)
+        self.notch = sk.Property()
+        self.modulus = sk.Property(compute_value=self._modulus, depends_on=["radius", "notch"])
+        self.inspection = sk.Table({"inspector": sk.Property(), "score": sk.Property()}, index="inspector")
+        self.score = sk.Property(compute_value=self._score, depends_on=["inspection.score"])
 
-    def _abv(self):
-        return (self.og.value - self.fg.value) * 131.25
+    def _modulus(self):
+        return (self.radius.value - self.notch.value) * 131.25
 
     def _score(self):
         import statistics
-        return statistics.fmean(self.tasting.values("score"))
+        return statistics.fmean(self.inspection.values("score"))
 
 
 def test_a_formula_over_an_empty_column_waits():
     # A table without a row is an input nobody entered, as the command line
     # judges it: the mean of no score raised StatisticsError.
-    brew = Tasted(name="b")
-    with pytest.warns(UserWarning, match=r"b: .*'score' waits for tasting\.score"):
-        brew.compute()
-    assert brew.not_current()["score"] == "waits for tasting.score"
-    brew.tasting.add(taster="Lea", score=40.0)
-    brew.compute()
-    assert brew.score.value == pytest.approx(40.0)
-    assert "score" not in brew.not_current()
+    piece = Inspected(name="b")
+    with pytest.warns(UserWarning, match=r"b: .*'score' waits for inspection\.score"):
+        piece.compute()
+    assert piece.not_current()["score"] == "waits for inspection.score"
+    piece.inspection.add(inspector="Lea", score=40.0)
+    piece.compute()
+    assert piece.score.value == pytest.approx(40.0)
+    assert "score" not in piece.not_current()
 
 
 def test_not_current_says_what_a_value_waits_for():
-    brew = Tasted(name="b")
-    brew.tasting.add(taster="Lea", score=40.0)
-    assert brew.not_current() == {"abv": "waits for fg", "score": "never computed"}
+    piece = Inspected(name="b")
+    piece.inspection.add(inspector="Lea", score=40.0)
+    assert piece.not_current() == {"modulus": "waits for notch", "score": "never computed"}
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        assert brew.abv.value is None
+        assert piece.modulus.value is None
     said = [str(warning.message) for warning in caught]
-    assert said == ["b: 'abv' waits for fg: nobody entered fg, so its formula does not run"]
-    brew.fg.value = 1.01
-    assert brew.not_current()["abv"] == "never computed"
+    assert said == ["b: 'modulus' waits for notch: nobody entered notch, so its formula does not run"]
+    piece.notch.value = 1.01
+    assert piece.not_current()["modulus"] == "never computed"
 
 
 def test_a_warning_points_at_the_scripts_line():
-    brew = Tasted(name="b")
+    piece = Inspected(name="b")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        brew.abv.value
-        brew.compute()
+        piece.modulus.value
+        piece.compute()
     assert caught and all(warning.filename == __file__ for warning in caught), [
         (warning.filename, warning.lineno) for warning in caught
     ]
@@ -4046,37 +4772,37 @@ def test_an_uncertainty_waiting_for_its_value_says_so():
 
 
 def test_readings_over_a_formula_are_refused():
-    brew = Tasted(name="b")
-    brew.fg.value = 1.01
-    brew.compute("abv")
-    before = brew.abv.value
-    for assign in (lambda: setattr(brew.abv, "value", [1.0, 2.0]),
-                   lambda: setattr(brew.abv, "readings", [1.0, 2.0])):
+    piece = Inspected(name="b")
+    piece.notch.value = 1.01
+    piece.compute("modulus")
+    before = piece.modulus.value
+    for assign in (lambda: setattr(piece.modulus, "value", [1.0, 2.0]),
+                   lambda: setattr(piece.modulus, "readings", [1.0, 2.0])):
         with pytest.raises(ValueError, match="override"):
             assign()
-    assert brew.abv.value == before and brew.abv.readings is None
-    assert brew.abv.is_computed
+    assert piece.modulus.value == before and piece.modulus.readings is None
+    assert piece.modulus.is_computed
 
 
 def test_replacing_a_formula_by_a_plain_property_is_refused():
-    brew = Tasted(name="b")
-    with pytest.raises(ValueError, match=r"s\.abv\.value = \.\.\. to override"):
-        brew.abv = sk.Property(5.0)
-    assert brew.abv.is_computed
-    brew.abv = sk.Property(compute=lambda: 5.0, depends_on=[])
-    assert brew.abv.is_computed
-    del brew.abv
-    brew.abv = sk.Property(5.0)
-    assert brew.abv.value == 5.0 and not brew.abv.is_computed
+    piece = Inspected(name="b")
+    with pytest.raises(ValueError, match=r"s\.modulus\.value = \.\.\. to override"):
+        piece.modulus = sk.Property(5.0)
+    assert piece.modulus.is_computed
+    piece.modulus = sk.Property(compute_value=lambda: 5.0, depends_on=[])
+    assert piece.modulus.is_computed
+    del piece.modulus
+    piece.modulus = sk.Property(5.0)
+    assert piece.modulus.value == 5.0 and not piece.modulus.is_computed
 
 
 def test_a_boolean_is_refused_on_a_property_with_a_unit(project):
     sample = quantity_sample(project)
     with pytest.raises(ValueError, match="boolean"):
-        sample.malt.value = True
+        sample.diameter.value = True
     with pytest.raises(ValueError, match="boolean"):
         sk.Property(True, unit="g")
-    assert sample.malt.value == pytest.approx(3.1551234)
+    assert sample.diameter.value == pytest.approx(3.1551234)
     sample.flag = sk.Property(True)
     assert sample.flag.value is True
 
@@ -4095,7 +4821,7 @@ def test_a_blank_name_is_refused(project):
 
 
 def test_a_missing_row_is_said_as_table_at_says_it():
-    table = sk.Table({"T": sk.Column(), "R": sk.Column()}, "T", rows=[{"T": 1, "R": 2.0}])
+    table = sk.Table({"T": sk.Property(), "R": sk.Property()}, index="T", rows=[{"T": 1, "R": 2.0}])
     with pytest.raises(KeyError) as caught:
         table.R[0]
     said = str(caught.value)
@@ -4123,27 +4849,27 @@ def test_sample_list_index_takes_start_and_stop(collection):
 
 
 def test_a_field_path_to_a_missing_row_or_name_raises():
-    table = sk.Table({"T": sk.Column(), "carbonation": sk.Column()}, "T",
-                     rows=[{"T": 20, "carbonation": 2.0}])
+    table = sk.Table({"T": sk.Property(), "nitridation": sk.Property()}, index="T",
+                     rows=[{"T": 20, "nitridation": 2.0}])
     sample = sk.Sample(name="s")
-    sample.malt = sk.Property(1.0)
-    sample.conditioning = table
-    assert sample["conditioning.carbonation[20]"] == 2.0
+    sample.diameter = sk.Property(1.0)
+    sample.tempering = table
+    assert sample["tempering.nitridation[20]"] == 2.0
     with pytest.raises(KeyError, match="no row at"):
-        sample["conditioning.carbonation[99]"]
-    with pytest.raises(KeyError, match="did you mean: carbonation"):
-        sample["conditioning.carbonatoin[20]"]
-    with pytest.raises(KeyError, match="did you mean: malt"):
-        sample["mal.u"]
-    with pytest.raises(KeyError, match="did you mean: malt"):
-        sample.dependencies("mal")
-    with pytest.raises(KeyError, match="did you mean: malt"):
-        sample.dependents("mal")
-    with pytest.raises(KeyError, match="did you mean: malt"):
-        sample.affected_by_change("mal")
-    with pytest.raises(KeyError, match="did you mean: carbonation"):
-        sample.dependencies("conditioning.carbonatoin")
-    assert sample.dependencies("malt") == []
+        sample["tempering.nitridation[99]"]
+    with pytest.raises(KeyError, match="did you mean: nitridation"):
+        sample["tempering.nitridatoin[20]"]
+    with pytest.raises(KeyError, match="did you mean: diameter"):
+        sample["diametr.u"]
+    with pytest.raises(KeyError, match="did you mean: diameter"):
+        sample.dependencies("diametr")
+    with pytest.raises(KeyError, match="did you mean: diameter"):
+        sample.dependents("diametr")
+    with pytest.raises(KeyError, match="did you mean: diameter"):
+        sample.affected_by_change("diametr")
+    with pytest.raises(KeyError, match="did you mean: nitridation"):
+        sample.dependencies("tempering.nitridatoin")
+    assert sample.dependencies("diameter") == []
 
 
 def test_a_table_method_writes_any_extension(collection):
@@ -4157,14 +4883,14 @@ def test_a_table_method_writes_any_extension(collection):
 
 
 def test_a_declared_exports_other_extension_is_refused(collection):
-    # As `samplekit export malts -o m.json` refuses it — the format is the
+    # As `samplekit export diameters -o m.json` refuses it — the format is the
     # configuration's, and the path contradicts it.
     samples = sk.SampleList(collection.root)
-    with pytest.raises(ValueError, match=r"'malts' writes CSV, and the extension names JSON"
-                       r".*change format in \[export\.malts\]; nothing was written"):
-        samples.export("malts", output=collection.root / "m.json")
+    with pytest.raises(ValueError, match=r"'diameters' writes CSV, and the extension names JSON"
+                       r".*change format in \[export\.diameters\]; nothing was written"):
+        samples.export("diameters", output=collection.root / "m.json")
     assert not list(collection.root.glob("m.*"))
-    samples.export("malts", output=collection.root / "m.txt")
+    samples.export("diameters", output=collection.root / "m.txt")
     assert (collection.root / "m.txt").is_file()
 
 
@@ -4172,35 +4898,46 @@ def test_stats_weights_its_mean_as_the_summary_does(collection, cli):
     # `mean (1/u²)` where every uncertainty is known, as --summary.
     samples = sk.SampleList(collection.root).sorted("name")
     measured = samples[:2]
-    summary = measured.stats("malt")
+    summary = measured.stats("diameter")
     weights = [1 / 0.05**2, 1 / 0.02**2]
     assert summary.weighted
     assert summary.mean == pytest.approx(
         (12.5 * weights[0] + 13.1234 * weights[1]) / sum(weights))
     assert "(1/u²)" in repr(summary)
-    said = cli(collection.root / "A.md", collection.root / "B.md", "-c", "name,malt", "--summary")
+    said = cli(collection.root / "A.md", collection.root / "B.md", "-c", "name,diameter", "--summary")
     assert "mean (1/u²)" in said and f"{summary.mean:.3f}" in said
     # C has no uncertainty: the plain mean stands, as the command line's.
-    plain = samples.stats("malt")
+    plain = samples.stats("diameter")
     assert not plain.weighted
     assert plain.mean == pytest.approx((12.5 + 13.1234 + 11.0) / 3)
     assert not sk.Property([1.0, 2.0]).stats.weighted
 
 
+def test_a_weighted_mean_carries_its_own_standard_error(collection):
+    # 1/√Σw beside a weighted mean; the samples' own deviation over √n beside
+    # the plain one.
+    samples = sk.SampleList(collection.root).sorted("name")
+    weighted = samples[:2].stats("diameter")
+    weights = [1 / 0.05**2, 1 / 0.02**2]
+    assert weighted.standard_error == pytest.approx(1 / sum(weights) ** 0.5)
+    plain = samples.stats("diameter")
+    assert plain.standard_error == pytest.approx(plain.sample_stdev / 3**0.5)
+
+
 def test_an_uncertainty_column_left_out_is_said(project):
     # Said as the command line says it on stderr.
     project.config()
-    project.sample("A.md", name="A", properties={"malt": "{v: 12.5, unit: g}"})
+    project.sample("A.md", name="A", properties={"diameter": "{v: 12.5, unit: g}"})
     samples = sk.SampleList(project.root)
-    with pytest.warns(UserWarning, match=r"malt_uncertainty.* is left out: it is empty for "
+    with pytest.warns(UserWarning, match=r"diameter_uncertainty.* is left out: it is empty for "
                       r"every sample"):
-        written = samples.to_csv(columns=["name", "malt"])
+        written = samples.to_csv(columns=["name", "diameter"])
     assert "uncertainty" not in written
     with pytest.warns(UserWarning, match="is left out"):
-        samples.to_tsv(columns=["name", "malt"])
+        samples.to_tsv(columns=["name", "diameter"])
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        samples.to_json(columns=["name", "malt"])
+        samples.to_json(columns=["name", "diameter"])
 
 
 def test_a_key_error_prints_its_message_on_its_lines(project):
@@ -4208,9 +4945,9 @@ def test_a_key_error_prints_its_message_on_its_lines(project):
 
     sample = quantity_sample(project)
     with pytest.raises(KeyError) as caught:
-        sample["mal"]
+        sample["diametr"]
     said = "".join(traceback.format_exception_only(caught.value))
-    assert said.startswith("KeyError: unknown field 'mal'\n")
+    assert said.startswith("KeyError: unknown field 'diametr'\n")
     assert "\\n" not in said
     assert isinstance(caught.value, KeyError) and caught.value.args[0].startswith("unknown")
 
@@ -4220,10 +4957,10 @@ def test_an_attribute_error_suggests_once(project):
 
     sample = quantity_sample(project)
     with pytest.raises(AttributeError) as caught:
-        sample.mal
+        sample.diametr
     said = "".join(traceback.format_exception_only(caught.value))
     assert said.lower().count("did you mean") == 1
-    assert not hasattr(sample, "mal")
+    assert not hasattr(sample, "diametr")
 
 
 def test_a_type_is_named_with_its_article(project):
@@ -4232,7 +4969,7 @@ def test_a_type_is_named_with_its_article(project):
         sample.tags.append(3)
     assert "an int" in str(caught.value) and "a int" not in str(caught.value)
     with pytest.raises(TypeError) as caught:
-        sk.Property(compute=object())
+        sk.Property(compute_value=object())
     assert "an object" in str(caught.value)
 
 
@@ -4254,7 +4991,7 @@ def test_a_refusal_names_the_options_of_python(tmp_path, monkeypatch):
     monkeypatch.delenv("DISPLAY", raising=False)
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     with pytest.raises(RuntimeError) as caught:
-        sk.plot(samples, "malt_volume")
+        sk.plot(samples, "diameter_volume")
     assert "output=" in str(caught.value) and "-o " not in str(caught.value)
     with pytest.raises(TypeError, match="x_label changes a declared figure"):
         sk.plot(Plotted(paths[0]), "mass_bar", x_label="m")
@@ -4264,7 +5001,7 @@ def test_auto_is_a_free_bound_of_an_axis(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    (figure,) = sk.plot(samples, "malt_volume", x_limits=[0, "auto"], output=tmp_path / "f.png")
+    (figure,) = sk.plot(samples, "diameter_volume", x_limits=[0, "auto"], output=tmp_path / "f.png")
     low, high = figure.axes[0].get_xlim()
     assert low == 0 and high > 3
 
@@ -4283,21 +5020,21 @@ def test_samples_disagreeing_are_a_data_error_for_the_command_line(tmp_path):
                               input=json.dumps(request), capture_output=True, text=True,
                               env={**os.environ, "MPLBACKEND": "Agg"})
 
-    units = drawn("malt")
+    units = drawn("diameter")
     assert units.returncode == 2, units.stderr
     assert "one axis holds one unit" in units.stderr
-    unknown = drawn("maltt")
+    unknown = drawn("diameterr")
     assert unknown.returncode == 1, unknown.stderr
 
 
 def test_an_empty_selection_writes_the_header(collection):
     samples = sk.SampleList(collection.root)
-    nothing = samples.filter("malt > 100")
+    nothing = samples.filter("diameter > 100")
     assert len(nothing) == 0
-    assert nothing.to_csv(columns=["name", "malt"]).startswith("name,malt")
-    assert nothing.filter("malt > 1000").to_dict(columns=["name"]) == {"name": []}
-    with pytest.raises(KeyError, match="did you mean: malt"):
-        nothing.to_csv(columns=["name", "mal"])
+    assert nothing.to_csv(columns=["name", "diameter"]).startswith("name,diameter")
+    assert nothing.filter("diameter > 1000").to_dict(columns=["name"]) == {"name": []}
+    with pytest.raises(KeyError, match="did you mean: diameter"):
+        nothing.to_csv(columns=["name", "diametr"])
 
 
 # ------------------------------------------------- review of 2026-09-27, Python
@@ -4311,7 +5048,7 @@ def grouped_samples(tmp_path, values, rc="schema_version = 1\n"):
         written = "n/a" if value is None else value
         (tmp_path / f"s{at:02}.md").write_text(
             f"---\nschema_version: 1\nname: s{at:02}\nproperties:\n"
-            f"  og: {1.040 + at / 1000}\n  abv: {4.0 + at / 10}\n  efficiency: {written}\n---\n"
+            f"  radius: {1.040 + at / 1000}\n  modulus: {4.0 + at / 10}\n  recovery: {written}\n---\n"
         )
     return sk.load(tmp_path)
 
@@ -4329,11 +5066,11 @@ def test_a_table_is_no_group(tmp_path):
     # Its repr was each legend entry, and over twelve samples it was refused
     # for being twelve text groups.
     with pytest.raises(ValueError, match="'measurements' is a table"):
-        sk.plot(samples, x="volume", y="malt", group="measurements", output=output)
+        sk.plot(samples, x="volume", y="diameter", group="measurements", output=output)
     with pytest.raises(KeyError, match="names a column"):
-        sk.plot(samples, x="volume", y="malt", group="measurements.ebc", output=output)
+        sk.plot(samples, x="volume", y="diameter", group="measurements.hv", output=output)
     assert not output.exists()
-    drawn = sk.plot(samples, x="volume", y="malt", group="measurements.ebc[8.0]", output=output)
+    drawn = sk.plot(samples, x="volume", y="diameter", group="measurements.hv[8.0]", output=output)
     assert legend_of(drawn) == ["5.1"]
 
 
@@ -4341,14 +5078,14 @@ def test_a_value_not_applicable_leaves_a_numeric_group_numeric(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
     few = grouped_samples(tmp_path / "few", [70, None, 62, 69])
-    drawn = sk.plot(few, x="og", y="abv", group="efficiency", output=tmp_path / "few.png")
+    drawn = sk.plot(few, x="radius", y="modulus", group="recovery", output=tmp_path / "few.png")
     assert legend_of(drawn) == ["62", "69", "70", "n/a"]
     legend = drawn[0].axes[0].get_legend()
     grey = [handle for handle, text in zip(legend.legend_handles, legend.get_texts())
             if text.get_text() == "n/a"][0]
     assert matplotlib.colors.to_hex(grey.get_color()) == matplotlib.colors.to_hex("0.6")
     many = grouped_samples(tmp_path / "many", [None] + list(range(60, 71)))
-    drawn = sk.plot(many, x="og", y="abv", group="efficiency", output=tmp_path / "many.png")
+    drawn = sk.plot(many, x="radius", y="modulus", group="recovery", output=tmp_path / "many.png")
     # A colour bar for the twelve values, and the sample without one named.
     assert len(drawn[0].axes) == 2
     assert legend_of(drawn) == ["n/a"]
@@ -4357,48 +5094,48 @@ def test_a_value_not_applicable_leaves_a_numeric_group_numeric(tmp_path):
 def test_numbers_that_read_alike_are_told_apart_in_a_legend(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
-    rc = 'schema_version = 1\n[property.efficiency]\nprecision = ".0f"\n'
+    rc = 'schema_version = 1\n[property.recovery]\nprecision = ".0f"\n'
     samples = grouped_samples(tmp_path / "near", [66.2, 65.9, 70.0], rc)
-    drawn = sk.plot(samples, x="og", y="abv", group="efficiency", output=tmp_path / "f.png")
+    drawn = sk.plot(samples, x="radius", y="modulus", group="recovery", output=tmp_path / "f.png")
     assert legend_of(drawn) == ["65.9", "66.2", "70.0"]
     apart = grouped_samples(tmp_path / "apart", [66.0, 70.0], rc)
-    drawn = sk.plot(apart, x="og", y="abv", group="efficiency", output=tmp_path / "g.png")
+    drawn = sk.plot(apart, x="radius", y="modulus", group="recovery", output=tmp_path / "g.png")
     assert legend_of(drawn) == ["66", "70"]
 
 
 def test_text_is_refused_where_a_number_is_held(tmp_path):
     path = tmp_path / "b.md"
     path.write_text(
-        "---\nschema_version: 1\nname: b\nproperties:\n  og: {v: 1.048, readings: [1.047, 1.049]}\n"
-        "  style: {v: ipa}\ntables:\n  t:\n    index: d\n    columns: {d: {}, g: {}}\n"
+        "---\nschema_version: 1\nname: b\nproperties:\n  radius: {v: 1.048, readings: [1.047, 1.049]}\n"
+        "  style: {v: titanium}\ntables:\n  t:\n    index: d\n    columns: {d: {}, g: {}}\n"
         "    rows:\n      - {d: 1, g: 1.03}\n---\n"
     )
-    brew = sk.Sample(path, model=False)
+    piece = sk.Sample(path, model=False)
     for wrong in ("1.05", True):
-        with pytest.raises(ValueError, match="'og' holds a number"):
-            brew.og.value = wrong
+        with pytest.raises(ValueError, match="'radius' holds a number"):
+            piece.radius.value = wrong
     with pytest.raises(ValueError, match="holds a number"):
-        brew.t.at(1, "g").value = "1.03"
-    assert brew.og.value == pytest.approx(1.048)
+        piece.t.at(1, "g").value = "1.03"
+    assert piece.radius.value == pytest.approx(1.048)
     # A property holding text takes text.
-    brew.style.value = "stout"
-    brew.og.value = 1.05
-    assert brew.og.value == 1.05
+    piece.style.value = "nickel"
+    piece.radius.value = 1.05
+    assert piece.radius.value == 1.05
 
 
-class Brewed(sk.Sample):
+class Poured(sk.Sample):
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.og = sk.Property(1.05)
+        self.radius = sk.Property(1.05)
         self.volume = sk.Property(20.0)
-        self.efficiency = sk.Property(compute=lambda: (self.og.value - 1) * self.volume.value,
-                                      depends_on=["og", "volume"])
+        self.recovery = sk.Property(compute_value=lambda: (self.radius.value - 1) * self.volume.value,
+                                      depends_on=["radius", "volume"])
 
 
 def test_a_value_waiting_says_so_when_read_as_compute_does():
-    brew = Brewed(name="b")
-    brew.compute()
-    brew.volume.value = None
+    piece = Poured(name="b")
+    piece.compute()
+    piece.volume.value = None
 
     def said(action):
         with warnings.catch_warnings(record=True) as caught:
@@ -4408,17 +5145,17 @@ def test_a_value_waiting_says_so_when_read_as_compute_does():
 
     # Computed before its input was taken away: read, it waits, as compute()
     # says it — not "stale: compute() runs it again", which compute declines.
-    sentence = "b: 'efficiency' waits for volume: nobody entered volume, so its formula does not run"
-    assert said(brew.compute) == [sentence]
-    assert said(lambda: brew.efficiency.value) == [sentence]
+    sentence = "b: 'recovery' waits for volume: nobody entered volume, so its formula does not run"
+    assert said(piece.compute) == [sentence]
+    assert said(lambda: piece.recovery.value) == [sentence]
 
     # An input that failed was entered: it is said to have failed.
     class Broken(sk.Sample):
         def __init__(self, path=None, name=None):
             super().__init__(path, name=name)
-            self.og = sk.Property(1.05)
-            self.double = sk.Property(compute=lambda: 1 / 0, depends_on=["og"])
-            self.quad = sk.Property(compute=lambda: self.double.value * 2, depends_on=["double"])
+            self.radius = sk.Property(1.05)
+            self.double = sk.Property(compute_value=lambda: 1 / 0, depends_on=["radius"])
+            self.quad = sk.Property(compute_value=lambda: self.double.value * 2, depends_on=["double"])
 
     def computed():
         with pytest.raises(ZeroDivisionError):
@@ -4429,29 +5166,29 @@ def test_a_value_waiting_says_so_when_read_as_compute_does():
 
 
 def test_a_warning_names_an_unnamed_sample_by_its_file(tmp_path):
-    path = tmp_path / "brew-7.md"
-    path.write_text("---\nschema_version: 1\nproperties:\n  og: 1.05\n---\n")
-    brew = Tasted(path)
-    with pytest.warns(UserWarning, match=r"^brew-7: 'abv' waits for fg"):
-        assert brew.abv.value is None
+    path = tmp_path / "piece-7.md"
+    path.write_text("---\nschema_version: 1\nproperties:\n  radius: 1.05\n---\n")
+    piece = Inspected(path)
+    with pytest.warns(UserWarning, match=r"^piece-7: 'modulus' waits for notch"):
+        assert piece.modulus.value is None
 
 
 def test_an_empty_selection_writes_the_whole_header(collection, cli, tmp_path):
     samples = sk.SampleList(collection.root)
-    nothing = samples.filter("malt > 100")
+    nothing = samples.filter("diameter > 100")
     root = collection.root
-    assert nothing.to_csv(columns=["name", "malt"]) == cli(
-        root, "-c", "name,malt", "-f", "malt > 100", "--csv")
-    assert nothing.to_csv(columns=["name", "malt"]).startswith(
-        "name,malt_value [g],malt_uncertainty [g]")
-    assert nothing.to_tsv(columns=["name", "malt"]) == cli(
-        root, "-c", "name,malt", "-f", "malt > 100", "--tsv")
-    assert nothing.to_csv(profile="platos") == cli(
-        root, "--profile", "platos", "-f", "malt > 100", "--csv")
-    with pytest.warns(UserWarning, match="'malts' is written from 0 of 3 samples"):
-        written = nothing.export("malts", output=tmp_path / "malts.csv")
+    assert nothing.to_csv(columns=["name", "diameter"]) == cli(
+        root, "-c", "name,diameter", "-f", "diameter > 100", "--csv")
+    assert nothing.to_csv(columns=["name", "diameter"]).startswith(
+        "name,diameter_value [g],diameter_uncertainty [g]")
+    assert nothing.to_tsv(columns=["name", "diameter"]) == cli(
+        root, "-c", "name,diameter", "-f", "diameter > 100", "--tsv")
+    assert nothing.to_csv(profile="ductilities") == cli(
+        root, "--profile", "ductilities", "-f", "diameter > 100", "--csv")
+    with pytest.warns(UserWarning, match="'diameters' is written from 0 of 3 samples"):
+        written = nothing.export("diameters", output=tmp_path / "diameters.csv")
     assert written.read_text().splitlines()[0] == samples.export(
-        "malts", output=tmp_path / "all.csv").read_text().splitlines()[0]
+        "diameters", output=tmp_path / "all.csv").read_text().splitlines()[0]
 
 
 def test_a_figure_of_samples_lacking_an_axis_is_refused_as_data(tmp_path):
@@ -4460,15 +5197,15 @@ def test_a_figure_of_samples_lacking_an_axis_is_refused_as_data(tmp_path):
     matplotlib.use("Agg")
     paths = figure_samples(tmp_path)
     empty = tmp_path / "C4.md"
-    empty.write_text("---\nschema_version: 1\nname: C4\nproperties:\n  malt: {unit: g}\n"
+    empty.write_text("---\nschema_version: 1\nname: C4\nproperties:\n  diameter: {unit: g}\n"
                      "  volume: 3.0\n---\n")
-    with pytest.raises(ValueError, match="^the one sample selected holds no malt: nothing to draw") as one:
-        sk.plot(sk.Sample(empty), x="volume", y="malt", output=tmp_path / "f.png")
+    with pytest.raises(ValueError, match="^the one sample selected holds no diameter: nothing to draw") as one:
+        sk.plot(sk.Sample(empty), x="volume", y="diameter", output=tmp_path / "f.png")
     assert _figures.raised_by_the_data(one.value)
     other = tmp_path / "C5.md"
     other.write_text(empty.read_text().replace("C4", "C5"))
-    with pytest.raises(ValueError, match="none of the 2 samples holds both 'volume' and 'malt'"):
-        sk.plot(sk.load(empty, other), x="volume", y="malt", output=tmp_path / "f.png")
+    with pytest.raises(ValueError, match="none of the 2 samples holds both 'volume' and 'diameter'"):
+        sk.plot(sk.load(empty, other), x="volume", y="diameter", output=tmp_path / "f.png")
     assert paths
 
 
@@ -4477,32 +5214,32 @@ def test_a_figure_written_by_a_script_names_the_script_and_its_axes(tmp_path):
     script = tmp_path / "draw.py"
     script.write_text(
         "import sys\nimport samplekit as sk\n"
-        "sk.plot(sk.load(sys.argv[1]), x='volume', y='malt', output=sys.argv[2])\n"
+        "sk.plot(sk.load(sys.argv[1]), x='volume', y='diameter', output=sys.argv[2])\n"
     )
     output = tmp_path / "f.svg"
     subprocess.run([sys.executable, str(script), str(tmp_path), str(output)], check=True,
                    env={**os.environ, "MPLBACKEND": "Agg"}, cwd=tmp_path)
     import hashlib
-    digest = hashlib.sha256(output.read_bytes()).hexdigest()
+    digest = kept_digest(output)
     history = tmp_path / ".samplekit/history"
     tag = subprocess.run(
         ["git", "--git-dir", str(history), "cat-file", "-p", output_record(history, digest)],
         capture_output=True, text=True, check=True).stdout
     assert "python " in tag and script.name in tag, tag
-    assert " · plot malt against volume" in tag, tag
+    assert " · plot diameter against volume" in tag, tag
 
 
 def test_keep_takes_one_line_of_text(tmp_path):
     with pytest.raises(TypeError, match="keep\\(\\) takes a message as text"):
         sk.keep(3)
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
-    (tmp_path / "c1.md").write_text("---\nschema_version: 1\nname: C1\nproperties:\n  malt: 1.0\n---\n")
+    (tmp_path / "c1.md").write_text("---\nschema_version: 1\nname: C1\nproperties:\n  diameter: 1.0\n---\n")
     script = tmp_path / "keep.py"
     script.write_text(
         "import sys\nimport samplekit as sk\n"
         "s = sk.Sample(sys.argv[1], model=False)\n"
-        "s.malt.value = 2.0\ns.save()\nsk.keep('first\\nline')\n"
-        "s.malt.value = 3.0\ns.save()\nsk.keep('   ')\n"
+        "s.diameter.value = 2.0\ns.save()\nsk.keep('first\\nline')\n"
+        "s.diameter.value = 3.0\ns.save()\nsk.keep('   ')\n"
     )
     subprocess.run([sys.executable, str(script), str(tmp_path / "c1.md")], check=True, cwd=tmp_path)
     said = subprocess.run(
@@ -4534,7 +5271,7 @@ def test_overwrite_does_not_change_permissions(project):
     try:
         if os.access(path, os.W_OK):
             pytest.skip("this user writes read-only files")
-        sample.malt.value = 4.0
+        sample.diameter.value = 4.0
         with pytest.raises(PermissionError) as refused:
             sample.save(overwrite=True)
         assert "os error" not in str(refused.value)
@@ -4574,7 +5311,7 @@ def test_a_mistyped_method_is_suggested(collection):
         with pytest.raises(AttributeError) as caught:
             mistyped()
         assert f"did you mean: {meant}?" in str(caught.value)
-    table = sk.Table({"d": sk.Column(), "g": sk.Column()}, "d")
+    table = sk.Table({"d": sk.Property(), "g": sk.Property()}, index="d")
     with pytest.raises(AttributeError, match="did you mean: values\\?"):
         table.valuse
 
@@ -4583,7 +5320,7 @@ def test_an_auto_bound_leaves_a_margin(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
     samples = sk.load(*figure_samples(tmp_path))
-    drawn = sk.plot(samples, x="volume", y="malt", y_limits=(0, "auto"), output=tmp_path / "f.png")
+    drawn = sk.plot(samples, x="volume", y="diameter", y_limits=(0, "auto"), output=tmp_path / "f.png")
     low, high = drawn[0].axes[0].get_ylim()
     top = 12.0 + 0.1
     assert low == 0
@@ -4594,12 +5331,12 @@ def test_an_auto_bound_leaves_a_margin(tmp_path):
 def test_a_cell_axis_names_its_row(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
-    rc = FIGURE_RC + '[property."measurements.ebc"]\nsymbol = "ebc"\n'
+    rc = FIGURE_RC + '[property."measurements.hv"]\nsymbol = "hv"\n'
     samples = sk.load(*figure_samples(tmp_path, rc))
-    drawn = sk.plot(samples, x="volume", y="measurements.ebc[8.0]", output=tmp_path / "f.png")
-    assert drawn[0].axes[0].get_ylabel() == "ebc, f 8.0"
-    column = sk.plot(samples, "ebc", output=tmp_path / "g.png")
-    assert column[0].axes[0].get_ylabel() == "ebc"
+    drawn = sk.plot(samples, x="volume", y="measurements.hv[8.0]", output=tmp_path / "f.png")
+    assert drawn[0].axes[0].get_ylabel() == "hv, f 8.0"
+    column = sk.plot(samples, "hv", output=tmp_path / "g.png")
+    assert column[0].axes[0].get_ylabel() == "hv"
 
 
 def test_messages_say_one_thing_one_way(collection, tmp_path):
@@ -4614,12 +5351,12 @@ def test_messages_say_one_thing_one_way(collection, tmp_path):
     (tmp_path / "f").mkdir()
     samples = sk.load(*figure_samples(tmp_path / "f"))
     with pytest.raises(KeyError) as unknown:
-        sk.plot(samples, "malt_volum")
+        sk.plot(samples, "diameter_volum")
     assert str(unknown.value).splitlines()[1:] == [
-        "  did you mean: malt_volume?", "  the figures: malt_volume, ebc"]
+        "  did you mean: diameter_volume?", "  the figures: diameter_volume, hv"]
     sample = sk.SampleList(collection.root)[0]
     with pytest.raises(KeyError) as field:
-        sample["mal"]
+        sample["diametr"]
     lines = str(field.value).splitlines()
     assert lines[1].strip().startswith("did you mean") and lines[2].strip().startswith("available")
     # One wording for a file not replaced.
@@ -4632,7 +5369,7 @@ def test_messages_say_one_thing_one_way(collection, tmp_path):
         sk.SampleList([sample]).save_all(collection.root)
     with pytest.raises(FileExistsError, match="^3 destinations already exist"):
         sk.SampleList(collection.root).save_all(collection.root)
-    table = sk.Table({"d": sk.Column(), "g": sk.Column()}, "d")
+    table = sk.Table({"d": sk.Property(), "g": sk.Property()}, index="d")
     table.add(d=1, g=2.0)
     with pytest.raises(KeyError) as row:
         table.at(99, "g")
@@ -4640,7 +5377,7 @@ def test_messages_say_one_thing_one_way(collection, tmp_path):
     with pytest.raises(KeyError, match="an empty field name"):
         sample[""]
     with pytest.raises(ValueError, match="the list holds no sample"):
-        sk.SampleList([]).stats("malt")
+        sk.SampleList([]).stats("diameter")
 
 
 def test_private_docstrings_name_no_internal_decisions():
@@ -4672,34 +5409,36 @@ class _Declared(sk.Sample):
 
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.malt = sk.Property(unit="g", value=sk.stats.mean, uncertainty=sk.stats.standard_error)
-        self.twice = sk.Property(unit="g", compute=self._twice, depends_on=["malt"])
-        self.mashing = sk.Table(
-            {"T": sk.Column(), "G": sk.Column(unit="NTU")},
-            "T",
+        self.diameter = sk.Property(unit="g", value=sk.stats.mean, uncertainty=sk.stats.standard_error)
+        self.twice = sk.Property(unit="g", compute_value=self._twice, depends_on=["diameter"])
+        self.preheating = sk.Table(
+            {
+                "T": sk.Property(),
+                "G": sk.Property(unit="NTU", compute=lambda row: 1 / row.T.value, depends_on=["row.T"]),
+            },
+            index="T",
             rows=[{"T": 10}],
-            compute_rows=[("G", ["row.T"], lambda row: 1 / row.T.value)],
         )
 
     def _twice(self):
-        return 2 * self.malt.value
+        return 2 * self.diameter.value
 
 
 def test_formula_code_names_each_formula_and_what_declares_it(project):
-    path = project.sample("d.md", properties={"malt": "{readings: [1.0, 2.0, 3.0], unit: g}"})
+    path = project.sample("d.md", properties={"diameter": "{readings: [1.0, 2.0, 3.0], unit: g}"})
     sample = _Declared(path)
     code = sample._formula_code()
-    assert sorted(code) == ["malt", "mashing.G", "twice"]
+    assert sorted(code) == ["diameter", "preheating.G", "twice"]
     # A method as its function, which holds no sample; the statistics as
     # declared; a column's derivation with what it reads and fills.
-    assert code["twice"] == [("compute", _Declared._twice), ("unit", "g")]
-    assert [(role, repr(given)) for role, given in code["malt"]] == [
+    assert code["twice"] == [("compute_value", _Declared._twice), ("unit", "g")]
+    assert [(role, repr(given)) for role, given in code["diameter"]] == [
         ("value", "sk.stats.mean"),
         ("uncertainty", "sk.stats.standard_error"),
         ("unit", "'g'"),
     ]
-    assert [role for role, _ in code["mashing.G"]] == ["compute_rows", "inputs", "outputs", "unit"]
-    assert code["mashing.G"][1:] == [("inputs", "row.T"), ("outputs", "G"), ("unit", "NTU")]
+    assert [role for role, _ in code["preheating.G"]] == ["compute", "inputs", "outputs", "unit"]
+    assert code["preheating.G"][1:] == [("inputs", "row.T"), ("outputs", "G"), ("unit", "NTU")]
     # A value current by its inputs is planned when its formula changed.
     sample.compute()
     assert sample._plan([], False, False) == []
@@ -4710,26 +5449,26 @@ def test_formula_code_names_each_formula_and_what_declares_it(project):
 
 
 class _Viscous(sk.Sample):
-    """A mouthfeel table whose `sweetness` column declares the statistics of its cells."""
+    """A toughness table whose `stiffness` column declares the statistics of its cells."""
 
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.mouthfeel = sk.Table(
+        self.toughness = sk.Table(
             {
-                "T": sk.Column(),
-                "sweetness": sk.Column(
+                "T": sk.Property(),
+                "stiffness": sk.Property(
                     unit="cP", value=sk.stats.mean, uncertainty=sk.stats.standard_error
                 ),
             },
-            "T",
+            index="T",
         )
 
 
 def test_a_column_declares_the_statistics_of_its_cells(project):
     path = project.root / "v.md"
     sample = _Viscous(name="v")
-    sample.mouthfeel.add(T=40, sweetness=[1.0, 2.0, 3.0])
-    cell = sample.mouthfeel.at(40, "sweetness")
+    sample.toughness.add(T=40, stiffness=[1.0, 2.0, 3.0])
+    cell = sample.toughness.at(40, "stiffness")
     assert cell.value == 2.0
     assert cell.uncertainty == pytest.approx(3**-0.5)
     sample.save(path)
@@ -4743,40 +5482,42 @@ def test_a_column_declares_the_statistics_of_its_cells(project):
     # statistic it recorded, and compute takes it again.
     path.write_text(text.replace("[1.0, 2.0, 3.0]", "[1.0, 2.0, 6.0]"))
     corrected = _Viscous(path)
-    assert corrected.outdated() == ["mouthfeel.sweetness"]
-    assert corrected.mouthfeel.at(40, "sweetness").value == 2.0
+    assert corrected.outdated() == ["toughness.stiffness"]
+    assert corrected.toughness.at(40, "stiffness").value == 2.0
     corrected.compute()
-    assert corrected.mouthfeel.at(40, "sweetness").value == 3.0
+    assert corrected.toughness.at(40, "stiffness").value == 3.0
     assert corrected.outdated() == []
     corrected.save()
     assert _Viscous(path).outdated() == []
     # Readings given to the cell in a session leave it not current in the
     # same way; a row replaced whole takes its statistic at once.
     again = _Viscous(path)
-    again.mouthfeel.at(40, "sweetness").readings = [3.0, 5.0]
-    assert again.outdated() == ["mouthfeel.sweetness"]
-    again.mouthfeel.update(40, sweetness=[7.0, 9.0])
-    assert again.mouthfeel.at(40, "sweetness").value == 8.0
+    again.toughness.at(40, "stiffness").readings = [3.0, 5.0]
+    assert again.outdated() == ["toughness.stiffness"]
+    again.toughness.update(40, stiffness=[7.0, 9.0])
+    assert again.toughness.at(40, "stiffness").value == 8.0
 
 
 def test_a_column_takes_only_statistics():
-    with pytest.raises(TypeError, match="statistic of its cells' readings"):
-        sk.Column(value=5)
+    # Each cell holds its own value, in the file: a column says how its
+    # readings give it, never what it is.
+    for given in (sk.Property(value=5), sk.Property(uncertainty=0.1), sk.Property([1.0, 2.0])):
+        with pytest.raises(TypeError, match="each cell holds its own"):
+            sk.Table({"T": sk.Property(), "x": given}, index="T")
     with pytest.raises(ValueError, match="standard_error"):
-        sk.Column(value=sk.stats.standard_error)
-    assert "value=sk.stats.median" in repr(sk.Column(value=sk.stats.median))
+        sk.Property(value=sk.stats.standard_error)
 
 
 def test_a_list_assigned_with_no_statistic_gives_no_value(project):
-    path = project.sample("s.md", name="s", properties={"fg": "1.01"})
+    path = project.sample("s.md", name="s", properties={"notch": "1.01"})
     sample = sk.Sample(path, model=False)
-    sample.og = sk.Property([1.05, 1.06])
-    assert sample.og.readings == [1.05, 1.06]
+    sample.radius = sk.Property([1.05, 1.06])
+    assert sample.radius.readings == [1.05, 1.06]
     # No statistic is declared, so no mean stands in, and none is written.
-    assert sample.og.value is None
+    assert sample.radius.value is None
     sample.save()
     text = path.read_text()
-    assert "og: {readings: [1.05, 1.06]}" in text
+    assert "radius: {readings: [1.05, 1.06]}" in text
 
 
 # ------------------------------------------------------------------
@@ -4822,7 +5563,7 @@ def test_an_empty_selection_is_refused_as_data(tmp_path):
 
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
     with pytest.raises(ValueError, match="no sample to draw: the selection is empty") as empty:
-        sk.plot(samples.filter("malt > 1000"), x="volume", y="malt",
+        sk.plot(samples.filter("diameter > 1000"), x="volume", y="diameter",
                 output=tmp_path / "f.png")
     # The command line exits 2 for it, as for any figure of data it cannot draw.
     assert _figures.raised_by_the_data(empty.value)
@@ -4873,11 +5614,11 @@ def test_a_failed_value_reads_as_its_last_value(tmp_path):
 def test_save_takes_any_extension(tmp_path):
     # Where a user keeps a file is theirs: any name is written, and read back.
     sample = sk.Sample(name="kept")
-    sample.malt = sk.Property(1.5, unit="g")
+    sample.diameter = sk.Property(1.5, unit="g")
     for name in ("kept.txt", "kept", "kept.sample.yaml"):
         path = tmp_path / name
         sample.save(path)
-        assert sk.Sample(path, model=False).malt.value == 1.5
+        assert sk.Sample(path, model=False).diameter.value == 1.5
 
 
 def test_a_script_writing_only_a_figure_is_a_snapshot_of_its_own(tmp_path):
@@ -4890,16 +5631,16 @@ def test_a_script_writing_only_a_figure_is_a_snapshot_of_its_own(tmp_path):
     # One that only prints is none.
     subprocess.run(
         [sys.executable, "-c",
-         f"import samplekit as sk\nprint(sk.load({str(tmp_path)!r})[0].malt.value)\n"],
+         f"import samplekit as sk\nprint(sk.load({str(tmp_path)!r})[0].diameter.value)\n"],
         check=True, env=env, cwd=tmp_path, capture_output=True)
     assert not (tmp_path / ".samplekit/history").exists()
     script = tmp_path / "draw.py"
     script.write_text(
         "import sys\nimport samplekit as sk\n"
         "samples = sk.load(sys.argv[1])\n"
-        "samples.to_csv('table.csv', columns=['name', 'malt'], overwrite=True)\n"
-        "sk.plot(samples, x='volume', y='malt', output='f.svg', overwrite=True)\n"
-        "sk.plot(samples, x='volume', y='malt', output='g.png', overwrite=True)\n"
+        "samples.to_csv('table.csv', columns=['name', 'diameter'], overwrite=True)\n"
+        "sk.plot(samples, x='volume', y='diameter', output='f.svg', overwrite=True)\n"
+        "sk.plot(samples, x='volume', y='diameter', output='g.png', overwrite=True)\n"
     )
     subprocess.run([sys.executable, str(script), str(tmp_path)], check=True, env=env,
                    cwd=tmp_path)
@@ -4914,17 +5655,19 @@ def test_a_script_writing_only_a_figure_is_a_snapshot_of_its_own(tmp_path):
     # Each file it wrote is tied to that one snapshot.
     import hashlib
     for name in ("table.csv", "f.svg", "g.png"):
-        digest = hashlib.sha256((tmp_path / name).read_bytes()).hexdigest()
+        digest = kept_digest(tmp_path / name)
         record = output_record(tmp_path / ".samplekit/history", digest)
         tied = subprocess.run(git + ["rev-parse", f"{record}^{{commit}}"],
                               capture_output=True, text=True, check=True).stdout.strip()
         assert tied == own, name
-    # `log` over the project lists it, though it changed no kept file.
+    # `log` over the project lists it, though it changed no kept file, and
+    # names what it wrote.
     binary = BINARY
     if binary.exists():
         shown = subprocess.run([str(binary), "log"], cwd=tmp_path, capture_output=True,
                                text=True, check=True).stdout
-        assert "no kept file · log --script 1" in shown, shown
+        assert "no sample · log --script 1" in shown, shown
+        assert "table.csv" in shown, shown
     # Run again, it is a step again.
     subprocess.run([sys.executable, str(script), str(tmp_path)], check=True, env=env,
                    cwd=tmp_path)
@@ -4936,11 +5679,11 @@ def test_a_script_writing_only_a_figure_is_a_snapshot_of_its_own(tmp_path):
 def test_a_python_c_script_keeps_its_source(tmp_path):
     (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
     (tmp_path / "c1.md").write_text(
-        "---\nschema_version: 1\nname: c1\nproperties:\n  malt: 1.0\n---\n")
+        "---\nschema_version: 1\nname: c1\nproperties:\n  diameter: 1.0\n---\n")
     code = (
         "import samplekit as sk\n"
         f"s = sk.Sample({str(tmp_path / 'c1.md')!r}, model=False)\n"
-        "s.malt.value = 4.0\n"
+        "s.diameter.value = 4.0\n"
         "s.save()\n"
     )
     subprocess.run([sys.executable, "-c", code, "an argument"], check=True, cwd=tmp_path)
@@ -4963,19 +5706,19 @@ def test_a_group_over_several_fields_draws_their_combinations(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
     samples = sk.SampleList([sk.Sample(p, model=False) for p in figure_samples(tmp_path)])
-    for group in (["beer", "name"], "beer,name", "beer, name"):
-        (drawn,) = sk.plot(samples, x="volume", y="malt", group=group,
+    for group in (["alloy", "name"], "alloy,name", "alloy, name"):
+        (drawn,) = sk.plot(samples, x="volume", y="diameter", group=group,
                            output=tmp_path / "f.png", overwrite=True)
         legend = drawn.axes[0].get_legend()
         assert [text.get_text() for text in legend.get_texts()] == [
-            "bock, C2", "schwarz, C1", "schwarz, C3"]
-        assert legend.get_title().get_text() == "beer, name"
+            "chrome, C2", "cobalt, C1", "cobalt, C3"]
+        assert legend.get_title().get_text() == "alloy, name"
     # Each field is checked as one is: a misspelt one names the nearest.
     with pytest.raises(KeyError, match="name"):
-        sk.plot(samples, x="volume", y="malt", group=["beer", "nmae"],
+        sk.plot(samples, x="volume", y="diameter", group=["alloy", "nmae"],
                 output=tmp_path / "g.png")
     with pytest.raises(TypeError, match="group is a field, or several in a list"):
-        sk.plot(samples, x="volume", y="malt", group=3, output=tmp_path / "g.png")
+        sk.plot(samples, x="volume", y="diameter", group=3, output=tmp_path / "g.png")
     assert not (tmp_path / "g.png").exists()
 
 
@@ -4983,30 +5726,30 @@ def test_a_list_is_grouped_by_its_fields(tmp_path):
     # As --group splits a table, a dict in the groups' order.
     figure_samples(tmp_path)
     (tmp_path / "C4.md").write_text(
-        "---\nschema_version: 1\nname: C4\nproperties:\n  malt: {v: 9.0, unit: g}\n---\n")
+        "---\nschema_version: 1\nname: C4\nproperties:\n  diameter: {v: 9.0, unit: g}\n---\n")
     samples = sk.SampleList(tmp_path)
-    groups = samples.group_by("beer")
-    assert list(groups) == ["bock", "schwarz", None]
-    assert [s.name for s in groups["schwarz"]] == ["C1", "C3"]
-    assert isinstance(groups["bock"], sk.SampleList)
+    groups = samples.group_by("alloy")
+    assert list(groups) == ["chrome", "cobalt", None]
+    assert [s.name for s in groups["cobalt"]] == ["C1", "C3"]
+    assert isinstance(groups["chrome"], sk.SampleList)
     # The samples are the list's own.
-    assert groups["schwarz"][0] is samples["C1"]
-    for fields in (["beer", "name"], "beer,name", ("beer", "name")):
+    assert groups["cobalt"][0] is samples["C1"]
+    for fields in (["alloy", "name"], "alloy,name", ("alloy", "name")):
         combined = samples.group_by(fields)
-        assert list(combined) == [("bock", "C2"), ("schwarz", "C1"), ("schwarz", "C3"),
+        assert list(combined) == [("chrome", "C2"), ("cobalt", "C1"), ("cobalt", "C3"),
                                   (None, "C4")]
     # A list sorted first is sorted within each group.
-    heaviest = samples.sorted("-malt").group_by("beer")
-    assert [s.name for s in heaviest["schwarz"]] == ["C1", "C3"]
-    with pytest.raises(KeyError, match="beer"):
-        samples.group_by("beet")
+    heaviest = samples.sorted("-diameter").group_by("alloy")
+    assert [s.name for s in heaviest["cobalt"]] == ["C1", "C3"]
+    with pytest.raises(KeyError, match="alloy"):
+        samples.group_by("alloi")
     with pytest.raises(TypeError, match="group_by takes a field"):
         samples.group_by(3)
     # Checked against the list it came from, as a filter is.
-    nothing = samples.filter("malt > 100")
-    assert nothing.group_by("beer") == {}
-    with pytest.raises(KeyError, match="beer"):
-        nothing.group_by("beet")
+    nothing = samples.filter("diameter > 100")
+    assert nothing.group_by("alloy") == {}
+    with pytest.raises(KeyError, match="alloy"):
+        nothing.group_by("alloi")
 
 
 def test_a_filter_reads_the_state_of_each_sample(tmp_path):
@@ -5015,14 +5758,14 @@ def test_a_filter_reads_the_state_of_each_sample(tmp_path):
         'schema_version = 1\n[model]\npath = "model.py"\nclass = "Chain"\n'
     )
     (tmp_path / "model.py").write_text(CHAIN)
-    for name, extra in [("a", ""), ("b", ""), ("c", "yeast_strain: US05\nyeast_strain: S04\n")]:
+    for name, extra in [("a", ""), ("b", ""), ("c", '  carbon: {v: "2.0"}\n')]:
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\n{extra}properties:\n  malt: {{v: 1.5}}\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: {{v: 1.5}}\n{extra}---\n"
         )
     namespace = {"__file__": str(tmp_path / "model.py")}
     exec(CHAIN, namespace)
     failing = namespace["Chain"](tmp_path / "a.md")
-    failing.malt.value = datetime.date(2026, 9, 27)
+    failing.diameter.value = datetime.date(2026, 9, 27)
     with pytest.raises(TypeError):
         failing.compute()
     failing.save()
@@ -5030,31 +5773,33 @@ def test_a_filter_reads_the_state_of_each_sample(tmp_path):
     samples = sk.SampleList(tmp_path)
     names = lambda selected: sorted(sample.name for sample in selected)
     assert names(samples.filter("state == failed")) == ["a"]
-    # a's `quadruple` never ran either: what it reads failed.
-    assert names(samples.filter("state == never_computed")) == ["a", "b", "c"]
-    # a's malt is now a date among numbers, which `validate` finds too.
+    # a's `quadruple` never ran: what it reads failed.
+    # Behind what failed, a's value waits, as status says it.
+    assert names(samples.filter("state == never_computed")) == ["b", "c"]
+    assert "a" in names(samples.filter("state == waiting"))
+    # a's diameter is now a date among numbers, which `validate` finds too.
     assert names(samples.filter("state == defective")) == ["a", "c"]
     assert names(samples.filter("state == defective && !(state == failed)")) == ["c"]
-    assert names(samples.filter("state == defective && state == never_computed")) == ["a", "c"]
-    with pytest.raises(ValueError, match="did you mean: 'outdated'"):
+    assert names(samples.filter("state == defective && state == never_computed")) == ["c"]
+    with pytest.raises(ValueError, match="'stale' is not a state"):
         samples.filter("state == stale")
 
 
 
 def chain_project(root, model=True):
-    """Three samples of the chain model: a failed, b current, c with a key written twice."""
+    """Three samples of the chain model: a failed, b current, c holding a quoted number."""
     (root / ".samplekitrc").write_text(
         'schema_version = 1\n[model]\npath = "model.py"\nclass = "Chain"\n'
     )
-    for name, extra in [("a", ""), ("b", ""), ("c", "yeast_strain: US05\nyeast_strain: S04\n")]:
+    for name, extra in [("a", ""), ("b", ""), ("c", '  carbon: {v: "2.0"}\n')]:
         (root / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\n{extra}properties:\n  malt: {{v: 1.5}}\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: {{v: 1.5}}\n{extra}---\n"
         )
     (root / "model.py").write_text(CHAIN)
     namespace = {"__file__": str(root / "model.py")}
     exec(CHAIN, namespace)
     failing = namespace["Chain"](root / "a.md")
-    failing.malt.value = datetime.date(2026, 9, 27)
+    failing.diameter.value = datetime.date(2026, 9, 27)
     with pytest.raises(TypeError):
         failing.compute()
     failing.save()
@@ -5075,7 +5820,7 @@ def test_a_list_read_without_its_model_reads_it_for_state(tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         without = sk.SampleList(tmp_path, model=False)
-        assert names(without.filter("state == never_computed")) == ["a", "c"]
+        assert names(without.filter("state == never_computed")) == ["c"]
         assert names(without.filter("state == current")) == ["b"]
         assert names(without.filter("state == not_current")) == ["a", "c"]
         assert names(without.filter("state == failed")) == ["a"]
@@ -5110,12 +5855,12 @@ def test_state_is_a_column_worst_first(tmp_path):
             table = samples.to_dict(columns=["name", "state"])
             assert table == {
                 "name": ["a", "b", "c"],
-                "state": [["failed", "defective", "never_computed"], ["current"],
+                "state": [["failed", "defective", "waiting"], ["current"],
                           ["defective", "never_computed"]],
             }
             assert samples.to_csv(columns=["name", "state"]).splitlines() == [
                 "name,state",
-                "a,failed;defective;never_computed",
+                "a,failed;defective;waiting",
                 "b,current",
                 "c,defective;never_computed",
             ]
@@ -5132,7 +5877,7 @@ def test_a_files_pattern_gives_a_sample_its_files(tmp_path):
     )
     for name in ["C2", "C24"]:
         (tmp_path / f"{name}.md").write_text(
-            f"---\nschema_version: 1\nname: {name}\nproperties:\n  malt: 1.0\n---\n"
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: 1.0\n---\n"
         )
     for file in ["images/C2.jpg", "images/C2_top.png", "images/C2.tif", "images/C24.jpg",
                  "raw/C2/run/a.dat", "raw/C24/b.dat"]:
@@ -5150,20 +5895,20 @@ def test_a_sorted_list_groups_in_its_own_order(tmp_path):
     # orders --group's tables; unsorted, by the values.
     figure_samples(tmp_path)
     samples = sk.SampleList(tmp_path)
-    assert list(samples.group_by("beer")) == ["bock", "schwarz"]
-    heaviest = samples.sorted("-malt")
-    assert list(heaviest.group_by("beer")) == ["schwarz", "bock"]
+    assert list(samples.group_by("alloy")) == ["chrome", "cobalt"]
+    heaviest = samples.sorted("-diameter")
+    assert list(heaviest.group_by("alloy")) == ["cobalt", "chrome"]
     # Narrowed, the order is kept, and so is the list's being sorted.
-    assert list(heaviest.filter("malt > 1").group_by("beer")) == ["schwarz", "bock"]
-    assert list(heaviest[0:3].group_by("beer")) == ["schwarz", "bock"]
+    assert list(heaviest.filter("diameter > 1").group_by("alloy")) == ["cobalt", "chrome"]
+    assert list(heaviest[0:3].group_by("alloy")) == ["cobalt", "chrome"]
     # Sorted in place, the same.
-    inplace = samples.filter("malt > 1")
-    inplace.sort("-malt")
-    assert list(inplace.group_by("beer")) == ["schwarz", "bock"]
+    inplace = samples.filter("diameter > 1")
+    inplace.sort("-diameter")
+    assert list(inplace.group_by("alloy")) == ["cobalt", "chrome"]
     # `+` makes a list nobody sorted: by the values again.
     joined = heaviest[0:1] + heaviest[1:]
     assert [s.name for s in joined] == ["C1", "C3", "C2"]
-    assert list(joined.group_by("beer")) == ["bock", "schwarz"]
+    assert list(joined.group_by("alloy")) == ["chrome", "cobalt"]
 
 
 def test_a_profile_that_groups_writes_one_table_carrying_its_groups(tmp_path, cli):
@@ -5171,16 +5916,16 @@ def test_a_profile_that_groups_writes_one_table_carrying_its_groups(tmp_path, cl
     # --csv` writes it, and to a declared export.
     (tmp_path / ".samplekitrc").write_text(
         "schema_version = 1\n"
-        '[profile.by_status]\ncolumns = [{field = "name"}, {field = "malt"}]\n'
+        '[profile.by_status]\ncolumns = [{field = "name"}, {field = "diameter"}]\n'
         'group = ["status"]\n'
         '[export.by_status]\nprofile = "by_status"\nformat = "csv"\n'
         'output = "out/by_status.csv"\n'
     )
-    for name, status, malt in [("A", "approved", 12.5), ("B", "rejected", 9.0),
+    for name, status, diameter in [("A", "approved", 12.5), ("B", "rejected", 9.0),
                                ("C", "approved", 10.0)]:
         (tmp_path / f"{name}.md").write_text(
             f"---\nschema_version: 1\nname: {name}\nstatus: {status}\n"
-            f"properties:\n  malt: {{v: {malt}, u: 0.1, unit: g}}\n---\n"
+            f"properties:\n  diameter: {{v: {diameter}, u: 0.1, unit: g}}\n---\n"
         )
     samples = sk.SampleList(tmp_path)
     csv = samples.to_csv(profile="by_status")
@@ -5196,26 +5941,19 @@ def test_a_profile_that_groups_writes_one_table_carrying_its_groups(tmp_path, cl
     assert pathlib.Path(written).read_text().splitlines() == lines
 
 
-def test_a_column_repr_names_its_unit_as_python_writes_it():
-    # It printed `Column(unit=Some("degC"), symbol=None)`, Rust's spelling; a
-    # column declares no symbol any more.
-    assert repr(sk.Column(unit="degC")) == 'Column(unit="degC")'
-    assert repr(sk.Column()) == 'Column(unit=None)'
-
-
 def test_a_sample_without_a_name_is_named_by_its_file(tmp_path):
     # The file's name without its extension, where the file writes no `name:`;
     # assigned, the name is written and the file keeps its own; None takes it
     # away again. In memory with no file, there is none until it is saved.
     path = tmp_path / "s-1.md"
-    path.write_text("---\nschema_version: 1\nproperties:\n  malt: {v: 2.0}\n---\n")
+    path.write_text("---\nschema_version: 1\nproperties:\n  diameter: {v: 2.0}\n---\n")
     sample = sk.Sample(path)
     assert sample.name == "s-1"
     assert sk.SampleList(tmp_path)["s-1"].path == sample.path
-    sample.name = "Cask A"
+    sample.name = "Slab A"
     sample.save()
-    assert "name: Cask A" in path.read_text()
-    assert sk.Sample(path).name == "Cask A"
+    assert "name: Slab A" in path.read_text()
+    assert sk.Sample(path).name == "Slab A"
     sample.name = None
     sample.save()
     assert "name:" not in path.read_text()
@@ -5233,12 +5971,12 @@ def test_a_symbol_is_read_and_never_set(project):
     # A setter let a model's __init__ give the symbol its constructor refuses,
     # and a save write it into the file.
     (project.root / ".samplekitrc").write_text(
-        'schema_version = 1\n[property.malt]\nsymbol = "m"\n')
-    path = project.sample("s.md", name="s", properties={"malt": "{v: 1.0, unit: g}"})
+        'schema_version = 1\n[property.diameter]\nsymbol = "m"\n')
+    path = project.sample("s.md", name="s", properties={"diameter": "{v: 1.0, unit: g}"})
     sample = sk.Sample(path, model=False)
-    assert sample.malt.symbol == "m"
+    assert sample.diameter.symbol == "m"
     with pytest.raises(AttributeError):
-        sample.malt.symbol = "M"
+        sample.diameter.symbol = "M"
     assert sk.Property(value=1.0).symbol is None
 
 
@@ -5252,10 +5990,883 @@ def test_a_table_formula_reads_the_samples_name(tmp_path):
     class Named(sk.Sample):
         def __init__(self, path=None, name=None):
             super().__init__(path, name=name)
-            self.t = sk.Table({"N": sk.Column(), "who": sk.Column()}, "N",
-                              compute_rows=[("who", ["row.N"],
-                                             lambda row: f"{self.name}#{int(row.N.value)}")])
+            self.t = sk.Table({
+                "N": sk.Property(),
+                "who": sk.Property(compute=lambda row: f"{self.name}#{int(row.N.value)}", depends_on=["row.N"]),
+            }, index="N")
 
     sample = Named(path)
     sample.compute()
     assert sample.t.who.values == ["a-1#1"]
+
+
+def test_a_value_computed_from_python_is_kept_in_the_trace(project, tmp_path):
+    # A script computes and saves: the formula that computed each value is kept
+    # in the project's trace, as a computation of the command line keeps it, so
+    # that a formula edited afterwards is said of what the script computed.
+    project.model()
+    project.config('schema_version = 1\n\n[model]\npath = "model.py"\npython = ".venv"\n')
+    (project.root / ".venv").symlink_to(pathlib.Path(sys.prefix))
+    sample = sk.Sample(project.sample("s.md", properties={"diameter": "2.0"}))
+    sample.compute()
+    sample.save()
+    sk.keep("doubled")
+    tags = subprocess.run(
+        ["git", "--git-dir", str(project.root / ".samplekit/history"), "tag", "--list", "trace/*"],
+        capture_output=True, text=True, check=True,
+    ).stdout.split()
+    assert len(tags) == 1, tags
+    project.model(MODEL.replace("self.diameter.value * 2", "self.diameter.value * 3"))
+    if BINARY.exists():
+        status = subprocess.run(
+            [str(BINARY), ".", "status"], cwd=project.root, capture_output=True, text=True,
+            env={**os.environ, "SAMPLEKIT_STATE_DIR": str(tmp_path / "state"), "NO_COLOR": "1"},
+        )
+        assert "formula changed" in status.stdout, status.stdout + status.stderr
+
+
+HARDNESS = """\
+import samplekit as sk
+
+
+class Piece(sk.Sample):
+    def __init__(self, path=None, name=None):
+        super().__init__(path, name=name)
+        self.radius = sk.Property(value=sk.stats.mean, uncertainty=sk.stats.standard_error)
+        self.double = sk.Property(compute_value=lambda: 2 * self.radius.value)
+        self.set_dependencies("double", depends_on=["radius"])
+"""
+
+
+def _hardness(project):
+    project.model(HARDNESS)
+    project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
+    path = project.sample("s.md", properties={"radius": "{readings: [1.063, 1.065, 1.063]}"})
+    sample = sk.Sample(path)
+    sample.compute()
+    sample.save()
+    return path
+
+
+def test_a_reading_added_keeps_its_value_and_uncertainty_together(project):
+    # A reading appended leaves the value and its uncertainty the pair the
+    # statistic last gave, outdated together, until it is taken again.
+    path = _hardness(project)
+    sample = sk.Sample(path)
+    before = (sample.radius.value, sample.radius.uncertainty)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        sample.radius.readings.append(1.064)
+        assert (sample.radius.value, sample.radius.uncertainty) == before
+        assert sample.radius.state == "outdated"
+
+
+def test_a_statistic_computed_by_name_is_current(project):
+    # `Property.compute()` and `compute("radius")` take the statistic again and
+    # record it, as a whole computation does: current, what reads it outdated.
+    path = _hardness(project)
+    for compute in (lambda s: s.radius.compute(), lambda s: s.compute("radius")):
+        sample = sk.Sample(path)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            sample.radius.readings.append(1.064)
+            compute(sample)
+            assert sample.radius.state == "current"
+            assert sample.radius.value == pytest.approx(1.06375)
+            assert sample.not_current() == {"double": "outdated"}
+
+
+def test_a_statistic_or_an_export_over_two_units_is_refused(tmp_path):
+    # `stats`, `to_csv` and `to_dict` refuse a column written in two units, as
+    # a table does: a mean of litres and millilitres compares nothing.
+    (tmp_path / ".samplekitrc").write_text('schema_version = 1\n[property.volume]\nunit = "L"\n')
+    for name, volume, unit in (("a", 20, "L"), ("b", 21, "L"), ("c", 20000, "mL")):
+        (tmp_path / f"{name}.md").write_text(
+            f"---\nschema_version: 1\nname: {name}\nproperties:\n  volume: {{v: {volume}, unit: {unit}}}\n---\n"
+        )
+    pieces = sk.load(tmp_path)
+    for call in (lambda: pieces.stats("volume"), lambda: pieces.to_csv(columns="name,volume"),
+                 lambda: pieces.to_dict(columns="name,volume")):
+        with pytest.raises(ValueError, match="volume is in L and mL|'volume' is in L and mL"):
+            call()
+
+
+def test_a_changed_formula_is_outdated_and_computed_again_from_python(project, tmp_path):
+    # A formula edited since it computed a value: `.state` says outdated,
+    # `not_current()` names it, and `compute()` runs it again, as the command
+    # line does — the project's trace says which.
+    project.model()
+    project.config('schema_version = 1\n\n[model]\npath = "model.py"\npython = ".venv"\n')
+    (project.root / ".venv").symlink_to(pathlib.Path(sys.prefix))
+    path = project.sample("s.md", properties={"diameter": "2.0"})
+    sample = sk.Sample(path)
+    sample.compute()
+    sample.save()
+    sk.keep("doubled")
+    # Another length: an edit in the same second, the same size, is read from
+    # the bytecode Python cached of the model, whatever SampleKit does.
+    project.model(MODEL.replace("self.diameter.value * 2", "self.diameter.value * 3.0"))
+    if BINARY.exists():
+        # The description written again, as the first command after an edit does.
+        subprocess.run([str(BINARY), ".", "status"], cwd=project.root, capture_output=True,
+                       env={**os.environ, "SAMPLEKIT_STATE_DIR": str(tmp_path / "state")})
+    # A script run after the edit, which imports the model as it now is.
+    script = (
+        "import samplekit as sk, sys\n"
+        f"s = sk.Sample({str(path)!r})\n"
+        "print(s.double.state, s.not_current())\n"
+        "s.compute()\n"
+        "print(s.double.value)\n"
+    )
+    ran = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
+                         cwd=project.root, check=True)
+    said, value = ran.stdout.strip().splitlines()
+    assert said == "outdated {'double': 'formula changed'}", ran.stdout + ran.stderr
+    assert float(value) == 6.0
+
+
+def test_a_text_no_sample_holds_is_warned_with_the_nearest(tmp_path):
+    # `style == titaniumm` gave an empty list in silence, and `stats` or `to_csv`
+    # then failed far from the cause.
+    (tmp_path / "a.md").write_text("---\nschema_version: 1\nstyle: titanium\n---\n")
+    (tmp_path / "b.md").write_text("---\nschema_version: 1\nstyle: nickel\n---\n")
+    samples = sk.load(tmp_path)
+    with pytest.warns(UserWarning, match="did you mean 'titanium'"):
+        assert len(samples.filter("style == titaniumm")) == 0
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert len(samples.filter("style == titanium")) == 1
+
+
+def test_a_sample_read_by_a_relative_path_is_saved_there_after_a_chdir(tmp_path, monkeypatch):
+    # Held relative to the folder the script was in, a sample read then saved
+    # after `os.chdir` was said *removed or moved*, and `overwrite=True` wrote
+    # it into the other folder.
+    (tmp_path / "pieces").mkdir()
+    (tmp_path / "other").mkdir()
+    (tmp_path / "pieces" / "a.md").write_text("---\nschema_version: 1\nstyle: titanium\n---\n")
+    monkeypatch.chdir(tmp_path)
+    sample = sk.Sample("pieces/a.md")
+    assert sample.path.is_absolute()
+    monkeypatch.chdir(tmp_path / "other")
+    sample.style = "nickel"
+    sample.save()
+    assert "style: nickel" in (tmp_path / "pieces" / "a.md").read_text()
+    assert not (tmp_path / "other" / "pieces").exists()
+
+
+def test_sorting_by_a_row_no_sample_holds_is_refused(tmp_path):
+    # `sorted("ageing.hardness[99]")` gave the list back as it was,
+    # where `filter` and `to_csv` refuse a row no sample holds.
+    for name, hardness in (("a", 1.04), ("b", 1.03)):
+        (tmp_path / f"{name}.md").write_text(
+            "---\nschema_version: 1\ntables:\n  ageing:\n    index: day\n    columns:\n"
+            f"      day: {{}}\n      hardness: {{}}\n    rows:\n      - day: 1\n        hardness: {hardness}\n---\n"
+        )
+    samples = sk.load(tmp_path)
+    assert names(samples.sorted("ageing.hardness[1]")) == ["b", "a"]
+    with pytest.raises(KeyError, match="99"):
+        samples.sorted("ageing.hardness[99]")
+
+
+def test_a_text_shaped_as_a_date_is_refused_naming_its_field(tmp_path):
+    # `poured = "2025-03-02"` refused the save as *does not read back*, with
+    # nothing to say which field, nor why.
+    path = tmp_path / "a.md"
+    path.write_text("---\nschema_version: 1\nstyle: titanium\n---\n")
+    sample = sk.Sample(path)
+    sample.poured = "2025-03-02"
+    with pytest.raises(Exception) as caught:
+        sample.save()
+    said = str(caught.value)
+    assert "poured" in said, said
+    assert "read as a date" in said, said
+    sample.poured = datetime.date(2025, 3, 2)
+    sample.save()
+    assert "poured: 2025-03-02" in path.read_text()
+
+
+def test_a_folder_misspelt_is_suggested_and_an_array_said_as_given(tmp_path, monkeypatch):
+    # `sk.load("piece")` beside `pieces/` suggested nothing, and an array given
+    # to a value was said to be *a formula's* return.
+    (tmp_path / "pieces").mkdir()
+    (tmp_path / "pieces" / "a.md").write_text("---\nschema_version: 1\nproperties:\n  radius: 1.05\n---\n")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(FileNotFoundError, match="nearest: .*pieces"):
+        sk.load("piece")
+    sample = sk.load("pieces/a.md")
+    with pytest.raises(TypeError) as caught:
+        sample.radius.value = numpy.array([1.0, 2.0])
+    assert "formula" not in str(caught.value)
+    assert "array of shape (2,)" in str(caught.value)
+
+
+TEXT_FORMULA = """\
+from samplekit import Property, Sample
+
+
+class Worded(Sample):
+    def __init__(self, path=None, name=None):
+        super().__init__(path, name=name)
+        self.diameter = Property()
+        self.verdict = Property(compute_value=lambda: "strong")
+        self.set_dependencies("verdict", depends_on=["diameter"])
+"""
+
+
+def test_a_formula_giving_text_for_a_quantity_fails(project):
+    # A quantity holds a number: the text a formula gives is refused, never
+    # written for what reads it next.
+    sample_path = project.sample("s.md", properties={"diameter": "{v: 1.5}"})
+    namespace = {"__file__": str(project.root / "model.py")}
+    exec(TEXT_FORMULA, namespace)
+    sample = namespace["Worded"](sample_path)
+    with pytest.raises(TypeError, match="returned the text \"strong\": a computed property holds a number"):
+        sample.compute()
+    assert sample.verdict.value is None
+
+
+def test_text_is_refused_in_a_column_with_a_unit(tmp_path):
+    path = tmp_path / "b.md"
+    path.write_text(
+        "---\nschema_version: 1\nname: b\ntables:\n  t:\n    index: d\n"
+        "    columns: {d: {}, g: {unit: P}, note: {}}\n    rows:\n      - {d: 1, g: 12.0}\n---\n"
+    )
+    piece = sk.Sample(path, model=False)
+    with pytest.raises(ValueError, match="'g' is measured in P"):
+        piece.t.add(d=2, g="warm")
+    piece.t.add(d=3, g=11.5, note="worn")
+    assert piece.t.at(3, "note").value == "worn"
+
+
+def test_a_value_whose_input_was_emptied_says_it_waits(project):
+    sample_path = project.sample("s.md", properties={"diameter": "{v: 1.5}"})
+    namespace = {"__file__": str(project.root / "model.py")}
+    exec(CHAIN, namespace)
+    sample = namespace["Chain"](sample_path)
+    sample.compute()
+    sample.save()
+    # Emptied as `set diameter=` empties it: the key stays, without a value.
+    emptied, count = re.subn(r"(\n  diameter:)[^\n]*", r"\1 {}", sample_path.read_text())
+    assert count == 1
+    sample_path.write_text(emptied)
+    again = sk.Sample(sample_path, model=False)
+    assert again.double.state == "waiting"
+    assert again.double.value == 2.5
+
+
+def test_save_all_without_a_folder_writes_each_back_with_its_check(collection):
+    # save_all(its folder, overwrite=True) was the only way, and wrote over a
+    # change made meanwhile unchecked.
+    samples = sk.SampleList(collection.root)
+    for sample in samples:
+        sample.tags = list(sample.tags) + ["seen"]
+    written = samples.save_all()
+    assert len(written) == len(samples)
+    assert all("seen" in path.read_text() for path in written)
+    # Changed on disk since it was read: refused, as save() refuses it.
+    again = sk.SampleList(collection.root)
+    first = again[0]
+    first.tags = list(first.tags) + ["twice"]
+    first_path = written[[path.name for path in written].index(pathlib.Path(first.path).name)]
+    first_path.write_text(first_path.read_text().replace("seen", "edited"))
+    for sample in again:
+        sample.tags = list(sample.tags) + ["late"]
+    # Every sample checked first: the one changed since is named, and none of
+    # the others is written — those before it were, and the error said
+    # nothing was.
+    with pytest.raises(OSError, match="changed since it was read"):
+        again.save_all()
+    assert not any("late" in path.read_text() for path in written)
+    # A sample with no file of its own is named, and nothing written.
+    loose = sk.SampleList([sk.Sample(name="loose")])
+    with pytest.raises(ValueError, match="no file of its own"):
+        loose.save_all()
+
+
+def test_a_sort_and_a_filter_refuse_two_units(project):
+    # Litres and millilitres: `sorted` put 21000 mL after 20 L, and a filter
+    # compared 21000 with 20 of no unit, keeping it.
+    project.config("schema_version = 1\n")
+    project.sample("a.md", name="a", properties={"volume": "{v: 20, unit: L}"})
+    project.sample("b.md", name="b", properties={"volume": "{v: 21000, unit: mL}"})
+    samples = sk.SampleList(project.root)
+    for asked in (lambda: samples.sorted("volume"), lambda: samples.filter("volume > 20")):
+        with pytest.raises(ValueError, match="'volume' is in L and mL across these samples"):
+            asked()
+    # A field compared with no number is no comparison of units.
+    assert len(samples.filter("volume is present")) == 2
+
+
+def test_an_attribute_changing_kind_and_a_tag_twice_warn(project):
+    project.config("schema_version = 1\n")
+    path = project.sample(
+        "a.md", name="a", tags=["inspected"], attributes={"style": "titanium", "poured": "2026-01-25"}
+    )
+    sample = sk.Sample(path)
+    with pytest.warns(UserWarning, match="'style' was text and is now a number"):
+        sample.style = 5
+    with pytest.warns(UserWarning, match="'poured' was a date and is now text"):
+        sample.poured = "25 January"
+    with pytest.warns(UserWarning, match="'inspected' is a tag of this sample already"):
+        sample.tags.append("inspected")
+    assert sample.tags == ["inspected"]
+
+
+def test_not_applicable_reads_as_nothing_in_a_dict_and_as_nan(project):
+    import math
+
+    project.config("schema_version = 1\n")
+    project.sample("a.md", name="a", properties={"notch": "n/a"})
+    project.sample("b.md", name="b", properties={"notch": "1.01"})
+    columns = sk.SampleList(project.root).to_dict(columns=["name", "notch"])
+    assert columns["notch_value"] == [None, 1.01]
+    assert math.isnan(float(sk.NA))
+
+
+def test_a_save_writes_only_what_the_script_changed(project):
+    # A tag appended, and the save wrote the readings' statistics, their
+    # records, and an empty key for every value the model declares.
+    project.config('schema_version = 1\n[model]\npath = "model.py"\n')
+    project.model(
+        "import samplekit as sk\n\n\nclass Piece(sk.Sample):\n"
+        "    def __init__(self, path=None, name=None):\n"
+        "        super().__init__(path, name=name)\n"
+        "        self.radius = sk.Property(value=sk.stats.mean, uncertainty=sk.stats.standard_error)\n"
+        "        self.modulus = sk.Property(unit='%', compute_value=lambda: self.radius.value * 100)\n"
+        "        self.set_dependencies('modulus', depends_on=['radius'])\n"
+    )
+    path = project.sample("a.md", name="a", properties={"radius": "{readings: [1.05, 1.052]}"})
+    sample = sk.Sample(path)
+    sample.tags.append("py")
+    sample.save()
+    written = path.read_text()
+    assert "tags: [py]" in written
+    assert "statistics" not in written and "modulus" not in written and "v:" not in written
+    # Computed, the statistic and what reads it are written.
+    sample = sk.Sample(path)
+    sample.compute()
+    sample.save()
+    written = path.read_text()
+    assert "statistics: {v: mean, u: standard_error}" in written and "modulus:" in written
+
+
+def test_to_text_is_the_command_lines_text_format(collection, cli):
+    samples = sk.SampleList(collection.root)
+    root = collection.root
+    latex = samples.to_text("latex", profile="ductilities")
+    assert latex == cli(root, "--profile", "ductilities", "--style", "latex", "-o", "-")
+    assert latex.startswith("\\begin{tabular}")
+    assert samples.to_text("markdown", columns="name").startswith("| name |\n| --- |\n")
+    with pytest.raises(ValueError, match="latex"):
+        samples.to_text("latx", columns="name")
+
+
+def test_a_formula_changed_to_the_same_number_is_current_once_computed(project, tmp_path):
+    # A formula rewritten without changing its number — `* 2` into `* 4.0 / 2`
+    # — stayed *formula changed* for ever from Python: `compute(rerun=True)`
+    # gave the very record it held, and the save kept no fact of the new
+    # formula. `state`, `is_outdated` and `outdated()` disagreed meanwhile,
+    # and reading the value warned nothing.
+    project.model()
+    project.config('schema_version = 1\n\n[model]\npath = "model.py"\npython = ".venv"\n')
+    (project.root / ".venv").symlink_to(pathlib.Path(sys.prefix))
+    path = project.sample("s.md", properties={"diameter": "2.0"})
+    sample = sk.Sample(path)
+    sample.compute()
+    sample.save()
+    sk.keep("doubled")
+    project.model(MODEL.replace("self.diameter.value * 2", "self.diameter.value * 4.0 / 2"))
+    if BINARY.exists():
+        subprocess.run([str(BINARY), ".", "status"], cwd=project.root, capture_output=True,
+                       env={**os.environ, "SAMPLEKIT_STATE_DIR": str(tmp_path / "state")})
+    script = (
+        "import samplekit as sk, warnings\n"
+        f"s = sk.Sample({str(path)!r})\n"
+        "print(s.double.state, s.double.is_outdated, s.outdated())\n"
+        "with warnings.catch_warnings(record=True) as heard:\n"
+        "    warnings.simplefilter('always')\n"
+        "    s.double.value\n"
+        "print(any('formula changed' in str(w.message) for w in heard))\n"
+        "s.compute(rerun=True)\n"
+        "print(s.not_current(), s.double.state)\n"
+        "s.save()\n"
+        "sk.keep('again')\n"
+        "print(sk.Sample(s.path).not_current())\n"
+    )
+    ran = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
+                         cwd=project.root, check=True)
+    lines = ran.stdout.strip().splitlines()
+    assert lines == [
+        "outdated True ['double']",
+        "True",
+        "{} current",
+        "{}",
+    ], ran.stdout + ran.stderr
+
+
+READINGS_MODEL = """\
+from samplekit import Property, Sample, stats
+
+
+class Model(Sample):
+    def __init__(self, path=None, name=None):
+        super().__init__(path, name=name)
+        self.radius = Property(value=stats.mean, uncertainty=stats.standard_error)
+        self.notch = Property(value=stats.mean, uncertainty=stats.standard_error)
+        self.modulus = Property(compute_value=lambda: (self.radius.value - self.notch.value) * 131.25)
+        self.set_dependencies("modulus", depends_on=["radius", "notch"])
+"""
+
+
+def test_a_sample_begun_is_computed_as_far_as_it_goes(project):
+    # A piece on its first day, its final hardness not measured: `compute()`
+    # raised *after 11 rounds* and computed nothing, where the command line
+    # takes the hardness and lets the modulus wait.
+    project.model(READINGS_MODEL)
+    project.config('schema_version = 1\n[model]\npath = "model.py"\n')
+    sample = sk.Sample.new(project.root / "fresh.md")
+    sample.radius.readings = [1.050, 1.051]
+    with pytest.warns(UserWarning, match="'modulus' waits for notch"):
+        sample.compute()
+    assert sample.radius.value == pytest.approx(1.0505)
+    assert sample.not_current() == {"modulus": "waits for notch"}
+
+
+def test_readings_read_before_they_were_assigned_again_are_bound_to_nothing(project):
+    # A list read before the readings were assigned again replaced them, in
+    # silence, when it was appended to.
+    path = project.sample("s.md", properties={"radius": "{readings: [1.052, 1.053]}"})
+    sample = sk.Sample(path, model=False)
+    old = sample.radius.readings
+    sample.radius.readings = [1.060, 1.061, 1.062]
+    old.append(1.070)
+    assert sample.radius.readings == [1.060, 1.061, 1.062]
+    assert old == [1.052, 1.053, 1.070]
+    # The list read now is bound, as before.
+    sample.radius.readings.append(1.063)
+    assert sample.radius.readings == [1.060, 1.061, 1.062, 1.063]
+
+
+def test_the_analysts_small_findings(project, tmp_path):
+    # Each said wrongly, or not at all: a statistic `invalidate` left alone,
+    # lists of names unsorted, a path assigned through an item advised as an
+    # attribute `radius_v`, `s["tags"]` unknown, a name two samples carry indexed
+    # in silence, a symbol's variants keyed by the file's key, the collection's
+    # `files` missing, a query two projects declare alike refused, a file the
+    # collection ignores created, one number taken for readings, a hand-made
+    # BoundList broken, a format specifier said twice, `divmod` refused.
+    project.model(READINGS_MODEL)
+    project.config(
+        'schema_version = 1\n[model]\npath = "model.py"\n[style.math]\n'
+        '[property.radius]\nsymbol_math = "RADIUS"\n[collection]\nfiles = ["photos"]\n'
+        '[query.strong]\nfilter = "radius > 1"\n'
+    )
+    path = project.sample(
+        "a.md", name="EXAMPLE", tags=["t"],
+        properties={"radius": "{readings: [1.05, 1.06]}", "notch": "{readings: [1.01, 1.012]}"},
+    )
+    project.sample("b.md", name="EXAMPLE", properties={"radius": "{readings: [1.04]}"})
+    sample = sk.Sample(path)
+    sample.compute()
+    sample.save()
+    again = sk.Sample(path)
+    assert again.dependencies("modulus") == ["notch", "radius"]
+    assert again.affected_by_change("radius") == sorted(again.affected_by_change("radius"))
+    with pytest.raises(ValueError, match="s.radius.value = <value>"):
+        again["radius.v"] = 1.07
+    assert list(again["tags"]) == ["t"]
+    pieces = sk.load(project.root)
+    with pytest.raises(ValueError, match="2 samples are named 'EXAMPLE'"):
+        pieces.index("EXAMPLE")
+    assert pieces.project.properties["radius"].symbol_variants == {"math": "RADIUS"}
+    assert pieces.project.collection.files == ("photos",)
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / ".samplekitrc").write_text('schema_version = 1\n[query.strong]\nfilter = "radius > 1"\n')
+    (other / "c.md").write_text("---\nschema_version: 1\nname: C\nproperties:\n  radius: 1.2\n---\n")
+    both = sk.load(project.root) + sk.load(other)
+    assert len(both.query("strong")) >= 1
+    with pytest.raises(ValueError, match="noext.md is one"):
+        sk.Sample.new(project.root / "noext")
+    with pytest.raises(TypeError, match="one number is not readings"):
+        again.notch.readings = 1.011
+    bound = sk.BoundList([1, 2])
+    bound.append(3)
+    assert bound == [1, 2, 3]
+    with pytest.raises(ValueError) as refused:
+        format(sample.modulus, ">10")
+    assert str(refused.value).count("precision") <= 2
+    assert "is not a precision the command line accepts" not in str(refused.value)
+    assert divmod(sample.modulus, 1) == (sample.modulus // 1, sample.modulus % 1)
+
+
+def test_an_export_of_values_not_current_says_so(project):
+    # Written from values that are not current, the file for the paper left
+    # with nothing said from Python, where `samplekit export --write` says it.
+    project.model()
+    project.config(
+        'schema_version = 1\n[model]\npath = "model.py"\n'
+        '[profile.p]\ncolumns = [{field = "diameter"}, {field = "double"}]\n'
+        '[export.e]\nprofile = "p"\nformat = "csv"\noutput = "e.csv"\n'
+    )
+    path = project.sample("s.md", properties={"diameter": "{v: 2.0, unit: kg}"})
+    sample = sk.Sample(path)
+    sample.compute()
+    sample.save()
+    path.write_text(path.read_text().replace("v: 2.0", "v: 3.0"))
+    pieces = sk.load(project.root)
+    with pytest.warns(UserWarning, match="'e' is written from values that are not current: "
+                                         "1 outdated in 1 sample"):
+        pieces.export("e", overwrite=True)
+
+
+def test_keep_warns_where_nothing_was_saved(tmp_path, monkeypatch):
+    # `sk.keep("…")` did nothing without a word, nothing saved or outside
+    # any project.
+    monkeypatch.chdir(tmp_path)
+    with pytest.warns(UserWarning, match="nothing was saved in a project since the last snapshot"):
+        sk.keep("volumes corrected")
+
+
+def test_a_value_typed_nowhere_is_absent_not_entered():
+    # `state == "entered"` was said of a quantity holding nothing.
+    sample = sk.Sample(name="S")
+    sample.volume = sk.Property(unit="L")
+    assert sample.volume.state == "absent"
+    sample.volume.value = 20.0
+    assert sample.volume.state == "entered"
+
+
+def test_a_summary_counts_what_is_not_applicable_apart(collection):
+    # `Summary` said nothing of the samples a value does not apply to.
+    for path in sorted(collection.root.glob("*.md"))[:1]:
+        text = path.read_text()
+        path.write_text(text.replace("{v: 12.5, u: 0.05, unit: g}", "{v: n/a, unit: g}"))
+    summary = sk.SampleList(collection.root).stats("diameter")
+    assert summary.not_applicable == 1, repr(summary)
+    assert summary.count == 2
+    assert summary.considered == 2
+    assert "not_applicable=1" in repr(summary)
+    readings = sk.Sample(name="R")
+    readings.x = sk.Property(value=sk.stats.mean)
+    readings.x.readings = [1.0, 2.0]
+    assert readings.x.stats.considered is None
+
+
+def test_a_property_is_written_in_a_style(tmp_path):
+    # A property alone could not be written in `\SI{…}{…}`: only a text
+    # format's table could, and a style gave its units alone.
+    (tmp_path / ".samplekitrc").write_text(
+        "schema_version = 1\n[style.si]\n"
+        "property = '\\SI{{value}{uncertainty}}{{unit}}'\n"
+        "uncertainty = ' \\pm {uncertainty}'\n"
+        "[unit.g]\nsi = '\\gram'\n")
+    (tmp_path / "a.md").write_text(
+        "---\nschema_version: 1\nname: A\nproperties:\n"
+        "  diameter: {v: 12.1, u: 0.05, unit: g}\n  carbon: {v: 3.0, unit: g}\n---\n")
+    sample = sk.Sample(tmp_path / "a.md")
+    assert sample.diameter.to_text("si") == "\\SI{12.100 \\pm 0.050}{\\gram}"
+    assert sample.carbon.to_text("si") == "\\SI{3}{\\gram}"
+    assert sample.diameter.to_text() == str(sample.diameter)
+    with pytest.raises(ValueError, match="no style named 'sx'"):
+        sample.diameter.to_text("sx")
+
+
+def test_a_script_is_marked_and_its_options_read_by_its_signature():
+    from samplekit._scripts import arguments, described, scripts_of
+
+    class Poured(sk.Sample):
+        @sk.script
+        def dilute(self, factor: float = 0.9, note="", loud=False):
+            """Scale the hardness's excess.
+
+            Not in the description.
+            """
+            return factor
+
+        @sk.script
+        @classmethod
+        def report(cls, samples, count: int):
+            return count
+
+    found = scripts_of(Poured)
+    assert list(found) == ["dilute", "report"]
+    assert not found["dilute"].collection and found["report"].collection
+    assert described(found["dilute"]) == {
+        "name": "dilute",
+        "acts": "sample",
+        "description": "Scale the hardness's excess.",
+        "options": [
+            {"name": "factor", "type": "float", "default": "0.9"},
+            {"name": "note", "type": "str", "default": ""},
+            {"name": "loud", "type": "bool", "default": "false"},
+        ],
+    }
+    assert described(found["report"])["options"] == [
+        {"name": "count", "type": "int", "default": None}]
+    assert arguments(found["dilute"], {"factor": "0.5", "loud": "yes"}) == {
+        "factor": 0.5, "loud": True}
+    with pytest.raises(ValueError, match="needs count"):
+        arguments(found["report"], {})
+    with pytest.raises(ValueError, match="takes no option 'fator'"):
+        arguments(found["dilute"], {"fator": "1"})
+    # Still the method it marks.
+    assert Poured().dilute(2) == 2
+    # A static method, *args, and the decorator beneath @classmethod refused.
+    with pytest.raises(TypeError, match="static method"):
+        sk.script(staticmethod(lambda: None))
+    with pytest.raises(TypeError, match="named parameters"):
+        sk.script(lambda self, *rest: None)
+
+    class Misplaced(sk.Sample):
+        @classmethod
+        @sk.script
+        def wrong(cls, samples):
+            pass
+
+    with pytest.raises(TypeError, match="goes above @classmethod"):
+        scripts_of(Misplaced)
+
+
+def test_a_table_a_sample_and_a_summary_are_written_as_text(tmp_path):
+    (tmp_path / ".samplekitrc").write_text(
+        "schema_version = 1\n[style.math]\n[unit.g]\nmath = '\\si{\\gram}'\n")
+    (tmp_path / "a.md").write_text(
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter: {v: 12.0, u: 0.1, unit: g}\n"
+        "tables:\n  m:\n    index: T\n    columns:\n      T: {unit: C}\n      w: {unit: g}\n"
+        "    rows:\n      - {T: 20.0, w: 1.5}\n---\n")
+    sample = sk.Sample(tmp_path / "a.md", model=False)
+    text = sample.to_text()
+    assert text.startswith("A\n  tags       —\n  diameter   12.00 ± 0.10 g")
+    assert "  m · 1 row" in text
+    assert sample.m.to_text("math").splitlines()[1].split() == ["T", "[C]", "w", "[\\si{\\gram}]"]
+    with pytest.raises(ValueError, match="no style named 'mth'"):
+        sample.to_text("mth")
+    summary = sk.SampleList([sample]).stats("diameter").to_text()
+    assert summary.splitlines()[0].split()[:2] == ["n", "mean"]
+    # The row `--summary` writes: its label and unit, then the count.
+    assert summary.splitlines()[-1].split()[:3] == ["diameter", "[g]", "1/1"]
+
+
+def test_readings_never_taken_give_no_value_nor_spread(project):
+    # Reading computes nothing, in Python as on the command line: readings
+    # whose statistic nothing took give neither a mean nor a standard error,
+    # which `to_csv` wrote beside an empty value.
+    project.model(HARDNESS)
+    project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
+    path = project.sample("s.md", properties={"radius": "{readings: [1.063, 1.065, 1.063]}"})
+    sample = sk.Sample(path)
+    with pytest.warns(UserWarning, match="'radius' was never computed"):
+        assert sample.radius.value is None
+    assert sample.radius.uncertainty is None
+    assert sample.radius.state == "never_computed"
+    with pytest.warns(UserWarning, match="radius_uncertainty is left out"):
+        rows = sk.SampleList([sample]).to_csv(columns="name,radius").splitlines()
+    assert rows == ["name,radius_value", "s,"], rows
+
+
+def test_readings_saved_before_a_computation_stay_owed(project, tmp_path):
+    # Saved without `compute()`, readings were written with a record of a
+    # statistic nobody took and no value: edited by hand for the command line,
+    # and no computation would ever take them again.
+    project.model(HARDNESS)
+    project.config('schema_version = 1\n\n[model]\npath = "model.py"\npython = ".venv"\n')
+    (project.root / ".venv").symlink_to(pathlib.Path(sys.prefix))
+    path = project.sample("s.md")
+    sample = sk.Sample(path)
+    sample.radius.readings = [1.063, 1.065, 1.063]
+    sample.save()
+    text = path.read_text()
+    assert "computed:" not in text and "statistics:" not in text, text
+    assert sk.Sample(path).radius.state == "never_computed"
+    if BINARY.exists():
+        env = {**os.environ, "SAMPLEKIT_STATE_DIR": str(tmp_path / "state"), "NO_COLOR": "1"}
+        status = subprocess.run(
+            [str(BINARY), ".", "status"], cwd=project.root, capture_output=True, text=True, env=env,
+        )
+        assert re.search(r"radius\s+never computed", status.stdout), status.stdout + status.stderr
+        subprocess.run(
+            [str(BINARY), ".", "compute", "--write"], cwd=project.root, capture_output=True,
+            text=True, env=env, check=True,
+        )
+        assert sk.Sample(path).radius.value == pytest.approx(1.0636666, abs=1e-6)
+
+
+class RowsOnSwarf(sk.Sample):
+    def __init__(self, path=None, name=None):
+        super().__init__(path, name=name)
+        self.swarf = sk.Property(compute_value=lambda: 4.0, depends_on=[])
+        self.preheat = sk.Table(
+            {
+                "T": sk.Property(),
+                "R": sk.Property(),
+                "G": sk.Property(compute=lambda row: self.swarf.value * row.R.value, depends_on=["swarf", "row.R"]),
+            },
+            index="T",
+            rows=[{"T": 1, "R": 2.0}, {"T": 2, "R": 3.0}],
+        )
+
+
+def test_a_cells_edited_upstream_names_what_its_row_rests_on():
+    # A cell answered `[]` whatever its formula read.
+    sample = RowsOnSwarf(name="r")
+    sample.compute()
+    assert sample.preheat.at(1, "G").edited_upstream == []
+    sample.swarf.value = 8.0
+    sample.preheat.at(2, "R").value = 5.0
+    sample.compute()
+    assert sample.preheat.at(1, "G").edited_upstream == ["swarf"]
+    assert sample.preheat.at(2, "G").edited_upstream == ["swarf"]
+
+
+def test_save_all_refuses_a_read_only_file_before_writing_any(collection):
+    # A read-only file stopped the list half written, the error saying
+    # nothing was.
+    samples = sk.SampleList(collection.root)
+    for sample in samples:
+        sample.tags = list(sample.tags) + ["seen"]
+    locked = pathlib.Path(samples[-1].path)
+    locked.chmod(0o444)
+    try:
+        with pytest.raises(OSError, match="read-only"):
+            samples.save_all()
+        assert not any(
+            "seen" in pathlib.Path(sample.path).read_text() for sample in samples
+        )
+    finally:
+        locked.chmod(0o644)
+
+
+def test_a_save_refused_says_what_changed_and_how_to_keep_it(collection):
+    # `overwrite=True` alone was offered, which wrote over the other change
+    # without a word of what it lost.
+    sample = sk.SampleList(collection.root)[0]
+    path = pathlib.Path(sample.path)
+    sample.tags = list(sample.tags) + ["mine"]
+    path.write_text(path.read_text().replace("schema_version: 1\n", "schema_version: 1\ntester: them\n", 1))
+    with pytest.raises(OSError) as refused:
+        sample.save()
+    said = str(refused.value)
+    assert "tester" in said, said
+    assert "read it again" in said and "what changed there is lost" in said, said
+    assert "tester: them" in path.read_text()
+
+
+class Graded(sk.Sample):
+    def __init__(self, path=None, name=None):
+        super().__init__(path, name=name)
+        self.mass = sk.Property(unit="g")
+        self.graded = sk.Property(compute_value=lambda: self.mass.value * {"A": 2.0}.get(self.batch, 1.0),
+                                  depends_on=["mass", "batch"])
+
+
+def test_an_input_its_files_give_is_held_empty_until_they_do(tmp_path):
+    # A formula reading an attribute its files give, which the model does not
+    # declare: the model was refused as made without a file, and so could
+    # not be described.
+    sample = Graded(name="g")
+    assert sample.dependencies("graded") == ["batch", "mass"]
+    sample.mass.value = 2.0
+    sample.compute()
+    assert "graded" in sample.not_current()
+    sample.batch = "A"
+    sample.compute()
+    assert sample.graded.value == 4.0
+
+
+def test_remove_deletes_the_file_and_the_history_gives_it_back(collection, cli):
+    path = collection.root / "B.md"
+    written = path.read_text()
+    sample = sk.Sample(path)
+    sample.remove()
+    assert not path.exists()
+    # Its values stay, and a save writes it again.
+    assert sample.diameter.value == 13.1234
+    sample.save()
+    assert path.exists()
+    sk.Sample(path).remove()
+    sk.keep("B removed")
+    assert "B removed" in cli(collection.root, "log")
+    cli(collection.root, "restore", "--write")
+    assert path.read_text() == written
+
+
+def test_remove_refuses_a_file_changed_since_it_was_read(collection):
+    path = collection.root / "A.md"
+    sample = sk.Sample(path)
+    path.write_text(path.read_text().replace("12.5", "12.6"))
+    with pytest.raises(OSError, match="changed on disk since it was read, and nothing was removed"):
+        sample.remove()
+    assert path.exists()
+    with pytest.raises(ValueError, match="this sample has no file to remove"):
+        sk.Sample(name="x").remove()
+
+
+def test_rename_moves_the_file_and_the_links_leading_to_it(collection):
+    a = collection.root / "A.md"
+    a.write_text(a.read_text().replace("alloy: Inconel\n", 'alloy: Inconel\ntwin: "[[B]]"\n'))
+    sample = sk.Sample(collection.root / "B.md")
+    moved = sample.rename("B2")
+    assert moved == collection.root / "B2.md"
+    assert not (collection.root / "B.md").exists()
+    assert sk.Sample(a).twin == "[[B2]]"
+    assert sk.Sample(a).linked("twin").name == "B2"
+    # The sample is its new file's: a save writes there.
+    sample.save()
+    assert not (collection.root / "B.md").exists()
+    with pytest.raises(FileExistsError, match="another sample has that name"):
+        sample.rename("A")
+    with pytest.raises(ValueError, match="no sample's name"):
+        sample.rename("x/y")
+
+
+def test_linked_reads_the_sample_an_attribute_links_to(collection):
+    path = collection.root / "A.md"
+    path.write_text(path.read_text().replace(
+        "alloy: Inconel\n",
+        'alloy: Inconel\ntwin: "[[B]]"\nsupplier: https://example.org/a\nlost: "[[Z]]"\n'))
+    sample = sk.Sample(path)
+    # The attribute stays the text written.
+    assert sample.twin == "[[B]]"
+    assert sample.linked("twin").name == "B"
+    with pytest.raises(FileNotFoundError, match=r"lost: \[\[Z\]\] leads to no sample"):
+        sample.linked("lost")
+    with pytest.raises(ValueError, match="supplier is a web address"):
+        sample.linked("supplier")
+    with pytest.raises(ValueError, match="alloy is no link"):
+        sample.linked("alloy")
+    with pytest.raises(KeyError):
+        sample.linked("nothing")
+
+
+def test_linked_follows_a_markdown_link_and_a_list_of_links(collection):
+    (collection.root / "reports").mkdir()
+    (collection.root / "reports" / "a.pdf").write_text("%PDF")
+    path = collection.root / "A.md"
+    path.write_text(path.read_text().replace(
+        "alloy: Inconel\n",
+        'alloy: Inconel\ntwin: "[the twin](B.md)"\n'
+        'report: "[report](reports/a.pdf)"\nparents: ["[[B]]", "[c](C.md)"]\n'))
+    sample = sk.Sample(path)
+    assert sample.linked("twin").name == "B"
+    assert [parent.name for parent in sample.linked("parents")] == ["B", "C"]
+    report = sample.linked("report")
+    assert isinstance(report, pathlib.Path)
+    assert report.resolve() == (collection.root / "reports" / "a.pdf").resolve()
+
+
+def test_a_tables_csv_is_what_view_table_csv_prints(tmp_path, cli):
+    (tmp_path / ".samplekitrc").write_text("schema_version = 1\n")
+    path = tmp_path / "p1.md"
+    path.write_text(
+        "---\nschema_version: 1\nname: p1\ntables:\n  heating:\n    index: [T]\n"
+        "    columns:\n      T: {unit: degC}\n      hrc: {}\n    rows:\n"
+        "      - {T: 20, hrc: 0.1}\n      - {T: 30, hrc: {v: 0.2, u: 0.01}}\n---\n"
+    )
+    with pytest.warns(UserWarning, match="T_uncertainty is left out: it is empty in every row"):
+        text = sk.Sample(path).heating.to_csv()
+    assert text == "T_value [degC],hrc_value,hrc_uncertainty\n20,0.1,\n30,0.2,0.01\n"
+    assert text == cli(path, "view", "heating", "--csv")
+    with pytest.raises(ValueError, match="no sample"):
+        sk.Table(index="T", columns={"T": sk.Property()}).to_csv()

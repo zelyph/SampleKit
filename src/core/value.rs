@@ -209,8 +209,8 @@ pub enum Value {
     Date(Date),
     DateTime(DateTime),
     Absent,
-    /// The value does not apply to this sample — `fg: n/a` for a drink never
-    /// fermented. Read as no value wherever a value is used, and said `n/a`; a
+    /// The value does not apply to this sample — `notch: n/a` for a piece never
+    /// aged. Read as no value wherever a value is used, and said `n/a`; a
     /// formula reading it gives it too.
     NotApplicable,
 }
@@ -395,9 +395,9 @@ pub fn total_order(a: &Value, b: &Value) -> Ordering {
 
 /// A typed comparison. **For filters and predicates.**
 ///
-/// Refuses what has no answer: `malt > "heavy"` is a mistake, and returning
-/// `false` would hide it. Absence is refused too — `malt > 3` on an unrecorded
-/// malt is unanswerable, not false.
+/// Refuses what has no answer: `diameter > "heavy"` is a mistake, and returning
+/// `false` would hide it. Absence is refused too — `diameter > 3` on an unrecorded
+/// diameter is unanswerable, not false.
 pub fn compare(a: &Value, b: &Value) -> Result<Ordering, ValueError> {
     if a.is_absent() || b.is_absent() {
         return Err(ValueError::ComparisonWithAbsent);
@@ -546,7 +546,7 @@ impl fmt::Display for ValueError {
             ),
             ValueError::EmptyReadings => write!(
                 f,
-                "a measured quantity needs at least one reading; an empty series has \
+                "a measured property needs at least one reading; an empty series has \
                  neither a value nor an uncertainty"
             ),
             ValueError::InvalidDate { text } => write!(

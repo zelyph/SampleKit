@@ -27,12 +27,13 @@ fn uncertainty(x: f64) -> Uncertainty {
 
 #[test]
 fn declared_precision_is_honored() {
-    // Three decimals regardless of what the default convention would have said.
+    // Three decimals regardless of what the default convention would have said;
+    // the uncertainty rounded up, never understated.
     let resolved = plain(Some(Precision::both(".3f").unwrap()), None);
     assert_eq!(format_value(&number(12.5), &resolved), "12.500");
     assert_eq!(
         format_quantity(&number(12.4987), Some(&uncertainty(0.0523)), &resolved),
-        "12.499 \u{b1} 0.052"
+        "12.499 \u{b1} 0.053"
     );
 }
 
@@ -71,7 +72,17 @@ fn default_rounds_uncertainty_to_two_significant_digits() {
     let resolved = plain(None, None);
     assert_eq!(
         format_quantity(&number(12.4987), Some(&uncertainty(0.0523)), &resolved),
+        "12.499 \u{b1} 0.053"
+    );
+    // An uncertainty is rounded up, never understated: 0.0520 stays, and the
+    // arithmetic's last digits are no measurement, 0.1 + 0.2 is 0.30.
+    assert_eq!(
+        format_quantity(&number(12.4987), Some(&uncertainty(0.052)), &resolved),
         "12.499 \u{b1} 0.052"
+    );
+    assert_eq!(
+        format_quantity(&number(1.0), Some(&uncertainty(0.1 + 0.2)), &resolved),
+        "1.00 \u{b1} 0.30"
     );
 }
 
@@ -113,7 +124,11 @@ fn project_default_applies_where_nothing_is_declared() {
     let project_default = Resolved {
         unit: None,
         symbol: None,
-        separator: "\u{b1}".to_string(),
+        property: None,
+        uncertainty: None,
+        unitless: None,
+        unit_alone: None,
+        unit_in_form: None,
         precision: Some(Precision::both(".2f").unwrap()),
     };
     assert_eq!(format_value(&number(12.4987), &project_default), "12.50");
@@ -143,7 +158,11 @@ fn resolved_literals_are_used_verbatim() {
     let resolved = Resolved {
         unit: Some("\\Omega".to_string()),
         symbol: Some("R".to_string()),
-        separator: "\\pm".to_string(),
+        property: Some("{value} \\pm {uncertainty} {unit}".to_string()),
+        uncertainty: None,
+        unitless: None,
+        unit_alone: None,
+        unit_in_form: None,
         precision: Some(Precision::both(".3f").unwrap()),
     };
     assert_eq!(
@@ -162,7 +181,7 @@ fn plain_resolution_uses_the_stored_strings() {
     };
     let resolved = Resolved::plain(&presentation);
     assert_eq!(resolved.unit.as_deref(), Some("lintner"));
-    assert_eq!(resolved.separator, "\u{b1}");
+    assert!(resolved.property.is_none());
     assert_eq!(
         format_quantity(&number(12.5), Some(&uncertainty(0.05)), &resolved),
         "12.500 \u{b1} 0.050 lintner"
@@ -188,16 +207,16 @@ fn text_renders_verbatim() {
     // Unaffected by precision and unit metadata, and carrying neither.
     let resolved = plain(Some(Precision::both(".3f").unwrap()), Some("g"));
     assert_eq!(
-        format_value(&Value::text("dried keg"), &resolved),
-        "dried keg"
+        format_value(&Value::text("dried billet"), &resolved),
+        "dried billet"
     );
     assert_eq!(
         format_quantity(
-            &Value::text("dried keg"),
+            &Value::text("dried billet"),
             Some(&uncertainty(0.05)),
             &resolved
         ),
-        "dried keg"
+        "dried billet"
     );
 }
 
@@ -322,10 +341,16 @@ fn formatting_does_not_mutate_the_value() {
 
 #[test]
 fn the_declared_form_never_writes_a_bound() {
-    // Files, exports, templates and screens alike keep the declaration exactly.
+    // Files, exports, templates and screens alike keep the declaration exactly:
+    // an uncertainty below its last place is rounded up to it, never written
+    // as zero, and an exact zero stays one.
     let resolved = plain(Some(Precision::both(".3f").unwrap()), Some("g"));
     assert_eq!(
         format_quantity(&number(3.47326), Some(&uncertainty(0.00006)), &resolved),
+        "3.473 \u{b1} 0.001 g"
+    );
+    assert_eq!(
+        format_quantity(&number(3.47326), Some(&uncertainty(0.0)), &resolved),
         "3.473 \u{b1} 0.000 g"
     );
     // With nothing declared, the convention never rounds an uncertainty away.
@@ -342,12 +367,15 @@ fn a_declared_precision_rounds_alike_everywhere() {
     // rounds away showed a number no file held.
     let resolved = plain(Some(Precision::both(".3f").unwrap()), None);
     assert_eq!(format_value(&number(3e-5), &resolved), "0.000");
-    assert_eq!(format_value(&number(-3e-5), &resolved), "-0.000");
+    assert_eq!(format_value(&number(-3e-5), &resolved), "0.000");
     assert_eq!(format_value(&number(0.0), &resolved), "0.000");
     assert_eq!(
         format_uncertainty(&uncertainty(0.00006), &resolved),
-        "0.000"
+        "0.001"
     );
+    // An uncertainty in a column of its own is rounded up too.
+    let alone = plain(Some(Precision::both(".3f").unwrap().of_uncertainty()), None);
+    assert_eq!(format_value(&number(0.00006), &alone), "0.001");
     // The uncertainty's own specifier decides for it, and an exponential one
     // keeps a significant digit of any nonzero number.
     let split = plain(Some(Precision::split(".3f", ".5f").unwrap()), None);
@@ -387,4 +415,144 @@ fn a_precision_past_what_a_number_carries_is_refused_when_read() {
     let refused = samplekit::config::project_config::load(&rc);
     std::fs::remove_dir_all(&directory).unwrap();
     assert!(refused.is_err());
+}
+
+#[test]
+fn a_quantity_past_what_a_double_holds_is_written_in_scientific_notation() {
+    // Two significant figures of the uncertainty, the value to the same place:
+    // written whole, 6.02e23 ± 3e20 read 601999999999999995805696, digits no
+    // measurement gave.
+    let resolved = plain(None, None);
+    assert_eq!(
+        format_quantity(&number(6.02e23), Some(&uncertainty(3e20)), &resolved),
+        "6.0200e+23 \u{b1} 3.0e+20"
+    );
+    assert_eq!(
+        format_quantity(&number(123456.0), Some(&uncertainty(250.0)), &resolved),
+        "123460 \u{b1} 250"
+    );
+}
+
+#[test]
+fn rounding_is_half_up_on_the_shortest_decimal_writing() {
+    // Two results equal in decimal are written alike: 6.9125 is 6.913, whether
+    // the binary value falls just below it or just above.
+    let resolved = plain(Some(Precision::both(".3f").unwrap()), None);
+    for x in [
+        6.9125,
+        13.825 / 2.0,
+        6.9125_f64.next_up(),
+        1.0005,
+        2.0005,
+        0.0005,
+    ] {
+        let decimal: f64 = format!("{x}").parse().unwrap();
+        assert_eq!(
+            format_value(&number(x), &resolved),
+            format_value(&number(decimal), &resolved),
+            "{x}"
+        );
+    }
+    assert_eq!(format_value(&number(6.9125), &resolved), "6.913");
+    assert_eq!(format_value(&number(1.0005), &resolved), "1.001");
+    assert_eq!(format_value(&number(-1.0005), &resolved), "-1.001");
+    assert_eq!(format_value(&number(0.0005), &resolved), "0.001");
+    assert_eq!(format_value(&number(0.0004), &resolved), "0.000");
+    assert_eq!(format_value(&number(9.9995), &resolved), "10.000");
+    // A number past the next place is no half: 0.00006 at three decimals.
+    assert_eq!(format_value(&number(0.00006), &resolved), "0.000");
+    // An uncertainty is rounded up, never understated, on the same writing;
+    // the arithmetic's digits past the fifteenth are dropped first.
+    let two = plain(Some(Precision::both(".2f").unwrap()), None);
+    assert_eq!(format_uncertainty(&uncertainty(0.121), &two), "0.13");
+    assert_eq!(format_uncertainty(&uncertainty(0.125), &two), "0.13");
+    assert_eq!(format_uncertainty(&uncertainty(0.025), &two), "0.03");
+    assert_eq!(format_uncertainty(&uncertainty(0.12), &two), "0.12");
+    assert_eq!(format_uncertainty(&uncertainty(0.1 + 0.2), &two), "0.30");
+    assert_eq!(format_uncertainty(&uncertainty(0.0), &two), "0.00");
+    assert_eq!(format_uncertainty(&uncertainty(0.991), &two), "1.00");
+    // Scientific and general forms round the same way.
+    let scientific = plain(Some(Precision::both(".2e").unwrap()), None);
+    assert_eq!(format_value(&number(1.2345e-5), &scientific), "1.23e-05");
+    assert_eq!(format_value(&number(1.2355e-5), &scientific), "1.24e-05");
+    assert_eq!(format_value(&number(9.995e3), &scientific), "1.00e+04");
+    let general = plain(Some(Precision::both(".3g").unwrap()), None);
+    assert_eq!(format_value(&number(6.9125), &general), "6.91");
+    assert_eq!(format_value(&number(0.0012345), &general), "0.00123");
+    assert_eq!(format_value(&number(1234500.0), &general), "1.23e+06");
+}
+
+#[test]
+fn every_digit_of_an_uncertainty_is_kept_where_the_precision_keeps_them() {
+    // The arithmetic's digits are dropped before rounding up only where the
+    // precision cuts among them: `.17g` wrote 0.8787328442349305 as
+    // 0.878732844234931.
+    let every = plain(Some(Precision::both(".17g").unwrap()), None);
+    assert_eq!(
+        format_uncertainty(&uncertainty(0.8787328442349305), &every),
+        "0.8787328442349305"
+    );
+    let two = plain(Some(Precision::both(".2f").unwrap()), None);
+    assert_eq!(format_uncertainty(&uncertainty(0.1 + 0.2), &two), "0.30");
+}
+
+#[test]
+fn a_zero_rounded_from_a_negative_number_has_no_sign() {
+    // `-0.000`, as Python's `format()` writes it, read as a mistake: the sign
+    // of a zero rounded is no information.
+    let at = |spec: &str| plain(Some(Precision::both(spec).unwrap()), None);
+    assert_eq!(format_value(&number(-3e-5), &at(".3f")), "0.000");
+    assert_eq!(format_value(&number(-3e-5), &at(".0f")), "0");
+    assert_eq!(format_value(&number(-3e-4), &at(".1e")), "-3.0e-04");
+    assert_eq!(format_value(&number(-0.0), &plain(None, None)), "0");
+    assert_eq!(format_value(&number(-0.4), &at(".0f")), "0");
+    assert_eq!(format_value(&number(-0.6), &at(".0f")), "-1");
+}
+
+#[test]
+fn a_property_is_written_in_named_pieces() {
+    // One line for every value: the uncertainty's piece where there is one,
+    // the form with no unit where there is none, no character reserved.
+    use samplekit::core::formatting::{StyleForms, filled_property};
+    let forms = StyleForms {
+        property: Some("\\SI{{value}{uncertainty}}{{unit}}"),
+        uncertainty: Some(" \\pm {uncertainty}"),
+        unitless: Some("\\num{{value}{uncertainty}}"),
+    };
+    let filled =
+        |value, uncertainty, unit| filled_property(&forms, value, uncertainty, unit, None).unwrap();
+    assert_eq!(
+        filled("12.5", Some("0.05"), Some("\\gram")),
+        "\\SI{12.5 \\pm 0.05}{\\gram}"
+    );
+    assert_eq!(filled("3", None, Some("\\gram")), "\\SI{3}{\\gram}");
+    assert_eq!(
+        filled("1.049", Some("0.0003"), None),
+        "\\num{1.049 \\pm 0.0003}"
+    );
+    assert_eq!(filled("1.049", None, None), "\\num{1.049}");
+    // A bracket and a bar are text.
+    let bars = StyleForms {
+        property: Some("[{value}|{uncertainty}]"),
+        ..StyleForms::default()
+    };
+    assert_eq!(
+        filled_property(&bars, "1", Some("2"), None, None).unwrap(),
+        "[1|2]"
+    );
+    // Without the piece, {uncertainty} is the number; a value with none,
+    // and no piece to leave out, is the caller's to write.
+    let whole = StyleForms {
+        property: Some("\\SI{{value} \\pm {uncertainty}}{{unit}}"),
+        ..StyleForms::default()
+    };
+    assert_eq!(
+        filled_property(&whole, "3", Some("0.1"), Some("g"), None).unwrap(),
+        "\\SI{3 \\pm 0.1}{g}"
+    );
+    assert_eq!(filled_property(&whole, "3", None, Some("g"), None), None);
+    assert_eq!(
+        filled_property(&StyleForms::default(), "3", None, None, None),
+        None
+    );
 }

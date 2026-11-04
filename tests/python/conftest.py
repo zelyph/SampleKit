@@ -64,27 +64,27 @@ def pytest_sessionstart(session):
             returncode=2,
         )
 
-PLATOS = """\
+DUCTILITIES = """\
 schema_version = 1
 
-[property.malt]
+[property.diameter]
 unit = "g"
 precision = ".3f"
 
 [query.heavy]
-filter = "malt > 12"
+filter = "diameter > 12"
 
-[profile.platos]
-sort = ["-malt"]
+[profile.ductilities]
+sort = ["-diameter"]
 columns = [
   {field = "name"},
-  {field = "malt", precision = ".2f"},
+  {field = "diameter", precision = ".2f"},
 ]
 
-[export.malts]
-profile = "platos"
+[export.diameters]
+profile = "ductilities"
 format = "csv"
-output = "malts.csv"
+output = "diameters.csv"
 """
 
 MODEL = """\
@@ -98,9 +98,9 @@ pathlib.Path(__file__).with_name("imported.txt").write_text("imported")
 class Model(Sample):
     def __init__(self, path=None, name=None):
         super().__init__(path, name=name)
-        self.malt = Property(unit="kg")
-        self.double = Property(compute=lambda: self.malt.value * 2)
-        self.set_dependencies("double", depends_on=["malt"])
+        self.diameter = Property(unit="kg")
+        self.double = Property(compute_value=lambda: self.diameter.value * 2)
+        self.set_dependencies("double", depends_on=["diameter"])
 """
 
 
@@ -127,7 +127,7 @@ class Project:
     def __init__(self, root):
         self.root = root
 
-    def config(self, text=PLATOS):
+    def config(self, text=DUCTILITIES):
         path = self.root / ".samplekitrc"
         path.write_text(text)
         return path
@@ -161,20 +161,20 @@ def collection(project):
     project.sample(
         "A.md",
         name="A",
-        attributes={"beer": "Pilsner", "period": 6},
-        properties={"malt": "{v: 12.5, u: 0.05, unit: g}"},
+        attributes={"alloy": "Inconel", "period": 6},
+        properties={"diameter": "{v: 12.5, u: 0.05, unit: g}"},
     )
     project.sample(
         "B.md",
         name="B",
-        attributes={"beer": "Weizen", "period": 6},
-        properties={"malt": "{v: 13.1234, u: 0.02, unit: g}"},
+        attributes={"alloy": "Hastelloy", "period": 6},
+        properties={"diameter": "{v: 13.1234, u: 0.02, unit: g}"},
     )
     project.sample(
         "C.md",
         name="C",
-        attributes={"beer": "Pilsner", "period": 5},
-        properties={"malt": "{v: 11.0, unit: g}"},
+        attributes={"alloy": "Inconel", "period": 5},
+        properties={"diameter": "{v: 11.0, unit: g}"},
     )
     return project
 

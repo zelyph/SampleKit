@@ -24,19 +24,20 @@ Attribute: TypeAlias = Scalar | AttributeList
 IndexScalar: TypeAlias = bool | int | float | str | date | datetime
 Index: TypeAlias = IndexScalar | tuple[IndexScalar, ...]
 CellInput: TypeAlias = Scalar | Sequence[float] | Property
+# What a table formula gives for one cell: a number, or (value, uncertainty),
+# as a property's formula does; a Property carrying both is taken too.
+CellOutput: TypeAlias = Scalar | tuple[Scalar, float | None] | Property
 Pathish: TypeAlias = str | PathLike[str]
 Precision: TypeAlias = str | tuple[str, str]
-Compute: TypeAlias = Callable[[], Scalar]
-UncertaintyCompute: TypeAlias = Callable[[], float | None]
-QuantityCompute: TypeAlias = Callable[[], tuple[Scalar, float | None]]
-RowCompute: TypeAlias = Callable[[RowView], CellInput | Mapping[str, CellInput]]
+# A formula of a property, of no argument; on a table's column, of the row.
+Compute: TypeAlias = Callable[[], Scalar | tuple[Scalar, float | None]] | Callable[[RowView], CellOutput]
+ValueCompute: TypeAlias = Callable[[], Scalar] | Callable[[RowView], Scalar]
+UncertaintyCompute: TypeAlias = Callable[[], float | None] | Callable[[RowView], float | None]
+RowCompute: TypeAlias = Callable[[RowView], CellOutput | Mapping[str, CellOutput]]
 ColumnCompute: TypeAlias = Callable[
     [Mapping[str, ColumnView]],
-    Sequence[CellInput] | Mapping[str, Sequence[CellInput]],
+    Sequence[CellOutput] | Mapping[str, Sequence[CellOutput]],
 ]
-OutputNames: TypeAlias = str | Sequence[str]
-RowDerivation: TypeAlias = tuple[OutputNames, Sequence[str], RowCompute]
-ColumnDerivation: TypeAlias = tuple[OutputNames, Sequence[str], ColumnCompute]
 FieldKey: TypeAlias = str | Field
 # What a formula reads: names, or by channel — {"v": [...], "u": [...]}.
 Declared: TypeAlias = Sequence[str] | Mapping[str, Sequence[str]]
@@ -63,23 +64,28 @@ class BoundList(list[_T]):
     nothing, and so is a list read before the attribute was assigned again.
 
     Example:
-        >>> ipa.tags.append("medal")
+        >>> steel.tags.append("reference")
     """
 
 
 class Property:
-    """A quantity: a value, its uncertainty and its unit.
+    """A property: a value, its uncertainty and its unit.
 
     A property stands for its value in arithmetic and comparisons, so
-    ``ipa.abv * 2`` and ``ipa.abv > 6`` work on the number, and it prints as
-    the whole quantity, ``6.8 ± 0.1 %``. A model declares its properties in its
+    ``steel.area * 2`` and ``steel.area > 25`` work on the number, and it prints
+    as the whole property, ``25.056 ± 0.053 mm²``. A model declares its properties in its
     ``__init__``; a property a model does not declare is made the same way and
     assigned to the sample.
 
     A property is one of four kinds, by what is given: a value entered by hand;
     readings, whose value and uncertainty a statistic gives; a value a formula
-    computes (``compute``, ``compute_uncertainty`` or ``compute_quantity``); or
-    nothing yet.
+    computes (``compute``, or ``compute_value`` and ``compute_uncertainty``);
+    or nothing yet.
+
+    A ``Table`` declares its columns with it too: there a property describes
+    every cell of its column, with the same keywords, and its formula is given
+    the row, ``f(row)``. A column takes no value nor uncertainty: each cell
+    holds its own, in the file.
 
     Args:
         value: The value — a number, text, a boolean, a date, ``samplekit.NA``
@@ -92,21 +98,26 @@ class Property:
             under ``[property.NAME]``.
         precision: Not taken here: a precision is declared in ``.samplekitrc``,
             under ``[property.NAME]``.
-        compute: A function of no argument returning the value.
+        compute: A function of no argument returning the property: a number,
+            or ``(value, uncertainty)``.
+        compute_value: A function of no argument returning the value alone,
+            beside an uncertainty entered, given by readings or computed apart.
         compute_uncertainty: A function of no argument returning the
             uncertainty, beside a value entered or computed apart.
-        compute_quantity: A function of no argument returning
-            ``(value, uncertainty)`` from one run.
-        depends_on: What the formula reads: a list of names — ``["og", "fg"]``,
-            ``"fermentation.gravity"`` for a column — or, where the value and
-            the uncertainty have a formula each, ``{"v": [...], "u": [...]}``.
-            ``[]`` says it reads nothing of the sample. It can also be declared
-            later with ``Sample.set_dependencies``.
+        compute_column: For a table's column only: a function given the
+            columns it reads, by name, and returning a list, one cell per row,
+            each a number or ``(value, uncertainty)``.
+        depends_on: What the formula reads: a list of names — ``["width", "thickness"]``,
+            ``"curve.force"`` for a column, ``"row.force"`` for a
+            cell of the same row — or, where the value and the uncertainty have
+            a formula each, ``{"v": [...], "u": [...]}``. ``[]`` says it reads
+            nothing of the sample. It can also be declared later with
+            ``Sample.set_dependencies``.
 
     Raises:
         ValueError: Two arguments give the same thing — ``value`` and a
-            formula, ``compute`` and ``compute_quantity`` — or a value is not a
-            number where a unit is given.
+            formula, ``compute`` and ``compute_value``, ``compute_column`` and
+            another — or a value is not a number where a unit is given.
         TypeError: A formula is not callable, or a symbol or a precision is
             given.
 
@@ -114,7 +125,8 @@ class Property:
         >>> import samplekit as sk
         >>> sk.Property(3.2, 0.1, unit="kg")
         Property(value=3.2, uncertainty=0.1, unit='kg')
-        >>> og = sk.Property(value=sk.stats.mean, uncertainty=sk.stats.standard_error)
+        >>> width = sk.Property(unit="mm", value=sk.stats.mean,
+        ...                     uncertainty=sk.stats.standard_error)
     """
 
     def __init__(
@@ -123,8 +135,9 @@ class Property:
         uncertainty: float | Statistic | None = None,
         unit: str | None = None,
         compute: Compute | None = None,
+        compute_value: ValueCompute | None = None,
         compute_uncertainty: UncertaintyCompute | None = None,
-        compute_quantity: QuantityCompute | None = None,
+        compute_column: ColumnCompute | None = None,
         # What this formula reads, so that a change to one of them makes it
         # outdated. Optional here rather than required: a model may declare the
         # same thing with `Sample.set_dependencies`, and a checker cannot see
@@ -132,14 +145,14 @@ class Property:
         # model is built — `depends_on=[]` says it reads nothing.
         depends_on: Declared | None = None,
     ) -> None: ...
-    # A quantity's value is read as a number, so that a model's arithmetic
+    # A property's value is read as a number, so that a model's arithmetic
     # type-checks: a formula runs only once its inputs hold one, and waits
     # otherwise. Outside a formula it may hold text, a date, NA or nothing,
     # which the code reading it checks. Assigned, it takes all of them, and
     # a list of readings.
     @property
     def value(self) -> float:
-        """The value: a number, text, a boolean, a date, ``samplekit.NA``, or
+        """The value — a number, text, a boolean, a date, ``samplekit.NA``, or
         ``None`` when there is none.
 
         Assigning a value to a computed property overrides its formula: the
@@ -151,16 +164,16 @@ class Property:
     def value(self, value: Scalar | NotApplicable | Sequence[float] | Property) -> None: ...
     @property
     def v(self) -> float:
-        """The value: the same as ``value``, spelt as a field path spells it
-        (``abv.v``).
+        """The value — the same as ``value``, spelt as a field path spells it
+        (``area.v``).
         """
     @v.setter
     def v(self, value: Scalar | NotApplicable | Sequence[float] | Property) -> None: ...
     uncertainty: float | None
     """The absolute standard uncertainty, in the value's unit, or ``None``."""
     u: float | None
-    """The uncertainty: the same as ``uncertainty``, spelt as a field path spells
-    it (``abv.u``).
+    """The uncertainty — the same as ``uncertainty``, spelt as a field path spells
+    it (``area.u``).
     """
     readings: list[float] | None
     """The readings, or ``None`` for a value not measured several times.
@@ -178,39 +191,23 @@ class Property:
     """The unit, as the file writes it — ``"g"``, ``"degC"`` — or ``None``."""
     @property
     def symbol(self) -> str | None:
-        """The quantity's symbol: the one this sample's file writes, else the one
+        """The property's symbol — the one this sample's file writes, else the one
         the project declares in ``.samplekitrc`` under ``[property.NAME]``, else
         ``None``. Read only: a symbol is the project's, declared there, never
         set by a model or a script.
         """
     @property
-    def text(self) -> str:
-        """The quantity as a terminal shows it — value, uncertainty and unit, at the
-        declared precision: what ``str()`` gives.
-        """
-    @property
     def is_computed(self) -> bool:
         """Whether a formula gives the value."""
-    def invalidate(self) -> None:
-        """Discard the computed value.
-
-        The value reads *never computed* (a statistic of readings, *outdated*), and
-        every value computed from it reads *outdated*, until ``compute()`` runs
-        them again.
-        """
     @property
     def is_outdated(self) -> bool:
-        """Whether the value is outdated: an input changed since it was computed."""
-    # `is_outdated` under its former name, still answered.
-    @property
-    def is_stale(self) -> bool:
-        """The same as ``is_outdated``, under its former name."""
+        """Whether the value is outdated — an input changed since it was computed."""
     @property
     def failure(self) -> str | None:
         """What the formula raised when it last ran, or ``None`` if it did not fail."""
     @property
     def is_edited(self) -> bool:
-        """Whether the value is edited: typed over its formula, or a computed table
+        """Whether the value is edited — typed over its formula, or a computed table
         cell whose record is missing.
         """
     @property
@@ -220,10 +217,13 @@ class Property:
     def state(self) -> str:
         """Where the value stands, in one word.
 
-        One of ``"entered"`` (typed in, no formula), ``"current"``,
-        ``"outdated"`` (an input changed since it was computed),
-        ``"never computed"``, ``"edited"`` (a value typed over its formula) or
-        ``"failed"`` (its formula raised).
+        One of ``"entered"`` (typed in, no formula), ``"absent"`` (no formula,
+        and nothing typed in), ``"current"``,
+        ``"outdated"`` (an input changed since it was computed), ``"waiting"``
+        (an input it reads was emptied since: the number is the one computed
+        before), ``"never_computed"``, ``"edited"`` (a value typed over its
+        formula) or ``"failed"`` (its formula raised): the words a filter's
+        ``state`` takes.
         """
     def compute(self, rerun: bool = False, force: bool = False) -> None:
         """Compute the value, after the inputs it needs.
@@ -240,14 +240,35 @@ class Property:
             Exception: Whatever the formula raised, with a note naming the value.
         """
     def format(self, unit: bool = True) -> str:
-        """Format the quantity at its declared precision.
+        """Format the property at its declared precision.
 
         Args:
             unit: Include the unit.
 
         Returns:
-            The quantity as text, such as ``"6.8 ± 0.1 %"``. For another
-            precision, use a format specifier: ``f"{ipa.abv:.2f}"``.
+            The property as text, such as ``"25.056 ± 0.053 mm²"``. For another
+            precision, use a format specifier: ``f"{steel.area:.2f}"``.
+        """
+    def to_text(self, style: str | None = None) -> str:
+        r"""The property as a style writes it: its units, its symbols, its form
+        of a property — ``\SI{12.5 \pm 0.05}{\gram}`` in a style declaring
+        ``property = '\SI{{value} \pm {uncertainty}}{{unit}}'``.
+
+        Args:
+            style: A style's name: ``"plain"``, one SampleKit gives —
+                ``"latex"``, ``"markdown"``, ``"html"`` — or one ``.samplekitrc``
+                declares. Without it, ``[render] style``'s, as ``str()`` gives.
+
+        Returns:
+            The text, ``n/a`` where the value does not apply, and the style's
+            ``missing`` where there is none.
+
+        Raises:
+            ValueError: No style has that name.
+
+        Example:
+            >>> steel.area.to_text("latex")
+            '$25.056 \\pm 0.053$ mm²'
         """
     def __str__(self) -> str: ...
     def __format__(self, spec: str) -> str: ...
@@ -282,48 +303,11 @@ class Property:
     __hash__: None  # type: ignore[assignment]
 
 
-class Column:
-    """One column of a ``Table``: its unit, and the statistics of its cells'
-    readings.
-
-    Args:
-        unit: The unit of every cell, as the file writes it.
-        symbol: Not taken here: a symbol is declared in ``.samplekitrc``,
-            under ``[property."TABLE.COLUMN"]``.
-        precision: Not taken here: a precision is declared in ``.samplekitrc``,
-            under ``[property.TABLE.COLUMN]``.
-        value: A statistic from ``samplekit.stats`` that gives each cell's value
-            from the readings it holds.
-        uncertainty: A spread from ``samplekit.stats`` that gives each cell's
-            uncertainty from its readings.
-
-    Raises:
-        TypeError: A symbol or a precision is given, or ``value`` or
-            ``uncertainty`` is not a statistic.
-        ValueError: A spread is given as the value.
-
-    Example:
-        >>> day = sk.Column(unit="d")
-    """
-
-    def __init__(
-        self,
-        unit: str | None = None,
-        symbol: None = None,
-        precision: None = None,
-        value: Statistic | None = None,
-        uncertainty: Statistic | None = None,
-    ) -> None: ...
-    @property
-    def unit(self) -> str | None:
-        """The unit of every cell, or ``None``."""
-
-
 class RowView:
-    """One row of a table, as a function in ``compute_rows`` receives it.
+    """One row of a table, as a column's formula receives it.
 
     A cell is read by its column's name, as an attribute or an item:
-    ``row.gravity`` or ``row["gravity"]``, each a ``Property``.
+    ``row.force`` or ``row["force"]``, each a ``Property``.
     """
 
     @property
@@ -340,8 +324,8 @@ class RowView:
 
 
 class ColumnView:
-    """One column of a table, as a function in ``compute_columns`` receives it,
-    and as ``table.column_name`` reads it.
+    """One column of a table, as a ``compute_column`` formula receives it, and
+    as ``table.column_name`` reads it.
 
     Iterating gives each cell as a ``Property``, in row order, and an item is
     the cell of a row, by its index value: ``column[3]``.
@@ -358,55 +342,92 @@ class ColumnView:
     def __len__(self) -> int: ...
 
 
+class ComputedColumns:
+    """Several columns of a table filled by one formula: given each row, or the
+    columns it reads whole.
+
+    A column filled alone declares its formula on its ``Property``; this is for
+    one computation that gives several columns at once, a fit's two parameters.
+
+    Args:
+        columns: The columns it fills: a name, or a list of names.
+        compute: A function given each row, a ``RowView``, and returning a dict:
+            one cell for each column it fills, a number or
+            ``(value, uncertainty)``.
+        compute_column: A function given the columns it reads, by name, and
+            returning a dict: one list of cells for each column it fills, one
+            cell per row.
+        depends_on: What the formula reads: ``"row.force"`` for a cell of the
+            same row, ``"curve.force"`` for a whole column, ``"area"`` for a
+            property of the sample; ``[]`` for nothing.
+
+    Raises:
+        ValueError: Neither formula is given, or both, or ``depends_on`` is not.
+        TypeError: A formula is not callable.
+
+    Example:
+        >>> bounds = sk.ComputedColumns(
+        ...     ["low", "high"], compute=lambda row: {"low": 1.0, "high": 2.0},
+        ...     depends_on=[],
+        ... )
+    """
+
+    def __init__(
+        self,
+        columns: str | Sequence[str],
+        *,
+        compute: RowCompute | None = None,
+        compute_column: ColumnCompute | None = None,
+        # What the formula reads: `"row.force"`, `"curve.force"`, `"area"`.
+        depends_on: Sequence[str] | None = None,
+    ) -> None: ...
+
+
 class Table:
     """A table of a sample: named columns, and rows identified by their index.
 
     The index is the column — or the columns — whose values identify a row: a
-    day, a temperature, a taster. A cell is read by its index value, never by
-    its position: ``table.at(3, "gravity")``.
+    day, a temperature, a inspector. A cell is read by its index value, never by
+    its position: ``table.at(0.2, "force")``.
 
-    Some columns can be computed: ``compute_rows`` fills cells row by row, and
-    ``compute_columns`` fills a whole column at once. Each entry is a triple
-    ``(outputs, inputs, function)``: the column or columns it fills, what it
-    reads (``"row.gravity"`` for a cell of the same row,
-    ``"fermentation.gravity"`` for a whole column, ``"og"`` for a property of
-    the sample), and the function. A row function takes a ``RowView`` and
-    returns a cell, or a dict of cells by column; a column function takes a
-    dict of ``ColumnView`` by name and returns a list of cells, one per row,
-    or a dict of such lists.
+    A column is declared with ``Property``: its unit, the statistics of its
+    cells' readings, or the formula that computes each cell, given the row
+    (``compute``, ``compute_value``, ``compute_uncertainty``), or the whole
+    column at once (``compute_column``). A formula filling several columns at
+    once is a ``ComputedColumns``, given in ``computed``.
 
     Args:
-        columns: A dict of ``Column`` by name, in the order they are shown.
-        index: The name of the index column, or a list of names.
+        columns: A dict of ``Property`` by name, in the order they are shown.
+        index: The name of the index column, or a list of names; always named.
         title: A title for the table.
         rows: The first rows: each a dict of cells by column name.
-        compute_rows: The columns computed row by row.
-        compute_columns: The columns computed whole.
-
-    Raises:
-        TypeError: A column is not a ``Column``.
-        ValueError: The index names no column, or a row does not fit the
+        computed: The ``ComputedColumns`` of the table, each filling several
             columns.
 
+    Raises:
+        TypeError: A column is not a ``Property``, or is given a value; the
+            index is not named.
+        ValueError: The index names no column, a row does not fit the columns,
+            or a column is filled by two formulas.
+
     Example:
-        >>> tasting = sk.Table(
-        ...     {"taster": sk.Column(), "score": sk.Column()},
-        ...     "taster",
-        ...     rows=[{"taster": "Ana", "score": 41}],
+        >>> inspection = sk.Table(
+        ...     {"inspector": sk.Property(), "score": sk.Property()},
+        ...     index="inspector",
+        ...     rows=[{"inspector": "Ana", "score": 41}],
         ... )
-        >>> tasting.at("Ana", "score").value
+        >>> inspection.at("Ana", "score").value
         41
     """
 
     def __init__(
         self,
-        columns: Mapping[str, Column],
-        index: str | Sequence[str],
+        columns: Mapping[str, Property],
         *,
+        index: str | Sequence[str],
         title: str | None = None,
         rows: Iterable[Mapping[str, CellInput]] | None = None,
-        compute_rows: Iterable[RowDerivation] | None = None,
-        compute_columns: Iterable[ColumnDerivation] | None = None,
+        computed: Iterable[ComputedColumns] | None = None,
     ) -> None: ...
     def add(self, **cells: CellInput) -> None:
         """Add a row at the end.
@@ -458,8 +479,8 @@ class Table:
                 names the nearest.
 
         Example:
-            >>> ipa.fermentation.at(2, "gravity").value
-            1.029
+            >>> steel.curve.at(0.2, "force").value
+            9.516
         """
     def values(self, column: str) -> list[CellValue]:
         """The values of a column, in row order.
@@ -474,8 +495,8 @@ class Table:
             KeyError: The column is unknown; the message lists the columns.
 
         Example:
-            >>> ipa.fermentation.values("gravity")[:3]
-            [1.041, 1.029, 1.021]
+            >>> steel.curve.values("force")[:3]
+            [0.0, 1.281, 2.585]
         """
     def uncertainties(self, column: str) -> list[float | None]:
         """The uncertainties of a column, in row order.
@@ -516,6 +537,39 @@ class Table:
     def __getitem__(self, position: int) -> RowView: ...
     def __getattr__(self, column: str) -> ColumnView: ...
     def __contains__(self, index: object) -> bool: ...
+    def to_text(self, style: str | None = None) -> str:
+        """The table as ``samplekit view`` unfolds it: its columns headed with
+        their units, its index first, each cell in a style's forms — those of
+        its sample's project, or of the project the current folder is in for a
+        table of no sample.
+
+        Args:
+            style: A style's name: ``"plain"``, one SampleKit gives, or one
+                ``.samplekitrc`` declares. Without it, ``[render] style``'s.
+
+        Returns:
+            The text.
+
+        Raises:
+            ValueError: No style has that name.
+
+        Example:
+            >>> print(steel.curve.to_text())
+        """
+    def to_csv(self) -> str:
+        """The table as rows of CSV, as ``samplekit FILE view TABLE --csv``
+        prints it: its index first, each column a value and its uncertainty
+        headed with the unit, at the precision its columns declare.
+
+        Returns:
+            The text.
+
+        Raises:
+            ValueError: The table belongs to no sample yet.
+
+        Example:
+            >>> text = steel.curve.to_csv()
+        """
     def __iter__(self) -> Iterator[RowView]: ...
     def __len__(self) -> int: ...
 
@@ -530,8 +584,8 @@ class Sample:
     ``super().__init__``.
 
     A property, a table or an attribute is read as an attribute or an item,
-    ``brew.abv`` or ``brew["abv"]``, and any other field path as an item:
-    ``brew["fermentation.gravity[2]"]`` is that cell's value. What is assigned
+    ``steel.area`` or ``steel["area"]``, and any other field path as an item:
+    ``steel["curve.force[0.2]"]`` is that cell's value. What is assigned
     decides what a name becomes: a ``Property`` or a ``Table`` is one; a
     ``bool``, ``int``, ``float``, ``str``, ``date``, ``datetime``, or a list
     of one of them, is an attribute; and a name with a leading ``_`` is
@@ -557,11 +611,11 @@ class Sample:
             keeps it in Python only.
 
     Example:
-        >>> brew = sk.Sample("brews/citra-ipa.md")
-        >>> brew.style
-        'ipa'
-        >>> brew["fermentation.gravity[2]"]
-        1.029
+        >>> steel = sk.Sample("samples/steel-01.md")
+        >>> steel.material
+        'steel'
+        >>> steel["curve.force[0.2]"]
+        9.516
     """
 
     def __init__(
@@ -598,9 +652,9 @@ class Sample:
             FileNotFoundError: The folder does not exist.
 
         Example:
-            >>> brew = sk.Sample.new("brews/red-ale.md")
-            >>> brew.style = "red_ale"
-            >>> brew.save()
+            >>> specimen = sk.Sample.new("samples/steel-02.md")
+            >>> specimen.material = "steel"
+            >>> specimen.save()
         """
     @property
     def path(self) -> Path | None:
@@ -612,7 +666,7 @@ class Sample:
         """The name of the sample's file, without its folder, or ``None``."""
     @property
     def project(self) -> Project:
-        """The project the sample's file belongs to: what its ``.samplekitrc``
+        """The project the sample's file belongs to — what its ``.samplekitrc``
         declares.
         """
     name: str | None
@@ -623,7 +677,24 @@ class Sample:
     Each tag is an identifier, and none appears twice.
     """
     note: str
-    """The note: the Markdown text below the frontmatter, kept as written."""
+    """The note — the Markdown text below the frontmatter, kept as written."""
+    def to_text(self, style: str | None = None) -> str:
+        """The sample as ``samplekit view`` shows it — its values, then its
+        tables — each value in a style's forms.
+
+        Args:
+            style: A style's name: ``"plain"``, one SampleKit gives, or one
+                ``.samplekitrc`` declares. Without it, ``[render] style``'s.
+
+        Returns:
+            The text.
+
+        Raises:
+            ValueError: No style has that name.
+
+        Example:
+            >>> print(steel.to_text())
+        """
     def save(self, path: Pathish | None = None, overwrite: bool = False) -> None:
         """Write the sample to its file.
 
@@ -639,6 +710,7 @@ class Sample:
 
         Raises:
             ValueError: The sample has no file yet and no ``path`` is given.
+                Also: another process is saving the same file at this moment.
             FileExistsError: ``path`` exists already.
             FileNotFoundError: The folder does not exist, or the sample's file was
                 removed or moved since it was read.
@@ -647,8 +719,82 @@ class Sample:
             PermissionError: The file is read-only.
 
         Example:
-            >>> ipa.volume.value = 21
-            >>> ipa.save()
+            >>> steel.grade = "S275"
+            >>> steel.save()
+        """
+    def linked(self, field: str) -> Sample | Path | list[Sample | Path]:
+        """The sample an attribute links to, read as ``sk.load`` reads it, or
+        the file it leads to.
+
+        A link is an attribute written ``"[[NAME]]"``, as Obsidian writes
+        one: the sample of the project whose file is NAME.md, else whose
+        ``name`` is NAME; or a Markdown link to a file,
+        ``"[the second](NAME.md)"``, its path read from this sample's folder.
+        A sample's file gives the sample; any other file its path. A list of
+        links gives a list, in order.
+
+        Args:
+            field: The attribute holding the link, or the links.
+
+        Returns:
+            The sample it names, or a ``pathlib.Path`` for a file that is no
+            sample; for a list, a list of them, in order.
+
+        Raises:
+            KeyError: The sample holds no such attribute.
+            ValueError: The attribute is no link: text, or a web address; or
+                several samples answer to it.
+            FileNotFoundError: No sample answers to it, or nothing is at its
+                path.
+
+        Example:
+            >>> steel.linked("reference").name
+            'aluminium-01'
+        """
+    def rename(self, new: str) -> Path:
+        """Rename the sample: its file, its own files, and every link of its
+        project leading to it.
+
+        The file becomes ``NEW.md`` beside the old one, its own files under
+        ``[collection] files`` renamed with it, its ``name`` too where it was
+        the file's name; each link of the project that led to it, ``[[OLD]]``
+        or ``[text](OLD.md)``, is written to lead to it again. The history
+        keeps the samples; renamed back, the files and the links go back too.
+
+        Args:
+            new: The new name: the file's, without its folder or ``.md``.
+
+        Returns:
+            The sample's new path.
+
+        Raises:
+            ValueError: The sample has no file, the name is no file's name, or
+                the script runs under ``samplekit run``, whose preview cannot
+                hold a rename.
+            FileExistsError: Another sample, or one of its files, has the name.
+            OSError: The file changed on disk since it was read.
+
+        Example:
+            >>> sk.Sample("samples/steel-01.md").rename("steel-04")
+            PosixPath('samples/steel-04.md')
+        """
+        ...
+
+    def remove(self) -> None:
+        """Delete the sample's file.
+
+        The project's history keeps it, and ``samplekit FILE restore --write``
+        gives it back; the sample's own files, under ``[collection] files``,
+        stay. The sample keeps its values: ``save()`` writes it again.
+
+        Raises:
+            ValueError: The sample has no file, or the script runs under
+                ``samplekit run``, whose preview cannot hold a removal.
+            FileNotFoundError: Its file was removed or moved since it was read.
+            OSError: The file changed on disk since it was read.
+
+        Example:
+            >>> sk.Sample("samples/steel-01.md").remove()
         """
     def files(self, pattern: str | None = None) -> list[Path]:
         """The sample's own files: images, reports, anything found by the sample's
@@ -680,7 +826,10 @@ class Sample:
         Raises:
             FileNotFoundError: No file of the sample matches.
             ValueError: More than five would open and ``many`` is false.
-            RuntimeError: There is no display to open them on.
+            RuntimeError: Over SSH without a display — ``DISPLAY`` and
+                ``WAYLAND_DISPLAY`` unset — there is nothing to open them on.
+                Elsewhere the system's opener is started, and what it does
+                without a display is its own.
         """
     def set_dependencies(self, output: str, *, depends_on: Declared) -> None:
         """Declare what a formula reads.
@@ -701,14 +850,14 @@ class Sample:
                 formula.
 
         Example:
-            >>> class Brew(sk.Sample):
+            >>> class Specimen(sk.Sample):
             ...     def __init__(self, path=None, name=None):
             ...         super().__init__(path, name=name)
-            ...         self.abv = sk.Property(unit="%", compute=self._abv)
-            ...         self.set_dependencies("abv", depends_on=["og", "fg"])
+            ...         self.area = sk.Property(unit="mm²", compute_value=self._area)
+            ...         self.set_dependencies("area", depends_on=["width", "thickness"])
             ...
-            ...     def _abv(self):
-            ...         return (self.og.value - self.fg.value) * 131.25
+            ...     def _area(self):
+            ...         return self.width.value * self.thickness.value
         """
     def dependencies(self, output: str) -> list[str]:
         """What a value's formula is declared to read.
@@ -723,8 +872,8 @@ class Sample:
             KeyError: An unknown name; the message names the nearest.
 
         Example:
-            >>> ipa.dependencies("abv")
-            ['fg', 'og']
+            >>> steel.dependencies("area")
+            ['thickness', 'width']
         """
     def dependents(self, input: str) -> list[str]:
         """The values whose formula reads this one directly.
@@ -752,8 +901,8 @@ class Sample:
             KeyError: An unknown name; the message names the nearest.
 
         Example:
-            >>> ipa.affected_by_change("og")
-            ['abv', 'attenuation', 'drop', 'efficiency', 'fermentation.apparent', 'fermentation.rate']
+            >>> steel.affected_by_change("thickness")
+            ['area', 'curve.stress', 'tensile_strength', 'yield_strength', 'young_modulus']
         """
     def compute(self, *names: str, rerun: bool = False, force: bool = False) -> None:
         """Compute the sample's values that are not current, in dependency order.
@@ -779,22 +928,19 @@ class Sample:
                 and the others that failed.
 
         Example:
-            >>> ipa.compute()
-            >>> ipa.save()
+            >>> steel.compute()
+            >>> steel.save()
         """
     def outdated(self) -> list[str]:
-        """The outdated values: those an input changed under since they were
+        """The outdated values — those an input changed under since they were
         computed.
 
         Returns:
             The names of the outdated properties, and ``table.column`` for a
             column with an outdated cell.
         """
-    # `outdated()` under its former name, still answered.
-    def stale(self) -> list[str]:
-        """The same as ``outdated()``, under its former name."""
     def edited(self) -> list[str]:
-        """The edited values: those typed over their formula.
+        """The edited values — those typed over their formula.
 
         Returns:
             The names of the edited properties, and ``table.column`` for a column
@@ -809,11 +955,11 @@ class Sample:
 
         Returns:
             A dict from each name — a property, or ``table.column`` — to a reason:
-            ``"outdated"``, ``"edited"``, ``"failed"``, ``"never computed"`` or
-            ``"waits for fg"``.
+            ``"outdated"``, ``"formula changed"``, ``"edited"``, ``"failed"``,
+            ``"never computed"`` or ``"waits for notch"``.
 
         Example:
-            >>> ipa.not_current()
+            >>> steel.not_current()
             {}
         """
     def keys(self) -> KeysView[str]:
@@ -839,7 +985,7 @@ class SampleList(Sequence[Sample]):
     """An ordered list of samples, read like a Python list.
 
     A list is read from a folder, or built from samples already read. An item
-    is a sample, by position or by name — ``brews["citra-ipa"]`` — and a slice
+    is a sample, by position or by name — ``specimens["steel-01"]`` — and a slice
     is a list. Lists join with ``+``. ``filter``, ``query``, ``sorted`` and
     ``group_by`` make new lists; the samples in them are the same objects.
 
@@ -859,11 +1005,11 @@ class SampleList(Sequence[Sample]):
         FileNotFoundError: The folder does not exist.
 
     Example:
-        >>> brews = sk.SampleList("brews")
-        >>> len(brews)
-        12
-        >>> brews["citra-ipa"].style
-        'ipa'
+        >>> specimens = sk.SampleList("samples")
+        >>> len(specimens)
+        3
+        >>> specimens["steel-01"].material
+        'steel'
     """
 
     def __init__(
@@ -902,7 +1048,7 @@ class SampleList(Sequence[Sample]):
         """The samples an expression selects, as ``-f`` selects them.
 
         Args:
-            predicate: A filter expression — ``"abv > 6 && style == ipa"`` — or a
+            predicate: A filter expression — ``"elongation > 20 && material == steel"`` — or a
                 function taking a sample and returning whether to keep it.
 
         Returns:
@@ -917,14 +1063,14 @@ class SampleList(Sequence[Sample]):
                 allow.
 
         Example:
-            >>> [brew.name for brew in brews.filter("abv > 6")]
-            ['blonde-saison', 'citra-ipa', 'double-ipa', 'farmhouse-saison']
+            >>> [specimen.name for specimen in specimens.filter("tensile_strength > 300")]
+            ['aluminium-01', 'steel-01']
         """
     def sort(self, key: FieldKey | Sequence[FieldKey] | Callable[[Sample], Any]) -> None:
         """Sort the list in place, and return ``None``.
 
         Args:
-            key: A field — ``"abv"``, or ``"-abv"`` for descending — several in a
+            key: A field — ``"area"``, or ``"-area"`` for descending — several in a
                 list or comma-separated, or a function of a sample as ``sorted``
                 takes one.
 
@@ -936,7 +1082,7 @@ class SampleList(Sequence[Sample]):
         """A new list in sorted order; this one is unchanged.
 
         Args:
-            key: A field — ``"abv"``, or ``"-abv"`` for descending — several in a
+            key: A field — ``"area"``, or ``"-area"`` for descending — several in a
                 list or comma-separated, or a function of a sample as ``sorted``
                 takes one.
 
@@ -948,8 +1094,8 @@ class SampleList(Sequence[Sample]):
             TypeError: A sort by ``state``, which a sample holds several of.
 
         Example:
-            >>> brews.sorted("-abv")[0].name
-            'double-ipa'
+            >>> specimens.sorted("-tensile_strength")[0].name
+            'steel-01'
         """
     def query(self, name: str | Query) -> SampleList:
         """The samples a saved query selects, as ``-Q`` selects them.
@@ -966,14 +1112,14 @@ class SampleList(Sequence[Sample]):
                 differently.
 
         Example:
-            >>> len(brews.query("ipas"))
-            3
+            >>> len(specimens.query("ductile"))
+            2
         """
     def stats(self, field: FieldKey) -> Summary:
         """The statistics of one field over the list, as ``--summary`` gives them.
 
         Args:
-            field: A field: ``"abv"``, ``"abv.u"``, ``"fermentation.gravity[1]"``.
+            field: A field: ``"area"``, ``"area.u"``, ``"curve.force[0.2]"``.
 
         Returns:
             A ``Summary``. Its mean is weighted by 1/u² where every value has an
@@ -984,8 +1130,8 @@ class SampleList(Sequence[Sample]):
             ValueError: No sample of the list holds a number there.
 
         Example:
-            >>> round(brews.stats("abv").mean, 2)
-            5.67
+            >>> round(specimens.stats("tensile_strength").mean, 1)
+            352.3
         """
     def group_by(self, fields: FieldKey | Sequence[FieldKey]) -> dict[Any, SampleList]:
         """Split the list into groups by the values of fields, as ``--group`` does.
@@ -1005,18 +1151,22 @@ class SampleList(Sequence[Sample]):
             RuntimeError: The field is ``state``, which a sample holds several of.
 
         Example:
-            >>> list(brews.group_by("style"))
-            ['ipa', 'pale_ale', 'porter', 'saison', 'stout', 'wheat']
+            >>> list(specimens.group_by("material"))
+            ['aluminium', 'copper', 'steel']
         """
-    def save_all(self, directory: Pathish, overwrite: bool = False) -> list[Path]:
-        """Write every sample of the list into a folder.
+    def save_all(self, directory: Pathish | None = None, overwrite: bool = False) -> list[Path]:
+        """Write every sample of the list: back where each was read, or into a folder.
 
-        Each sample is written under its file's name, or its name. Nothing is
-        written if any file is refused.
+        Without a folder, each sample is written to its own file, as ``save()``
+        writes it: a file changed since it was read — by another object, or an
+        editor — is refused rather than written over. Into a folder, each is
+        written under its file's name, or its name, and nothing is written if
+        any file is refused.
 
         Args:
-            directory: The folder, which must exist.
-            overwrite: Replace existing files.
+            directory: The folder, which must exist; each sample's own file when
+                left out.
+            overwrite: Replace existing files in the folder.
 
         Returns:
             The paths written.
@@ -1025,7 +1175,9 @@ class SampleList(Sequence[Sample]):
             FileNotFoundError: The folder does not exist.
             NotADirectoryError: It is a file.
             FileExistsError: A file exists and ``overwrite`` is false.
-            ValueError: Two samples would be written to the same file.
+            ValueError: Two samples would be written to the same file, or,
+                without a folder, a sample has no file of its own.
+            OSError: Without a folder, a file changed on disk since it was read.
         """
     def compute(self, *names: str, rerun: bool = False, force: bool = False) -> None:
         """Compute every sample of the list, as ``Sample.compute`` does.
@@ -1051,7 +1203,7 @@ class SampleList(Sequence[Sample]):
         """
     @property
     def project(self) -> Project:
-        """The project of the list's samples: what their ``.samplekitrc`` declares.
+        """The project of the list's samples — what their ``.samplekitrc`` declares.
 
         Raises:
             ValueError: The samples belong to several projects.
@@ -1079,9 +1231,9 @@ class SampleList(Sequence[Sample]):
             KeyError: An unknown field or profile; the message names the nearest.
 
         Example:
-            >>> columns = brews.to_dict(columns="name,abv")
+            >>> columns = specimens.to_dict(columns="name,area")
             >>> list(columns)
-            ['name', 'abv_value', 'abv_uncertainty']
+            ['name', 'area_value', 'area_uncertainty']
         """
     # Without a path the text is returned; with one it is written, and
     # nothing is returned.
@@ -1112,7 +1264,7 @@ class SampleList(Sequence[Sample]):
             FileExistsError: ``path`` exists and ``overwrite`` is false.
 
         Example:
-            >>> text = brews.to_csv(columns="name,abv")
+            >>> text = specimens.to_csv(columns="name,area")
         """
     @overload
     def to_csv(
@@ -1141,7 +1293,7 @@ class SampleList(Sequence[Sample]):
             FileExistsError: ``path`` exists and ``overwrite`` is false.
 
         Example:
-            >>> text = brews.to_csv(columns="name,abv")
+            >>> text = specimens.to_csv(columns="name,area")
         """
     @overload
     def to_tsv(
@@ -1170,7 +1322,7 @@ class SampleList(Sequence[Sample]):
             FileExistsError: ``path`` exists and ``overwrite`` is false.
 
         Example:
-            >>> text = brews.to_tsv(columns="name,abv")
+            >>> text = specimens.to_tsv(columns="name,area")
         """
     @overload
     def to_tsv(
@@ -1199,7 +1351,75 @@ class SampleList(Sequence[Sample]):
             FileExistsError: ``path`` exists and ``overwrite`` is false.
 
         Example:
-            >>> text = brews.to_tsv(columns="name,abv")
+            >>> text = specimens.to_tsv(columns="name,area")
+        """
+    @overload
+    def to_text(
+        self,
+        style: str,
+        path: None = None,
+        columns: str | Sequence[FieldKey] | None = None,
+        profile: str | Profile | None = None,
+        overwrite: bool = False,
+    ) -> str:
+        """The list as a document in a style: ``"latex"``, ``"markdown"``,
+        ``"html"``, or one ``[style.NAME]`` declares, as ``--style NAME -o -``
+        writes it.
+
+        Args:
+            style: The style's name.
+            path: The file to write. Without it, the text is returned.
+            columns: The fields to include: a list, or comma-separated as ``-c``
+                writes them, each ``FIELD[:PRECISION][=LABEL]``.
+            profile: A profile's name in ``.samplekitrc``, or a ``Profile``,
+                instead of ``columns``.
+            overwrite: Replace an existing file.
+
+        Returns:
+            The text, when no ``path`` is given; otherwise ``None``.
+
+        Raises:
+            ValueError: No style writing documents has that name, or neither
+                ``columns`` nor ``profile`` is given, or both.
+            KeyError: An unknown field or profile; the message names the nearest.
+            FileExistsError: ``path`` exists and ``overwrite`` is false.
+
+        Example:
+            >>> table = specimens.to_text("latex", columns="name,area")
+        """
+    @overload
+    def to_text(
+        self,
+        style: str,
+        path: Pathish,
+        columns: str | Sequence[FieldKey] | None = None,
+        profile: str | Profile | None = None,
+        overwrite: bool = False,
+    ) -> None:
+        """The list as a document in a style: ``"latex"``, ``"markdown"``,
+        ``"html"``, or one ``[style.NAME]`` declares, as ``--style NAME -o -``
+        writes it.
+
+        Args:
+            style: The style's name.
+            path: The file to write. Without it, the text is returned.
+            columns: The fields to include: a list, or comma-separated as ``-c``
+                writes them, each ``FIELD[:PRECISION][=LABEL]``.
+            profile: A profile's name in ``.samplekitrc``, or a ``Profile``,
+                instead of ``columns``.
+            overwrite: Replace an existing file.
+
+        Returns:
+            The text, when no ``path`` is given; otherwise ``None``.
+
+        Raises:
+            ValueError: No style writing documents has that name, or neither
+                ``columns`` nor ``profile`` is given, or both.
+            KeyError: An unknown field or profile; the message names the nearest.
+            FileExistsError: ``path`` exists and ``overwrite`` is false.
+
+        Example:
+            >>> table = specimens.to_text("latex", columns="name,area")
         """
     @overload
     def to_json(
@@ -1228,7 +1448,7 @@ class SampleList(Sequence[Sample]):
             FileExistsError: ``path`` exists and ``overwrite`` is false.
 
         Example:
-            >>> text = brews.to_json(columns="name,abv")
+            >>> text = specimens.to_json(columns="name,area")
         """
     @overload
     def to_json(
@@ -1257,7 +1477,7 @@ class SampleList(Sequence[Sample]):
             FileExistsError: ``path`` exists and ``overwrite`` is false.
 
         Example:
-            >>> text = brews.to_json(columns="name,abv")
+            >>> text = specimens.to_json(columns="name,area")
         """
     def export(
         self, export: str | Export, output: Pathish | None = None, overwrite: bool = False
@@ -1265,7 +1485,8 @@ class SampleList(Sequence[Sample]):
         """Write an export declared in ``.samplekitrc``, as ``samplekit export
         --write`` does.
 
-        The export's own query, if it declares one, narrows the list first.
+        The export's own query, if it declares one, narrows the list first. An
+        export of a figure draws it as ``sk.plot`` does, to its file.
 
         Args:
             export: The export's name, or an ``Export``.
@@ -1273,16 +1494,17 @@ class SampleList(Sequence[Sample]):
             overwrite: Replace an existing file.
 
         Returns:
-            The path written.
+            The path written, absolute.
 
         Raises:
-            KeyError: No export has that name, or its profile is not declared.
+            KeyError: No export has that name, or its profile or figure is not
+                declared.
             FileExistsError: The file exists and ``overwrite`` is false.
             ValueError: ``output``'s extension does not match the export's format.
 
         Example:
-            >>> brews.export("overview", output="out/overview.csv")
-            PosixPath('out/overview.csv')
+            >>> specimens.export("paper", output="paper/results.tex").name
+            'results.tex'
         """
 
 
@@ -1292,9 +1514,32 @@ class Summary:
     Given by ``Property.stats`` and ``SampleList.stats``.
     """
 
+    def to_text(self, style: str | None = None) -> str:
+        """The summary as ``--summary`` writes a row of it: the count, the
+        mean, the deviation ``s``, its standard error ``sem``, the median and
+        the extremes.
+
+        Args:
+            style: Accepted for every ``to_text``; a summary's numbers are
+                written alike in every style.
+
+        Returns:
+            The text.
+        """
     @property
     def count(self) -> int:
         """How many values were summarised."""
+    @property
+    def considered(self) -> int | None:
+        """How many samples the value applies to, those holding no number
+        included and those saying *not applicable* left out: the denominator of
+        ``count``, as ``--summary`` writes ``3/4``. ``None`` for readings.
+        """
+    @property
+    def not_applicable(self) -> int:
+        """How many samples say the value is not applicable, counted apart —
+        neither summarised nor missing.
+        """
     @property
     def minimum(self) -> float:
         """The smallest value."""
@@ -1303,7 +1548,7 @@ class Summary:
         """The largest value."""
     @property
     def mean(self) -> float:
-        """The mean: weighted by 1/u² where every value has an uncertainty above zero,
+        """The mean — weighted by 1/u² where every value has an uncertainty above zero,
         the arithmetic mean otherwise. ``weighted`` says which.
         """
     @property
@@ -1328,8 +1573,9 @@ class Summary:
         """The population standard deviation, dividing by n."""
     @property
     def standard_error(self) -> float | None:
-        """The standard error of the mean: the sample standard deviation over √n;
-        ``None`` for one value.
+        """The standard error of the mean — 1/√Σw beside a weighted mean, the
+        sample standard deviation over √n beside an arithmetic one; ``None``
+        for one value unweighted.
         """
 
 
@@ -1338,12 +1584,12 @@ class Field:
     ``-s`` take it.
 
     ``str(field)`` is its path, and a field is accepted wherever a field's name
-    is: ``brews.sorted(brews.fields.abv)``.
+    is: ``specimens.sorted(specimens.fields.area)``.
     """
 
     @property
     def path(self) -> str:
-        """The field's path: ``"abv"``, ``"fermentation.gravity[1]"``."""
+        """The field's path — ``"area"``, ``"curve.force[0.2]"``."""
     def __str__(self) -> str: ...
 
 
@@ -1353,8 +1599,8 @@ class Field:
 class Names(Generic[_T]):
     """The entries a project declares, read-only, by name.
 
-    An entry is read as an attribute or an item — ``project.queries.ipas`` or
-    ``project.queries["ipas"]`` — and iterating gives the names. An unknown
+    An entry is read as an attribute or an item — ``project.queries.ductile`` or
+    ``project.queries["ductile"]`` — and iterating gives the names. An unknown
     name raises ``AttributeError`` or ``KeyError`` naming the nearest.
     """
 
@@ -1368,12 +1614,12 @@ class Names(Generic[_T]):
 class Project:
     """A project: what its ``.samplekitrc`` declares, read-only.
 
-    Read from a sample or a list — ``brew.project``, ``brews.project``. Outside
+    Read from a sample or a list — ``steel.project``, ``specimens.project``. Outside
     any project every collection of entries is empty.
 
     Example:
-        >>> list(brews.project.queries)[:3]
-        ['ipas', 'strong', 'medals']
+        >>> list(specimens.project.queries)
+        ['ductile']
     """
 
     @property
@@ -1393,8 +1639,8 @@ class Project:
         """The figures, ``[figure.*]``, by name, each a ``FigureDeclaration``."""
     @property
     def matplotlib(self) -> dict[str, object]:
-        """The matplotlib settings every figure is drawn with, ``[matplotlib]``: a
-        dict by matplotlib's own dotted names.
+        """The matplotlib settings every figure is drawn with, ``[matplotlib]`` —
+        a dict by matplotlib's own dotted names.
         """
     @property
     def properties(self) -> Names[PropertyDeclaration]:
@@ -1527,20 +1773,32 @@ class FigureDeclaration:
     @property
     def figsize(self) -> tuple[float, float] | None:
         """The figure's width and height in centimetres, or ``None``."""
+    @property
+    def matplotlib(self) -> dict[str, Any]:
+        """Its own matplotlib settings, over the project's ``[matplotlib]``, by
+        matplotlib's dotted names.
+        """
 
 
 class Export:
-    """An export, ``[export.*]``: a profile written to a file in a format."""
+    """An export, ``[export.*]``: a profile written to a file in a format, or
+    a figure drawn to a file.
+    """
 
     @property
     def name(self) -> str:
         """The export's name."""
     @property
-    def profile(self) -> str:
-        """The name of the profile it writes."""
+    def profile(self) -> str | None:
+        """The name of the profile it writes, or ``None`` for a figure's export."""
     @property
-    def format(self) -> Literal["csv", "tsv", "json"]:
-        """The format: ``"csv"``, ``"tsv"`` or ``"json"``."""
+    def figure(self) -> str | None:
+        """The name of the figure it draws, or ``None`` for a table's export."""
+    @property
+    def format(self) -> Literal["csv", "tsv", "json"] | None:
+        """The data format — ``"csv"``, ``"tsv"``, ``"json"`` — or ``None`` for
+        a document its style writes, or a figure.
+        """
     @property
     def output(self) -> Path:
         """The file it writes."""
@@ -1568,7 +1826,7 @@ class Statistic:
 
     @property
     def name(self) -> str:
-        """Its name, as ``Summary`` spells it: ``"median"``."""
+        """Its name, as ``Summary`` spells it — ``"median"``."""
 
 
 class stats:
@@ -1579,7 +1837,8 @@ class stats:
     ``standard_error``, ``sample_stdev``, ``population_stdev``.
 
     Example:
-        >>> og = sk.Property(value=sk.stats.mean, uncertainty=sk.stats.standard_error)
+        >>> width = sk.Property(unit="mm", value=sk.stats.mean,
+        ...                     uncertainty=sk.stats.standard_error)
     """
 
     mean: Statistic
@@ -1606,8 +1865,8 @@ class PropertyDeclaration:
         """The symbol, or ``None``."""
     @property
     def symbol_variants(self) -> Mapping[str, str]:
-        """The symbol in each style, by style name:
-        ``{"figure": "Original gravity"}``.
+        r"""The symbol in each style, by style name:
+        ``{"figure": "$\\sigma$"}``.
         """
     @property
     def precision(self) -> Precision | None:
@@ -1623,10 +1882,10 @@ class Unit:
 
     @property
     def spelling(self) -> str:
-        """The unit as the files write it: ``"degC"``."""
+        """The unit as the files write it — ``"degC"``."""
     @property
     def variants(self) -> Mapping[str, str]:
-        """The unit in each style, by style name: ``{"plain": "°C"}``."""
+        """The unit in each style, by style name — ``{"plain": "°C"}``."""
 
 
 class Render:
@@ -1671,17 +1930,23 @@ class Collection:
     @property
     def exclude(self) -> tuple[str, ...]:
         """The globs of files that are not samples."""
+    @property
+    def files(self) -> tuple[str, ...]:
+        """Where a sample's own files are looked for, ``[collection] files`` —
+        the folders searched by the sample's name, and the patterns naming it,
+        as written.
+        """
 
 
 class NotApplicable:
-    """A value that does not apply to a sample: ``fg: n/a`` in its file.
+    """A value that does not apply to a sample — ``yield_strength: n/a`` in its file.
 
     There is one, ``samplekit.NA``. It is false in a test and prints as
     ``n/a``; a property set to it is saved as ``n/a``, and a formula reading
     it gives ``NA`` too, without running.
 
     Example:
-        >>> ipa.fg.value = sk.NA
+        >>> steel.yield_strength.value = sk.NA
     """
 
     def __bool__(self) -> bool: ...
@@ -1690,7 +1955,7 @@ NA: NotApplicable
 
 # One path is a sample for a file and a list for a folder, which a type
 # cannot tell apart: the script knows which it named, and a union would
-# refuse `for brew in sk.load("brews")` until narrowed. Several paths are
+# refuse `for specimen in sk.load("samples")` until narrowed. Several paths are
 # always one list.
 @overload
 def load(path: Pathish, /) -> Any:
@@ -1713,10 +1978,10 @@ def load(path: Pathish, /) -> Any:
         ValueError: A file is not a sample.
 
     Example:
-        >>> brews = sk.load("brews")
-        >>> ipa = sk.load("brews/citra-ipa.md")
-        >>> ipa.abv
-        Property(value=6.825000000000035, uncertainty=0.14510233457805027, unit='%')
+        >>> specimens = sk.load("samples")
+        >>> steel = sk.load("samples/steel-01.md")
+        >>> steel.area
+        Property(value=25.05586444444445, uncertainty=0.05217296159913354, unit='mm²')
     """
 @overload
 def load(first: Pathish, second: Pathish, /, *paths: Pathish) -> SampleList:
@@ -1739,10 +2004,10 @@ def load(first: Pathish, second: Pathish, /, *paths: Pathish) -> SampleList:
         ValueError: A file is not a sample.
 
     Example:
-        >>> brews = sk.load("brews")
-        >>> ipa = sk.load("brews/citra-ipa.md")
-        >>> ipa.abv
-        Property(value=6.825000000000035, uncertainty=0.14510233457805027, unit='%')
+        >>> specimens = sk.load("samples")
+        >>> steel = sk.load("samples/steel-01.md")
+        >>> steel.area
+        Property(value=25.05586444444445, uncertainty=0.05217296159913354, unit='mm²')
     """
 def keep(message: str | None = None) -> None:
     """Keep what the script has saved so far as one snapshot of the history.
@@ -1756,12 +2021,16 @@ def keep(message: str | None = None) -> None:
             given. A blank message says nothing, and several lines are kept
             on one.
 
+    Warns:
+        UserWarning: Nothing was saved in a project since the last snapshot,
+            so nothing is kept.
+
     Raises:
         TypeError: The message is not text.
 
     Example:
-        >>> ipa.save()
-        >>> sk.keep("volumes corrected")
+        >>> steel.save()
+        >>> sk.keep("thickness measured again")
     """
 
 
@@ -1785,6 +2054,9 @@ def figure(method: _Method) -> _Method:
         subplots: ``(rows, columns)``: the method receives the array of axes
             ``plt.subplots`` makes, instead of one.
         figsize: The figure's width and height, in centimetres.
+        matplotlib: matplotlib's settings for this figure alone, by their
+            names, over the project's ``[matplotlib]``:
+            ``{"lines.marker": "None"}``.
 
     Returns:
         The method, marked.
@@ -1793,11 +2065,11 @@ def figure(method: _Method) -> _Method:
         ValueError: ``subplots`` is not two positive integers.
 
     Example:
-        >>> class Brew(sk.Sample):
+        >>> class Specimen(sk.Sample):
         ...     @sk.figure
-        ...     def fermentation_curve(self, ax):
-        ...         ax.plot(self.fermentation.values("day"),
-        ...                 self.fermentation.values("gravity"))
+        ...     def stress_strain(self, ax):
+        ...         ax.plot(self.curve.values("strain"),
+        ...                 self.curve.values("stress"))
     """
 @overload
 def figure(
@@ -1805,6 +2077,7 @@ def figure(
     *,
     subplots: tuple[int, int] | None = None,
     figsize: tuple[float, float] | None = None,
+    matplotlib: dict[str, Any] | None = None,
 ) -> Callable[[_Method], _Method]:
     """Mark a method of a model as a figure.
 
@@ -1818,6 +2091,9 @@ def figure(
         subplots: ``(rows, columns)``: the method receives the array of axes
             ``plt.subplots`` makes, instead of one.
         figsize: The figure's width and height, in centimetres.
+        matplotlib: matplotlib's settings for this figure alone, by their
+            names, over the project's ``[matplotlib]``:
+            ``{"lines.marker": "None"}``.
 
     Returns:
         The method, marked.
@@ -1826,11 +2102,40 @@ def figure(
         ValueError: ``subplots`` is not two positive integers.
 
     Example:
-        >>> class Brew(sk.Sample):
+        >>> class Specimen(sk.Sample):
         ...     @sk.figure
-        ...     def fermentation_curve(self, ax):
-        ...         ax.plot(self.fermentation.values("day"),
-        ...                 self.fermentation.values("gravity"))
+        ...     def stress_strain(self, ax):
+        ...         ax.plot(self.curve.values("strain"),
+        ...                 self.curve.values("stress"))
+    """
+# A script is the model's. `script` marks a method — an instance method acts
+# on one sample, a class method on the selection — and `samplekit run` runs it.
+def script(method: _Method) -> _Method:
+    """Mark a method of a model as a script.
+
+    ``samplekit run NAME`` runs it, and ``r`` in the workbench: a method acts
+    on one sample, each selected in turn; placed above ``@classmethod``, it
+    receives the selection. Its keyword parameters are the command's options,
+    ``--set offset=0.002``, read as their annotation or their default says;
+    its docstring is its description. What it changes in the samples is
+    shown, and written once the change is accepted; what it returns is shown.
+
+    Args:
+        method: The method.
+
+    Returns:
+        The method, marked.
+
+    Raises:
+        TypeError: The method is a static method, or takes ``*args`` or
+            ``**kwargs``.
+
+    Example:
+        >>> class Specimen(sk.Sample):
+        ...     @sk.script
+        ...     def classify(self, limit: float = 20.0):
+        ...         "Class the specimen's ductility by its elongation at break."
+        ...         self.ductility = "high" if self.elongation.value >= limit else "low"
     """
 def plot(
     target: Sample | SampleList | Iterable[Sample],
@@ -1907,7 +2212,7 @@ def plot(
         RuntimeError: No ``output`` is given and there is no display.
 
     Example:
-        >>> figures = sk.plot(brews, "alcohol_by_style", output="out/abv.png")
-        >>> figures = sk.plot(brews, x="abv", y="score", group="style",
-        ...                   output="out/score.png")
+        >>> figures = sk.plot(specimens, "curves", output="paper/curves.pdf")
+        >>> figures = sk.plot(specimens, x="yield_strength", y="tensile_strength",
+        ...                   group="material", output="strengths.png")
     """

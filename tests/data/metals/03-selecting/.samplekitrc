@@ -1,0 +1,98 @@
+# A home tester's notebook: each file in pieces/ is one piece. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The pieces are in pieces/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no piece.
+[collection]
+recursive = true
+exclude = ["README.md"]
+
+# ----------------------------------------------------------------- units
+# The key is the unit as the files write it; `plain` is how a table shows it.
+
+[unit."degC"]
+plain = "°C"
+
+# ------------------------------------------------------------ quantities
+# Each quantity: its unit, which `samplekit set` and `samplekit new` write for
+# you; its precision (the value's, then the uncertainty's); and its symbol,
+# which labels a figure's axis.
+
+[property.radius]
+symbol = "RADIUS"
+precision = [".3f", ".4f"]
+
+[property.notch]
+symbol = "NOTCH"
+precision = [".3f", ".4f"]
+
+[property.volume]
+unit = "L"
+symbol = "V"
+precision = ".1f"
+
+[property.ore_mass]
+unit = "kg"
+symbol = "m_ore"
+precision = ".2f"
+
+[property.preheat_temperature]
+unit = "degC"
+symbol = "T_preheat"
+precision = ".0f"
+
+# --------------------------------------------------------------- queries
+# samplekit pieces/ --query titaniums
+
+[query.titaniums]
+filter = 'style == titanium'
+
+[query.strong]
+filter = 'radius > 1.060'
+
+[query.prizes]
+filter = 'tags has prize'
+
+[query.ana]
+filter = 'tester == ana'
+
+[query.still_ageing]
+filter = 'notch is missing'
+
+# -------------------------------------------------------------- profiles
+# samplekit pieces/ --profile overview
+
+[profile.overview]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "style", label = "Style" },
+  { field = "process", label = "Process" },
+  { field = "radius", label = "Original hardness" },
+  { field = "notch", label = "Final hardness" },
+  { field = "volume", label = "Volume" },
+]
+sort = ["style", "-radius"]
+
+[profile.preheat]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "ore_mass", label = "Ore" },
+  { field = "preheat_temperature", label = "Preheat" },
+  { field = "poured", label = "Poured" },
+]
+sort = ["poured"]
+
+# --------------------------------------------------------------- exports
+# samplekit pieces/ export overview --write
+
+[export.overview]
+profile = "overview"
+format = "csv"
+output = "out/overview.csv"
+
+[export.preheat]
+profile = "preheat"
+format = "json"
+output = "out/preheat.json"

@@ -27,38 +27,40 @@ fn number(x: f64) -> Value {
     Value::number(x).unwrap()
 }
 
-/// One cask: a beer, a plato when it was measured, and a mashing
-/// boil so that a cell can be a sort key.
-fn cask(beer: &str, plato: Option<f64>) -> Sample {
+/// One slab: a alloy, a ductility when it was measured, and a preheating
+/// soak so that a cell can be a sort key.
+fn slab(alloy: &str, ductility: Option<f64>) -> Sample {
     let mut sample = Sample::new();
-    sample.set_attribute(id("beer"), Value::text(beer)).unwrap();
-    if let Some(plato) = plato {
-        let mut property = Property::stored(number(plato));
+    sample
+        .set_attribute(id("alloy"), Value::text(alloy))
+        .unwrap();
+    if let Some(ductility) = ductility {
+        let mut property = Property::stored(number(ductility));
         property.set_uncertainty(Some(
-            samplekit::core::uncertainty::Uncertainty::new(plato / 100.0).unwrap(),
+            samplekit::core::uncertainty::Uncertainty::new(ductility / 100.0).unwrap(),
         ));
-        sample.set_property(id("plato"), property).unwrap();
+        sample.set_property(id("ductility"), property).unwrap();
     }
-    let mut mashing = Table::new(
-        id("mashing"),
+    let mut preheating = Table::new(
+        id("preheating"),
         vec![id("temperature")],
-        ["temperature", "wort"]
+        ["temperature", "tension"]
             .iter()
             .map(|n| (id(n), ColumnMeta::default()))
             .collect::<IndexMap<_, _>>(),
         Vec::new(),
     )
     .unwrap();
-    mashing
+    preheating
         .add_row(vec![
             (id("temperature"), Property::stored(number(78.5))),
             (
-                id("wort"),
-                Property::stored(number(plato.unwrap_or(1.0) * 10.0)),
+                id("tension"),
+                Property::stored(number(ductility.unwrap_or(1.0) * 10.0)),
             ),
         ])
         .unwrap();
-    sample.set_table(id("mashing"), mashing).unwrap();
+    sample.set_table(id("preheating"), preheating).unwrap();
     sample
 }
 
@@ -73,7 +75,7 @@ impl Corpus {
     fn of(entries: Vec<(&str, Option<f64>, Option<&str>)>) -> Corpus {
         let samples: Vec<Sample> = entries
             .iter()
-            .map(|(beer, plato, _)| cask(beer, *plato))
+            .map(|(alloy, ductility, _)| slab(alloy, *ductility))
             .collect();
         let paths = entries
             .iter()
@@ -100,7 +102,7 @@ impl Corpus {
             .collect()
     }
 
-    /// The beers, in the order a spec puts them.
+    /// The alloys, in the order a spec puts them.
     fn order(&self, spec: &str) -> Vec<String> {
         let spec = ordering::parse_spec(&[spec.to_string()]).unwrap();
         self.order_by(&spec)
@@ -111,13 +113,13 @@ impl Corpus {
         ordering::sorted(&subjects, spec)
             .unwrap()
             .into_iter()
-            .map(|at| beer_of(&self.samples[at]))
+            .map(|at| alloy_of(&self.samples[at]))
             .collect()
     }
 }
 
-fn beer_of(sample: &Sample) -> String {
-    match sample.attribute(&id("beer")).unwrap().as_scalar().unwrap() {
+fn alloy_of(sample: &Sample) -> String {
+    match sample.attribute(&id("alloy")).unwrap().as_scalar().unwrap() {
         Value::Text(text) => text.clone(),
         other => panic!("{other:?}"),
     }
@@ -148,11 +150,11 @@ fn sorted_returns_a_total_permutation() {
         ("b", Some(2.0), Some("/b.md")),
     ]);
     let subjects = corpus.subjects();
-    let order = ordering::sorted(&subjects, &spec(&[("plato", false)])).unwrap();
+    let order = ordering::sorted(&subjects, &spec(&[("ductility", false)])).unwrap();
     let mut seen = order.clone();
     seen.sort_unstable();
     assert_eq!(seen, [0, 1, 2], "not a permutation: {order:?}");
-    assert_eq!(corpus.order("plato"), ["a", "b", "c"]);
+    assert_eq!(corpus.order("ductility"), ["a", "b", "c"]);
 }
 
 #[test]
@@ -162,7 +164,7 @@ fn sort_by_numeric_field() {
         ("ten", Some(10.0), Some("/a.md")),
         ("nine", Some(9.0), Some("/b.md")),
     ]);
-    assert_eq!(corpus.order("plato"), ["nine", "ten"]);
+    assert_eq!(corpus.order("ductility"), ["nine", "ten"]);
 }
 
 #[test]
@@ -171,7 +173,7 @@ fn sort_by_table_cell_field() {
         ("high", Some(3.0), Some("/a.md")),
         ("low", Some(1.0), Some("/b.md")),
     ]);
-    assert_eq!(corpus.order("mashing.wort[78.5]"), ["low", "high"]);
+    assert_eq!(corpus.order("preheating.tension[78.5]"), ["low", "high"]);
 }
 
 #[test]
@@ -181,7 +183,7 @@ fn sort_by_uncertainty_channel() {
         ("big", Some(500.0), Some("/a.md")),
         ("small", Some(1.0), Some("/b.md")),
     ]);
-    assert_eq!(corpus.order("plato.u"), ["small", "big"]);
+    assert_eq!(corpus.order("ductility.u"), ["small", "big"]);
 }
 
 #[test]
@@ -191,7 +193,7 @@ fn descending_reverses_present_values() {
         ("b", Some(2.0), Some("/b.md")),
         ("c", Some(3.0), Some("/c.md")),
     ]);
-    assert_eq!(corpus.order("-plato"), ["c", "b", "a"]);
+    assert_eq!(corpus.order("-ductility"), ["c", "b", "a"]);
 }
 
 // -------------------------------------------------------------- absence
@@ -203,7 +205,7 @@ fn absent_sorts_last_ascending() {
         ("light", Some(1.0), Some("/l.md")),
         ("heavy", Some(3.0), Some("/h.md")),
     ]);
-    assert_eq!(corpus.order("plato"), ["light", "heavy", "unmeasured"]);
+    assert_eq!(corpus.order("ductility"), ["light", "heavy", "unmeasured"]);
 }
 
 #[test]
@@ -216,7 +218,7 @@ fn absent_sorts_last_descending() {
         ("light", Some(1.0), Some("/l.md")),
         ("heavy", Some(3.0), Some("/h.md")),
     ]);
-    assert_eq!(corpus.order("-plato"), ["heavy", "light", "unmeasured"]);
+    assert_eq!(corpus.order("-ductility"), ["heavy", "light", "unmeasured"]);
 }
 
 // ------------------------------------------------------------- multi-key
@@ -224,18 +226,18 @@ fn absent_sorts_last_descending() {
 #[test]
 fn multi_key_breaks_ties_in_order() {
     let corpus = Corpus::of(vec![
-        ("altbier", Some(3.0), Some("/a.md")),
-        ("altbier", Some(1.0), Some("/b.md")),
+        ("alumina", Some(3.0), Some("/a.md")),
+        ("alumina", Some(1.0), Some("/b.md")),
         ("zwickel", Some(2.0), Some("/c.md")),
     ]);
-    let order = corpus.order_by(&spec(&[("beer", false), ("plato", false)]));
-    assert_eq!(order, ["altbier", "altbier", "zwickel"]);
-    let platos = corpus.order_by(&spec(&[("beer", false), ("plato", false)]));
-    assert_eq!(platos.len(), 3);
+    let order = corpus.order_by(&spec(&[("alloy", false), ("ductility", false)]));
+    assert_eq!(order, ["alumina", "alumina", "zwickel"]);
+    let ductilities = corpus.order_by(&spec(&[("alloy", false), ("ductility", false)]));
+    assert_eq!(ductilities.len(), 3);
     // The second key decides between the two helless: 1.0 before 3.0.
     let subjects = corpus.subjects();
     let permutation =
-        ordering::sorted(&subjects, &spec(&[("beer", false), ("plato", false)])).unwrap();
+        ordering::sorted(&subjects, &spec(&[("alloy", false), ("ductility", false)])).unwrap();
     assert_eq!(permutation[0], 1);
 }
 
@@ -243,11 +245,11 @@ fn multi_key_breaks_ties_in_order() {
 fn multi_key_supports_mixed_directions() {
     // Ascending then descending in one spec.
     let corpus = Corpus::of(vec![
-        ("altbier", Some(1.0), Some("/a.md")),
-        ("altbier", Some(3.0), Some("/b.md")),
+        ("alumina", Some(1.0), Some("/a.md")),
+        ("alumina", Some(3.0), Some("/b.md")),
         ("zwickel", Some(2.0), Some("/c.md")),
     ]);
-    let parsed = ordering::parse_spec(&["beer".to_string(), "-plato".to_string()]).unwrap();
+    let parsed = ordering::parse_spec(&["alloy".to_string(), "-ductility".to_string()]).unwrap();
     let subjects = corpus.subjects();
     let permutation = ordering::sorted(&subjects, &parsed).unwrap();
     assert_eq!(permutation, [1, 0, 2]);
@@ -261,7 +263,7 @@ fn path_breaks_remaining_ties() {
         ("same", Some(1.0), Some("/a.md")),
     ]);
     let subjects = corpus.subjects();
-    let permutation = ordering::sorted(&subjects, &spec(&[("plato", false)])).unwrap();
+    let permutation = ordering::sorted(&subjects, &spec(&[("ductility", false)])).unwrap();
     assert_eq!(permutation, [1, 0]);
 }
 
@@ -273,7 +275,7 @@ fn a_sample_without_a_path_sorts_last() {
         ("saved", Some(1.0), Some("/a.md")),
     ]);
     let subjects = corpus.subjects();
-    let permutation = ordering::sorted(&subjects, &spec(&[("plato", false)])).unwrap();
+    let permutation = ordering::sorted(&subjects, &spec(&[("ductility", false)])).unwrap();
     assert_eq!(permutation, [1, 0]);
 }
 
@@ -286,7 +288,7 @@ fn sort_is_stable() {
         ("third", Some(1.0), None),
     ]);
     let subjects = corpus.subjects();
-    let permutation = ordering::sorted(&subjects, &spec(&[("plato", false)])).unwrap();
+    let permutation = ordering::sorted(&subjects, &spec(&[("ductility", false)])).unwrap();
     assert_eq!(permutation, [0, 1, 2]);
 }
 
@@ -297,9 +299,9 @@ fn sort_is_deterministic_across_runs() {
         ("a", Some(2.0), Some("/a.md")),
         ("b", Some(1.0), Some("/b.md")),
     ]);
-    let first = corpus.order("plato");
+    let first = corpus.order("ductility");
     for _ in 0..5 {
-        assert_eq!(corpus.order("plato"), first);
+        assert_eq!(corpus.order("ductility"), first);
     }
 }
 
@@ -324,7 +326,7 @@ fn unknown_field_yields_no_permutation() {
     let subjects = corpus.subjects();
     assert!(ordering::sorted(&subjects, &spec(&[("vfi", false)])).is_err());
     // And the good spec still works afterwards: nothing was consumed.
-    assert_eq!(corpus.order("plato"), ["a", "b"]);
+    assert_eq!(corpus.order("ductility"), ["a", "b"]);
 }
 
 #[test]
@@ -384,10 +386,10 @@ fn sorted_does_not_mutate() {
         ("c", Some(3.0), Some("/c.md")),
         ("a", Some(1.0), Some("/a.md")),
     ]);
-    let before: Vec<String> = corpus.samples.iter().map(beer_of).collect();
+    let before: Vec<String> = corpus.samples.iter().map(alloy_of).collect();
     let subjects = corpus.subjects();
-    ordering::sorted(&subjects, &spec(&[("plato", false)])).unwrap();
-    let after: Vec<String> = corpus.samples.iter().map(beer_of).collect();
+    ordering::sorted(&subjects, &spec(&[("ductility", false)])).unwrap();
+    let after: Vec<String> = corpus.samples.iter().map(alloy_of).collect();
     assert_eq!(before, after);
 }
 
@@ -447,7 +449,7 @@ fn sorting_by_a_whole_list_is_refused() {
 fn sorting_by_state_is_refused_as_a_set() {
     // `state` is a set of words, and a list's advice, `[#n]`, would name an
     // item it does not have. Refused whether its states were read.
-    let sample = cask("schwarz", Some(7.8));
+    let sample = slab("cobalt", Some(7.8));
     let vocabulary = Vocabulary::of(&sample);
     let subjects = [Subject {
         sample: &sample,
@@ -465,9 +467,9 @@ fn sorting_by_state_is_refused_as_a_set() {
 #[test]
 fn text_sorts_without_regard_to_case() {
     let samples = vec![
-        cask("MnO2", None),
-        cask("activated carbon", None),
-        cask("CNT", None),
+        slab("MnO2", None),
+        slab("activated carbon", None),
+        slab("CNT", None),
     ];
     let vocabulary = fields::vocabulary_of(&refs(&samples));
     let subjects: Vec<Subject> = samples
@@ -479,6 +481,6 @@ fn text_sorts_without_regard_to_case() {
             states: None,
         })
         .collect();
-    let spec = ordering::parse_spec(&["beer".to_string()]).unwrap();
+    let spec = ordering::parse_spec(&["alloy".to_string()]).unwrap();
     assert_eq!(ordering::sorted(&subjects, &spec).unwrap(), [1, 2, 0]);
 }

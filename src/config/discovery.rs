@@ -36,6 +36,19 @@ pub enum SkipReason {
         pattern: String,
     },
     NoFrontmatter,
+    /// Not a regular file — a pipe, a device, a socket, a link to one — and
+    /// so no sample, set aside unread: opened, a pipe stopped every command.
+    NotAFile,
+    /// A frontmatter that declares no `schema_version`: no sample, as a
+    /// README is none — a sample says which shape it is.
+    NoVersion,
+    /// A copy a synchroniser left beside `original` when two machines changed
+    /// it at once — Syncthing's `.sync-conflict-`, Dropbox's and Nextcloud's
+    /// `(conflicted copy …)`, Nextcloud's `_conflict-`: never a sample
+    /// anyone meant, and counted, it doubled one in every mean.
+    SyncConflict {
+        original: PathBuf,
+    },
     Unreadable {
         message: String,
     },
@@ -47,6 +60,10 @@ pub enum SkipReason {
     Configuration {
         message: String,
     },
+    /// A link to a folder the scan is in already — an ancestor, or one
+    /// another link reached: not entered again, so that the scan ends and no
+    /// sample is read twice.
+    LinkBack,
 }
 
 /// **A sentence naming the fix.** Four causes with four different fixes is why
@@ -62,15 +79,38 @@ impl fmt::Display for SkipReason {
                 f,
                 "no frontmatter: a sample begins with a '---' line, so this is not one"
             ),
+            SkipReason::NotAFile => write!(
+                f,
+                "not a regular file — a pipe, a device or a socket — so not a sample, and \
+                 left unread"
+            ),
+            SkipReason::SyncConflict { original } => write!(
+                f,
+                "a copy left by a sync conflict of {}: compare the two, keep one, and remove \
+                 the other",
+                original.file_name().unwrap_or_default().to_string_lossy()
+            ),
+            SkipReason::NoVersion => write!(
+                f,
+                "no schema_version: a sample says which shape it is, 'schema_version: 1', so \
+                 this is not one"
+            ),
             SkipReason::Unreadable { message } => write!(f, "could not be read: {message}"),
             // A newer format is no malformed one: its version says it all.
-            SkipReason::Malformed { message } if message.starts_with("schema_version") => {
+            SkipReason::Malformed { message }
+                if message.starts_with("schema_version") || message == NOT_TEXT =>
+            {
                 write!(f, "{message}")
             }
             SkipReason::Malformed { message } => write!(f, "malformed frontmatter: {message}"),
             SkipReason::Configuration { message } => {
                 write!(f, "not read as a configuration: {message}")
             }
+            SkipReason::LinkBack => write!(
+                f,
+                "a link back into what is scanned: its folder is read once, where it was \
+                 met first"
+            ),
         }
     }
 }
@@ -98,14 +138,121 @@ pub fn discover(root: &Path, config: Option<&ProjectConfig>) -> Result<Collectio
     let offset = config
         .and_then(|config| below(config.root(), root))
         .unwrap_or_default();
-    scan(root, &offset, &rules)
+    let own = config.and_then(|config| dunce::canonicalize(config.root()).ok());
+    scan(root, &offset, &rules, Some(own))
 }
 
 /// The same scan under rules the caller states — a project's, with its include
 /// patterns replaced as Python's `pattern=` asks — rather than the declared ones.
 /// Patterns are relative to `root`.
+/// Every sample of the project `config` is the configuration of: in every
+/// folder below its own, whatever `recursive` says — a command reaches a
+/// subfolder's samples by naming it, and they are the project's too — and
+/// none of a project inside it, which keeps its own.
+pub fn samples_of_project(config: &ProjectConfig) -> Result<Vec<PathBuf>, DiscoveryError> {
+    let root = config.root();
+    let rules = CollectionRules {
+        recursive: true,
+        ..config.collection().clone()
+    };
+    let own = dunce::canonicalize(root.join(config::FILENAME)).ok();
+    let found = discover_with(root, &rules)?;
+    // A sample that no longer reads — its YAML broken, a merge's conflict
+    // markers left in it — is still the project's: kept as it is, it was
+    // taken for deleted, and a restore would have replaced the edit unkept.
+    let broken = found.skipped.into_iter().filter_map(|skipped| {
+        let kept = match &skipped.reason {
+            // Not one unread: a pipe or a device is no file to keep, and
+            // reading it stopped the command.
+            SkipReason::Malformed { .. } => true,
+            SkipReason::NoFrontmatter => std::fs::read(&skipped.path).is_ok_and(|bytes| {
+                String::from_utf8_lossy(&bytes)
+                    .lines()
+                    .any(|line| line.starts_with("<<<<<<<"))
+            }),
+            _ => false,
+        };
+        kept.then_some(skipped.path)
+    });
+    let mut paths: Vec<PathBuf> = found
+        .paths
+        .into_iter()
+        .chain(broken)
+        .filter(|path| {
+            config::find(path).is_none_or(|found| dunce::canonicalize(found).ok() == own)
+        })
+        .collect();
+    paths.sort();
+    Ok(paths)
+}
+
+/// The files of the project's that do not read as samples now, and might
+/// have: one whose `schema_version` was taken out, one the system would not
+/// let be read — a lock on Windows, a permission. The history keeps one it
+/// held before as it is, or as it last held it, where it was taken for
+/// deleted.
+pub fn unread_of_project(config: &ProjectConfig) -> Result<Vec<PathBuf>, DiscoveryError> {
+    let root = config.root();
+    let rules = CollectionRules {
+        recursive: true,
+        ..config.collection().clone()
+    };
+    let own = dunce::canonicalize(root.join(config::FILENAME)).ok();
+    let found = discover_with(root, &rules)?;
+    Ok(found
+        .skipped
+        .into_iter()
+        .filter(|skipped| {
+            matches!(
+                skipped.reason,
+                SkipReason::NoVersion | SkipReason::Unreadable { .. }
+            )
+        })
+        .map(|skipped| skipped.path)
+        .filter(|path| {
+            config::find(path).is_none_or(|found| dunce::canonicalize(found).ok() == own)
+        })
+        .collect())
+}
+
+/// The Markdown files below `root` that `rules`' include patterns leave out —
+/// where they are not the default, which takes every one: no candidates, so
+/// listed nowhere, they are named by `list skipped`, which said nothing of a
+/// pattern written too narrowly. Those the exclude patterns leave out are not
+/// among them: they are skipped, and listed.
+pub fn outside_include(root: &Path, rules: &CollectionRules) -> Vec<PathBuf> {
+    let markdown = CollectionRules::default().include;
+    if rules.include == markdown {
+        return Vec::new();
+    }
+    let broad = CollectionRules {
+        include: markdown,
+        ..rules.clone()
+    };
+    let (Ok(all), Ok(found)) = (discover_with(root, &broad), discover_with(root, rules)) else {
+        return Vec::new();
+    };
+    let known: std::collections::BTreeSet<&PathBuf> = found
+        .paths
+        .iter()
+        .chain(found.skipped.iter().map(|skipped| &skipped.path))
+        .collect();
+    // What the exclude patterns leave out is skipped, under the include
+    // patterns too: no part of what they leave out.
+    all.paths
+        .into_iter()
+        .chain(
+            all.skipped
+                .into_iter()
+                .filter(|skipped| !matches!(skipped.reason, SkipReason::Excluded { .. }))
+                .map(|skipped| skipped.path),
+        )
+        .filter(|path| !known.contains(path))
+        .collect()
+}
+
 pub fn discover_with(root: &Path, rules: &CollectionRules) -> Result<Collection, DiscoveryError> {
-    scan(root, Path::new(""), rules)
+    scan(root, Path::new(""), rules, None)
 }
 
 /// Where `folder` lies below `base`, both resolved; `None` outside it.
@@ -117,8 +264,17 @@ fn below(base: &Path, folder: &Path) -> Option<PathBuf> {
 
 /// The scan, a pattern holding a `/` matched against a path relative to
 /// `root` with `offset` before it: where `root` lies below the folder the
-/// patterns were written from.
-fn scan(root: &Path, offset: &Path, rules: &CollectionRules) -> Result<Collection, DiscoveryError> {
+/// patterns were written from. `own`, where given, is the folder of the
+/// project the rules are — `None` inside it for no project: a file of
+/// another project inside the scan is judged by that project's rules, from
+/// its folder, so that a project's samples are the same whichever folder a
+/// command names.
+fn scan(
+    root: &Path,
+    offset: &Path,
+    rules: &CollectionRules,
+    own: Option<Option<PathBuf>>,
+) -> Result<Collection, DiscoveryError> {
     if !root.exists() {
         return Err(DiscoveryError::NotFound {
             path: root.to_path_buf(),
@@ -151,7 +307,7 @@ fn scan(root: &Path, offset: &Path, rules: &CollectionRules) -> Result<Collectio
         warnings: Vec::new(),
     };
     let mut candidates = Vec::new();
-    walk(root, offset, rules, &mut candidates, &mut collection)?;
+    walk(root, offset, rules, own, &mut candidates, &mut collection)?;
     // Explicit sort, never filesystem order: that varies by platform, by
     // filesystem and by the history of a directory, and a collection reporting
     // its samples in a different order on two machines makes an export
@@ -164,11 +320,61 @@ fn scan(root: &Path, offset: &Path, rules: &CollectionRules) -> Result<Collectio
     Ok(collection)
 }
 
+/// A file whose bytes are no UTF-8 text: what it holds, not what the
+/// filesystem refused, and no frontmatter to call malformed.
+const NOT_TEXT: &str = "not UTF-8 text, which a sample is written in: saved as UTF-16 by an editor, or not text at all";
+
+/// The file a synchroniser's conflict copy copies, by its name, where `path`
+/// is one: `piece.sync-conflict-20260929-101500-ABCDEF7.md`,
+/// `piece (conflicted copy 2026-09-29).md`, `piece (Tom's conflicted copy
+/// 2026-09-29).md`, `piece_conflict-20260929-101500.md`. OneDrive's copies
+/// carry only the computer's name, and cannot be told from a sample's own.
+pub fn conflict_copy_of(path: &Path) -> Option<PathBuf> {
+    let name = path.file_name()?.to_string_lossy().into_owned();
+    let (stem, extension) = match name.rsplit_once('.') {
+        Some((stem, extension)) => (stem.to_string(), format!(".{extension}")),
+        None => (name.clone(), String::new()),
+    };
+    let original = if let Some(at) = stem.find(".sync-conflict-") {
+        stem[..at].to_string()
+    } else if let Some(at) = stem.find(" (")
+        && stem.ends_with(')')
+        && stem[at..].contains("conflicted copy")
+    {
+        stem[..at].to_string()
+    } else if let Some(at) = stem.rfind("_conflict-")
+        && stem[at + "_conflict-".len()..]
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == '-')
+    {
+        stem[..at].to_string()
+    } else {
+        return None;
+    };
+    (!original.is_empty()).then(|| path.with_file_name(format!("{original}{extension}")))
+}
+
 /// Is this a sample, and if not, why not. The check is exactly as deep as the
 /// question: frontmatter, and a version this build reads. Nothing below.
 pub fn classify(path: &Path) -> Result<(), SkipReason> {
-    let text = std::fs::read_to_string(path).map_err(|error| SkipReason::Unreadable {
-        message: error.to_string(),
+    if let Some(original) = conflict_copy_of(path) {
+        return Err(SkipReason::SyncConflict { original });
+    }
+    // Only a regular file is read, a link followed: a FIFO named `.md` stopped
+    // every command, and a link to /dev/zero read until memory ran out.
+    if std::fs::metadata(path).is_ok_and(|meta| !meta.is_file()) {
+        return Err(SkipReason::NotAFile);
+    }
+    let text = std::fs::read_to_string(path).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::InvalidData {
+            SkipReason::Malformed {
+                message: NOT_TEXT.to_string(),
+            }
+        } else {
+            SkipReason::Unreadable {
+                message: error.to_string(),
+            }
+        }
     })?;
     let body = text.strip_prefix('\u{feff}').unwrap_or(&text);
     // An empty sample file was emptied by mistake more often than written so:
@@ -206,13 +412,30 @@ pub fn classify(path: &Path) -> Result<(), SkipReason> {
     struct JustTheVersion {
         schema_version: Option<u32>,
     }
+    // Refused before the parser reads it, which took a time growing as its
+    // square over brackets nested deep.
+    if crate::format::document::nested_too_deep(&frontmatter).is_some() {
+        return Err(SkipReason::Malformed {
+            message: format!(
+                "brackets or braces nest deeper than {}, as no sample's fields do",
+                crate::format::document::MAX_NESTING
+            ),
+        });
+    }
+    // A link written unquoted, said where it is: YAML stopped at it as a
+    // key it did not find.
+    if let Some((line, said)) = crate::format::document::unquoted_link_said(&frontmatter) {
+        return Err(SkipReason::Malformed {
+            message: format!("line {line}: {said}"),
+        });
+    }
     let parsed: JustTheVersion =
         serde_yaml_ng::from_str(&frontmatter).map_err(|error| SkipReason::Malformed {
-            message: error.to_string(),
+            message: crate::format::document::frontmatter_refused(&frontmatter, &error.to_string()),
         })?;
     match parsed.schema_version {
-        // Read as the current version; `validate` notes it.
-        None => Ok(()),
+        // No sample, as a README with a frontmatter is none.
+        None => Err(SkipReason::NoVersion),
         Some(version) if version != crate::format::schema::version() => {
             Err(SkipReason::Malformed {
                 message: format!(
@@ -316,7 +539,7 @@ pub fn files_by_sample(
     let mut owned: Vec<(PathBuf, Vec<PathBuf>)> = Vec::new();
     let mut unowned = Vec::new();
     // By its name, or by a folder named after the sample it lies in below where
-    // it was looked for: `images/dry-stout/a.jpg` is dry-stout's. The longest
+    // it was looked for: `images/dry-nickel/a.jpg` is dry-nickel's. The longest
     // name wins.
     let by_name = |file: &Path, below: &Path| -> Option<PathBuf> {
         let name = file.file_name()?.to_string_lossy().into_owned();
@@ -505,6 +728,31 @@ fn named_globs(rest: &str, stems: &[(String, &PathBuf)]) -> globset::GlobSet {
 /// is not there yet.
 pub fn files_entry_problems(config: &ProjectConfig) -> Vec<FilesProblem> {
     let mut problems = Vec::new();
+    // `include` and `exclude` are read as globs by discovery, which set aside
+    // one that does not read without a word: every file then matched nothing.
+    let rules = config.collection();
+    for (key, patterns) in [("include", &rules.include), ("exclude", &rules.exclude)] {
+        for pattern in patterns {
+            if let Err(error) = globset::GlobBuilder::new(pattern)
+                .literal_separator(true)
+                .build()
+            {
+                problems.push(FilesProblem {
+                    entry: format!("{key} '{pattern}'"),
+                    defect: true,
+                    reason: format!("the pattern does not read: {}", error.kind()),
+                });
+            } else if key == "include" && pattern.contains('/') && !rules.recursive {
+                problems.push(FilesProblem {
+                    entry: format!("{key} '{pattern}'"),
+                    defect: false,
+                    reason: "it names a folder, and a collection that is not recursive reads \
+                             none: recursive = true reads the folders below"
+                        .to_string(),
+                });
+            }
+        }
+    }
     for written in &config.collection().files {
         let entry = files_entry(config, written);
         let (folder, rest) = match &entry {
@@ -631,37 +879,130 @@ fn walk(
     at: &Path,
     offset: &Path,
     rules: &CollectionRules,
+    own: Option<Option<PathBuf>>,
     candidates: &mut Vec<PathBuf>,
     collection: &mut Collection,
 ) -> Result<(), DiscoveryError> {
-    // By `walkdir`. Directory symlinks are not followed: following them needs
-    // cycle detection, and a link to an ancestor turns a scan into an infinite
-    // one; a symlinked directory is a link, not a directory, to an entry that
-    // does not follow.
+    let scanned = dunce::canonicalize(at).unwrap_or_else(|_| at.to_path_buf());
+    // The projects inside the scan, each with its rules: loaded once.
+    let mut inner: Vec<(PathBuf, CollectionRules)> = Vec::new();
+    // By `walkdir`. **A folder linked into the project is the project's**:
+    // data on another disk, linked in, is read, computed and written under
+    // the path the link gives it. Each folder is entered once, by what it
+    // resolves to: a link back to an ancestor, or a second link to a folder
+    // read already, is passed over and said, so that the scan ends and no
+    // sample is read twice.
+    let seen = std::cell::RefCell::new(std::collections::HashSet::from([scanned.clone()]));
+    let looped = std::cell::RefCell::new(Vec::new());
     let entries = walkdir::WalkDir::new(at)
         .min_depth(1)
         .max_depth(if rules.recursive { usize::MAX } else { 1 })
-        .follow_links(false)
+        .follow_links(rules.recursive)
         .into_iter()
         // A hidden directory and a virtual environment hold no samples anyone
         // wrote there: `.git`, and `.venv` with its thousands of files.
         .filter_entry(|entry| {
-            !(entry.file_type().is_dir()
+            if entry.file_type().is_dir()
                 && (entry.file_name().to_string_lossy().starts_with('.')
-                    || entry.path().join("pyvenv.cfg").is_file()))
+                    || entry.path().join("pyvenv.cfg").is_file())
+            {
+                return false;
+            }
+            if entry.file_type().is_dir() {
+                let resolved = dunce::canonicalize(entry.path())
+                    .unwrap_or_else(|_| entry.path().to_path_buf());
+                if !seen.borrow_mut().insert(resolved) {
+                    looped.borrow_mut().push(entry.path().to_path_buf());
+                    return false;
+                }
+            }
+            true
         });
     for entry in entries {
-        let entry = entry.map_err(walk_error(at))?;
+        let entry = match entry {
+            Ok(entry) => entry,
+            // A loop the folders above did not catch, said as one.
+            Err(error) if error.loop_ancestor().is_some() => {
+                if let Some(path) = error.path() {
+                    looped.borrow_mut().push(path.to_path_buf());
+                }
+                continue;
+            }
+            // A link that does not resolve — a loop of two files, a target
+            // gone — is a file of the folder that cannot be read: set aside
+            // and said, as a scan of the folder alone says it, where it
+            // stopped the whole command.
+            Err(error)
+                if error.path().is_some_and(|path| {
+                    std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_symlink())
+                        && path.extension().is_some_and(|extension| {
+                            matches!(extension.to_str(), Some("md" | "MD" | "markdown"))
+                        })
+                }) =>
+            {
+                if let Some(path) = error.path() {
+                    candidates.push(path.to_path_buf());
+                }
+                continue;
+            }
+            Err(error) => return Err(walk_error(at)(error)),
+        };
         let path = entry.path().to_path_buf();
         let kind = entry.file_type();
         if kind.is_dir() || (kind.is_symlink() && path.is_dir()) {
             continue;
         }
-        if !matches_below(&path, at, offset, rules) {
+        // The project the file is a sample of, where it is another than the
+        // rules' own and lies inside the scan.
+        let project = own.as_ref().and_then(|own| {
+            let folder = config::find(&path)?.parent()?.to_path_buf();
+            (Some(&folder) != own.as_ref() && folder.starts_with(&scanned) && folder != scanned)
+                .then_some(folder)
+        });
+        let (base, offset, rules) = match project {
+            Some(folder) => {
+                let at = match inner.iter().position(|(held, _)| *held == folder) {
+                    Some(at) => at,
+                    None => {
+                        // A configuration that does not load is set aside, as
+                        // every command sets it aside: its samples are read
+                        // under the defaults.
+                        let rules = config::load(&folder.join(config::FILENAME))
+                            .map(|config| config.collection().clone())
+                            .unwrap_or_default();
+                        inner.push((folder, rules));
+                        inner.len() - 1
+                    }
+                };
+                let (folder, rules) = &inner[at];
+                // Its own `recursive` says whether its subfolders hold samples.
+                let canonical = dunce::canonicalize(&path).unwrap_or_else(|_| path.clone());
+                if !rules.recursive && canonical.parent() != Some(folder.as_path()) {
+                    continue;
+                }
+                (folder.clone(), PathBuf::new(), rules.clone())
+            }
+            None => (at.to_path_buf(), offset.to_path_buf(), rules.clone()),
+        };
+        // Matched from the project's folder, which is resolved: so is the
+        // path matched, and the path kept is the one found.
+        let probe = if base == at {
+            path.clone()
+        } else {
+            dunce::canonicalize(&path).unwrap_or_else(|_| path.clone())
+        };
+        if !matches_below(&probe, &base, &offset, &rules) {
+            // Only a candidate is excluded: `exclude = ["*"]` listed every
+            // `.samplekitrc` as a sample left out.
+            let candidate = rules
+                .include
+                .iter()
+                .any(|pattern| matched(pattern, &probe, &base, &offset));
             let excluded = rules
                 .exclude
                 .iter()
-                .find(|pattern| matched(pattern, &path, at, offset));
+                .filter(|_| candidate)
+                .find(|pattern| matched(pattern, &probe, &base, &offset));
             // An exclusion names the pattern that did it. A file matching no
             // include pattern is not reported at all — it was never a
             // candidate, and listing every figure beside the samples would
@@ -677,6 +1018,12 @@ fn walk(
             continue;
         }
         candidates.push(path);
+    }
+    for path in looped.into_inner() {
+        collection.skipped.push(Skipped {
+            path,
+            reason: SkipReason::LinkBack,
+        });
     }
     Ok(())
 }
@@ -770,3 +1117,111 @@ impl fmt::Display for DiscoveryError {
 }
 
 impl std::error::Error for DiscoveryError {}
+
+/// Where an attribute's link leads, from the sample file holding it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Destination {
+    /// A sample file: a wikilink's, or a Markdown link's `.md` that reads as
+    /// one.
+    Sample(PathBuf),
+    /// Any other file, or a folder: opened with the system's application.
+    File(PathBuf),
+    /// A web page.
+    Address(String),
+    /// Nothing: no file at that path, or no sample answering to the name —
+    /// the path or the name, as the link writes it.
+    Nowhere(String),
+    /// Several samples answering to one name.
+    Several(Vec<PathBuf>),
+}
+
+/// Every sample a wikilink of the sample `from` may name: its project's
+/// files, by their file names and their `name:`, those `known` gives read
+/// already; outside a project, the samples of its folder.
+pub fn linkable(
+    config: Option<&ProjectConfig>,
+    from: &Path,
+    known: &[(PathBuf, Option<String>)],
+) -> Vec<(PathBuf, Option<String>)> {
+    let canonical = |path: &Path| dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let found = match config {
+        Some(config) => discover(config.root(), Some(config)),
+        None => discover(from.parent().unwrap_or(Path::new(".")), None),
+    }
+    .map(|found| found.paths)
+    .unwrap_or_default();
+    let mut samples: Vec<(PathBuf, Option<String>)> = found
+        .into_iter()
+        .map(|path| {
+            // A file not read yet is read for its name alone.
+            let name = match known
+                .iter()
+                .find(|(held, _)| canonical(held) == canonical(&path))
+            {
+                Some((_, name)) => name.clone(),
+                None => crate::format::document::load_sample(&path)
+                    .ok()
+                    .and_then(|(sample, _)| sample.name().map(str::to_string)),
+            };
+            (path, name)
+        })
+        .collect();
+    for (path, name) in known {
+        if !samples
+            .iter()
+            .any(|(held, _)| canonical(held) == canonical(path))
+        {
+            samples.push((path.clone(), name.clone()));
+        }
+    }
+    samples
+}
+
+/// Where `link`, held by the sample file `from`, leads: a wikilink to the
+/// sample of `linkable` answering to it, asked only for one; a Markdown path
+/// read from `from`'s folder, a sample where it is a `.md` file that reads as
+/// one.
+pub fn destination(
+    link: &crate::core::link::Link,
+    from: &Path,
+    linkable: impl FnOnce() -> Vec<(PathBuf, Option<String>)>,
+) -> Destination {
+    use crate::core::link::{self, Link, Resolved};
+    match link {
+        Link::Url { address, .. } => Destination::Address(address.clone()),
+        Link::Sample { target, .. } => {
+            let samples = linkable();
+            match link::resolve(
+                target,
+                samples
+                    .iter()
+                    .map(|(path, name)| (path.as_path(), name.as_deref())),
+            ) {
+                Resolved::One(path) => Destination::Sample(path),
+                Resolved::Nowhere => Destination::Nowhere(target.clone()),
+                Resolved::Several(paths) => Destination::Several(paths),
+            }
+        }
+        Link::Path { path, .. } => {
+            let folder = from.parent().unwrap_or(Path::new("."));
+            let found = link::path_from(folder, path);
+            if !found.exists() {
+                return Destination::Nowhere(path.clone());
+            }
+            // Whole, its `..` resolved and in the system's separators: opened,
+            // shown and compared as the file it is.
+            let found = dunce::canonicalize(&found).unwrap_or(found);
+            let markdown = found
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| {
+                    matches!(extension.to_ascii_lowercase().as_str(), "md" | "markdown")
+                });
+            if found.is_file() && markdown && crate::format::document::load_sample(&found).is_ok() {
+                Destination::Sample(found)
+            } else {
+                Destination::File(found)
+            }
+        }
+    }
+}

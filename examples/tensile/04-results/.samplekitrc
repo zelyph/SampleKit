@@ -1,0 +1,72 @@
+schema_version = 1
+
+[collection]
+files = ["photos", "machine/{name}/*"]
+
+[model]
+path = "model/specimen.py"
+class = "Specimen"
+python = "../.venv"
+
+[property."curve.stress"]
+precision = ".1f"
+symbol_figure = '$\sigma$'
+
+[property.yield_strength]
+precision = ".0f"
+
+[property.tensile_strength]
+precision = ".0f"
+
+[property.elongation]
+precision = ".1f"
+
+[query.ductile]
+filter = "elongation > 20"
+
+[profile.overview]
+columns = [
+  {field = "name"},
+  {field = "material"},
+  {field = "young_modulus", label = "E", precision = ".1f"},
+  {field = "yield_strength", label = "Rp0.2"},
+  {field = "tensile_strength", label = "Rm"},
+  {field = "elongation", label = "A"},
+]
+sort = ["material", "name"]
+
+[profile.data]
+columns = [
+  {field = "name"},
+  {field = "young_modulus", header = "E", precision = ".17g"},
+  {field = "yield_strength", header = "Rp0.2", precision = ".17g"},
+]
+
+[export.paper]
+profile = "overview"
+style = "latex"
+output = "paper/results.tex"
+
+[export.curves]
+figure = "curves"
+output = "paper/curves.pdf"
+
+[figure.curves]
+kind = "line"
+x = "curve.strain"
+y = "curve.stress"
+group = "material"
+
+[style.figure]
+
+[render]
+figure_style = "figure"
+
+[property."curve.strain"]
+symbol_figure = '$\varepsilon$'
+
+[matplotlib]
+"font.family" = "serif"
+"axes.grid" = true
+"figure.figsize" = [14, 9]
+"lines.marker" = "None"

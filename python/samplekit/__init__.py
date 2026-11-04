@@ -6,20 +6,21 @@ saved back::
 
     import samplekit as sk
 
-    brew = sk.load("brews/citra-ipa.md")
-    brew.volume.value = 21
-    brew.compute()
-    brew.save()
+    steel = sk.load("samples/steel-01.md")
+    steel.thickness.readings = [1.991, 1.994, 1.989]
+    steel.compute()
+    steel.save()
 
 ``load`` reads a folder as a ``SampleList``, which filters, sorts, groups and
 exports as the command line does.
 
-The examples of this package run in the demo's ``08-python`` folder, after::
+The examples of this package run in the demo's ``04-results`` folder, the
+tensile test of the documentation's home page, after::
 
     import samplekit as sk
 
-    brews = sk.load("brews")
-    ipa = brews["citra-ipa"]
+    specimens = sk.load("samples")
+    steel = specimens["steel-01"]
 """
 
 # This file is the package's Python, and it writes only what the native module
@@ -29,14 +30,14 @@ The examples of this package run in the demo's ``08-python`` folder, after::
 
 
 class NotApplicable:
-    """A value that does not apply to a sample: ``fg: n/a`` in its file.
+    """A value that does not apply to a sample — ``yield_strength: n/a`` in its file.
 
     There is one, ``samplekit.NA``. It is false in a test and prints as
     ``n/a``; a property set to it is saved as ``n/a``, and a formula reading
     it gives ``NA`` too, without running.
 
     Example:
-        >>> ipa.fg.value = sk.NA
+        >>> steel.yield_strength.value = sk.NA
     """
 
     _one = None
@@ -55,6 +56,11 @@ class NotApplicable:
     def __bool__(self):
         return False
 
+    def __float__(self):
+        # NaN, as pandas and numpy read a value that is not there: a number
+        # that answers no arithmetic, where `float(NA)` raised.
+        return float("nan")
+
     def __reduce__(self):
         return (NotApplicable, ())
 
@@ -64,9 +70,9 @@ NA = NotApplicable()
 from samplekit import _native  # noqa: E402
 from samplekit._native import (
     Collection,
-    Column,
     ColumnSpec,
     ColumnView,
+    ComputedColumns,
     Export,
     Field,
     FigureDeclaration,
@@ -88,6 +94,7 @@ from samplekit._native import (
 
 from samplekit._native import load, stats
 from samplekit._figures import figure, plot
+from samplekit._scripts import script
 
 __version__ = _native.__version__
 
@@ -104,19 +111,32 @@ def keep(message=None):
             given. A blank message says nothing, and several lines are kept
             on one.
 
+    Warns:
+        UserWarning: Nothing was saved in a project since the last snapshot,
+            so nothing is kept.
+
     Raises:
         TypeError: The message is not text.
 
     Example:
-        >>> ipa.save()
-        >>> sk.keep("volumes corrected")
+        >>> steel.save()
+        >>> sk.keep("thickness measured again")
     """
     if message is not None and not isinstance(message, str):
         raise TypeError(f"keep() takes a message as text, not {type(message).__name__}")
     if message is not None:
         # One line: the history's log shows a message a row each.
         message = " ".join(message.split()) or None
-    _native._history_flush(message)
+    # Nothing kept is said: a call that did nothing, nothing saved since the
+    # last snapshot or outside any project, was silent.
+    if not _native._history_flush(message):
+        import warnings
+
+        warnings.warn(
+            "keep(): nothing was saved in a project since the last snapshot, so nothing "
+            "was kept",
+            stacklevel=2,
+        )
 
 
 # One snapshot for the whole script, when the interpreter ends.
@@ -124,12 +144,40 @@ import atexit as _atexit  # noqa: E402
 
 _atexit.register(_native._history_flush)
 
+
+def _ended_by_signal(number, frame):
+    """A script asked to end — SIGTERM, a scheduler stopping it — ends as
+    one that returns: its snapshot kept, where it left its writes shown
+    *changed outside SampleKit, not yet kept*."""
+    raise SystemExit(128 + number)
+
+
+def _end_on_sigterm():
+    import os
+    import signal
+    import threading
+
+    # Where nothing else asked for SIGTERM, and Python allows a handler; never
+    # in the model's worker, which keeps no history and is stopped so.
+    if os.environ.get("SAMPLEKIT_HISTORY") == "off":
+        return
+    if threading.current_thread() is not threading.main_thread():
+        return
+    try:
+        if signal.getsignal(signal.SIGTERM) is signal.SIG_DFL:
+            signal.signal(signal.SIGTERM, _ended_by_signal)
+    except (ValueError, OSError, AttributeError):
+        pass
+
+
+_end_on_sigterm()
+
 __all__ = [
     "BoundList",
     "Collection",
-    "Column",
     "ColumnSpec",
     "ColumnView",
+    "ComputedColumns",
     "Export",
     "Field",
     "FigureDeclaration",
@@ -154,6 +202,7 @@ __all__ = [
     "keep",
     "load",
     "plot",
+    "script",
     "stats",
 ]
 
@@ -168,7 +217,7 @@ class BoundList(list):
     nothing, and so is a list read before the attribute was assigned again.
 
     Example:
-        >>> ipa.tags.append("medal")
+        >>> steel.tags.append("reference")
     """
 
     __slots__ = ("_owner", "_name", "_epoch", "__weakref__")
@@ -176,7 +225,13 @@ class BoundList(list):
     def _change(self, mutate):
         candidate = list(self)
         result = mutate(candidate)
-        committed = self._owner._commit_list(self._name, self._epoch, candidate)
+        # Made by hand, `BoundList([1, 2])`, it is bound to nothing, and
+        # changes as a list does.
+        owner = getattr(self, "_owner", None)
+        if owner is None:
+            list.__setitem__(self, slice(None), candidate)
+            return result
+        committed = owner._commit_list(self._name, self._epoch, candidate)
         list.__setitem__(self, slice(None), candidate if committed is None else committed)
         return result
 
@@ -274,8 +329,8 @@ class Sample(_native.Sample, metaclass=_Loading):
     ``super().__init__``.
 
     A property, a table or an attribute is read as an attribute or an item,
-    ``brew.abv`` or ``brew["abv"]``, and any other field path as an item:
-    ``brew["fermentation.gravity[2]"]`` is that cell's value. What is assigned
+    ``steel.area`` or ``steel["area"]``, and any other field path as an item:
+    ``steel["curve.force[0.2]"]`` is that cell's value. What is assigned
     decides what a name becomes: a ``Property`` or a ``Table`` is one; a
     ``bool``, ``int``, ``float``, ``str``, ``date``, ``datetime``, or a list
     of one of them, is an attribute; and a name with a leading ``_`` is
@@ -301,11 +356,11 @@ class Sample(_native.Sample, metaclass=_Loading):
             keeps it in Python only.
 
     Example:
-        >>> brew = sk.Sample("brews/citra-ipa.md")
-        >>> brew.style
-        'ipa'
-        >>> brew["fermentation.gravity[2]"]
-        1.029
+        >>> steel = sk.Sample("samples/steel-01.md")
+        >>> steel.material
+        'steel'
+        >>> steel["curve.force[0.2]"]
+        9.516
     """
 
     @classmethod
@@ -331,9 +386,9 @@ class Sample(_native.Sample, metaclass=_Loading):
             FileNotFoundError: The folder does not exist.
 
         Example:
-            >>> brew = sk.Sample.new("brews/red-ale.md")
-            >>> brew.style = "red_ale"
-            >>> brew.save()
+            >>> specimen = sk.Sample.new("samples/steel-02.md")
+            >>> specimen.material = "steel"
+            >>> specimen.save()
         """
         _native._check_new(path)
         chosen = cls

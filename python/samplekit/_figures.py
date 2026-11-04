@@ -30,9 +30,9 @@ MOST_GROUPS = 10
 
 class Figure:
     """A model's method marked ``@sk.figure``. It still behaves as the method
-    it marks: ``brew.attenuation(ax)`` draws into ``ax`` as written."""
+    it marks: ``steel.yield_point(ax)`` draws into ``ax`` as written."""
 
-    def __init__(self, method, subplots, figsize=None):
+    def __init__(self, method, subplots, figsize=None, matplotlib=None):
         if subplots is not None and (
             len(subplots) != 2 or not all(isinstance(n, int) and n > 0 for n in subplots)
         ):
@@ -45,6 +45,12 @@ class Figure:
         self.method = method
         self.subplots = tuple(subplots) if subplots is not None else None
         self.figsize = _checked_axes({"figsize": figsize}).get("figsize")
+        if matplotlib is not None and not isinstance(matplotlib, dict):
+            raise TypeError(
+                "matplotlib= is a dict of matplotlib's settings, by their names: "
+                f"{{'lines.marker': 'None'}}, not {matplotlib!r}"
+            )
+        self.matplotlib = dict(matplotlib or {})
         self.collection = isinstance(method, classmethod)
         self.name = getattr(method, "__name__", None) or getattr(
             getattr(method, "__func__", None), "__name__", None
@@ -58,7 +64,7 @@ class Figure:
         return self.method.__get__(instance, owner)
 
 
-def figure(method=None, *, subplots=None, figsize=None):
+def figure(method=None, *, subplots=None, figsize=None, matplotlib=None):
     """Mark a method of a model as a figure.
 
     The method draws into the matplotlib axes it receives, and returns
@@ -71,6 +77,9 @@ def figure(method=None, *, subplots=None, figsize=None):
         subplots: ``(rows, columns)``: the method receives the array of axes
             ``plt.subplots`` makes, instead of one.
         figsize: The figure's width and height, in centimetres.
+        matplotlib: matplotlib's settings for this figure alone, by their
+            names, over the project's ``[matplotlib]``:
+            ``{"lines.marker": "None"}``.
 
     Returns:
         The method, marked.
@@ -79,15 +88,15 @@ def figure(method=None, *, subplots=None, figsize=None):
         ValueError: ``subplots`` is not two positive integers.
 
     Example:
-        >>> class Brew(sk.Sample):
+        >>> class Specimen(sk.Sample):
         ...     @sk.figure
-        ...     def fermentation_curve(self, ax):
-        ...         ax.plot(self.fermentation.values("day"),
-        ...                 self.fermentation.values("gravity"))
+        ...     def stress_strain(self, ax):
+        ...         ax.plot(self.curve.values("strain"),
+        ...                 self.curve.values("stress"))
     """
     if method is None:
-        return lambda marked: Figure(marked, subplots, figsize)
-    return Figure(method, subplots, figsize)
+        return lambda marked: Figure(marked, subplots, figsize, matplotlib)
+    return Figure(method, subplots, figsize, matplotlib)
 
 
 def figures_of(cls):
@@ -112,13 +121,14 @@ class Declared:
     """What ``[figure.*]`` holds, or axes given to ``plot`` by hand."""
 
     def __init__(self, name, kind, x, y, group=None, query=None, title=None,
-                 x_label=None, y_label=None, style=None, axes=None):
+                 x_label=None, y_label=None, style=None, axes=None, matplotlib=None):
         if kind not in KINDS:
             raise ValueError(f"'{kind}' is not a figure kind: scatter, line, step, bar or box")
         self.name, self.kind, self.x, self.y = name, kind, x, y
         self.group, self.query = _group_text(group), query
         self.title, self.x_label, self.y_label, self.style = title, x_label, y_label, style
         self.axes = _checked_axes(axes or {})
+        self.matplotlib = dict(matplotlib or {})
 
     def overridden(self, title=None, x_label=None, y_label=None, style=None, group=None,
                    kind=None, axes=None):
@@ -133,12 +143,12 @@ class Declared:
         return Declared(self.name, given(kind, self.kind), self.x, self.y,
                         given(group, self.group), self.query, given(title, self.title),
                         given(x_label, self.x_label), given(y_label, self.y_label),
-                        given(style, self.style), merged)
+                        given(style, self.style), merged, self.matplotlib)
 
 
 def _group_text(group):
     """A group as one text, its fields separated by commas as ``--group
-    style,yeast`` writes them: a field, several in a list, or ``None``. An
+    material,grade`` writes them: a field, several in a list, or ``None``. An
     empty one groups nothing, replacing a figure's own."""
     if group is None or group == "":
         return group
@@ -277,9 +287,9 @@ def plot(target, figure=None, *, x=None, y=None, group=None, kind=None,
         RuntimeError: No ``output`` is given and there is no display.
 
     Example:
-        >>> figures = sk.plot(brews, "alcohol_by_style", output="out/abv.png")
-        >>> figures = sk.plot(brews, x="abv", y="score", group="style",
-        ...                   output="out/score.png")
+        >>> figures = sk.plot(specimens, "curves", output="paper/curves.pdf")
+        >>> figures = sk.plot(specimens, x="yield_strength", y="tensile_strength",
+        ...                   group="material", output="strengths.png")
     """
     samples = _as_list(target)
     if not len(samples):
@@ -291,6 +301,14 @@ def plot(target, figure=None, *, x=None, y=None, group=None, kind=None,
     if figure is None:
         if x is None or y is None:
             raise TypeError("plot draws a figure by name, or axes x= and y=")
+        # A sample's tags are a list, and an axis holds one number or word per
+        # sample: said so, where *unknown field* denied a field `group=` takes.
+        for axis, field in (("x", x), ("y", y)):
+            if field == "tags":
+                raise ValueError(
+                    f"{axis}='tags': a sample's tags are a list, and an axis holds one number "
+                    "or word per sample — group='tags' draws a series per tag"
+                )
         chosen = Declared(None, kind or "scatter", x, y, group, None, title, x_label,
                           y_label, style, axes)
     else:
@@ -338,9 +356,23 @@ def plot(target, figure=None, *, x=None, y=None, group=None, kind=None,
     import matplotlib
 
     _said_across(samples)
-    settings = _project_settings(samples) if project_style else {}
-    with matplotlib.rc_context(settings):
-        return _draw(samples, chosen, output, title, overwrite, figsize)
+    sheets, fonts, settings = _project_look(samples) if project_style else ([], [], {})
+    own = {}
+    if project_style and chosen.matplotlib:
+        own, problems = matplotlib_settings(chosen.matplotlib,
+                                            f"'{chosen.name or 'figure'}' matplotlib")
+        if problems:
+            raise ValueError(problems[0])
+    import matplotlib.style
+
+    _learn_fonts(fonts)
+    global _DECLARED
+    declared, _DECLARED = _DECLARED, _declared_keys(sheets, settings, own)
+    try:
+        with matplotlib.style.context(sheets), matplotlib.rc_context({**settings, **own}):
+            return _draw(samples, chosen, output, title, overwrite, figsize)
+    finally:
+        _DECLARED = declared
 
 
 def _default_style(samples):
@@ -439,8 +471,17 @@ SAID = None
 COMMAND_LINE = False
 
 
+# Asked from the workbench, where `w` writes a figure to a file.
+WORKBENCH = False
+# Whether the figure drawn read values not current: the command exits 2 for
+# it, as an export does, unless it accepts them.
+STALE_SAID = False
+
+
 def _option(command_line, python):
     """An option as the one reading the message writes it."""
+    if WORKBENCH and command_line.startswith("-o "):
+        return "the workbench asks its file next"
     return command_line if COMMAND_LINE else python
 
 
@@ -453,14 +494,33 @@ CARRY = None
 CARRIED = "samplekit snapshot "
 
 
+# The date of writing a format records unless told not to: without it, a
+# figure drawn again from the same data is the same file, as a PNG already is.
+UNDATED = {".pdf": {"CreationDate": None}, ".svg": {"Date": None}}
+
+
 def _carrying(path, snapshot):
     """The ``savefig`` keywords that write ``snapshot`` into the file's
-    metadata, where its format has a place for it."""
-    if snapshot is None:
-        return {}
-    key = {".pdf": "Subject", ".png": "Description", ".svg": "Description"}.get(
-        pathlib.Path(str(path)).suffix.lower())
-    return {"metadata": {key: CARRIED + snapshot}} if key else {}
+    metadata, where its format has a place for it, and leave out the date
+    of writing."""
+    suffix = pathlib.Path(str(path)).suffix.lower()
+    metadata = dict(UNDATED.get(suffix, {}))
+    key = {".pdf": "Subject", ".png": "Description", ".svg": "Description"}.get(suffix)
+    if snapshot is not None and key:
+        metadata[key] = CARRIED + snapshot
+    return {"metadata": metadata} if metadata else {}
+
+
+def _save(figure_, path, carried):
+    """Writes ``figure_`` to ``path``. An SVG's ids are salted at random
+    unless a salt is set, so one is, where the project's style set none."""
+    import matplotlib
+
+    salted = {}
+    if pathlib.Path(str(path)).suffix.lower() == ".svg" and matplotlib.rcParams["svg.hashsalt"] is None:
+        salted = {"svg.hashsalt": "samplekit"}
+    with matplotlib.rc_context(salted):
+        figure_.savefig(path, **_carrying(path, carried))
 
 
 def _kept(samples, chosen, files, per_sample, drawn):
@@ -483,7 +543,7 @@ def _kept(samples, chosen, files, per_sample, drawn):
     for at, (figure_, path) in enumerate(zip(drawn, files)):
         # An output's folder is made, as every destination's is.
         pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
-        figure_.savefig(path, **_carrying(path, carried))
+        _save(figure_, path, carried)
         # A figure of one sample, per file, is made from that sample alone.
         made_from = [paths[at]] if per_sample and at < len(paths) else paths
         for root, snapshot in kept:
@@ -525,6 +585,18 @@ def _draw(samples, chosen, output, title, overwrite=False, figsize=None):
                 files.append(_file_of(output, sample) if per_sample else output)
             if per_sample:
                 _check_the_files(files, overwrite)
+            # A sample the method drew nothing of — a table without a row —
+            # is said, as a declared figure's samples not drawn are: its file
+            # was written blank without a word.
+            blank = [sample.name or str(sample.path)
+                     for sample, figure_ in zip(samples, drawn)
+                     if not _drew_anything(figure_)]
+            if blank:
+                warnings.warn(
+                    f"{len(blank)} of {len(samples)} figures drew nothing, and "
+                    f"{'is' if len(blank) == 1 else 'are'} written blank: {', '.join(blank)}",
+                    stacklevel=2,
+                )
 
         if output is not None:
             per_sample = "{name}" in str(output) and len(files) == len(samples) > 1
@@ -542,6 +614,20 @@ def _draw(samples, chosen, output, title, overwrite=False, figsize=None):
                 pyplot.close(figure_)
         raise
     return drawn
+
+
+def _drew_anything(figure_):
+    """Whether a figure holds a point, a bar or an image: an empty
+    `ax.plot([], [])` is a line holding nothing, which `Axes.has_data`
+    counts."""
+    for ax in figure_.axes:
+        if any(len(line.get_xdata()) for line in ax.lines):
+            return True
+        if any(len(collection.get_offsets()) for collection in ax.collections):
+            return True
+        if ax.patches or ax.images:
+            return True
+    return False
 
 
 def _file_of(output, sample):
@@ -572,33 +658,122 @@ def _check_the_files(files, overwrite):
 # ----------------------------------------------------------------- choosing
 
 
-def _project_settings(samples):
-    """``[matplotlib]``, checked by matplotlib's own validators: a name it does
-    not have or a value it refuses is refused here, naming it, where
-    matplotlib alone warns and carries on."""
-    import difflib
-
-    import matplotlib
-
+def _project_look(samples):
+    """``[matplotlib]``: its style sheets, its fonts, and its settings checked
+    by matplotlib's own validators — a name it does not have or a value it
+    refuses is refused here, naming it, where matplotlib alone warns and
+    carries on."""
     if not len(samples):
-        return {}
+        return [], [], {}
     project = _project_of(samples)
     if project is None:
-        return {}
+        return [], [], {}
     written = project.matplotlib
+    settings, problems = matplotlib_settings(written)
+    if problems:
+        raise ValueError(problems[0])
+    return list(written.get("style", [])), _font_files(written.get("fonts", [])), settings
+
+
+# The settings the project declares for the figure being drawn, its style
+# sheets' included: where one is declared, SampleKit's own choice gives way.
+_DECLARED = set()
+
+
+def _declared_keys(sheets, settings, own):
+    """The settings a figure's project, its style sheets and the figure itself
+    declare, by matplotlib's names."""
+    import matplotlib
+    import matplotlib.style
+
+    keys = set(settings) | set(own)
+    for sheet in sheets:
+        if sheet.lower().endswith(".mplstyle"):
+            keys |= set(matplotlib.rc_params_from_file(sheet, use_default_template=False))
+        else:
+            keys |= set(matplotlib.style.library.get(sheet, {}))
+    return keys
+
+
+def _declares(name):
+    """Whether the project declares ``name``: a marker counts where its
+    property cycle carries one."""
+    import matplotlib
+
+    if name in _DECLARED:
+        return True
+    if name == "lines.marker" and "axes.prop_cycle" in _DECLARED:
+        return "marker" in matplotlib.rcParams["axes.prop_cycle"].keys
+    return False
+
+
+def _font_files(patterns):
+    """The font files ``fonts`` names, its patterns found."""
+    import glob
+
+    files = []
+    for pattern in patterns:
+        files.extend(sorted(glob.glob(pattern)))
+    return files
+
+
+def _learn_fonts(files):
+    """The project's fonts, made known to matplotlib before it draws."""
+    if not files:
+        return
+    from matplotlib import font_manager
+
+    for file in files:
+        font_manager.fontManager.addfont(file)
+
+
+def matplotlib_problems(written):
+    """What matplotlib refuses of `[matplotlib]`, each said as `plot` says it:
+    `validate`'s, which starts this Python only where the section is."""
+    return matplotlib_settings(written)[1]
+
+
+def matplotlib_settings(written, within="[matplotlib]"):
+    """`[matplotlib]` as matplotlib's own validators take it, and what they
+    refuse; its style sheets and fonts checked, and left out."""
+    import difflib
+    import glob
+
+    import matplotlib
+    import matplotlib.style
+
     settings = {}
-    for name, value in written.items():
-        if name in ("backend", "interactive"):
-            raise ValueError(
-                f"[matplotlib] {name} is not a figure's: SampleKit chooses between a "
-                "window and a file, and MPLBACKEND chooses the window's backend"
-            )
-        if name not in matplotlib.rcParams:
-            near = difflib.get_close_matches(name, list(matplotlib.rcParams), n=1)
-            raise ValueError(
-                f"[matplotlib] {name} is not a matplotlib setting"
+    problems = []
+    for sheet in written.get("style", []):
+        if sheet.lower().endswith(".mplstyle"):
+            if not os.path.isfile(sheet):
+                problems.append(f"{within} style: {sheet} is not there")
+        elif sheet not in matplotlib.style.available:
+            near = difflib.get_close_matches(sheet, matplotlib.style.available, n=1)
+            problems.append(
+                f"{within} style: matplotlib has no style sheet '{sheet}'"
                 + (f"\n  did you mean: {near[0]}?" if near else "")
             )
+    for pattern in written.get("fonts", []):
+        if not glob.glob(pattern):
+            problems.append(f"{within} fonts: {pattern} finds no file")
+    for name, value in written.items():
+        if name in ("style", "fonts"):
+            continue
+        if name in ("backend", "interactive"):
+            problems.append(
+                f"{within} {name} is not a figure's: SampleKit chooses between a "
+                "window and a file, and MPLBACKEND chooses the window's backend"
+            )
+            continue
+        if name not in matplotlib.rcParams:
+            near = difflib.get_close_matches(name, list(matplotlib.rcParams), n=1)
+            problems.append(
+                f"{within} {name} is not a matplotlib setting"
+                + (f"\n  did you mean: {near[0]}?" if near else "")
+            )
+            continue
+        written_value = value
         # In centimetres, as every size SampleKit takes. Written as text too,
         # "15, 10", which matplotlib reads alike.
         if name == "figure.figsize" and isinstance(value, str):
@@ -612,8 +787,10 @@ def _project_settings(samples):
         try:
             settings[name] = matplotlib.rcParams.validate[name](value)
         except (ValueError, TypeError) as error:
-            raise ValueError(f"[matplotlib] {name} = {value!r}: {error}") from None
-    return settings
+            # Said as written: the centimetres, not the inches they became.
+            said = str(error).replace(repr(value), repr(written_value))
+            problems.append(f"{within} {name} = {written_value!r}: {said}")
+    return settings, problems
 
 
 def _as_list(target):
@@ -664,7 +841,8 @@ def _find(samples, name):
         held = declared[name]
         return Declared(name, held.kind, held.x, held.y, held.group, held.query,
                         held.title, held.x_label, held.y_label, held.style,
-                        {key: getattr(held, key) for key in AXIS_KEYS})
+                        {key: getattr(held, key) for key in AXIS_KEYS},
+                        getattr(held, "matplotlib", None))
     if across is not None:
         raise _in_the_data(ValueError(
             f"{across}\n  declare it alike in each, or draw each project's samples on "
@@ -866,8 +1044,8 @@ def _place_legend(ax, place, title):
     if place is None:
         place = "outside" if len(handles) > 6 else "best"
     if place == "outside":
-        ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), fontsize="small",
-                  title=title)
+        small = {} if _declares("legend.fontsize") else {"fontsize": "small"}
+        ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), title=title, **small)
     else:
         ax.legend(loc=place, title=title)
 
@@ -997,7 +1175,7 @@ class _Groups:
             return colours(norm(key))
         if self.ordered is not None and _is_number(key):
             norm, colours = self.ordered
-            # Short of the scale's pale end, which a white page loses.
+            # Short of the scale's bronze end, which a white page loses.
             return colours(0.85 * norm(key))
         if self.scale is not None or self.ordered is not None:
             # No value, beside values a scale colours: a colour of the scale
@@ -1070,7 +1248,7 @@ def _points(samples, declared, ax, groups):
     omitted = _Omitted(len(samples))
     for sample in samples:
         read_x = _scalar(sample, declared.x, missing, text=declared.kind == "bar")
-        read_y = _scalar(sample, declared.y, missing)
+        read_y = _scalar(sample, declared.y, missing, text=declared.kind == "bar")
         if read_x is None or read_y is None:
             absent = declared.x if read_x is None else declared.y
             omitted.add(sample, f"no {absent}")
@@ -1128,6 +1306,26 @@ def _bars(ax, declared, series, groups):
             seen[x] = sample
     every = [x for _, (xs, *_) in series for x in xs]
     categorical = any(isinstance(x, str) for x in every)
+    across = [y for _, (_, ys, *_) in series for y in ys]
+    # A text y and a numeric x: a bar per category along y, lying down.
+    if any(isinstance(y, str) for y in across):
+        if categorical:
+            raise ValueError(
+                f"a bar needs a number on one axis: '{declared.x}' and '{declared.y}' both "
+                "hold text"
+            )
+        _lying_bars(ax, declared, series, groups)
+        return
+    # Beside one another, bars at a number left their x, and were read at a
+    # value they did not have.
+    if not categorical and len(series) > 1:
+        raise ValueError(
+            f"bars of {len(series)} groups on a numeric x would each stand off their "
+            f"{declared.x} to be side by side: draw them with "
+            f"{_option('--kind scatter', 'kind=scatter')} or "
+            f"{_option('--kind line', 'kind=line')}, or put a text on x — a material, a grade — "
+            "where side by side means something"
+        )
     if categorical:
         order = sorted({str(x) for x in every}, key=_group_order)
         place = {name: at for at, name in enumerate(order)}
@@ -1141,7 +1339,7 @@ def _bars(ax, declared, series, groups):
         shift = (at - (len(series) - 1) / 2) * width
         ax.bar([position(x) + shift for x in xs], ys, width=width,
                xerr=None if categorical else _errors(x_errors), yerr=_errors(y_errors),
-               capsize=3, label=groups.label(key), color=groups.colour(key))
+               label=groups.label(key), color=groups.colour(key), **_caps())
     if categorical:
         ax.set_xticks(range(len(order)), order)
         # Many or long names lean, rather than write over each other.
@@ -1149,6 +1347,29 @@ def _bars(ax, declared, series, groups):
             ax.tick_params(axis="x", labelrotation=40)
             for label in ax.get_xticklabels():
                 label.set_horizontalalignment("right")
+
+
+def _lying_bars(ax, declared, series, groups):
+    """Horizontal bars: a text y, each value a category, and the number x
+    each bar reaches; several groups stand side by side along y."""
+    every = [y for _, (_, ys, *_) in series for y in ys]
+    order = sorted({str(y) for y in every}, key=_group_order)
+    place = {name: at for at, name in enumerate(order)}
+    height = 0.8 / len(series)
+    for at, (key, (xs, ys, x_errors, _, samples)) in enumerate(series):
+        seen = {}
+        for y, sample in zip(ys, samples):
+            if str(y) in seen:
+                raise _in_the_data(ValueError(
+                    f"{_named(seen[str(y)])} and {_named(sample)} are two bars at "
+                    f"{declared.y} = {y}, and one would hide the other: group them apart"
+                ))
+            seen[str(y)] = sample
+        shift = (at - (len(series) - 1) / 2) * height
+        ax.barh([place[str(y)] + shift for y in ys], xs, height=height,
+                xerr=_errors(x_errors), label=groups.label(key),
+                color=groups.colour(key), **_caps())
+    ax.set_yticks(range(len(order)), order)
 
 
 def _boxes(samples, declared, ax):
@@ -1188,7 +1409,8 @@ def _boxes(samples, declared, ax):
         medianprops={"color": "0.2"},
     )
     for at, key in enumerate(keys, start=1):
-        ax.plot([at] * len(boxes[key]), boxes[key], "o", color="0.35", markersize=3, zorder=3)
+        size = {} if _declares("lines.markersize") else {"markersize": 3}
+        ax.plot([at] * len(boxes[key]), boxes[key], "o", color="0.35", zorder=3, **size)
     return (None, None), units.reading, omitted
 
 
@@ -1356,18 +1578,27 @@ def _palette(count):
     return [scale(at / (count - 1)) for at in range(count)]
 
 
+def _caps():
+    """The error bars' caps: 3 points, unless the project says."""
+    return {} if _declares("errorbar.capsize") else {"capsize": 3}
+
+
 def _series(ax, kind, xs, ys, x_errors, y_errors, label, colour=None):
-    """One series in its kind, with error bars wherever an uncertainty is."""
+    """One series in its kind, with error bars wherever an uncertainty is. A
+    round marker on each point, and a line between them for ``line`` — the
+    marker the project's, where it declares one."""
     xerr = _errors(x_errors)
     yerr = _errors(y_errors)
-    style = {"scatter": "o", "line": "o-", "step": "o"}[kind]
     if kind == "step":
         (line,) = ax.step(xs, ys, where="mid", label=label, color=colour)
-        ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, fmt="none", capsize=3,
-                    ecolor=line.get_color())
+        ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, fmt="none", ecolor=line.get_color(),
+                    **_caps())
         return
-    ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, fmt=style, capsize=3, label=label,
-                color=colour)
+    drawn = {} if _declares("lines.marker") else {"marker": "o"}
+    if kind == "scatter":
+        drawn["linestyle"] = "none"
+    ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, fmt="", label=label, color=colour,
+                **drawn, **_caps())
 
 
 def _errors(uncertainties):
@@ -1441,7 +1672,7 @@ def _scalar(sample, field, missing, text=False):
 
 def _reading_of(sample, field):
     """``(unit, symbol)`` of a number read by path: a cell's own, or — for a
-    channel, ``malt.u``, ``malt.stats.mean`` — its quantity's."""
+    channel, ``diameter.u``, ``diameter.stats.mean`` — its quantity's."""
     import samplekit
 
     unit = _channel(sample, field, "unit")
@@ -1619,6 +1850,8 @@ class _NotCurrent:
         if len(listed) > 5:
             listed = listed[:5] + [f"and {len(listed) - 5} more"]
         samples = f"{len(read)} sample" + ("" if len(read) == 1 else "s")
+        global STALE_SAID
+        STALE_SAID = True
         _warn(
             f"drawn from values that are not current: {states} in {samples} — "
             f"{'; '.join(listed)}\n  "
@@ -1653,6 +1886,9 @@ class _Units:
 
     def add(self, sample, reading):
         unit, symbol = reading or (None, None)
+        if unit is None:
+            # A file that writes no unit is in the one its project declares.
+            unit = _declared_unit(sample, self.field)
         if unit is not None:
             if self.unit is None:
                 self.unit, self.whose = unit, sample
@@ -1667,6 +1903,23 @@ class _Units:
     @property
     def reading(self):
         return self.unit, self.symbol
+
+
+def _declared_unit(sample, field):
+    """The unit ``[property.*]`` declares for a field's quantity in the
+    sample's project, or ``None``."""
+    head = (field or "").split("[", 1)[0]
+    try:
+        properties = sample.project.properties
+    except Exception:
+        return None
+    while head:
+        if head in properties:
+            return properties[head].unit
+        if "." not in head:
+            return None
+        head = head.rsplit(".", 1)[0]
+    return None
 
 
 def _named(sample):
@@ -1737,7 +1990,7 @@ def _said_across(samples):
 def _axis(project, field, read, style, row=None):
     """An axis's label: the field's symbol in the style, else the field, and
     its unit in the style in brackets. A cell's symbol is its column's, so
-    its row is said after it — ``Specific gravity, day 3`` — where it read
+    its row is said after it — ``Specific hardness, day 3`` — where it read
     as the whole column."""
     unit, symbol = read if read else (None, None)
     if project is not None:
@@ -1796,7 +2049,7 @@ def _typeset(text, style, what="label", given=False):
     if "\\" in plain:
         raise ValueError(
             f"the {what} '{text}'{where} is LaTeX outside $…$, which matplotlib writes "
-            f"as it is\n  a figure's text is matplotlib's mathtext, $\\mathrm{{brix}}$ and "
+            f"as it is\n  a figure's text is matplotlib's mathtext, $\\mathrm{{porosity}}$ and "
             f"not \\si{{\\litre}}, % and not \\%: {remedy}"
         )
     if "$" not in text.replace(r"\$", ""):

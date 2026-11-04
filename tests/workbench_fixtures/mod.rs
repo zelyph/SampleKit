@@ -32,19 +32,19 @@ impl Scratch {
         fs::write(
             path.join(".samplekitrc"),
             "schema_version = 1\n[collection]\nfiles = [\"images\"]\n\
-             [property.malt]\nprecision = \".1f\"\n",
+             [property.diameter]\nprecision = \".1f\"\n",
         )
         .unwrap();
-        for (name, malt, beer) in [
-            ("C1", 12.0, "schwarz"),
-            ("C2", 10.0, "bock"),
-            ("C3", 11.0, "schwarz"),
+        for (name, diameter, alloy) in [
+            ("C1", 12.0, "cobalt"),
+            ("C2", 10.0, "chrome"),
+            ("C3", 11.0, "cobalt"),
         ] {
             fs::write(
                 path.join(format!("{name}.md")),
                 format!(
-                    "---\nschema_version: 1\nname: {name}\nbeer: {beer}\nproperties:\n  \
-                     malt: {{v: {malt:?}, u: 0.1, unit: g}}\n---\nA note on {name}.\n"
+                    "---\nschema_version: 1\nname: {name}\nalloy: {alloy}\nproperties:\n  \
+                     diameter: {{v: {diameter:?}, u: 0.1, unit: g}}\n---\nA note on {name}.\n"
                 ),
             )
             .unwrap();
@@ -100,15 +100,15 @@ pub fn rich(name: &str) -> Scratch {
     fs::write(
         scratch.0.join(".samplekitrc"),
         "schema_version = 1\n[collection]\nrecursive = true\nfiles = [\"images\"]\n\
-         [property.malt]\nprecision = \".1f\"\n\
-         [query.schwarz]\nfilter = 'beer == \"schwarz\"'\n",
+         [property.diameter]\nprecision = \".1f\"\n\
+         [query.cobalt]\nfilter = 'alloy == \"cobalt\"'\n",
     )
     .unwrap();
     fs::create_dir_all(scratch.0.join("more")).unwrap();
     fs::write(
         scratch.0.join("more/D1.md"),
-        "---\nschema_version: 1\nname: D1\nbeer: bock\nproperties:\n  \
-         malt: {v: 9.0, readings: [8.0, 10.0], unit: g}\n\
+        "---\nschema_version: 1\nname: D1\nalloy: chrome\nproperties:\n  \
+         diameter: {v: 9.0, readings: [8.0, 10.0], unit: g}\n\
          tables:\n  runs:\n    index: run\n    columns:\n      run: {}\n      \
          load: {unit: N}\n    rows:\n      - run: 1\n        load: 3.5\n      \
          - run: 2\n        load: 4.25\n---\nFirst line.\nSecond line.\n",

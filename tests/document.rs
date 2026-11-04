@@ -48,7 +48,7 @@ impl Drop for Scratch {
     }
 }
 
-const CANONICAL: &str = "---\nschema_version: 1\nname: Keg 42\nproperties:\n  malt: {v: 12.5, u: 0.05, unit: g}\n---\n# Brewing notes\n\nTasted after conditioning.\n";
+const CANONICAL: &str = "---\nschema_version: 1\nname: Billet 42\nproperties:\n  diameter: {v: 12.5, u: 0.05, unit: g}\n---\n# Metals notes\n\nInspected after tempering.\n";
 
 struct Fixed(f64);
 
@@ -64,7 +64,7 @@ impl Compute for Fixed {
 fn round_trip_is_byte_identical() {
     let document = document::parse(CANONICAL).unwrap();
     assert_eq!(document::write(&document), CANONICAL);
-    assert_eq!(document.schema.name.as_deref(), Some("Keg 42"));
+    assert_eq!(document.schema.name.as_deref(), Some("Billet 42"));
 }
 
 #[test]
@@ -158,14 +158,14 @@ fn note_survives_a_property_edit() {
     let path = scratch.file("a.md", CANONICAL);
     let (mut sample, origin) = document::load_sample(&path).unwrap();
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
     document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
 
     let written = fs::read_to_string(&path).unwrap();
     assert!(
-        written.contains("# Brewing notes\n\nTasted after conditioning.\n"),
+        written.contains("# Metals notes\n\nInspected after tempering.\n"),
         "{written}"
     );
     assert!(written.contains("v: 99.0"), "{written}");
@@ -208,12 +208,12 @@ fn save_materializes_lazy_values() {
     let scratch = Scratch::new("materialize");
     let mut sample = Sample::new();
     sample
-        .set_property(id("plato"), Property::computed(Rc::new(Fixed(3.05))))
+        .set_property(id("ductility"), Property::computed(Rc::new(Fixed(3.05))))
         .unwrap();
     let path = scratch.at("b.md");
     document::save_sample(&mut sample, &Destination::Path(path.clone())).unwrap();
     let written = fs::read_to_string(&path).unwrap();
-    assert!(written.contains("plato: 3.05"), "{written}");
+    assert!(written.contains("ductility: 3.05"), "{written}");
 }
 
 #[test]
@@ -221,7 +221,7 @@ fn save_of_unwritable_path_reports_the_path() {
     // The error names the file, not just the errno.
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(1.0)))
+        .set_property(id("diameter"), Property::stored(number(1.0)))
         .unwrap();
     let path = PathBuf::from("/proc/samplekit-cannot-write/a.md");
     let error = document::save_sample(&mut sample, &Destination::Path(path.clone())).unwrap_err();
@@ -240,7 +240,7 @@ fn save_is_atomic_on_failure() {
     let hostile = scratch.at("nowhere").join("c.md");
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(1.0)))
+        .set_property(id("diameter"), Property::stored(number(1.0)))
         .unwrap();
     assert!(document::save_sample(&mut sample, &Destination::Path(hostile)).is_err());
     assert_eq!(fs::read_to_string(&path).unwrap(), CANONICAL);
@@ -271,6 +271,103 @@ fn a_held_lock_refuses_a_second_save() {
     assert!(error.to_string().contains("d.md"), "{error}");
     // And the file it would have written is untouched.
     assert_eq!(fs::read_to_string(&path).unwrap(), CANONICAL);
+}
+
+#[test]
+#[cfg(unix)]
+fn a_lock_its_writer_left_is_taken_back() {
+    // A save killed inside its section left its lock and its temporary, and
+    // every later save of the file was refused until someone removed the lock
+    // by hand. A lock naming a process that no longer runs is taken back.
+    let scratch = Scratch::new("lock-abandoned");
+    let path = scratch.file("d.md", CANONICAL);
+    let (mut sample, origin) = document::load_sample(&path).unwrap();
+    let mut gone = std::process::Command::new("true").spawn().unwrap();
+    let pid = gone.id();
+    gone.wait().unwrap();
+    let mut lock_name = path.clone().into_os_string();
+    lock_name.push(".lock");
+    fs::write(
+        &lock_name,
+        format!(
+            "{pid}\nhost {}\nuser {}\n",
+            samplekit::format::lock::own_host(),
+            samplekit::format::lock::own_user()
+        ),
+    )
+    .unwrap();
+    let temporary = scratch.0.join(format!(".d.md.{pid}.tmp"));
+    fs::write(&temporary, "half").unwrap();
+
+    document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
+    assert!(!PathBuf::from(&lock_name).exists(), "the lock was kept");
+    assert!(!temporary.exists(), "the temporary was kept");
+}
+
+#[test]
+#[cfg(unix)]
+fn a_lock_of_another_host_or_user_is_never_taken_back() {
+    // A lock is judged by its process only where that process could run here:
+    // on a shared folder, another computer's live save was taken for a dead
+    // one because its id ran nothing on this one.
+    let scratch = Scratch::new("lock-elsewhere");
+    let path = scratch.file("d.md", CANONICAL);
+    let mut gone = std::process::Command::new("true").spawn().unwrap();
+    let pid = gone.id();
+    gone.wait().unwrap();
+    let mut lock_name = path.clone().into_os_string();
+    lock_name.push(".lock");
+    for (host, user) in [
+        (
+            "lab-server".to_string(),
+            samplekit::format::lock::own_user(),
+        ),
+        (
+            samplekit::format::lock::own_host(),
+            "someone-else".to_string(),
+        ),
+    ] {
+        fs::write(&lock_name, format!("{pid}\nhost {host}\nuser {user}\n")).unwrap();
+        let (mut sample, origin) = document::load_sample(&path).unwrap();
+        let error = document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap_err();
+        let said = error.to_string();
+        assert!(
+            said.contains(&format!("process {pid} of {user} on {host}")),
+            "{said}"
+        );
+        assert!(said.contains("remove"), "{said}");
+        assert_eq!(fs::read_to_string(&path).unwrap(), CANONICAL);
+    }
+    // Its own host and user, the process gone: taken back.
+    fs::write(
+        &lock_name,
+        format!(
+            "{pid}\nhost {}\nuser {}\n",
+            samplekit::format::lock::own_host(),
+            samplekit::format::lock::own_user()
+        ),
+    )
+    .unwrap();
+    let (mut sample, origin) = document::load_sample(&path).unwrap();
+    document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
+    assert!(!PathBuf::from(&lock_name).exists());
+}
+
+#[test]
+#[cfg(unix)]
+fn a_lock_of_a_process_another_account_runs_is_never_taken_back() {
+    // `kill -0` refused on a root process read as no process: a lock naming
+    // one by its id alone was taken back while it ran.
+    let scratch = Scratch::new("lock-root");
+    let path = scratch.file("d.md", CANONICAL);
+    let mut lock_name = path.clone().into_os_string();
+    lock_name.push(".lock");
+    fs::write(&lock_name, "1").unwrap();
+    let (mut sample, origin) = document::load_sample(&path).unwrap();
+    let error = document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap_err();
+    assert!(error.to_string().contains("process 1"), "{error}");
+    assert_eq!(fs::read_to_string(&path).unwrap(), CANONICAL);
+    assert!(PathBuf::from(&lock_name).exists());
 }
 
 #[test]
@@ -334,7 +431,7 @@ fn a_save_returns_a_usable_origin() {
     let (mut sample, origin) = document::load_sample(&path).unwrap();
     let next = document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(42.0));
     document::save_sample(&mut sample, &Destination::Origin(next)).unwrap();
@@ -343,7 +440,7 @@ fn a_save_returns_a_usable_origin() {
 
 // ---------------------------------------------------------------- records
 
-const WITH_RECORDS: &str = "---\nschema_version: 1\nproperties:\n  malt: {v: 12.5, fingerprint: 87c43f2ca298}\n  plato:\n    v: 3.05\n    computed: {malt: 87c43f2ca298}\n    fingerprint: aaaaaaaaaaaa\n---\nA note.\n";
+const WITH_RECORDS: &str = "---\nschema_version: 1\nproperties:\n  diameter: {v: 12.5, fingerprint: 87c43f2ca298}\n  ductility:\n    v: 3.05\n    computed: {diameter: 87c43f2ca298}\n    fingerprint: aaaaaaaaaaaa\n---\nA note.\n";
 
 #[test]
 fn save_without_a_model_preserves_records() {
@@ -355,7 +452,7 @@ fn save_without_a_model_preserves_records() {
     document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
     let written = fs::read_to_string(&path).unwrap();
     assert!(
-        written.contains("computed: {malt: 87c43f2ca298}"),
+        written.contains("computed: {diameter: 87c43f2ca298}"),
         "{written}"
     );
     assert!(written.contains("fingerprint: aaaaaaaaaaaa"), "{written}");
@@ -364,23 +461,23 @@ fn save_without_a_model_preserves_records() {
 
 #[test]
 fn records_survive_a_value_edit_of_another_property() {
-    // Editing malt does not touch plato's record, only its freshness.
+    // Editing diameter does not touch ductility's record, only its freshness.
     let scratch = Scratch::new("other-edit");
     let path = scratch.file("h.md", WITH_RECORDS);
     let (mut sample, origin) = document::load_sample(&path).unwrap();
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
     document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
     let written = fs::read_to_string(&path).unwrap();
     assert!(
-        written.contains("computed: {malt: 87c43f2ca298}"),
+        written.contains("computed: {diameter: 87c43f2ca298}"),
         "{written}"
     );
-    // And malt lost its own record, because a typed-in value claims nothing.
+    // And diameter lost its own record, because a typed-in value claims nothing.
     assert!(
-        !written.contains("malt: {v: 99.0, fingerprint"),
+        !written.contains("diameter: {v: 99.0, fingerprint"),
         "{written}"
     );
 }
@@ -392,41 +489,41 @@ fn save_computed_restamps_records() {
     let scratch = Scratch::new("restamp");
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     sample
-        .set_property(id("plato"), Property::computed(Rc::new(Fixed(3.05))))
+        .set_property(id("ductility"), Property::computed(Rc::new(Fixed(3.05))))
         .unwrap();
     sample
-        .declare_dependencies(&id("plato"), &[Node::Named(id("malt"))])
+        .declare_dependencies(&id("ductility"), &[Node::Named(id("diameter"))])
         .unwrap();
     let path = scratch.at("i.md");
-    sample.property(&id("plato")).unwrap().value().unwrap();
+    sample.property(&id("ductility")).unwrap().value().unwrap();
     document::save_computed(&mut sample, &Destination::Path(path.clone())).unwrap();
     let first = fs::read_to_string(&path).unwrap();
     // The record names the channel its formula produced.
     assert!(
-        first.contains("computed: {v: {malt: 87c43f2ca298}}"),
+        first.contains("computed: {v: {diameter: 87c43f2ca298}}"),
         "{first}"
     );
     assert!(first.contains("fingerprint:"), "{first}");
 
-    // A different malt gives a different recorded digest.
+    // A different diameter gives a different recorded digest.
     let mut again = Sample::new();
     again
-        .set_property(id("malt"), Property::stored(number(99.0)))
+        .set_property(id("diameter"), Property::stored(number(99.0)))
         .unwrap();
     again
-        .set_property(id("plato"), Property::computed(Rc::new(Fixed(3.05))))
+        .set_property(id("ductility"), Property::computed(Rc::new(Fixed(3.05))))
         .unwrap();
     again
-        .declare_dependencies(&id("plato"), &[Node::Named(id("malt"))])
+        .declare_dependencies(&id("ductility"), &[Node::Named(id("diameter"))])
         .unwrap();
-    again.property(&id("plato")).unwrap().value().unwrap();
+    again.property(&id("ductility")).unwrap().value().unwrap();
     document::save_computed(&mut again, &Destination::Path(path.clone())).unwrap();
     let second = fs::read_to_string(&path).unwrap();
     assert!(!second.contains("87c43f2ca298"), "{second}");
-    assert!(second.contains("computed: {v: {malt:"), "{second}");
+    assert!(second.contains("computed: {v: {diameter:"), "{second}");
 }
 
 // ----------------------------------------------------------------- filling
@@ -436,32 +533,32 @@ fn load_into_fills_a_declaration() {
     use samplekit::core::formatting::Presentation;
     let scratch = Scratch::new("load-into");
     let path = scratch.file(
-        "keg.md",
-        "---\nschema_version: 1\nname: Keg 42\nproperties:\n  malt: {v: 12.5, u: 0.05}\n  plato: 3.0\n---\n# Notes\n",
+        "billet.md",
+        "---\nschema_version: 1\nname: Billet 42\nproperties:\n  diameter: {v: 12.5, u: 0.05}\n  ductility: 3.0\n---\n# Notes\n",
     );
     let mut sample = Sample::new();
-    let mut malt = Property::stored(Value::absent());
-    malt.set_presentation(Presentation {
+    let mut diameter = Property::stored(Value::absent());
+    diameter.set_presentation(Presentation {
         unit: Some("g".to_string()),
         ..Presentation::default()
     });
-    sample.set_property(id("malt"), malt).unwrap();
+    sample.set_property(id("diameter"), diameter).unwrap();
     sample
-        .set_property(id("plato"), Property::computed(Rc::new(Fixed(9.0))))
+        .set_property(id("ductility"), Property::computed(Rc::new(Fixed(9.0))))
         .unwrap();
 
     let origin = document::load_into(&path, &mut sample).unwrap();
     assert_eq!(origin.path, path);
-    let plato = sample.property(&id("plato")).unwrap();
-    assert!(plato.is_computed());
-    assert_eq!(plato.value().unwrap(), number(3.0));
-    let malt = sample.property(&id("malt")).unwrap();
-    assert_eq!(malt.presentation().unit.as_deref(), Some("g"));
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert!(ductility.is_computed());
+    assert_eq!(ductility.value().unwrap(), number(3.0));
+    let diameter = sample.property(&id("diameter")).unwrap();
+    assert_eq!(diameter.presentation().unit.as_deref(), Some("g"));
     assert_eq!(
-        malt.uncertainty().unwrap().map(|u| u.magnitude()),
+        diameter.uncertainty().unwrap().map(|u| u.magnitude()),
         Some(0.05)
     );
-    assert_eq!(sample.name(), Some("Keg 42"));
+    assert_eq!(sample.name(), Some("Billet 42"));
     assert_eq!(sample.note(), "# Notes\n");
 }
 
@@ -470,29 +567,33 @@ fn a_stale_filled_value_stays_stale_after_saving() {
     use samplekit::core::dependency_graph::Node;
     use samplekit::format::fingerprint::{self, Freshness};
     let scratch = Scratch::new("stale-filled");
-    let path = scratch.at("keg.md");
+    let path = scratch.at("billet.md");
     let declared = || {
         let mut sample = Sample::new();
         sample
-            .set_property(id("malt"), Property::stored(Value::absent()))
+            .set_property(id("diameter"), Property::stored(Value::absent()))
             .unwrap();
         sample
-            .set_property(id("plato"), Property::computed(Rc::new(Fixed(3.05))))
+            .set_property(id("ductility"), Property::computed(Rc::new(Fixed(3.05))))
             .unwrap();
         sample
-            .declare_dependencies(&id("plato"), &[Node::Named(id("malt"))])
+            .declare_dependencies(&id("ductility"), &[Node::Named(id("diameter"))])
             .unwrap();
         sample
     };
-    // Computed and recorded against a malt of 12.5.
+    // Computed and recorded against a diameter of 12.5.
     let mut computed = declared();
     computed
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(12.5));
-    computed.property(&id("plato")).unwrap().value().unwrap();
+    computed
+        .property(&id("ductility"))
+        .unwrap()
+        .value()
+        .unwrap();
     document::save_computed(&mut computed, &Destination::Path(path.clone())).unwrap();
-    // The malt is corrected by hand, and nothing recomputes the plato.
+    // The diameter is corrected by hand, and nothing recomputes the ductility.
     let edited = fs::read_to_string(&path).unwrap().replace("12.5", "13.5");
     fs::write(&path, edited).unwrap();
 
@@ -501,7 +602,7 @@ fn a_stale_filled_value_stays_stale_after_saving() {
     document::save_computed(&mut sample, &Destination::Path(path.clone())).unwrap();
 
     let (reloaded, _) = document::load_sample(&path).unwrap();
-    let freshness = fingerprint::check_property(&reloaded, &id("plato")).unwrap();
+    let freshness = fingerprint::check_property(&reloaded, &id("ductility")).unwrap();
     assert!(
         matches!(freshness, Freshness::Stale { .. }),
         "{freshness:?}\n{}",
@@ -509,13 +610,13 @@ fn a_stale_filled_value_stays_stale_after_saving() {
     );
 }
 
-/// Twice a malt, read through its handle.
+/// Twice a diameter, read through its handle.
 struct Twice(samplekit::core::sample::PropertyHandle);
 
 impl Compute for Twice {
     fn compute(&self) -> Result<Value, ComputeError> {
         match self.0.value()? {
-            Value::Number(malt) => Ok(number(malt * 2.0)),
+            Value::Number(diameter) => Ok(number(diameter * 2.0)),
             other => Ok(other),
         }
     }
@@ -527,21 +628,21 @@ fn save_computed_keeps_the_formulas() {
     let scratch = Scratch::new("keeps-formulas");
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
-    let twice = Twice(sample.property(&id("malt")).unwrap());
+    let twice = Twice(sample.property(&id("diameter")).unwrap());
     sample
         .set_property(id("double"), Property::computed(Rc::new(twice)))
         .unwrap();
     sample
-        .declare_dependencies(&id("double"), &[Node::Named(id("malt"))])
+        .declare_dependencies(&id("double"), &[Node::Named(id("diameter"))])
         .unwrap();
     document::save_computed(&mut sample, &Destination::Path(scratch.at("c.md"))).unwrap();
 
     let double = sample.property(&id("double")).unwrap();
     assert!(double.is_computed());
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(20.0));
     assert_eq!(double.value().unwrap(), number(40.0));
@@ -564,13 +665,13 @@ fn counted_sample() -> (Sample, Rc<Counted>) {
     let formula = Rc::new(Counted(std::cell::Cell::new(0)));
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
     sample
-        .set_property(id("plato"), Property::computed(formula.clone()))
+        .set_property(id("ductility"), Property::computed(formula.clone()))
         .unwrap();
     sample
-        .declare_dependencies(&id("plato"), &[Node::Named(id("malt"))])
+        .declare_dependencies(&id("ductility"), &[Node::Named(id("diameter"))])
         .unwrap();
     (sample, formula)
 }
@@ -591,15 +692,15 @@ fn save_computed_runs_no_formula() {
 fn save_computed_refuses_a_value_it_cannot_record() {
     let scratch = Scratch::new("unrecordable");
     let (mut sample, _) = counted_sample();
-    sample.property(&id("plato")).unwrap().value().unwrap();
+    sample.property(&id("ductility")).unwrap().value().unwrap();
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(20.0));
     let path = scratch.at("u.md");
     let refused = document::save_computed(&mut sample, &Destination::Path(path.clone()));
     assert!(
-        matches!(&refused, Err(DocumentError::Unrecordable { values }) if values == &["plato"]),
+        matches!(&refused, Err(DocumentError::Unrecordable { values }) if values == &["ductility"]),
         "{refused:?}"
     );
     assert!(!path.exists());
@@ -613,7 +714,7 @@ fn a_value_edited_in_the_file_loads_as_an_override() {
     let scratch = Scratch::new("edited-in-file");
     let path = scratch.at("e.md");
     let (mut sample, _) = counted_sample();
-    sample.property(&id("plato")).unwrap().value().unwrap();
+    sample.property(&id("ductility")).unwrap().value().unwrap();
     document::save_computed(&mut sample, &Destination::Path(path.clone())).unwrap();
     let text = fs::read_to_string(&path).unwrap();
     let edited = text.replace("v: 3.05", "v: 3.5");
@@ -622,11 +723,11 @@ fn a_value_edited_in_the_file_loads_as_an_override() {
 
     let (mut again, formula) = counted_sample();
     document::load_into(&path, &mut again).unwrap();
-    let plato = again.property(&id("plato")).unwrap();
-    assert!(plato.is_edited());
-    assert_eq!(plato.value().unwrap(), number(3.5));
+    let ductility = again.property(&id("ductility")).unwrap();
+    assert!(ductility.is_edited());
+    assert_eq!(ductility.value().unwrap(), number(3.5));
     assert!(matches!(
-        fingerprint::check_property(&again, &id("plato")).unwrap(),
+        fingerprint::check_property(&again, &id("ductility")).unwrap(),
         Freshness::Edited
     ));
     assert_eq!(formula.0.get(), 0);
@@ -639,7 +740,7 @@ fn an_override_round_trips_through_save_computed() {
     // Never computed, then overridden.
     let (mut sample, formula) = counted_sample();
     sample
-        .property(&id("plato"))
+        .property(&id("ductility"))
         .unwrap()
         .set_value(number(3.5));
     document::save_computed(&mut sample, &Destination::Path(path.clone())).unwrap();
@@ -649,25 +750,28 @@ fn an_override_round_trips_through_save_computed() {
 
     let (mut again, formula) = counted_sample();
     document::load_into(&path, &mut again).unwrap();
-    let plato = again.property(&id("plato")).unwrap();
-    assert!(plato.is_edited());
-    assert_eq!(plato.value().unwrap(), number(3.5));
+    let ductility = again.property(&id("ductility")).unwrap();
+    assert!(ductility.is_edited());
+    assert_eq!(ductility.value().unwrap(), number(3.5));
     assert_eq!(formula.0.get(), 0);
 
     // Computed, then overridden.
-    again.property(&id("plato")).unwrap().restore_formula();
-    again.property(&id("plato")).unwrap().value().unwrap();
+    again.property(&id("ductility")).unwrap().restore_formula();
+    again.property(&id("ductility")).unwrap().value().unwrap();
     fingerprint_stamp(&mut again);
-    again.property(&id("plato")).unwrap().set_value(number(4.5));
+    again
+        .property(&id("ductility"))
+        .unwrap()
+        .set_value(number(4.5));
     document::save_computed(&mut again, &Destination::Path(path.clone())).unwrap();
     let written = fs::read_to_string(&path).unwrap();
-    assert!(written.contains("computed: {v: {malt: "), "{written}");
+    assert!(written.contains("computed: {v: {diameter: "), "{written}");
     assert!(written.contains("fingerprint: {edited: "), "{written}");
     let (mut third, _) = counted_sample();
     document::load_into(&path, &mut third).unwrap();
-    assert!(third.property(&id("plato")).unwrap().is_edited());
+    assert!(third.property(&id("ductility")).unwrap().is_edited());
     assert_eq!(
-        third.property(&id("plato")).unwrap().value().unwrap(),
+        third.property(&id("ductility")).unwrap().value().unwrap(),
         number(4.5)
     );
 }
@@ -682,23 +786,23 @@ fn an_input_fingerprint_follows_its_value() {
     let scratch = Scratch::new("input-fingerprint");
     let path = scratch.file(
         "i.md",
-        "---\nschema_version: 1\nproperties:\n  malt: {v: 12.5, fingerprint: \"000000000000\"}\n  plato:\n    v: 3.05\n    computed: {malt: 87c43f2ca298}\n---\n",
+        "---\nschema_version: 1\nproperties:\n  diameter: {v: 12.5, fingerprint: \"000000000000\"}\n  ductility:\n    v: 3.05\n    computed: {diameter: 87c43f2ca298}\n---\n",
     );
     let (mut sample, _) = document::load_sample(&path).unwrap();
     sample
-        .declare_dependencies(&id("plato"), &[Node::Named(id("malt"))])
+        .declare_dependencies(&id("ductility"), &[Node::Named(id("diameter"))])
         .unwrap();
     document::save_computed(&mut sample, &Destination::Path(path.clone())).unwrap();
     let written = fs::read_to_string(&path).unwrap();
     assert!(
-        written.contains("malt: {v: 12.5, fingerprint: 87c43f2ca298}"),
+        written.contains("diameter: {v: 12.5, fingerprint: 87c43f2ca298}"),
         "{written}"
     );
 }
 
 #[test]
 fn a_parse_error_gives_one_line_number() {
-    let source = "---\nschema_version: 1\nname: x\nproperties:\n  malt: {v: [1, }\n---\n";
+    let source = "---\nschema_version: 1\nname: x\nproperties:\n  diameter: {v: [1, }\n---\n";
     let message = samplekit::format::document::parse(source)
         .unwrap_err()
         .to_string();
@@ -746,7 +850,7 @@ fn a_sample_with_a_part_set_aside_is_not_written() {
         .join(format!("samplekit-doc-aside-{}", std::process::id()));
     fs::create_dir_all(&directory).unwrap();
     let path = directory.join("a.md");
-    let text = "---\nschema_version: 1\ntables:\n  conditioning:\n    index: day\n    columns: {day: {}}\n    rows:\n      - {day: {v: 1}}\n      - {day: {v: 1}}\n---\nnote\n";
+    let text = "---\nschema_version: 1\ntables:\n  tempering:\n    index: day\n    columns: {day: {}}\n    rows:\n      - {day: {v: 1}}\n      - {day: {v: 1}}\n---\nnote\n";
     fs::write(&path, text).unwrap();
     let (mut sample, origin) = document::load_sample(&path).unwrap();
     let refused = document::save_sample(&mut sample, &Destination::Origin(origin));
@@ -802,21 +906,21 @@ fn a_mean_an_earlier_version_wrote_is_a_value_written() {
     use samplekit::core::statistics::Location;
     let scratch = Scratch::new("legacy-mean");
     let path = scratch.file(
-        "keg.md",
-        "---\nschema_version: 1\nname: C\nproperties:\n  malt: {v: 4.0, readings: [1.0, 2.0, 9.0]}\n---\n",
+        "billet.md",
+        "---\nschema_version: 1\nname: C\nproperties:\n  diameter: {v: 4.0, readings: [1.0, 2.0, 9.0]}\n---\n",
     );
     let mut sample = Sample::new();
-    let mut malt = Property::stored(Value::absent());
-    malt.declare_statistics(Some(Location::Median), None);
-    sample.set_property(id("malt"), malt).unwrap();
+    let mut diameter = Property::stored(Value::absent());
+    diameter.declare_statistics(Some(Location::Median), None);
+    sample.set_property(id("diameter"), diameter).unwrap();
     document::load_into(&path, &mut sample).unwrap();
-    let malt = sample.property(&id("malt")).unwrap();
-    assert_eq!(malt.value().unwrap(), number(4.0));
-    assert!(malt.peek(Property::holds_written_override));
+    let diameter = sample.property(&id("diameter")).unwrap();
+    assert_eq!(diameter.value().unwrap(), number(4.0));
+    assert!(diameter.peek(Property::holds_written_override));
     // Read without the model, it is the value, as it always read.
     let (plain, _) = document::load_sample(&path).unwrap();
     assert_eq!(
-        plain.property(&id("malt")).unwrap().value().unwrap(),
+        plain.property(&id("diameter")).unwrap().value().unwrap(),
         number(4.0)
     );
 }
@@ -829,7 +933,7 @@ fn a_file_names_a_sample_that_writes_no_name() {
     let path = scratch.0.join("s-1.md");
     fs::write(
         &path,
-        "---\nschema_version: 1\nproperties:\n  malt: {v: 2.0}\n---\n",
+        "---\nschema_version: 1\nproperties:\n  diameter: {v: 2.0}\n---\n",
     )
     .unwrap();
     let (mut sample, origin) = document::load_sample(&path).unwrap();
@@ -841,4 +945,136 @@ fn a_file_names_a_sample_that_writes_no_name() {
     document::save_sample(&mut sample, &Destination::New(copy.clone())).unwrap();
     assert_eq!(sample.name(), Some("s-2"));
     assert!(!fs::read_to_string(&copy).unwrap().contains("name:"));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_out_of_its_project_is_not_written_through() {
+    let root = dunce::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(format!("samplekit-document-link-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("p/inner")).unwrap();
+    std::fs::create_dir_all(root.join("outside")).unwrap();
+    std::fs::write(root.join("p/.samplekitrc"), "schema_version = 1\n").unwrap();
+    let text = "---\nschema_version: 1\nname: ext\n---\n";
+    std::fs::write(root.join("outside/ext.md"), text).unwrap();
+    std::fs::write(root.join("p/inner/own.md"), text).unwrap();
+    std::os::unix::fs::symlink("../outside/ext.md", root.join("p/out.md")).unwrap();
+    std::os::unix::fs::symlink("inner/own.md", root.join("p/in.md")).unwrap();
+    let refused = document::refuse_link_out_of_project(&root.join("p/out.md")).unwrap_err();
+    assert!(
+        refused.to_string().contains("outside its project"),
+        "{refused}"
+    );
+    // A link inside its project, and a file that is none, are written.
+    assert!(document::refuse_link_out_of_project(&root.join("p/in.md")).is_ok());
+    assert!(document::refuse_link_out_of_project(&root.join("p/inner/own.md")).is_ok());
+    // Nothing is written through the outward one.
+    let (read, origin) = document::load(&root.join("p/out.md")).unwrap();
+    assert!(document::save(&read, &document::Destination::Origin(origin)).is_err());
+    assert!(
+        document::replace_if_unchanged(
+            &root.join("p/out.md"),
+            Some(text.as_bytes()),
+            Some(b"---\nschema_version: 1\nname: changed\n---\n"),
+        )
+        .is_err()
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("outside/ext.md")).unwrap(),
+        text
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_cells_own_statistic_survives_a_save() {
+    // Read — its median gave the cell its value — then dropped at the next
+    // write, and the value with it: readings with no statistic have none.
+    let scratch = Scratch::new("cell-statistic");
+    let path = scratch.file(
+        "a.md",
+        "---\nschema_version: 1\nname: a\ntables:\n  t:\n    index: day\n    columns:\n      \
+         day: {}\n      g: {statistics: {v: mean}}\n      h: {}\n    rows:\n      - day: 1\n        \
+         g: {readings: [1.0, 2.0, 10.0], statistics: {v: median}}\n        \
+         h: {readings: [1.0, 2.0, 10.0], statistics: {v: median}}\n      - day: 2\n        \
+         g: {readings: [1.0, 3.0], statistics: {v: mean}}\n        h: 4\n---\n",
+    );
+    let (mut sample, origin) = document::load_sample(&path).unwrap();
+    document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
+    let written = fs::read_to_string(&path).unwrap();
+    assert!(
+        written.contains("g: {readings: [1.0, 2.0, 10.0], statistics: {v: median}}"),
+        "{written}"
+    );
+    assert!(
+        written.contains("h: {readings: [1.0, 2.0, 10.0], statistics: {v: median}}"),
+        "{written}"
+    );
+    // The column's own, not repeated on its cell.
+    assert!(written.contains("g: {readings: [1.0, 3.0]}"), "{written}");
+}
+
+#[test]
+fn a_list_written_null_is_none() {
+    // `tags: ~` made the whole file unreadable, in serde's words.
+    let scratch = Scratch::new("null-list");
+    let path = scratch.file(
+        "a.md",
+        "---\nschema_version: 1\nname: a\ntags: ~\nproperties: ~\ntables: ~\n---\n",
+    );
+    let (sample, _) = document::load_sample(&path).unwrap();
+    assert!(sample.tags().is_empty());
+}
+
+#[test]
+fn yamls_own_tag_is_said_dropped_by_a_write() {
+    // The parser reads `!!binary` away: found in the text.
+    let said = document::changed_by_a_write(
+        "---\nschema_version: 1\nname: b\nblob: !!binary aGVsbG8=\nnote: wow !!\n---\n",
+    );
+    assert_eq!(
+        said,
+        ["blob carries the YAML tag !!binary: the next write drops it"]
+    );
+}
+
+#[test]
+fn the_comments_a_write_drops_are_counted() {
+    let source = "---\nschema_version: 1\n# a remark\nname: A  # its name\nnote: \"not # this\"\n---\n# a heading, in the note\n";
+    assert_eq!(document::comments_in(source), 2);
+    let windows = format!("\u{feff}{}", source.replace('\n', "\r\n"));
+    assert_eq!(document::comments_in(&windows), 2);
+    assert_eq!(document::comments_in("# no frontmatter\n"), 0);
+}
+
+#[test]
+fn a_link_written_unquoted_is_refused_at_its_line() {
+    let source = "---\nschema_version: 1\nname: A\nreference: [[bar-02]]  # the twin\n---\n";
+    let error = document::parse(source).unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "line 4: [[bar-02]] unquoted reads as a list: a link is quoted, \
+         reference: \"[[bar-02]]\""
+    );
+    // Quoted, it is text; a list of lists is no link, and refused as it was.
+    assert!(document::parse("---\nschema_version: 1\nreference: \"[[bar-02]]\"\n---\n").is_ok());
+    let nested = document::parse("---\nschema_version: 1\npairs: [[1, 2]]\n---\n").unwrap_err();
+    assert!(!nested.to_string().contains("a link is quoted"), "{nested}");
+}
+
+#[test]
+fn a_markdown_link_written_unquoted_is_refused_at_its_line() {
+    let source = "---\nschema_version: 1\nname: A\nreference: [the twin](bar-02.md)\n---\n";
+    let error = document::parse(source).unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "line 4: [the twin](bar-02.md) unquoted reads as a list: a link is quoted, \
+         reference: \"[the twin](bar-02.md)\""
+    );
+    assert!(
+        document::parse("---\nschema_version: 1\nreference: \"[the twin](bar-02.md)\"\n---\n")
+            .is_ok()
+    );
 }

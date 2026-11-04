@@ -82,16 +82,19 @@ impl fmt::Display for Fingerprint {
 
 /// Where one input of a derivation came from.
 ///
-/// Not an `Identifier`, because `row.wort` is not one: it names a scope
+/// Not an `Identifier`, because `row.tension` is not one: it names a scope
 /// and a column, and a name admits no dot. One type declares a derivation's
 /// inputs and keys the record it produces, so the two cannot drift.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum InputName {
-    /// `foam` — a property or an attribute of the sample.
+    /// `wear` — a property or an attribute of the sample.
     Named(Identifier),
-    /// `row.wort` — this row's cell, in a column of this table.
+    /// `row.tension` — this row's cell, in a column of this table.
     Cell(Identifier),
-    /// `mashing.wort` — every cell of one column.
+    /// `row.tension.v` — the value of this row's cell, beside the uncertainty a
+    /// formula gives it: what that formula reads of its own cell.
+    CellValue(Identifier),
+    /// `preheating.tension` — every cell of one column.
     Column {
         table: Identifier,
         column: Identifier,
@@ -103,6 +106,7 @@ impl fmt::Display for InputName {
         match self {
             InputName::Named(name) => write!(f, "{name}"),
             InputName::Cell(column) => write!(f, "row.{column}"),
+            InputName::CellValue(column) => write!(f, "row.{column}.v"),
             InputName::Column { table, column } => write!(f, "{table}.{column}"),
         }
     }
@@ -295,6 +299,18 @@ impl<T> Cache<T> {
     }
 }
 
+impl Property {
+    /// Its model gives its value and its uncertainty by two formulas.
+    pub fn mark_two_formulas(&self, two: bool) {
+        self.two_formulas.set(two);
+    }
+
+    /// Whether its model gives them by two formulas, as far as it is known.
+    pub fn has_two_formulas(&self) -> bool {
+        self.two_formulas.get()
+    }
+}
+
 /// What a failing formula keeps of its last success.
 #[derive(Debug, Clone)]
 pub struct LastGood {
@@ -320,6 +336,15 @@ pub struct Property {
     /// Whether the record beside that value vouches for it: the statistic's own
     /// product, current or stale, and not a hand's.
     written_recorded: bool,
+    /// The uncertainty a file wrote beside that value: what the statistic gave
+    /// with it, which stands beside it until the statistic is taken again —
+    /// the value and its spread are one pair, never one old and one new.
+    written_uncertainty: Option<Uncertainty>,
+    /// Whether the statistic its readings declare was taken, by a computation
+    /// asked for: until then no file holding it, reading gives no value. Read,
+    /// it was taken at once, and Python gave a mean the command line said
+    /// was never computed.
+    taken: bool,
     /// The statistic of its readings a model declared as its value.
     location: Option<Location>,
     /// The spread a model declared as its uncertainty. Kept **beside** the
@@ -328,6 +353,28 @@ pub struct Property {
     /// `Derived` would discard the file's number and re-derive it, changing a
     /// measured quantity on load without a word.
     convention: Option<Convention>,
+    /// An override its file held unmarked — a number typed over a computed
+    /// one in the file itself — read as such and not changed since: a save
+    /// writes its record as the file had it. Marked at the next write that
+    /// touched nothing of it, the override rewrote a file whose values had
+    /// not moved, and put it in a colleague's commit.
+    held_unmarked: bool,
+    /// The statistic a file states where its model declares another —
+    /// `{v: median}` under a model's mean: read as it stands until a
+    /// computation, which takes the model's. A property and its statistic
+    /// are one across a project, so the file's gives way.
+    stated: Option<Location>,
+    /// The same of the uncertainty's spread.
+    stated_convention: Option<Convention>,
+    /// The unit the model declares for a value its formula gives, where the
+    /// file wrote another: the value takes it when the formula runs again,
+    /// the file's number never shown under the new unit.
+    declared_unit: Option<String>,
+    /// Whether its model gives its value and its uncertainty by two formulas
+    /// — a file records them as one where they read the same inputs — so that
+    /// each is counted when not current. Known from the model's
+    /// description, never written.
+    two_formulas: std::cell::Cell<bool>,
 }
 
 /// Debug says where a value comes from and whether it has been produced —
@@ -407,8 +454,15 @@ impl Property {
             last_good: None,
             written: None,
             written_recorded: false,
+            written_uncertainty: None,
+            taken: false,
             location: None,
             convention: None,
+            stated: None,
+            stated_convention: None,
+            held_unmarked: false,
+            declared_unit: None,
+            two_formulas: std::cell::Cell::new(false),
             source,
             uncertainty,
             presentation: Presentation::default(),
@@ -439,6 +493,16 @@ impl Property {
             // A value written `n/a` beside readings does not apply, and has no
             // spread: the readings stay, their statistic is not its.
             UncertaintySource::Derived(_) if self.written_not_applicable() => Ok(None),
+            UncertaintySource::Derived(_) if self.holds_taken_pair() => {
+                Ok(self.written_uncertainty)
+            }
+            // No value yet — a statistic not taken — gives no spread either:
+            // Python read a standard error beside a value that was `None`.
+            UncertaintySource::Derived(_)
+                if self.written.is_none() && self.location.is_some() && !self.taken =>
+            {
+                Ok(None)
+            }
             UncertaintySource::Derived(convention) => match &self.source {
                 Source::Measured(readings) => Ok(from_readings(readings, *convention)),
                 // A convention only reaches a measured property; nothing else
@@ -514,7 +578,7 @@ impl Property {
         matches!(self.uncertainty, UncertaintySource::Computed { .. })
     }
 
-    /// Both numbers from one call — `compute_quantity`.
+    /// Both numbers from one call — `compute`.
     ///
     /// It is the quantity that is computed, not a channel of it: the pair
     /// cannot be recomputed by halves, so a record about it names no channel.
@@ -570,6 +634,15 @@ impl Property {
             UncertaintySource::None => Some(None),
             UncertaintySource::Explicit(uncertainty) => Some(Some(*uncertainty)),
             UncertaintySource::Derived(_) if self.written_not_applicable() => Some(None),
+            UncertaintySource::Derived(_) if self.holds_taken_pair() => {
+                Some(self.written_uncertainty)
+            }
+            // No value yet — a statistic not taken — gives no spread either.
+            UncertaintySource::Derived(_)
+                if self.written.is_none() && self.location.is_some() && !self.taken =>
+            {
+                Some(None)
+            }
             UncertaintySource::Derived(convention) => Some(match &self.source {
                 Source::Measured(readings) => from_readings(readings, *convention),
                 _ => None,
@@ -597,6 +670,7 @@ impl Property {
     /// formula's last value. A joint pair is held with no uncertainty. Anywhere
     /// else the value replaces the source, and the records go.
     pub fn set_value(&mut self, value: Value) {
+        self.held_unmarked = false;
         match &self.source {
             Source::Computed { cache, .. } => {
                 *cache.borrow_mut() = Cache::Edited(value);
@@ -611,6 +685,26 @@ impl Property {
             // statistic they declare; the records stay too, so that the
             // quantity's own digest no longer matching reports it edited, and
             // `restore_formula` gives the statistic back.
+            // **Emptied, the value is given back to its statistic**, without
+            // computing: no value is written beside the readings, the record
+            // goes, and the statistic is owed again, as `--force` would give
+            // it back. Held as an empty trial it stood as an override nobody
+            // could clear.
+            Source::Measured(_) if matches!(value, Value::Absent) => {
+                self.written = None;
+                self.written_recorded = false;
+                self.written_uncertainty = None;
+                self.taken = false;
+                self.stated = None;
+                self.stated_convention = None;
+                if self.has_declared_statistic() {
+                    self.records = Records::none();
+                    if let Some(convention) = self.convention {
+                        self.uncertainty = UncertaintySource::Derived(convention);
+                    }
+                }
+                return;
+            }
             Source::Measured(_) => {
                 self.written = Some(value);
                 self.written_recorded = false;
@@ -637,12 +731,22 @@ impl Property {
     }
 
     pub fn set_readings(&mut self, readings: Readings, convention: Option<Convention>) {
+        self.held_unmarked = false;
         self.source = Source::Measured(readings);
+        // New readings: their statistic is owed again, taken by a computation
+        // — the model's.
+        self.taken = false;
+        self.stated = None;
+        self.stated_convention = None;
+
         // **New readings replace no writing**. They are new evidence, so a
         // value written beside the old ones still stands and still outranks the
         // statistic; what moved is the statistic, which the record now reports
         // stale.
-        self.uncertainty = match convention {
+        // Given none, the statistic declared for them: Python's
+        // `notch.readings = […]` names none, and the spread the model declares
+        // was lost.
+        self.uncertainty = match convention.or(self.convention) {
             Some(convention) => UncertaintySource::Derived(convention),
             None => UncertaintySource::None,
         };
@@ -659,6 +763,7 @@ impl Property {
     /// value's source is untouched: on a joint property the formula still
     /// produces both, and the half that was overridden stops being read.
     pub fn set_uncertainty(&mut self, uncertainty: Option<Uncertainty>) {
+        self.held_unmarked = false;
         self.uncertainty = match uncertainty {
             Some(uncertainty) => UncertaintySource::Explicit(uncertainty),
             None => UncertaintySource::None,
@@ -692,6 +797,58 @@ impl Property {
 
     pub fn written_value(&self) -> Option<&Value> {
         self.written.as_ref()
+    }
+
+    /// A value and its uncertainty the statistic gave and a file wrote, both
+    /// standing until the statistic is taken again.
+    /// The statistic a file states where the model declares another, value
+    /// and spread: `None` for each the file states as the model does.
+    pub fn stated_statistic(&self) -> (Option<Location>, Option<Convention>) {
+        (self.stated, self.stated_convention)
+    }
+
+    /// `statistic median → mean`: what a computation changes of a statistic
+    /// the file states otherwise than its model, as every plan says it.
+    pub fn statistic_change_said(&self) -> Option<String> {
+        let mut said = Vec::new();
+        if let (Some(stated), Some(declared)) = (self.stated, self.location) {
+            said.push(format!("statistic {} → {}", stated.name(), declared.name()));
+        }
+        if let (Some(stated), Some(declared)) = (self.stated_convention, self.convention) {
+            said.push(format!(
+                "uncertainty's statistic {} → {}",
+                stated.name(),
+                declared.name()
+            ));
+        }
+        (!said.is_empty()).then(|| said.join(", "))
+    }
+
+    /// The file's statistic given way to the model's. Whether there was one.
+    fn forget_stated(&mut self) -> bool {
+        let value = self.stated.take().is_some();
+        let spread = self.stated_convention.take().is_some();
+        if spread && let Some(convention) = self.convention {
+            self.uncertainty = UncertaintySource::Derived(convention);
+        }
+        value || spread
+    }
+
+    fn holds_taken_pair(&self) -> bool {
+        self.written_recorded && self.written.is_some() && self.written_uncertainty.is_some()
+    }
+
+    /// The statistic its readings declare, taken as it is read: what a file
+    /// states, `statistics: {v: median}`, is the file's own reading of them,
+    /// where one only a model declares is owed until a computation takes it.
+    pub fn take_statistic(&mut self) {
+        self.taken = true;
+    }
+
+    /// Whether the declared statistic was taken: read from a file stating it,
+    /// or given by a computation.
+    pub fn statistic_taken(&self) -> bool {
+        self.taken
     }
 
     /// Declares which statistic of the readings is the value, and which the
@@ -764,7 +921,7 @@ impl Property {
         if let Some(written) = &self.written {
             return written.clone();
         }
-        let Some(location) = self.location else {
+        let Some(location) = self.stated.or(self.location).filter(|_| self.taken) else {
             return Value::Absent;
         };
         let summary = crate::core::statistics::summarize(readings);
@@ -782,6 +939,7 @@ impl Property {
 
     /// The loading path. Nothing else writes a record.
     pub fn set_records(&mut self, records: Records) {
+        self.held_unmarked = false;
         self.records = records;
     }
 
@@ -800,7 +958,22 @@ impl Property {
         let cleared = match &self.source {
             Source::Computed { cache, .. } => clear(cache),
             Source::Joint { cache, .. } => clear(cache),
-            Source::Stored(_) | Source::Measured(_) => false,
+            // A statistic of readings is taken again: the value it gave and
+            // its record go, and it reads not taken until it is —
+            // `invalidate` did nothing to one.
+            // As read from a file too, its record there: the value was kept
+            // there without its record, then read as one entered.
+            Source::Measured(_)
+                if self.has_declared_statistic()
+                    && (self.written_recorded
+                        || (self.written.is_some() && self.records.computed.is_some())) =>
+            {
+                self.written = None;
+                self.written_uncertainty = None;
+                self.written_recorded = false;
+                true
+            }
+            Source::Measured(_) | Source::Stored(_) => false,
         };
         self.forget_records_if(cleared);
     }
@@ -891,6 +1064,21 @@ impl Property {
         })
     }
 
+    /// Its formula stopped from outside, past a time limit, as though it had
+    /// raised `error`: failed, so that a read gives the failure and never runs
+    /// it again in this session.
+    pub fn fail_with(&self, error: ComputeError) {
+        match &self.source {
+            Source::Computed { cache, .. } => *cache.borrow_mut() = Cache::Failed(error),
+            Source::Joint { cache, .. } => *cache.borrow_mut() = Cache::Failed(error),
+            Source::Stored(_) | Source::Measured(_) => {
+                if let UncertaintySource::Computed { cache, .. } = &self.uncertainty {
+                    *cache.borrow_mut() = Cache::Failed(error);
+                }
+            }
+        }
+    }
+
     /// Whether its formula's last run failed, so that no value stands.
     pub fn has_failed(&self) -> bool {
         let value = match &self.source {
@@ -911,6 +1099,7 @@ impl Property {
     /// the formula's last value go, so the next read runs it. Whether there
     /// was one.
     pub fn restore_formula(&mut self) -> bool {
+        self.held_unmarked = false;
         let restored = match &self.source {
             Source::Computed { cache, .. } => release(cache),
             Source::Joint { cache, .. } => release(cache),
@@ -924,7 +1113,12 @@ impl Property {
                 };
                 let written = self.written.take().is_some();
                 self.written_recorded = false;
-                released || written
+                self.written_uncertainty = None;
+                // Given back to its statistic, which is taken here — the
+                // model's, where the file stated another.
+                self.taken = true;
+                let stated = self.forget_stated();
+                released || written || stated
             }
             Source::Stored(_) => match &self.uncertainty {
                 UncertaintySource::Computed { cache, .. } => release(cache),
@@ -985,6 +1179,18 @@ impl Property {
     /// computed value whose digest no longer matches. A formula never run has
     /// nothing to hold. Where the uncertainty is the only formula, it is the
     /// uncertainty that is held.
+    /// [`Self::hold_as_edited`], of an override its file held unmarked: kept
+    /// as the file wrote it until it changes.
+    pub fn hold_as_edited_unmarked(&mut self) {
+        self.hold_as_edited();
+        self.held_unmarked = true;
+    }
+
+    /// Whether this is an override its file held unmarked, unchanged since.
+    pub fn held_unmarked(&self) -> bool {
+        self.held_unmarked
+    }
+
     pub fn hold_as_edited(&mut self) {
         match &self.source {
             Source::Computed { cache, .. } => hold(cache),
@@ -1058,6 +1264,9 @@ impl Property {
             presentation: file_presentation,
             records: file_records,
             written: file_written,
+            taken: file_taken,
+            location: file_location,
+            convention: file_convention,
             ..
         } = file;
         let file_value = match &file_source {
@@ -1121,8 +1330,22 @@ impl Property {
                     None => Cache::Empty,
                 }),
             },
+            // **An uncertainty typed over its statistic stands**: marked edited,
+            // and not what the statistic gives of the readings, it is a hand's
+            // override, which the model's declaration does not take back —
+            // taken back here, the model saw no change and what read it was
+            // never computed again, while the file said it was outdated.
             UncertaintySource::Derived(convention) if file_readings => {
-                UncertaintySource::Derived(convention)
+                let typed = marked
+                    && file_explicit.is_some_and(|written| match &source {
+                        Source::Measured(readings) => from_readings(readings, convention)
+                            .is_none_or(|statistic| statistic.magnitude() != written.magnitude()),
+                        _ => false,
+                    });
+                match file_explicit {
+                    Some(written) if typed => UncertaintySource::Explicit(written),
+                    _ => UncertaintySource::Derived(convention),
+                }
             }
             _ => file_uncertainty,
         };
@@ -1139,12 +1362,24 @@ impl Property {
         self.source = source;
 
         let declared = std::mem::take(&mut self.presentation);
+        self.declared_unit = if self.is_computed() || matches!(self.source, Source::Joint { .. }) {
+            declared.unit.clone().filter(|unit| {
+                file_presentation
+                    .unit
+                    .as_ref()
+                    .is_some_and(|written| written != unit)
+            })
+        } else {
+            None
+        };
         self.presentation = Presentation {
             unit: file_presentation.unit.or(declared.unit),
             symbol: file_presentation.symbol.or(declared.symbol),
             // Neither holds one: a precision is the project's.
             precision: None,
         };
+        self.written_uncertainty =
+            file_explicit.filter(|_| file_readings && file_written.is_some());
         self.written = file_written;
         self.written_recorded = false;
         self.last_good = match (&file_value, &failure) {
@@ -1160,7 +1395,37 @@ impl Property {
         };
         self.records = file_records;
         self.record_missing = false;
+        // **A statistic the file states is read as it stands** until a
+        // computation takes the model's. Dropped here, the model's sample read
+        // `radius` owed where the command line read the file's mean — Python said
+        // *never computed* of a value `status` showed.
+        if file_taken && matches!(self.source, Source::Measured(_)) {
+            self.taken = true;
+            if self.location.is_none() {
+                self.location = file_location;
+            } else {
+                self.stated = file_location.filter(|stated| Some(*stated) != self.location);
+            }
+            if let Some(stated) = file_convention {
+                if self.convention.is_none() {
+                    self.convention = Some(stated);
+                } else if Some(stated) != self.convention {
+                    self.stated_convention = Some(stated);
+                }
+                if matches!(self.uncertainty, UncertaintySource::Derived(_)) {
+                    self.uncertainty = UncertaintySource::Derived(stated);
+                }
+            }
+        }
         Ok(())
+    }
+
+    /// The unit the model declares taken, where the file wrote another: the
+    /// formula is about to run again, and what it gives is in that unit.
+    pub fn adopt_declared_unit(&mut self) {
+        if let Some(unit) = self.declared_unit.take() {
+            self.presentation.unit = Some(unit);
+        }
     }
 
     /// Why `file` cannot fill this declaration, if it cannot. One rule, read by
@@ -1269,6 +1534,12 @@ pub fn reads_compute() -> bool {
     COMPUTING
         .with(std::cell::Cell::get)
         .unwrap_or_else(|| READS_COMPUTE_BY_DEFAULT.load(std::sync::atomic::Ordering::Relaxed))
+}
+
+/// Whether a computation asked for runs on this thread: a formula is
+/// running, and may write nothing but the value it returns.
+pub fn is_computing() -> bool {
+    COMPUTING.with(std::cell::Cell::get) == Some(true)
 }
 
 /// Sets what reading does on every thread of the process.
@@ -1491,32 +1762,15 @@ impl<'de> Deserialize<'de> for Fingerprint {
     }
 }
 
-/// A digest as a file holds it. Written unquoted, one made only of digits reads
-/// as an integer and one like `844409772e92` as a float; both still read, and
-/// the integer gets its leading zeros back.
+/// A digest as a file holds it: text, quoted where it would read as a number.
 #[derive(serde::Deserialize)]
-#[serde(untagged)]
-pub enum DigestText {
-    Text(String),
-    Whole(u64),
-    Float(f64),
-}
+#[serde(transparent)]
+pub struct DigestText(String);
 
 impl DigestText {
     pub fn into_text(self) -> String {
-        match self {
-            DigestText::Text(text) => text,
-            DigestText::Whole(number) => digits(number),
-            // The float lost the text it was read from, so it matches nothing
-            // and the value reads stale: computing it again writes it quoted.
-            DigestText::Float(number) => number.to_string(),
-        }
+        self.0
     }
-}
-
-/// The twelve digits of a digest read as an integer.
-pub fn digits(number: u64) -> String {
-    format!("{number:012}")
 }
 
 /// The three spellings: bare for the sample, `row.` for this row's
@@ -1525,13 +1779,16 @@ pub fn digits(number: u64) -> String {
 /// They cannot be confused because `row` is a reserved column name, so a dotted
 /// name beginning with it is never a table.
 impl InputName {
-    /// The name as a file writes it: `foam`, `row.wort`,
-    /// `mashing.wort`.
+    /// The name as a file writes it: `wear`, `row.tension`,
+    /// `preheating.tension`.
     pub fn parse(text: &str) -> Result<InputName, String> {
         let named = |part: &str| Identifier::new(part).map_err(|error| error.to_string());
         match text.split_once('.') {
             None => Ok(InputName::Named(named(text)?)),
-            Some(("row", column)) => Ok(InputName::Cell(named(column)?)),
+            Some(("row", column)) => match column.strip_suffix(".v") {
+                Some(column) => Ok(InputName::CellValue(named(column)?)),
+                None => Ok(InputName::Cell(named(column)?)),
+            },
             Some((table, column)) => Ok(InputName::Column {
                 table: named(table)?,
                 column: named(column)?,

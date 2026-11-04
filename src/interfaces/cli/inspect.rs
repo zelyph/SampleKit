@@ -5,7 +5,9 @@
 
 use super::*;
 
+use samplekit::collection::computation;
 use samplekit::collection::explanation;
+use samplekit::query::ordering::sort_order;
 
 pub(super) fn unknown_kind(written: &str) -> Fail {
     let mut message = format!("'{written}' is not a kind to list");
@@ -24,6 +26,9 @@ pub(super) fn push_once(names: &mut Vec<String>, name: String) {
 
 pub(super) fn field_groups(collection: &SampleList) -> FieldGroups {
     let mut groups = FieldGroups::default();
+    // Each table's index values with their text, put in order once every
+    // sample is read: in the order met, a row only one sample holds came last.
+    let mut keyed: Vec<Vec<(Vec<Value>, String)>> = Vec::new();
     for entry in collection.iter() {
         let sample = entry.sample.borrow();
         for name in sample.property_names() {
@@ -49,6 +54,7 @@ pub(super) fn field_groups(collection: &SampleList) -> FieldGroups {
                         columns: Vec::new(),
                         rows: Vec::new(),
                     });
+                    keyed.push(Vec::new());
                     groups.tables.len() - 1
                 }
             };
@@ -70,7 +76,9 @@ pub(super) fn field_groups(collection: &SampleList) -> FieldGroups {
             let Some(first) = names.first() else {
                 continue;
             };
+            let keys = &mut keyed[at];
             for tuple in table.index_tuples() {
+                let key: Vec<Value> = tuple.iter().map(|value| (*value).clone()).collect();
                 // The index as a path writes it, so what is printed can be typed.
                 let described = fields::describe(&Field::Cell {
                     table: table_name.clone(),
@@ -88,9 +96,21 @@ pub(super) fn field_groups(collection: &SampleList) -> FieldGroups {
                 } else {
                     inner.to_string()
                 };
-                push_once(&mut group.rows, shown);
+                if !keys.iter().any(|(_, known)| *known == shown) {
+                    keys.push((key, shown));
+                }
             }
         }
+    }
+    for (group, mut keys) in groups.tables.iter_mut().zip(keyed) {
+        keys.sort_by(|(a, _), (b, _)| {
+            a.iter()
+                .zip(b)
+                .map(|(a, b)| sort_order(a, b))
+                .find(|order| order.is_ne())
+                .unwrap_or_else(|| a.len().cmp(&b.len()))
+        });
+        group.rows = keys.into_iter().map(|(_, shown)| shown).collect();
     }
     groups
 }
@@ -106,7 +126,7 @@ pub(super) fn wrapped(prefix: &str, words: &[String], width: usize) -> String {
         .map(|word| word.replace(' ', &HELD.to_string()))
         .collect::<Vec<_>>()
         .join("  ");
-    // No hyphenation: a name such as `farmhouse-saison` is one word, and
+    // No hyphenation: a name such as `farmhouse-steel` is one word, and
     // textwrap otherwise broke it at its hyphen.
     let options = textwrap::Options::new(width)
         .initial_indent(prefix)
@@ -184,10 +204,18 @@ pub(super) fn table_group_listing(table: &TableGroup, width: usize) -> String {
 }
 
 /// *Show me what is here.* Alone it counts; with a kind it enumerates.
-pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &Options) -> Outcome {
+/// `list`, of the samples `selected` keeps among `collection`'s, or of them
+/// all: what the project declares and what it skipped are the project's.
+pub(super) fn inventory(
+    collection: &SampleList,
+    selected: Option<&SampleList>,
+    kind: Option<&str>,
+    options: &Options,
+) -> Outcome {
+    let samples = selected.unwrap_or(collection);
     let Some(kind) = kind else {
-        outln!("{}", counted_as(collection.len(), "sample", "samples"));
-        let groups = field_groups(collection);
+        outln!("{}", counted_as(samples.len(), "sample", "samples"));
+        let groups = field_groups(samples);
         // Each kind counted every time, none of them too: an empty folder left
         // the attributes out, and the line then named two kinds of three.
         let counted = [
@@ -195,8 +223,12 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
             counted_as(groups.attributes.len(), "attribute", "attributes"),
             counted_as(groups.tables.len(), "table", "tables"),
         ];
-        outln!("{} — samplekit list fields", counted.join(", "));
-        let tags = sorted_tags(collection);
+        outln!(
+            "{} — {}",
+            counted.join(", "),
+            super::advised_here("list fields")
+        );
+        let tags = sorted_tags(samples, selected.is_some());
         if tags.is_empty() {
             outln!("no tags in use");
         } else if tags.len() <= 8 {
@@ -208,8 +240,9 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
             );
         } else {
             outln!(
-                "{} in use — samplekit list tags",
-                counted_as(tags.len(), "tag", "tags")
+                "{} in use — {}",
+                counted_as(tags.len(), "tag", "tags"),
+                super::advised_here("list tags")
             );
         }
         let declaring = offered(collection);
@@ -251,7 +284,7 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
             };
             outln!("{said} — samplekit list skipped");
         }
-        let stale = collection
+        let stale = samples
             .iter()
             .filter(|entry| {
                 let sample = entry.sample.borrow();
@@ -272,9 +305,9 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
     };
 
     match kind {
-        "fields" => out!("{}", field_listing(collection, options)),
+        "fields" => out!("{}", field_listing(samples, options)),
         "tags" => {
-            let tags = sorted_tags(collection);
+            let tags = sorted_tags(samples, selected.is_some());
             // Said, as `skipped` says it: an empty output reads, to a script
             // and to a person, as a command that failed.
             if tags.is_empty() {
@@ -287,13 +320,25 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
         "skipped" => {
             // Said when there is nothing to list: an empty output read, to a
             // script, the same as a command that crashed.
-            if collection.skipped().is_empty() {
+            // What the include patterns leave out is no candidate, and
+            // listed nowhere: counted, so that a pattern written too
+            // narrowly is seen.
+            let outside = collection
+                .config()
+                .map(|config| {
+                    samplekit::config::discovery::outside_include(
+                        config.root(),
+                        config.collection(),
+                    )
+                })
+                .unwrap_or_default();
+            if collection.skipped().is_empty() && outside.is_empty() {
                 outln!("no file was skipped");
             }
             // In the words `validate` uses for the same file — *not read*, not
             // *malformed frontmatter* for one a newer SampleKit wrote — and in
             // two columns, the reasons lined up.
-            let rows: Vec<(String, String)> = collection
+            let mut rows: Vec<(String, String)> = collection
                 .skipped()
                 .iter()
                 .map(|skipped| {
@@ -307,6 +352,21 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
                     (shown_path(&skipped.path), reason)
                 })
                 .collect();
+            // From this folder, as the other rows: discovery found them
+            // from the project's folder, resolved.
+            let here = std::env::current_dir()
+                .ok()
+                .and_then(|here| dunce::canonicalize(here).ok());
+            let from_here = |path: &Path| match &here {
+                Some(here) => path.strip_prefix(here).unwrap_or(path).to_path_buf(),
+                None => path.to_path_buf(),
+            };
+            rows.extend(outside.iter().map(|path| {
+                (
+                    shown_path(&from_here(path)),
+                    "matches no include pattern".to_string(),
+                )
+            }));
             let widest = rows
                 .iter()
                 .map(|(path, _)| render::width(path))
@@ -316,8 +376,24 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
                 let pad = " ".repeat(widest - render::width(path));
                 outln!("{path}{pad}  {reason}");
             }
+            if let Some(config) = collection.config()
+                && !outside.is_empty()
+            {
+                outln!(
+                    "\n{} the include patterns leave out — include = [{}] in {}",
+                    counted_as(outside.len(), "Markdown file", "Markdown files"),
+                    config
+                        .collection()
+                        .include
+                        .iter()
+                        .map(|pattern| format!("\"{pattern}\""))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    shown_path(&from_here(&config.root().join(".samplekitrc")))
+                );
+            }
         }
-        "files" => return list_files(collection),
+        "files" => return list_files(samples),
         "figures" => {
             let root = options
                 .positionals
@@ -325,6 +401,14 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from("."));
             return list_figures(collection, &root);
+        }
+        "scripts" => {
+            let root = options
+                .positionals
+                .first()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("."));
+            return run::list_scripts(collection, &root);
         }
         "queries" | "profiles" | "exports" => {
             let declaring = offered(collection);
@@ -369,15 +453,61 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
                     }
                     None => "",
                 };
-                let widest = names.iter().map(|name| render::width(name)).max();
-                for name in names {
-                    match origin_of(config, declaration, name) {
-                        Some(origin) => {
-                            let pad = " ".repeat(widest.unwrap_or(0) - render::width(name));
-                            outln!("{indent}{name}{pad}  {origin}");
+                // As figures and scripts list: each name, then what it is —
+                // a query's filter, a profile's columns, an export's file —
+                // in one column, where another file declares it said beside.
+                let entries: Vec<Listed> = names
+                    .into_iter()
+                    .map(|name| {
+                        let mut detail = match kind {
+                            "queries" => config
+                                .query(name)
+                                .map(|query| query.filter.clone())
+                                .unwrap_or_default(),
+                            "profiles" => config
+                                .profile(name)
+                                .map(|profile| {
+                                    profile
+                                        .columns()
+                                        .iter()
+                                        .map(|column| column.field.clone())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                })
+                                .unwrap_or_default(),
+                            _ => config
+                                .export(name)
+                                .map(|export| {
+                                    format!(
+                                        "{} · {}",
+                                        relative_to_here(
+                                            &config.resolve(&export.output().to_string_lossy())
+                                        ),
+                                        match export {
+                                            Export::Table(table) => {
+                                                format!("profile {}", table.profile)
+                                            }
+                                            Export::Figure(figure) => {
+                                                format!("figure {}", figure.figure)
+                                            }
+                                        }
+                                    )
+                                })
+                                .unwrap_or_default(),
+                        };
+                        if let Some(origin) = origin_of(config, declaration, name) {
+                            detail.push_str(&format!(" · {origin}"));
                         }
-                        None => outln!("{indent}{name}"),
-                    }
+                        Listed {
+                            name: name.to_string(),
+                            scope: detail,
+                            lines: Vec::new(),
+                            options: Vec::new(),
+                        }
+                    })
+                    .collect();
+                for line in listed_lines(&entries, 0) {
+                    outln!("{indent}{line}");
                 }
             }
         }
@@ -388,8 +518,22 @@ pub(super) fn inventory(collection: &SampleList, kind: Option<&str>, options: &O
 
 /// The tags in use, in alphabetical order: gathered from several projects,
 /// their order was the order the files happened to be met in.
-fn sorted_tags(collection: &SampleList) -> Vec<Identifier> {
-    let mut tags: Vec<Identifier> = collection.vocabulary().tags().to_vec();
+/// The tags in use: the collection's, or, where a selection narrowed it, those
+/// its samples carry — the vocabulary is the whole collection's.
+fn sorted_tags(collection: &SampleList, selected: bool) -> Vec<Identifier> {
+    let mut tags: Vec<Identifier> = if selected {
+        let mut held: Vec<Identifier> = Vec::new();
+        for entry in collection.iter() {
+            for tag in entry.sample.borrow().tags() {
+                if !held.contains(tag) {
+                    held.push(tag.clone());
+                }
+            }
+        }
+        held
+    } else {
+        collection.vocabulary().tags().to_vec()
+    };
     tags.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     tags
 }
@@ -401,6 +545,44 @@ fn sorted_tags(collection: &SampleList) -> Vec<Identifier> {
 pub(super) fn offered(collection: &SampleList) -> Vec<(Option<PathBuf>, &ProjectConfig)> {
     let several_targets = EXTRA_TARGETS.with(|extra| !extra.borrow().is_empty());
     match collection.config() {
+        // From a root above several projects, what its samples' projects
+        // declare besides the root's: one project's, or those of one model;
+        // of different models, the root's alone, said so.
+        Some(config) if !several_targets && collection.spans_configurations() => {
+            let file = |project: &ProjectConfig| Some(project.root().join(".samplekitrc"));
+            let mut offered = vec![(None, config)];
+            match collection.scope_of(collection) {
+                Some(list::Scope::One(own)) if own.root() != config.root() => {
+                    offered.push((file(own), own));
+                }
+                Some(list::Scope::SameModel(projects)) => {
+                    for project in projects {
+                        if project.root() != config.root() {
+                            offered.push((file(project), project));
+                        }
+                    }
+                }
+                Some(list::Scope::Mixed(projects)) => {
+                    let named: Vec<String> = projects
+                        .iter()
+                        .map(|project| {
+                            if project.root() == config.root() {
+                                "the root's own".to_string()
+                            } else {
+                                relative_to_here(project.root())
+                            }
+                        })
+                        .collect();
+                    warn(&format!(
+                        "the samples here span several projects of different models — {}: only \
+                         the root's are listed; samplekit PROJECT list names a project's",
+                        named.join(", ")
+                    ));
+                }
+                _ => {}
+            }
+            offered
+        }
         Some(config) if !several_targets => vec![(None, config)],
         _ => declaring(collection),
     }
@@ -450,9 +632,17 @@ pub(super) fn find(options: &Options) -> Outcome {
     let collection = loaded(&root)?;
     warn_skipped(&collection, options);
     let selected = select(&collection, options, &root)?;
+    // An empty listing said nothing at all: read as a failure, or as a folder
+    // that should have held samples and did not say where they were.
+    if collection.is_empty() {
+        errln!("{}", super::tables::no_sample_here(&root));
+    }
     let mut text = String::new();
     for entry in selected.iter() {
         if let Some(path) = &entry.path {
+            // As it would be typed: `samples/a.md`, read from `.`, was said
+            // `./samples/a.md`.
+            let path = path.strip_prefix(".").unwrap_or(path);
             text.push_str(&format!("{}\n", path.display()));
         }
     }
@@ -467,10 +657,10 @@ pub(super) fn failure_log_of(_collection: &SampleList, sample: &Path) -> Option<
     let root = samplekit::config::project_config::find(sample)
         .and_then(|file| file.parent().map(Path::to_path_buf))
         .unwrap_or_else(|| PathBuf::from("."));
-    let relative = failure_log(&root, sample)?;
-    root.join(&relative)
-        .exists()
-        .then(|| relative.display().to_string())
+    // Named from the folder the command ran in: from a root above the
+    // project, `.samplekit/failures/…` named a folder that is not there.
+    let log = root.join(failure_log(&root, sample)?);
+    log.exists().then(|| relative_to_here(&log))
 }
 
 pub(super) fn failure_log(root: &Path, sample: &Path) -> Option<PathBuf> {
@@ -483,6 +673,8 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
     let collection = loaded(&root)?;
     warn_skipped(&collection, options);
     let selected = select(&collection, options, &root)?;
+    // Every target, for the command the answer suggests.
+    let targets = targets_first_words(&root);
     let counts = name_counts(
         selected
             .iter()
@@ -500,7 +692,32 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
     let mut overrides = 0usize;
     for entry in selected.iter() {
         let sample = entry.sample.borrow();
+        // What the model no longer computes blocks nothing: said with its ways
+        // out, and taken as entered by what reads it.
+        let orphans = entry.path.as_deref().map_or_else(Vec::new, |path| {
+            samplekit::collection::computation::orphans(collection.config_for(path), path, &sample)
+        });
+        for orphan in &orphans {
+            let file = entry.path.as_deref().map_or_else(String::new, shell_path);
+            lines.push(vec![
+                labelled(&counts, entry.path.as_deref(), &sample),
+                orphan.clone(),
+                samplekit::collection::computation::orphan_said(&file, orphan),
+            ]);
+        }
         for (quantity, state, rows) in not_current(&sample) {
+            if orphans.contains(&quantity) {
+                continue;
+            }
+            if let Freshness::Stale { changed, upstream } = &state
+                && changed.is_empty()
+                && !upstream.is_empty()
+                && upstream
+                    .iter()
+                    .all(|name| orphans.contains(&name.to_string()))
+            {
+                continue;
+            }
             if matches!(state, Freshness::Edited | Freshness::RecordMissing) {
                 overrides += 1;
             }
@@ -525,9 +742,38 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
     }
     let unread_reasons = never_computed(&selected, &mut lines)?;
     let unread: usize = unread_reasons.values().map(Vec::len).sum();
-    lines.sort_by(|left, right| left[0].cmp(&right[0]).then(left[1].cmp(&right[1])));
+    // By name, or in the order `-s` and `-r` gave the samples: sorted by name
+    // whatever was asked, they were documented and did nothing.
+    if options.sort.is_empty() {
+        lines.sort_by(|left, right| left[0].cmp(&right[0]).then(left[1].cmp(&right[1])));
+    } else {
+        let order: Vec<String> = selected
+            .iter()
+            .map(|entry| labelled(&counts, entry.path.as_deref(), &entry.sample.borrow()))
+            .collect();
+        let at = |label: &String| {
+            order
+                .iter()
+                .position(|held| held == label)
+                .unwrap_or(usize::MAX)
+        };
+        lines.sort_by(|left, right| {
+            at(&left[0])
+                .cmp(&at(&right[0]))
+                .then(left[1].cmp(&right[1]))
+        });
+    }
     // Counted here: the rows themselves are handed to the renderer below.
     let not_current = lines.len();
+    // The overrides the model's plan found too — a value without its record,
+    // which only the model says is its own — so that `compute` is not
+    // advised where it has nothing to compute.
+    let overrides = overrides.max(
+        lines
+            .iter()
+            .filter(|line| line[2].starts_with("edited") || line[2].starts_with("record missing"))
+            .count(),
+    );
     // What fails the gate: every state but those accepted, and never a value
     // waiting for an input nobody entered, which is not yet a failure of
     // anything.
@@ -535,9 +781,13 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
         .iter()
         .filter(|line| {
             let kind = state_kind(&line[2]);
-            kind != "waiting" && !status.accept.iter().any(|accepted| accepted == kind)
+            // A value the model no longer computes fails nothing: it is the
+            // researcher's to keep or remove.
+            kind != "orphan" && !status.accept.passes(kind, &line[1])
         })
-        .count();
+        // By cells, as the heading counts them.
+        .map(|line| samplekit::presentation::changes::cells_in(&line[2]))
+        .sum::<usize>();
     // A model that could not be read heads the answer, with the samples it
     // could not read, whatever else is listed below it: under a table of stale
     // values it was a warning after the advice.
@@ -560,8 +810,20 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
             }
         ))
     };
+    // **What the model no longer computes is listed apart**: no
+    // value not current, nothing to compute, the researcher's to keep or
+    // remove. JSON keeps each in its list, its state said.
+    let orphaned: Vec<Vec<String>> = if status.json {
+        Vec::new()
+    } else {
+        let (orphaned, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut lines)
+            .into_iter()
+            .partition(|line| state_kind(&line[2]) == "orphan");
+        lines = kept;
+        orphaned
+    };
     if status.json {
-        let objects: Vec<serde_json::Value> = lines
+        let mut objects: Vec<serde_json::Value> = lines
             .iter()
             .map(|line| {
                 serde_json::json!({
@@ -572,6 +834,35 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
                 })
             })
             .collect();
+        // What the exit code 2 stands for, in the report a script reads: a
+        // file not read, a model not read — said on stderr alone, the report
+        // was empty under a failing exit.
+        for (reason, labels) in &unread_reasons {
+            for label in labels {
+                objects.push(serde_json::json!({
+                    "sample": label,
+                    "value": null,
+                    "state": "model not read",
+                    "said": reason,
+                }));
+            }
+        }
+        for skipped in collection.skipped() {
+            if matches!(
+                skipped.reason,
+                samplekit::config::discovery::SkipReason::Excluded { .. }
+                    | samplekit::config::discovery::SkipReason::NoFrontmatter
+                    | samplekit::config::discovery::SkipReason::NoVersion
+            ) {
+                continue;
+            }
+            objects.push(serde_json::json!({
+                "sample": shown_path(&skipped.path),
+                "value": null,
+                "state": "not read",
+                "said": skipped.reason.to_string(),
+            }));
+        }
         outln!(
             "{}",
             serde_json::to_string_pretty(&objects).unwrap_or_else(|_| "[]".to_string())
@@ -579,46 +870,180 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
     } else if lines.is_empty() {
         // Silence here would be indistinguishable from a failure.
         let counted = counted_as(selected.len(), "sample", "samples");
-        if let Some(unreadable) = &unreadable {
-            outln!("{unreadable}, and every value the files record in {counted} is current");
+        if selected.is_empty() {
+            // Nothing selected is no collection all current: the reader is
+            // most likely in the wrong folder, and is told so.
+            let found = samplekit::config::project_config::find(&root).is_some();
+            outln!(
+                "no sample here{} — nothing to say of what is current",
+                if found {
+                    ""
+                } else {
+                    ", and no .samplekitrc above this folder"
+                }
+            );
+        } else if let Some(unreadable) = &unreadable {
+            outln!(
+                "{unreadable}; the values the files record in {counted} are current by their \
+                 inputs, which is all the files can say"
+            );
         } else if unread > 0 {
-            outln!("every value the files record in {counted} is current");
+            outln!(
+                "the values the files record in {counted} are current by their inputs, which is \
+                 all the files can say"
+            );
+        } else if configurations_of(&collection)
+            .iter()
+            .all(|config| runtime::template_of(config).is_none())
+        {
+            // No model, nothing computed: *every derived value is current*
+            // said there were some.
+            outln!("nothing is computed in {counted}: no model is declared for them");
         } else {
-            outln!("every derived value in {counted} is current");
+            outln!("every computed value in {counted} is current");
         }
     } else {
         if let Some(unreadable) = &unreadable {
             outln!("{unreadable}");
         }
-        outln!(
-            "{} not current\n",
-            counted_as(lines.len(), "value is", "values are")
-        );
-        let style = table_style(&collection, options)?;
-        // The sample, the value and its state are the answer: they wrap
-        // rather than hide.
-        out!(
-            "{}",
-            render::table_keeping(
-                ["sample", "value", "state"]
-                    .iter()
-                    .map(|n| n.to_string())
-                    .collect(),
-                lines,
-                output_target(options),
-                style,
-                3
+        // **A value waiting is not among the values not current**: it is
+        // counted apart, as the definition of *not current* says.
+        // Counted by cells, as every surface counts them: a table's column is
+        // its rows.
+        let cells = |line: &Vec<String>| samplekit::presentation::changes::cells_in(&line[2]);
+        let waiting: usize = lines
+            .iter()
+            .filter(|line| state_kind(&line[2]) == "waiting")
+            .map(cells)
+            .sum();
+        // Behind what failed is no input nobody entered: said apart.
+        let behind: usize = lines
+            .iter()
+            .filter(|line| state_kind(&line[2]) == "waiting" && line[2].contains("which failed"))
+            .map(cells)
+            .sum();
+        let waiting = waiting - behind;
+        let owed = lines.iter().map(cells).sum::<usize>() - waiting - behind;
+        let waits = counted_as(waiting, "waits", "wait");
+        let behind_said = counted_as(behind, "waits", "wait");
+        // What the gate accepts is counted with them, and said so: the title
+        // said 12 and the error 11, the accepted override unexplained.
+        let accepted = lines
+            .iter()
+            .filter(|line| {
+                let kind = state_kind(&line[2]);
+                kind != "waiting" && kind != "orphan" && status.accept.passes(kind, &line[1])
+            })
+            .map(cells)
+            .sum::<usize>();
+        let owed_said = if accepted > 0 && status.exit_code {
+            format!(
+                "{} not current, {} accepted",
+                counted_as(owed, "value is", "values are"),
+                accepted
             )
-        );
+        } else {
+            format!("{} not current", counted_as(owed, "value is", "values are"))
+        };
+        match (owed, waiting, behind) {
+            (_, 0, 0) => outln!("{owed_said}\n"),
+            (0, _, 0) => outln!(
+                "{} for an input nobody entered, and nothing else is not current\n",
+                counted_as(waiting, "value waits", "values wait")
+            ),
+            (_, _, 0) => outln!("{owed_said}, and {waits} for an input nobody entered\n"),
+            (_, 0, _) => outln!("{owed_said}, and {behind_said} behind what failed\n"),
+            _ => outln!(
+                "{owed_said}, {waits} for an input nobody entered, and {behind_said} behind \
+                 what failed\n"
+            ),
+        }
+        let style = table_style(&collection, options)?;
+        // Over several projects, one table each, headed by its folder, as
+        // every table over several projects is.
+        let mut tables: Vec<(String, Vec<Vec<String>>)> = Vec::new();
+        if collection.spans_configurations() {
+            let project_of: Vec<(String, String)> = selected
+                .iter()
+                .map(|entry| {
+                    (
+                        labelled(&counts, entry.path.as_deref(), &entry.sample.borrow()),
+                        super::tables::project_label(&collection, entry.path.as_deref()),
+                    )
+                })
+                .collect();
+            for line in lines {
+                let project = project_of
+                    .iter()
+                    .find(|(label, _)| *label == line[0])
+                    .map(|(_, project)| project.clone())
+                    .unwrap_or_default();
+                match tables.iter_mut().find(|(held, _)| *held == project) {
+                    Some((_, rows)) => rows.push(line),
+                    None => tables.push((project, vec![line])),
+                }
+            }
+            let order: Vec<&String> = project_of.iter().map(|(_, project)| project).collect();
+            tables.sort_by_key(|(project, _)| {
+                order
+                    .iter()
+                    .position(|held| *held == project)
+                    .unwrap_or(usize::MAX)
+            });
+        } else {
+            tables.push((String::new(), lines));
+        }
+        for (at, (project, rows)) in tables.into_iter().enumerate() {
+            if !project.is_empty() {
+                outln!("{}{project}", if at > 0 { "\n" } else { "" });
+            }
+            // The sample, the value and its state are the answer: they wrap
+            // rather than hide.
+            out!(
+                "{}",
+                render::table_keeping(
+                    ["sample", "value", "state"]
+                        .iter()
+                        .map(|n| n.to_string())
+                        .collect(),
+                    // A state nothing painted yet, `never computed`, in the
+                    // colour the TUI gives it.
+                    rows.into_iter()
+                        .map(|mut row| {
+                            if let Some(state) = row.get_mut(2) {
+                                *state = render::painted_state(state);
+                            }
+                            row
+                        })
+                        .collect(),
+                    output_target(options),
+                    style,
+                    3
+                )
+            );
+        }
         // A failed value keeps the exception's type; the traceback is beside the
         // project, and unreadable unless it is named here.
         match logs.as_slice() {
             [] => {}
             [only] => outln!("\nwhat failed left its traceback in {only}"),
-            many => outln!(
-                "\nwhat failed left its traceback in .samplekit/failures/, one log per sample ({})",
-                counted_as(many.len(), "sample", "samples")
-            ),
+            many => {
+                let mut folders: Vec<String> = Vec::new();
+                for log in many {
+                    let folder = Path::new(log)
+                        .parent()
+                        .map(|folder| format!("{}/", folder.display()))
+                        .unwrap_or_default();
+                    if !folders.contains(&folder) {
+                        folders.push(folder);
+                    }
+                }
+                outln!(
+                    "\nwhat failed left its traceback in {}, one log per sample ({})",
+                    folders.join(", "),
+                    counted_as(many.len(), "sample", "samples")
+                );
+            }
         }
         if unlogged > 0 {
             outln!(
@@ -632,7 +1057,9 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
         if overrides < not_current {
             outln!(
                 "\n{}",
-                advice("samplekit compute lists what would run; --write computes and writes")
+                advice(&format!(
+                    "samplekit {targets}compute lists what would run; --write computes and writes"
+                ))
             );
         }
         if overrides > 0 {
@@ -642,6 +1069,36 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
                 advice(&overrides_kept(overrides))
             );
         }
+    }
+    if !orphaned.is_empty() {
+        outln!(
+            "\n{} the model no longer computes: each is kept as it is, to keep or remove",
+            counted_as(orphaned.len(), "value", "values")
+        );
+        let style = table_style(&collection, options)?;
+        out!(
+            "{}",
+            render::table_keeping(
+                ["sample", "value", "what to do"]
+                    .iter()
+                    .map(|n| n.to_string())
+                    .collect(),
+                orphaned
+                    .into_iter()
+                    .map(|mut line| {
+                        if let Some(rest) =
+                            line[2].strip_prefix("the model no longer computes it — ")
+                        {
+                            line[2] = rest.to_string();
+                        }
+                        line
+                    })
+                    .collect(),
+                output_target(options),
+                style,
+                3
+            )
+        );
     }
     // Why the model was not read, so that the answer can be acted on. Several
     // reasons are one line, each under -v.
@@ -664,7 +1121,7 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
         ),
         &each,
     );
-    say_model_changed(&selected);
+    say_formulas_not_known(&selected, gate);
     // *This is what is stale* is an answer, not a failure: being outdated does
     // not make a collection invalid. A check that must
     // fail says so explicitly, with `--exit-code`.
@@ -686,41 +1143,39 @@ pub(super) fn stale(options: &Options, status: &StatusGate) -> Outcome {
     Ok(())
 }
 
-/// Samples whose values a version of the model computed that is no longer the
-/// model, where which formula changed is not known — a record from before
-/// formulas were told apart: said, with the flag that computes them again. A
-/// formula told apart is judged by the plan, value by value, and a model
-/// changed elsewhere — a figure, a comment — says nothing.
-pub(super) fn say_model_changed(selected: &SampleList) {
-    let Some(store) = runtime::ComputedStore::user() else {
-        return;
-    };
+/// The values whose formula the project's trace does not know — computed on
+/// a computer whose history is not here, or before the history kept the
+/// trace — judged by their inputs alone: said, with the flag that computes
+/// them again, and under -v each by its sample. Said by `status`, which reads
+/// the files as they are, never by a computation over what it read before it
+/// wrote.
+pub(super) fn say_formulas_not_known(selected: &SampleList, gate: bool) {
     let Ok(groups) = groups_of(selected) else {
         return;
     };
-    let mut changed = 0usize;
-    for group in groups {
-        let Some(template) = group.config.as_ref().and_then(runtime::template_of) else {
-            continue;
-        };
-        let Ok(digest) = runtime::digest_of(&template) else {
-            continue;
-        };
-        for position in &group.entries {
-            if let Some(path) = selected
-                .get(*position)
-                .and_then(|entry| entry.path.as_deref())
-                && store.formulas_unknown(path, &digest)
-            {
-                changed += 1;
-            }
-        }
+    // A check, `--exit-code`, says it of a project with no history too: it
+    // passes on what it cannot vouch for, which is said rather than passed
+    // in silence.
+    let unknown = computation::formulas_not_known(selected, &groups, gate);
+    if unknown.is_empty() {
+        return;
     }
-    if changed > 0 {
-        warn(&format!(
-            "the model changed since the values of {} were computed — --rerun computes them again",
-            counted_as(changed, "sample", "samples")
-        ));
+    let values: usize = unknown.values().map(std::collections::BTreeSet::len).sum();
+    warn(&format!(
+        "the formula that computed {} in {} is not known here: computed on another \
+         computer whose history is not here, or before this history kept its formulas \
+         — --rerun computes them again",
+        counted_as(values, "value", "values"),
+        counted_as(unknown.len(), "sample", "samples")
+    ));
+    if VERBOSE.load(AtomicOrdering::Relaxed) {
+        for (path, values) in &unknown {
+            errln!(
+                "  {}  {}",
+                path.display(),
+                values.iter().cloned().collect::<Vec<_>>().join(", ")
+            );
+        }
     }
 }
 
@@ -737,8 +1192,6 @@ pub(super) fn never_computed(
             .iter()
             .map(|entry| entry.sample.borrow().name().map(str::to_string)),
     );
-    // What each formula was when a sample was last computed.
-    let computed = runtime::ComputedStore::user();
     let mut unread: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();
     for group in groups_of(selected)? {
@@ -761,6 +1214,9 @@ pub(super) fn never_computed(
             .iter()
             .map(|entry| labelled(&counts, entry.path.as_deref(), &entry.sample.borrow()))
             .collect();
+        // What the project's trace knows of the formulas that computed each
+        // value.
+        let trace = computation::trace_or_said(Some(config));
         let description = match runtime::describe(config, &from) {
             Ok(description) => description,
             Err(error) => {
@@ -780,10 +1236,7 @@ pub(super) fn never_computed(
                 continue;
             };
             let label = labelled(&counts, Some(&path), &entry.sample.borrow());
-            let recorded = computed
-                .as_ref()
-                .map(|store| store.recorded_formulas(&path))
-                .unwrap_or_default();
+            let recorded = computation::recorded_for(trace.as_deref(), &entry.sample.borrow());
             // Planned forced, as the worker plans it for `status`, so that a
             // value held for want of its record is planned, and can be told
             // from an override.
@@ -866,13 +1319,36 @@ pub(super) fn never_computed(
                                 })
                             }),
                     );
+                    // A value the files say outdated and the model says
+                    // waits for an input nobody entered waits: as `compute`
+                    // says it, a row added without its hardness.
+                    for planned in plan
+                        .iter()
+                        .filter(|planned| planned.reason == Reason::Waiting)
+                    {
+                        if let Some(line) = lines.iter_mut().find(|line| {
+                            line[0] == label
+                                && line[1] == planned.value
+                                && (state_kind(&line[2]) == "outdated"
+                                    || line[2].starts_with("broken"))
+                        }) {
+                            // Its rows kept, as every line of a column counts them.
+                            let rows = samplekit::presentation::changes::cells_in(&line[2]);
+                            line[2] =
+                                said_of_plan(&entry.sample.borrow(), &planned.value, &planned.said);
+                            if rows > 1 {
+                                line[2] =
+                                    format!("{} ({})", line[2], counted_as(rows, "row", "rows"));
+                            }
+                        }
+                    }
                     let fresh: Vec<Vec<String>> = plan
                         .into_iter()
                         .filter(|planned| {
                             matches!(
                                 planned.reason,
                                 Reason::NeverComputed | Reason::Waiting | Reason::FormulaChanged
-                            )
+                            ) || stated_statistic(&planned.said)
                         })
                         // A failure the file records is already listed as one.
                         .filter(|planned| {
@@ -887,22 +1363,121 @@ pub(super) fn never_computed(
                             let said = if matches!(
                                 planned.reason,
                                 Reason::Waiting | Reason::FormulaChanged
-                            ) {
+                            ) || stated_statistic(&planned.said)
+                            {
                                 planned.said.clone()
                             } else {
                                 "never computed".to_string()
                             };
-                            let state = said_of_plan(&entry.sample.borrow(), &planned.value, &said);
+                            let mut state =
+                                said_of_plan(&entry.sample.borrow(), &planned.value, &said);
+                            // A column counted by its cells, as every other
+                            // line of a table's column is.
+                            let rows = rows_of_column(&entry.sample.borrow(), &planned.value);
+                            if rows > 0
+                                && samplekit::presentation::changes::cells_in(&state) == 1
+                                && !state.ends_with(')')
+                            {
+                                state = format!("{state} ({})", counted_as(rows, "row", "rows"));
+                            }
                             vec![label.clone(), planned.value, state]
                         })
                         .collect();
                     lines.extend(fresh);
+                    wait_behind_waiting(&label, lines);
                 }
                 Err(error) => unread.entry(error.to_string()).or_default().push(label),
             }
         }
     }
     Ok(unread)
+}
+
+/// What only reads values that wait waits too, said so, where it was said
+/// outdated through them and failed the gate: nothing is wrong in it, an
+/// entry is owed further up.
+fn wait_behind_waiting(label: &str, lines: &mut [Vec<String>]) {
+    loop {
+        let waiting: std::collections::HashSet<String> = lines
+            .iter()
+            .filter(|line| line[0] == label && line[2].starts_with("waits for"))
+            .map(|line| line[1].clone())
+            .collect();
+        let mut changed = false;
+        for line in lines.iter_mut().filter(|line| line[0] == label) {
+            let Some(said) = samplekit::presentation::changes::behind_waiting(&line[2], &waiting)
+            else {
+                continue;
+            };
+            line[2] = said;
+            changed = true;
+        }
+        if !changed {
+            break;
+        }
+    }
+}
+
+/// The rows of the table whose column `field` names, `curve.stress`; 0 for
+/// any other field.
+fn rows_of_column(sample: &samplekit::core::sample::Sample, field: &str) -> usize {
+    let Some((table, column)) = field.split_once('.') else {
+        return 0;
+    };
+    if column.contains(['.', '[']) {
+        return 0;
+    }
+    Identifier::new(table)
+        .ok()
+        .and_then(|table| {
+            sample
+                .table(&table)
+                .ok()
+                .map(|held| held.index_tuples().len())
+        })
+        .unwrap_or(0)
+}
+
+/// A statistic a file states otherwise than its model, as the plan says it —
+/// `statistic median → mean` — which only the model knows: no record of the
+/// file says it outdated.
+fn stated_statistic(said: &str) -> bool {
+    said.starts_with("statistic ") || said.starts_with("uncertainty's statistic ")
+}
+
+/// The cell `table.column` names by its column alone — the first failed, else
+/// the first not current, else the first — as `table.column[#n]`; `None` for
+/// any other field.
+fn column_cell(sample: &samplekit::core::sample::Sample, field: &str) -> Option<String> {
+    let (table, column) = field.split_once('.')?;
+    if column.contains(['.', '[']) {
+        return None;
+    }
+    let table = Identifier::new(table).ok()?;
+    let column = Identifier::new(column).ok()?;
+    let held = sample.table(&table).ok()?;
+    held.column(&column).ok()?;
+    let rows: Vec<Vec<Value>> = held
+        .index_tuples()
+        .into_iter()
+        .map(|tuple| tuple.into_iter().cloned().collect())
+        .collect();
+    let failed = |index: &Vec<Value>| {
+        held.at(
+            &samplekit::core::table::RowAddress::Index(index.clone()),
+            &column,
+        )
+        .is_ok_and(|cell| cell.records().failure.is_some())
+    };
+    let stale = |index: &Vec<Value>| {
+        fingerprint::is_cell_stale(sample, &table, &column, index).unwrap_or(false)
+    };
+    let at = rows
+        .iter()
+        .position(failed)
+        .or_else(|| rows.iter().position(stale))
+        .unwrap_or(0);
+    (!rows.is_empty()).then(|| format!("{table}.{column}[#{at}]"))
 }
 
 /// Where one number came from. **A sample and a field**, in that order: the
@@ -917,18 +1492,15 @@ pub(super) fn explain(options: &Options) -> Outcome {
             .first()
             .map_or_else(|| "<file>".to_string(), |first| shell_word(first));
         return Err(Fail::usage(format!(
-            "explain wants a file and a field: samplekit explain {file} <field>"
+            "explain wants a file and a field: samplekit {file} explain <field>"
         )));
     };
+    // Under `--at`, the file as it was typed, never the temporary one read.
+    let typed = super::PAST_TYPED.get().cloned();
+    let shown_first: &str = typed.as_deref().unwrap_or(first);
     let path = PathBuf::from(first);
     if !path.exists() {
         return Err(Fail::io(format!("{first}: no such file or directory")));
-    }
-    if path.is_dir() {
-        return Err(Fail::usage(format!(
-            "explain is about one number, and '{first}' is a directory\n  \
-             samplekit explain {first}/<file>.md {field_name}"
-        )));
     }
     let collection = loaded(&path)?;
     let entry = collection
@@ -941,6 +1513,20 @@ pub(super) fn explain(options: &Options) -> Outcome {
         .path
         .as_deref()
         .map_or(collection.config(), |path| collection.config_for(path));
+    // What the model reads is said from its description, had written where
+    // it is missing — a fresh copy, a snapshot read with `--at` — as `status`
+    // has it: without it the dependencies were borrowed from another
+    // sample's file.
+    if let Some(config) = own_config {
+        super::edit::describe_now(config);
+    }
+    // A table's column, as `status` names it, `t.y`: its first cell that is
+    // not current is explained, and said — the name `status` gave was refused.
+    let cell_of_column = column_cell(&sample, field_name);
+    if let Some(cell) = &cell_of_column {
+        outln!("{field_name} is a column: {cell}, its first cell not current, is explained");
+    }
+    let field_name: &str = cell_of_column.as_deref().unwrap_or(field_name);
     // The explanation is a value `explanation` builds; this renders it.
     let explained = explanation::explain(
         &sample,
@@ -951,6 +1537,33 @@ pub(super) fn explain(options: &Options) -> Outcome {
     )
     .map_err(|error| match error {
         explanation::ExplainError::Unknown(error) => {
+            // A table the model declares, that this sample has no row of yet:
+            // said so, with the command that adds one — *unknown table* sent
+            // away a reader told to add a row there.
+            // Named alone, `inspection`, a table the model declares reads as an
+            // unknown field: the same answer.
+            let table_named = match &error {
+                fields::FieldError::UnknownTable { name, .. } => Some(name.clone()),
+                _ if !field_name.contains(['.', '[']) => own_config
+                    .and_then(runtime::current_description)
+                    .filter(|described| described.tables.contains_key(field_name))
+                    .map(|_| field_name.to_string()),
+                _ => None,
+            };
+            if let Some(name) = &table_named
+                && let Some(config) = own_config
+                && runtime::model_declarations(config)
+                    .1
+                    .iter()
+                    .any(|declared| declared == name.as_str())
+            {
+                return Fail::usage(format!(
+                    "{} has no {name} yet: the model declares the table, and this sample holds \
+                     no row of it — samplekit {} set --add-row {name} <column>=<value> … adds one",
+                    shown_first,
+                    shell_path(Path::new(shown_first))
+                ));
+            }
             let mut message = with_suggestion(error, &collection);
             // A value a model computes and nobody computed yet is in no file —
             // said of a name the model's source declares, and of no other: after
@@ -962,8 +1575,8 @@ pub(super) fn explain(options: &Options) -> Outcome {
                     .any(|declared| declared == field_name)
             {
                 message.push_str(&format!(
-                    "\n  the model declares it, and it was never computed: samplekit compute {}",
-                    shell_word(first)
+                    "\n  the model declares it, and it was never computed: samplekit {} compute",
+                    shell_path(Path::new(shown_first))
                 ));
             }
             Fail::usage(message)
@@ -1051,7 +1664,7 @@ pub(super) fn explain(options: &Options) -> Outcome {
     outln!(
         "{} · {field_name} = {}",
         file_of(entry.path.as_deref(), &sample),
-        shown(field_name)
+        render::painted_said(&shown(field_name))
     );
     let said_channel = |made: explanation::Made| match made {
         explanation::Made::Value => "its value",
@@ -1083,9 +1696,42 @@ pub(super) fn explain(options: &Options) -> Outcome {
             // unless an input it reads holds nothing, and then it waits, as
             // `status` says it: sending the reader to `compute` computed
             // nothing, since the input was still missing.
-            outln!("\n  nothing is stored here");
+            outln!("\n  {}", explanation::nothing_stored(&sample, field_name));
+            // **What the model says it reads**, from its description: never
+            // borrowed from another sample's file, and followed upstream to
+            // the input nobody entered, never to a value the model computes.
+            if let Some(described) = own_config.and_then(runtime::current_description)
+                && let Some(property) = described.property(field_name)
+            {
+                let shown = shell_path(Path::new(shown_first));
+                for line in
+                    explanation::owed_lines(&described, property, field_name, &sample, &shown)
+                {
+                    outln!("  {line}");
+                }
+                return Ok(());
+            }
+            // A table's cell the model derives: what its column's formula
+            // reads, from the description, as a property's is said — *if the
+            // model computes it* doubted a column it declares.
+            if let Some(described) = own_config.and_then(runtime::current_description)
+                && let Some((table, rest)) = field_name.split_once('.')
+                && let Some(column) = rest.split('[').next()
+                && let Some(declared) = described.tables.get(table)
+                && let Some(derived) = declared.columns.iter().find(|held| held.name == column)
+                && let Some(
+                    runtime::Origin::Rows { reads, .. } | runtime::Origin::Columns { reads, .. },
+                ) = derived.derived()
+            {
+                let shown = shell_path(Path::new(shown_first));
+                if !reads.is_empty() {
+                    outln!("  the model computes it from {}", reads.join(", "));
+                }
+                outln!("  it was never computed: samplekit {shown} compute --write computes it");
+                return Ok(());
+            }
             if own_config.and_then(runtime::template_of).is_some() {
-                let shown = shell_word(first);
+                let shown = shell_path(Path::new(shown_first));
                 match waiting_on(field_name, &sample, &path) {
                     Some(waiting) if !waiting.missing.is_empty() => {
                         outln!(
@@ -1103,7 +1749,7 @@ pub(super) fn explain(options: &Options) -> Outcome {
                             None => format!("{}=<value> gives it one", waiting.missing[0]),
                         };
                         outln!(
-                            "  samplekit set {shown} {giving}, then samplekit compute {shown} \
+                            "  samplekit {shown} set {giving}, then samplekit {shown} compute \
                              --write"
                         );
                     }
@@ -1113,7 +1759,7 @@ pub(super) fn explain(options: &Options) -> Outcome {
                     ),
                     None => outln!(
                         "  if the model computes it, it was never computed — samplekit status \
-                         {shown} says whether it waits for an input: samplekit compute {shown} \
+                         {shown} says whether it waits for an input: samplekit {shown} compute \
                          --write computes it"
                     ),
                 }
@@ -1131,14 +1777,72 @@ pub(super) fn explain(options: &Options) -> Outcome {
         explanation::Origin::ByHand => {
             outln!("\n  put here by hand, over what a formula or a statistic gave")
         }
-        // Said once: *this value is entered* below repeated it.
-        explanation::Origin::Entered => outln!("\n  entered or measured; nothing computed it"),
+        // Said once: *this value is entered* below repeated it. Typed where
+        // the model computes it — never run, its record none — it is a value
+        // put over its formula, as `status` says: *entered or measured* was
+        // said of it.
+        explanation::Origin::Entered => {
+            let over = entry.path.as_deref().is_some_and(|path| {
+                computation::planned_states(own_config, path, &sample)
+                    .and_then(|planned| planned.get(field_name).cloned())
+                    .is_some_and(|said| {
+                        said.starts_with("edited") || said.starts_with("record missing")
+                    })
+            });
+            if over {
+                outln!(
+                    "\n  put here by hand, where the model computes it and never did: an \
+                     override — samplekit {} compute --force gives it back to its formula",
+                    shell_path(Path::new(shown_first))
+                );
+                return Ok(());
+            }
+            outln!("\n  entered or measured; nothing computed it")
+        }
         explanation::Origin::ReadsNothing(made) => outln!(
             "\n  a formula that reads nothing of this sample computed {}",
             said_channel(*made)
         ),
         explanation::Origin::OwnReadings => {
-            outln!("\n  computed from its own readings, by the statistic its model declares");
+            // The readings themselves, and the statistics taken of them: a
+            // reading typed wrong is seen here, where it was found only with
+            // `-c name,notch.readings`.
+            let said = Identifier::new(field_name)
+                .ok()
+                .and_then(|name| sample.property(&name).ok())
+                .and_then(|handle| {
+                    handle.peek(|property| {
+                        let readings = property.readings()?;
+                        let listed: Vec<String> = readings
+                            .as_slice()
+                            .iter()
+                            .map(|reading| reading.to_string())
+                            .collect();
+                        let value = property
+                            .declared_location()
+                            .map(|location| format!("their {}", location.name()))
+                            .unwrap_or_else(|| "the statistic its model declares".to_string());
+                        let spread = property
+                            .declared_convention()
+                            .map(|convention| {
+                                format!(
+                                    ", its uncertainty their {}",
+                                    convention.name().replace('_', " ")
+                                )
+                            })
+                            .unwrap_or_default();
+                        Some(format!(
+                            "computed from its own readings — {} — as {value}{spread}",
+                            listed.join(", ")
+                        ))
+                    })
+                });
+            match said {
+                Some(said) => outln!("\n  {said}"),
+                None => outln!(
+                    "\n  computed from its own readings, by the statistic its model declares"
+                ),
+            }
         }
         explanation::Origin::Inputs { inputs, .. } => {
             outln!("\n  computed from");
@@ -1166,10 +1870,19 @@ pub(super) fn explain(options: &Options) -> Outcome {
                         }
                         (None, None) => "—".to_string(),
                     };
+                    let readings_owed = value == "—"
+                        && Identifier::new(&input.name).ok().is_some_and(|name| {
+                            sample.property(&name).is_ok_and(|handle| {
+                                handle.peek(|property| property.readings().is_some())
+                            })
+                        });
                     let state = match &input.state {
                         _ if emptied.contains(&input.name) && value == "—" => {
                             "nobody entered it".to_string()
                         }
+                        // Readings whose statistic nothing took: owed, as
+                        // `status` says it, not *entered*.
+                        _ if readings_owed => "never computed".to_string(),
                         Some(explanation::InputState::Of(state)) => state_of(&sample, state, 0),
                         Some(explanation::InputState::Column { stale: true }) => {
                             "outdated".to_string()
@@ -1189,7 +1902,7 @@ pub(super) fn explain(options: &Options) -> Outcome {
                     .iter()
                     .map(|line| line[at].chars().count())
                     .max()
-                    // One space at least after the widest: `fermentation.gravity`
+                    // One space at least after the widest: `ageing.hardness`
                     // ran into its value.
                     .map_or(0, |widest| widest + 1)
                     .max(least)
@@ -1210,15 +1923,27 @@ pub(super) fn explain(options: &Options) -> Outcome {
                         pad(written, digests)
                     );
                 } else {
-                    outln!("    {} {} {state}", pad(spelled, names), pad(value, values));
+                    // The value as a report says it, its state in its colour.
+                    let padding = " ".repeat(values.saturating_sub(value.chars().count()));
+                    outln!(
+                        "    {} {}{padding} {}",
+                        pad(spelled, names),
+                        render::painted_said(value),
+                        render::painted_state(state)
+                    );
                 }
             }
         }
     }
+    let past = super::PAST.load(std::sync::atomic::Ordering::SeqCst);
     if let Some(state) = &explained.state {
         let emptied = emptied_inputs(&sample, state);
+        if past && !emptied.is_empty() {
+            outln!("\n  this value waited then for {}", emptied.join(", "));
+            return Ok(());
+        }
         if !emptied.is_empty() {
-            let shown = shell_word(first);
+            let shown = shell_path(Path::new(shown_first));
             // What nobody entered is given a value; what itself waits is
             // explained in its turn.
             let absent = |name: &String| {
@@ -1232,8 +1957,8 @@ pub(super) fn explain(options: &Options) -> Outcome {
             };
             match emptied.iter().find(|name| absent(name)) {
                 Some(missing) => outln!(
-                    "\n  this value waits for {}, which nobody entered — samplekit set {shown} \
-                     {missing}=<value>, then samplekit compute {shown} --write",
+                    "\n  this value waits for {}, which nobody entered — samplekit {shown} set \
+                     {missing}=<value>, then samplekit {shown} compute --write",
                     emptied.join(", ")
                 ),
                 None => outln!(
@@ -1251,17 +1976,77 @@ pub(super) fn explain(options: &Options) -> Outcome {
         {
             return Ok(());
         }
+        if past && matches!(state, Freshness::Edited) {
+            outln!("\n  this value was edited then: typed over its formula");
+            return Ok(());
+        }
         if matches!(state, Freshness::Edited) {
             // *This value is edited since it was computed* read badly, and
             // named no way back.
             outln!(
-                "\n  this value was edited by hand since it was computed — samplekit compute {} \
-                 --force gives it back to its formula",
-                shell_word(first)
+                "\n  this value is edited: typed over its formula — samplekit {} compute --force \
+                 gives it back to its formula",
+                shell_path(Path::new(shown_first))
             );
             return Ok(());
         }
-        outln!("\n  this value is {}", describe(state));
+        // **A formula changed since it computed this value**, or a value it
+        // reads: current by its inputs, and still not what the model gives —
+        // as `status` says it, and every surface after it.
+        if matches!(state, Freshness::Current)
+            && let Some(path) = entry.path.as_deref()
+            && let Some(said) = computation::planned_states_described(own_config, path, &sample)
+                .and_then(|planned| {
+                    // A cell by its column, whose formula it is: one of a
+                    // column whose formula changed was said current.
+                    let column = match fields::parse(field_name) {
+                        Ok(Field::Cell { table, column, .. }) => format!("{table}.{column}"),
+                        _ => field_name.to_string(),
+                    };
+                    planned
+                        .get(field_name)
+                        .or_else(|| planned.get(&column))
+                        .filter(|said| said.contains("formula changed"))
+                        .cloned()
+                })
+        {
+            if past {
+                outln!("\n  this value was outdated then — {said}");
+            } else {
+                outln!(
+                    "\n  this value is outdated — {said}: samplekit {} compute --write computes \
+                     it again",
+                    shell_path(Path::new(shown_first))
+                );
+            }
+            return Ok(());
+        }
+        // Outdated by its file, waiting by the model's plan — a row added
+        // without its input: said as `status` and `compute` say it.
+        if !past
+            && matches!(state, Freshness::Stale { .. })
+            && let Some(path) = entry.path.as_deref()
+            && let Some(said) = computation::planned_states_described(own_config, path, &sample)
+                .and_then(|planned| {
+                    let column = match fields::parse(field_name) {
+                        Ok(Field::Cell { table, column, .. }) => format!("{table}.{column}"),
+                        _ => field_name.to_string(),
+                    };
+                    planned
+                        .get(field_name)
+                        .or_else(|| planned.get(&column))
+                        .filter(|said| said.starts_with("waits for"))
+                        .cloned()
+                })
+        {
+            outln!("\n  this value {said}, which nobody entered");
+            return Ok(());
+        }
+        if past {
+            outln!("\n  this value was {} then", describe(state));
+        } else {
+            outln!("\n  this value is {}", describe(state));
+        }
         // A failure keeps the value its formula last gave; beside it, the
         // exception's type alone told the reader nothing to act on.
         if matches!(state, Freshness::Failed { .. }) {
@@ -1310,7 +2095,7 @@ fn waiting_on(
         let (shown, held) = match input {
             // A statistic's record names the value's own readings: held where
             // this sample holds readings of it. Looked for as a property of
-            // that name, the blonde saison's gravities *waited for readings*
+            // that name, the blonde steel's hardnesses *waited for readings*
             // their file held.
             samplekit::core::property::InputName::Named(input) if input.as_str() == "readings" => (
                 input.to_string(),
@@ -1333,7 +2118,8 @@ fn waiting_on(
                     .is_ok_and(|held| held.column(column).is_ok()),
             ),
             // A row's cell is read inside a table, which is not this case.
-            samplekit::core::property::InputName::Cell(_) => continue,
+            samplekit::core::property::InputName::Cell(_)
+            | samplekit::core::property::InputName::CellValue(_) => continue,
         };
         if !held {
             missing.push(shown.clone());
@@ -1352,7 +2138,9 @@ fn waiting_on(
 /// --json` names it and `--accept` takes it: `outdated`, `failed`, `edited` (an
 /// override, a record missing among them), `waiting`, `never computed`.
 fn state_kind(said: &str) -> &'static str {
-    if said.starts_with("outdated") {
+    // A formula changed, or read through one, is outdated: its own words are
+    // `said`, and the state they were counted under was *never computed*.
+    if said.starts_with("outdated") || said.contains("formula changed") || stated_statistic(said) {
         "outdated"
     } else if said.starts_with("failed") {
         "failed"
@@ -1360,15 +2148,142 @@ fn state_kind(said: &str) -> &'static str {
         "edited"
     } else if said.starts_with("waits for") {
         "waiting"
+    } else if said.starts_with("the model no longer computes") {
+        "orphan"
     } else {
         "never computed"
     }
 }
 
+/// Every configuration a collection's samples are read with, once each.
+pub(super) fn configurations_of(collection: &SampleList) -> Vec<&ProjectConfig> {
+    let mut found: Vec<&ProjectConfig> = collection.config().into_iter().collect();
+    for part in collection.by_configuration(&collection.filter_by(|_| true)) {
+        if let Some(config) = part.config
+            && !found.iter().any(|known| known.root() == config.root())
+        {
+            found.push(config);
+        }
+    }
+    found
+}
+
+/// Each sample a model cannot read, as a defect of that sample; a model that
+/// cannot be described, as a defect of its configuration.
+fn read_by_the_model(
+    collection: &SampleList,
+    kept: Option<&std::collections::HashSet<PathBuf>>,
+) -> Vec<validation::Finding> {
+    let mut found = Vec::new();
+    let Ok(groups) = groups_of(collection) else {
+        return found;
+    };
+    for group in groups {
+        let Some(config) = group.config.as_ref() else {
+            continue;
+        };
+        if runtime::template_of(config).is_none() {
+            continue;
+        }
+        let entries: Vec<&list::Entry> = group
+            .entries
+            .iter()
+            .filter_map(|position| collection.get(*position))
+            .filter(|entry| {
+                kept.is_none_or(|kept| entry.path.as_ref().is_some_and(|path| kept.contains(path)))
+            })
+            .collect();
+        let Some(from) = entries.first().and_then(|entry| entry.path.clone()) else {
+            continue;
+        };
+        if !matches!(
+            runtime::availability(Some(config), &from),
+            Ok(runtime::Availability::Ready { .. })
+        ) {
+            continue;
+        }
+        let description = match runtime::describe(config, &from) {
+            Ok(description) => description,
+            Err(error) => {
+                found.push(validation::Finding {
+                    path: Some(config.root().join(".samplekitrc")),
+                    sample: ".samplekitrc".to_string(),
+                    severity: validation::Severity::Defect,
+                    detail: validation::Detail::DeclarationUnusable {
+                        declaration: "[model]".to_string(),
+                        reason: format!(
+                            "the model cannot be read, so no sample can be computed: {}",
+                            error
+                                .to_string()
+                                .lines()
+                                .rev()
+                                .find(|line| !line.trim().is_empty())
+                                .unwrap_or_default()
+                                .trim()
+                        ),
+                    },
+                });
+                continue;
+            }
+        };
+        let trace = computation::trace_or_said(Some(config));
+        for entry in entries {
+            let Some(path) = entry.path.clone() else {
+                continue;
+            };
+            let recorded = computation::recorded_for(trace.as_deref(), &entry.sample.borrow());
+            if let Err(error) = description.plan(&path, &recorded) {
+                let said = error.to_string();
+                let first = said
+                    .lines()
+                    .rev()
+                    .find(|line| !line.trim().is_empty())
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                found.push(validation::Finding {
+                    path: Some(path),
+                    sample: entry
+                        .sample
+                        .borrow()
+                        .name()
+                        .unwrap_or("(unnamed)")
+                        .to_string(),
+                    severity: validation::Severity::Defect,
+                    detail: validation::Detail::DeclarationUnusable {
+                        declaration: "[model]".to_string(),
+                        reason: format!("the model cannot read this sample: {first}"),
+                    },
+                });
+            }
+        }
+    }
+    found
+}
+
 pub(super) fn validate(options: &Options, json: bool) -> Outcome {
     let (root, _) = target_and_extra(options)?;
+    REPORTING_UNREAD.store(true, AtomicOrdering::Relaxed);
     let collection = loaded(&root)?;
     warn_skipped(&collection, options);
+    // A selection judges the samples it keeps, among those of the project —
+    // and every file that could not be read, which no selection can say it
+    // would have left out.
+    let kept: Option<std::collections::HashSet<PathBuf>> =
+        if options.filter.is_empty() && options.query.is_empty() {
+            None
+        } else {
+            Some(
+                super::select(&collection, options, &root)?
+                    .iter()
+                    .filter_map(|entry| entry.path.clone())
+                    .collect(),
+            )
+        };
+    let samples: std::collections::HashSet<PathBuf> = collection
+        .iter()
+        .filter_map(|entry| entry.path.clone())
+        .collect();
     // Files named one by one are judged alone: the configuration's queries and
     // profiles were judged against the one file given, and a field its siblings
     // hold was *unknown* there.
@@ -1377,11 +2292,43 @@ pub(super) fn validate(options: &Options, json: bool) -> Outcome {
             .positionals
             .iter()
             .all(|target| Path::new(target).is_file());
-    let report = if files {
+    let mut report = if files {
         validation::run_on_files(&collection)
     } else {
         validation::run(&collection)
     };
+    if let Some(kept) = &kept {
+        report.findings.retain(|finding| match &finding.path {
+            Some(path) => !samples.contains(path) || kept.contains(path),
+            None => true,
+        });
+        report.samples = kept.len();
+    }
+    // What only whoever draws can judge, judged here before a command meets it.
+    for config in configurations_of(&collection) {
+        if let Some(name) = &config.render().table
+            && Style::parse(name).is_none()
+        {
+            report.findings.push(validation::Finding {
+                path: Some(config.root().join(".samplekitrc")),
+                sample: ".samplekitrc".to_string(),
+                severity: validation::Severity::Defect,
+                detail: validation::Detail::DeclarationUnusable {
+                    declaration: "[render] table".to_string(),
+                    reason: format!(
+                        "'{name}' is not a table style; available: {}",
+                        Style::names().join(", ")
+                    ),
+                },
+            });
+        }
+    }
+    // Each sample read with its project's model, as `compute` reads it: the
+    // files alone said nothing of a model that cannot read them. A
+    // model whose environment is missing is already a defect, said above.
+    report
+        .findings
+        .extend(read_by_the_model(&collection, kept.as_ref()));
     if json {
         let objects: Vec<serde_json::Value> = report
             .findings
@@ -1434,19 +2381,41 @@ pub(super) fn validate(options: &Options, json: bool) -> Outcome {
         }
         // Samples, each once: a note about a table's rows is one per row, and
         // counting findings named one sample three times over.
-        let mut samples: Vec<&str> = Vec::new();
+        // By file: two projects' `s1` are two samples.
+        let mut samples: Vec<(&str, Option<&Path>)> = Vec::new();
         for finding in members {
-            if !samples.contains(&finding.sample.as_str()) {
-                samples.push(finding.sample.as_str());
+            let file = finding.path.as_deref();
+            let seen = samples.iter().any(|(name, path)| match (path, file) {
+                (Some(path), Some(file)) => *path == file,
+                _ => *name == finding.sample.as_str(),
+            });
+            if !seen {
+                samples.push((finding.sample.as_str(), file));
             }
         }
-        let mut names: Vec<&str> = samples.iter().take(3).copied().collect();
+        // A name two files share is said by its path.
+        let said = |(name, path): &(&str, Option<&Path>)| -> String {
+            let shared = samples.iter().filter(|(other, _)| other == name).count() > 1;
+            match path {
+                Some(path) if shared => relative_to_here(path),
+                _ => name.to_string(),
+            }
+        };
+        let mut names: Vec<String> = samples.iter().take(3).map(said).collect();
         if samples.len() > 3 {
-            names.push("…");
+            names.push("…".to_string());
         }
+        // A configuration's note is a file's, not a sample's.
+        let configurations = samples
+            .iter()
+            .all(|(name, _)| *name == samplekit::config::project_config::FILENAME);
         outln!(
             "  {key} — {}: {}",
-            counted_as(samples.len(), "sample", "samples"),
+            if configurations {
+                counted_as(samples.len(), "file", "files")
+            } else {
+                counted_as(samples.len(), "sample", "samples")
+            },
             names.join(", ")
         );
     }
@@ -1500,6 +2469,15 @@ pub(super) fn note_key(finding: &validation::Finding) -> String {
             "would be rewritten by a canonicalising pass: the next command that writes it does so"
                 .to_string()
         }
+        Detail::ChangedByAWrite { said } => said.clone(),
+        Detail::Orphan { value, said } => format!("{value}: {said}"),
+        Detail::MatplotlibNotChecked { reason } => {
+            format!("[matplotlib] was not checked — {reason}; plot checks it when it draws")
+        }
+        Detail::SyncConflict { original } => format!(
+            "a copy left by a sync conflict of {original}, left out: compare the two, keep \
+             one, and remove the other"
+        ),
         Detail::NotCurrent { .. } => {
             "holds values that are not current: samplekit status names them".to_string()
         }
@@ -1514,7 +2492,9 @@ pub(super) fn note_key(finding: &validation::Finding) -> String {
         Detail::RecordsCannotBeFollowed { quantity, .. } => {
             format!("{quantity}: records cannot be followed")
         }
-        Detail::Unreadable { reason } => format!("not read: {reason}"),
+        Detail::Unreadable { reason } => {
+            format!("not read: {}", validation::without_own_path(reason))
+        }
         Detail::DeclarationNamesNoField {
             declaration,
             reason,
@@ -1528,7 +2508,7 @@ pub(super) fn note_key(finding: &validation::Finding) -> String {
             specifier,
             ..
         } => {
-            // The row goes, the channel stays: `m.ebc[20].u` is `m.ebc.u`.
+            // The row goes, the channel stays: `m.hv[20].u` is `m.hv.u`.
             let (head, tail) = quantity.split_once('[').unwrap_or((quantity, ""));
             let channel = tail.split_once(']').map_or("", |(_, rest)| rest);
             format!(
@@ -1546,7 +2526,16 @@ pub(super) fn note_key(finding: &validation::Finding) -> String {
 }
 
 pub(super) fn describe_finding(finding: &validation::Finding) -> String {
-    format!("{:<22} {}", finding.sample, validation::described(finding))
+    // A configuration's finding by the file it is, where several can speak:
+    // `tins/.samplekitrc`, not `.samplekitrc` for the root's and each
+    // collection's alike.
+    let label = match &finding.path {
+        Some(path) if finding.sample == samplekit::config::project_config::FILENAME => {
+            relative_to_here(path)
+        }
+        _ => finding.sample.clone(),
+    };
+    format!("{label:<22} {}", validation::described(finding))
 }
 
 /// What a table is: its index, its columns, which are measured and which the
@@ -1566,14 +2555,7 @@ fn shown_table(
         counted_as(table.columns.len(), "column", "columns")
     );
     for column in &table.columns {
-        let kind = match &column.kind {
-            explanation::ColumnKind::Index => "index".to_string(),
-            explanation::ColumnKind::Measured => "measured".to_string(),
-            explanation::ColumnKind::Computed { from } if from.is_empty() => "computed".to_string(),
-            explanation::ColumnKind::Computed { from } => {
-                format!("computed from {}", from.join(", "))
-            }
-        };
+        let kind = column.kind.said();
         // Spelled as every table of the project spells it — `°C`, not the
         // file's `degC`.
         let unit = column.unit.as_ref().map_or_else(String::new, |unit| {
@@ -1597,7 +2579,7 @@ fn shown_table(
         outln!("  {:<16} {:<10} {}", column.name.to_string(), unit, kind);
     }
     outln!(
-        "\n  samplekit explain <file> {}.<column>[<index>]   where one cell's number came from",
+        "\n  samplekit <file> explain {}.<column>[<index>]   where one cell's number came from",
         table.name
     );
     Ok(())
@@ -1605,6 +2587,13 @@ fn shown_table(
 
 /// `open`: a sample's own file, the folder holding it, or the sample's file in
 /// the editor. Opened through `opening`, as Python and the workbench open it.
+/// While several samples' files are counted before any opens, and once the
+/// question for them all was answered yes.
+pub(super) static OPEN_COUNTING: AtomicBool = AtomicBool::new(false);
+pub(super) static OPEN_COUNTED: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+pub(super) static OPEN_ASKED: AtomicBool = AtomicBool::new(false);
+
 pub(super) fn open_file(
     options: &Options,
     sample: &Path,
@@ -1613,15 +2602,6 @@ pub(super) fn open_file(
     edit: bool,
 ) -> Outcome {
     use samplekit::presentation::opening;
-    // One sample's file, and nothing else: a folder opened — or, with --edit,
-    // edited — whichever sample its scan met first, without a word.
-    if sample.is_dir() {
-        return Err(Fail::usage(format!(
-            "open is about one sample, and '{}' is a folder: samplekit open {}/<sample>.md",
-            sample.display(),
-            shell_path(sample).trim_end_matches('/')
-        )));
-    }
     let collection = loaded(sample)?;
     warn_skipped(&collection, options);
     let Some(entry) = collection.iter().next() else {
@@ -1632,9 +2612,16 @@ pub(super) fn open_file(
         opening::OpenError::NoDisplay { .. } => Fail::usage(error.to_string()),
         _ => Fail::io(error.to_string()),
     };
+    // Several samples are counted first, and asked once.
+    if OPEN_COUNTING.load(AtomicOrdering::Relaxed) && edit {
+        OPEN_COUNTED.fetch_add(1, AtomicOrdering::Relaxed);
+        return Ok(());
+    }
+    // With the system's application for it, as every other opening: what the
+    // editing does is the application's, which SampleKit does not see.
     if edit {
-        opening::edit(&path).map_err(failed)?;
-        outln!("edited {}", path.display());
+        opening::open(&path).map_err(failed)?;
+        outln!("opened {}", path.display());
         return Ok(());
     }
     let Some(config) = collection.config_for(&path) else {
@@ -1686,7 +2673,11 @@ pub(super) fn open_file(
     } else {
         found.clone()
     };
-    if targets.len() > opening::OPENED_WITHOUT_ASKING {
+    if OPEN_COUNTING.load(AtomicOrdering::Relaxed) {
+        OPEN_COUNTED.fetch_add(targets.len(), AtomicOrdering::Relaxed);
+        return Ok(());
+    }
+    if targets.len() > opening::OPENED_WITHOUT_ASKING && !OPEN_ASKED.load(AtomicOrdering::Relaxed) {
         let what = if navigate {
             counted_as(targets.len(), "folder", "folders")
         } else {
@@ -1707,7 +2698,7 @@ pub(super) fn open_file(
             )));
         }
         errln!("{asked}");
-        eprint!("open them all? [y/N] ");
+        errp!("open them all? [y/N] ");
         io::stderr()
             .flush()
             .map_err(|error| Fail::io(format!("could not ask: {error}")))?;
@@ -1738,36 +2729,43 @@ pub(super) fn list_files(collection: &SampleList) -> Outcome {
     let everything = collection.filter_by(|_| true);
     let mut declared = false;
     let mut listed = false;
-    for part in collection.by_configuration(&everything) {
-        let Some(config) = part.config else {
-            continue;
-        };
+    let parts = collection.by_configuration(&everything);
+    // A project's folder holding none of its samples itself — they are in
+    // `pieces/` — is the whole project asked for, and not a project without
+    // files declared.
+    let whole_project = parts
+        .iter()
+        .all(|part| part.samples.is_empty())
+        .then(|| collection.config())
+        .flatten();
+    let asked_for: Vec<(&ProjectConfig, Vec<PathBuf>)> = match whole_project {
+        Some(config) => vec![(
+            config,
+            samplekit::config::discovery::samples_of_project(config).unwrap_or_default(),
+        )],
+        None => parts
+            .iter()
+            .filter_map(|part| {
+                Some((
+                    part.config?,
+                    part.samples
+                        .iter()
+                        .filter_map(|entry| entry.path.clone())
+                        .collect(),
+                ))
+            })
+            .collect(),
+    };
+    for (config, paths) in asked_for {
         if config.collection().files.is_empty() {
             continue;
         }
         declared = true;
-        let paths: Vec<PathBuf> = part
-            .samples
-            .iter()
-            .filter_map(|entry| entry.path.clone())
-            .collect();
-        // Whose each file is, among every sample of the project: listing one
-        // sample called the others' files nobody's.
-        let project: Vec<PathBuf> =
-            samplekit::collection::sample_list::from_directory(config.root())
-                .map(|whole| {
-                    // This configuration's samples: a nested project's are its own.
-                    whole
-                        .iter()
-                        .filter_map(|entry| entry.path.clone())
-                        .filter(|path| {
-                            whole
-                                .config_for(path)
-                                .is_some_and(|theirs| theirs.root() == config.root())
-                        })
-                        .collect()
-                })
-                .unwrap_or_else(|_| paths.clone());
+        // Whose each file is, among every sample of the project, in every
+        // folder of it: listing one sample called the others' files nobody's,
+        // and a project whose samples lie in a folder had none at its root.
+        let project: Vec<PathBuf> = samplekit::config::discovery::samples_of_project(config)
+            .unwrap_or_else(|_| paths.clone());
         let canonical = |path: &PathBuf| dunce::canonicalize(path).unwrap_or_else(|_| path.clone());
         let asked: Vec<PathBuf> = paths.iter().map(canonical).collect();
         let whole = project.len() <= paths.len();
@@ -1786,12 +2784,11 @@ pub(super) fn list_files(collection: &SampleList) -> Outcome {
         };
         for (sample, files) in &found.owned {
             listed = true;
-            let name = part
-                .samples
+            let name = collection
                 .iter()
                 .find(|entry| entry.path.as_ref().map(canonical) == Some(canonical(sample)))
                 .map(|entry| file_of(Some(sample), &entry.sample.borrow()))
-                .unwrap_or_else(|| sample.display().to_string());
+                .unwrap_or_else(|| from_here(sample));
             outln!("{name}");
             for file in files {
                 outln!("  {}", from_here(file));
@@ -1808,7 +2805,7 @@ pub(super) fn list_files(collection: &SampleList) -> Outcome {
         if set_aside > 0 {
             let root = from_here(config.root());
             outln!(
-                "\n{} no sample — listed over the whole project: samplekit list files {}",
+                "\n{} no sample — listed over the whole project: samplekit {} list files",
                 counted_as(set_aside, "file belongs to", "files belong to"),
                 shell_word(if root.is_empty() { "." } else { &root })
             );

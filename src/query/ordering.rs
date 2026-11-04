@@ -37,7 +37,7 @@ impl SortSpec {
     }
 }
 
-/// `["beer", "-plato"]`: keys in order, `-` reversing the one it
+/// `["alloy", "-ductility"]`: keys in order, `-` reversing the one it
 /// prefixes. Held as text in a profile, parsed here, where the layer allows.
 pub fn parse_spec(source: &[String]) -> Result<SortSpec, OrderError> {
     let mut keys = Vec::new();
@@ -170,6 +170,19 @@ fn compare_extracted(a: &Extracted, b: &Extracted, spec: &SortSpec) -> Ordering 
     }
 }
 
+/// Two values in the order a sort puts them: by [`value::total_order`], except
+/// that text ignores case, so `activated carbon` does not follow `MnO2`; the
+/// written case only breaks a tie.
+pub fn sort_order(left: &Value, right: &Value) -> Ordering {
+    match (left, right) {
+        (Value::Text(left), Value::Text(right)) => left
+            .to_lowercase()
+            .cmp(&right.to_lowercase())
+            .then_with(|| left.cmp(right)),
+        _ => value::total_order(left, right),
+    }
+}
+
 /// Absent sorts last in **both** directions, which is why this is not
 /// `reverse()` on the ascending order. Reversing a sort to see the largest
 /// values first should not fill the screen with blanks.
@@ -178,21 +191,8 @@ fn compare_key(a: &Option<Value>, b: &Option<Value>, descending: bool) -> Orderi
         (None, None) => Ordering::Equal,
         (None, Some(_)) => Ordering::Greater,
         (Some(_), None) => Ordering::Less,
-        // Text ignores case, so `activated carbon` does not follow `MnO2`; the
-        // written case only breaks a tie.
-        (Some(Value::Text(left)), Some(Value::Text(right))) => {
-            let ordering = left
-                .to_lowercase()
-                .cmp(&right.to_lowercase())
-                .then_with(|| left.cmp(right));
-            if descending {
-                ordering.reverse()
-            } else {
-                ordering
-            }
-        }
         (Some(left), Some(right)) => {
-            let ordering = value::total_order(left, right);
+            let ordering = sort_order(left, right);
             if descending {
                 ordering.reverse()
             } else {

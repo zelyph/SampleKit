@@ -1,0 +1,145 @@
+# A home tester's notebook: each file in pieces/ is one piece. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The pieces are in pieces/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no piece.
+[collection]
+recursive = true
+exclude = ["README.md"]
+
+# ---------------------------------------------------------------- model
+# What derives from what: modulus, reduction and recovery, computed from
+# the hardnesses read with a durometer.
+
+[model]
+path = "model/piece.py"
+class = "Piece"
+# The environment it runs in, beside the steps: it holds samplekit.
+python = "../.venv"
+
+# ----------------------------------------------------------------- units
+# The key is the unit as the files write it; `plain` is how a table shows it.
+
+[unit."degC"]
+plain = "°C"
+
+# ------------------------------------------------------------ quantities
+# Each quantity: its unit, which `samplekit set` and `samplekit new` write for
+# you; its precision (the value's, then the uncertainty's); and its symbol,
+# which labels a figure's axis.
+
+[property.radius]
+symbol = "RADIUS"
+precision = [".3f", ".4f"]
+
+[property.notch]
+symbol = "NOTCH"
+precision = [".3f", ".4f"]
+
+[property.volume]
+unit = "L"
+symbol = "V"
+precision = ".1f"
+
+[property.ore_mass]
+unit = "kg"
+symbol = "m_ore"
+precision = ".2f"
+
+[property.preheat_temperature]
+unit = "degC"
+symbol = "T_preheat"
+precision = ".0f"
+
+[property.modulus]
+symbol = "MODULUS"
+precision = ".1f"
+
+[property.reduction]
+symbol = "AA"
+precision = ".0f"
+
+[property.recovery]
+symbol = "eff"
+precision = ".0f"
+
+# --------------------------------------------------------------- queries
+# samplekit pieces/ --query titaniums
+
+[query.titaniums]
+filter = 'style == titanium'
+
+[query.strong]
+filter = 'radius > 1.060'
+
+[query.prizes]
+filter = 'tags has prize'
+
+[query.ana]
+filter = 'tester == ana'
+
+[query.still_ageing]
+filter = 'notch is missing'
+
+[query.never_computed]
+filter = 'modulus is missing'
+
+[query.dry]
+filter = 'reduction > 80'
+
+# -------------------------------------------------------------- profiles
+# samplekit pieces/ --profile overview
+
+[profile.overview]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "style", label = "Style" },
+  { field = "process", label = "Process" },
+  { field = "radius", label = "Original hardness" },
+  { field = "notch", label = "Final hardness" },
+  { field = "volume", label = "Volume" },
+]
+sort = ["style", "-radius"]
+
+[profile.preheat]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "ore_mass", label = "Ore" },
+  { field = "preheat_temperature", label = "Preheat" },
+  { field = "poured", label = "Poured" },
+]
+sort = ["poured"]
+
+[profile.modulus]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "style", label = "Style" },
+  { field = "radius", label = "Original hardness" },
+  { field = "notch", label = "Final hardness" },
+  { field = "modulus", label = "Modulus" },
+  { field = "reduction", label = "Reduction" },
+]
+sort = ["-modulus"]
+
+[profile.readings]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "radius", label = "Original hardness" },
+  { field = "radius.stats.count", label = "n" },
+  { field = "radius.stats.sample_stdev", label = "s", precision = ".4f" },
+]
+
+# --------------------------------------------------------------- exports
+# samplekit pieces/ export overview --write
+
+[export.overview]
+profile = "overview"
+format = "csv"
+output = "out/overview.csv"
+
+[export.preheat]
+profile = "preheat"
+format = "json"
+output = "out/preheat.json"

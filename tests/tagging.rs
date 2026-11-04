@@ -34,7 +34,7 @@ impl Scratch {
             &path,
             format!(
                 "---\nschema_version: 1\nname: {}\ntags: [{tags}]\nproperties:\n  \
-                 malt: {{v: 12.5, unit: g}}\n---\n\n#  Notes \n\ntrailing spaces  \n",
+                 diameter: {{v: 12.5, unit: g}}\n---\n\n#  Notes \n\ntrailing spaces  \n",
                 file.trim_end_matches(".md")
             ),
         )

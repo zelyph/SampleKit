@@ -1,0 +1,10 @@
+# A home tester's notebook: each file in pieces/ is one piece. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The pieces are in pieces/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no piece.
+[collection]
+recursive = true
+exclude = ["README.md"]

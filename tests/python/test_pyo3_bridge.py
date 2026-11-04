@@ -11,14 +11,14 @@ import pytest
 import samplekit as sk
 
 
-def plato_sample(project):
+def ductility_sample(project):
     return sk.Sample(
         project.sample(
             "s.md",
             name="S",
             properties={
-                "malt": "{v: 12.5, unit: g}",
-                "plato": "{v: 3.05, unit: g/L}",
+                "diameter": "{v: 12.5, unit: g}",
+                "ductility": "{v: 3.05, unit: g/L}",
             },
         )
     )
@@ -27,22 +27,22 @@ def plato_sample(project):
 class Doubling(sk.Sample):
     def __init__(self, path=None):
         super().__init__(path)
-        self.malt = sk.Property(2.0)
-        self.double = sk.Property(compute=lambda: self.malt.value * 2)
-        self.set_dependencies("double", depends_on=["malt"])
+        self.diameter = sk.Property(2.0)
+        self.double = sk.Property(compute_value=lambda: self.diameter.value * 2)
+        self.set_dependencies("double", depends_on=["diameter"])
 
 
 def test_wrapper_shares_the_underlying_property(project):
-    sample = plato_sample(project)
-    first, second = sample.malt, sample["malt"]
+    sample = ductility_sample(project)
+    first, second = sample.diameter, sample["diameter"]
     first.value = 13.0
     assert second.value == 13.0
 
 
 def test_reconstructed_wrapper_keeps_the_handle(project):
-    sample = plato_sample(project)
-    kept = sample.malt
-    dict(sample.items())["malt"].value = 14.0
+    sample = ductility_sample(project)
+    kept = sample.diameter
+    dict(sample.items())["diameter"].value = 14.0
     assert kept.value == 14.0
     sample.save()
     assert "v: 14.0" in sample.path.read_text()
@@ -52,7 +52,7 @@ def test_mutation_through_a_wrapper_invalidates_dependents():
     sample = Doubling()
     sample.compute()
     assert sample.double.value == 4.0
-    wrapper = sample.malt
+    wrapper = sample.diameter
     wrapper.value = 5.0
     assert sample.double.is_outdated
     sample.compute()
@@ -63,7 +63,7 @@ def test_callback_exception_propagates_unchanged():
     def formula():
         raise KeyError("missing measurement")
 
-    prop = sk.Property(compute=formula)
+    prop = sk.Property(compute_value=formula)
     with pytest.raises(KeyError) as caught:
         prop.compute()
     assert caught.value.args == ("missing measurement",)
@@ -73,7 +73,7 @@ def test_callback_exception_keeps_its_traceback():
     def failing_formula():
         return {}["absent"]
 
-    prop = sk.Property(compute=failing_formula)
+    prop = sk.Property(compute_value=failing_formula)
     with pytest.raises(KeyError) as caught:
         prop.compute()
     frames = [frame.name for frame in traceback.extract_tb(caught.value.__traceback__)]
@@ -81,17 +81,17 @@ def test_callback_exception_keeps_its_traceback():
 
 
 def test_unknown_property_raises_key_error(project):
-    sample = plato_sample(project)
+    sample = ductility_sample(project)
     with pytest.raises(KeyError) as caught:
-        sample["plto"]
+        sample["dutility"]
     message = str(caught.value)
     assert "available" in message
-    assert "plato" in message
+    assert "ductility" in message
 
 
 def test_incomparable_comparison_raises_type_error():
-    label = sk.Property("Dunkel 57")
-    assert label == "Dunkel 57"
+    label = sk.Property("Duplex 57")
+    assert label == "Duplex 57"
     with pytest.raises(TypeError):
         label < 3
 
@@ -116,7 +116,7 @@ def test_batch_conflict_raises_file_exists_error(collection, tmp_path):
 def test_a_declared_model_loads_without_consent(project):
     project.model()
     project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
-    sample = sk.Sample(project.sample("a.md", properties={"malt": "3.0"}))
+    sample = sk.Sample(project.sample("a.md", properties={"diameter": "3.0"}))
     assert project.imported()
     assert type(sample).__name__ == "Model"
     sample.compute()
@@ -126,7 +126,7 @@ def test_a_declared_model_loads_without_consent(project):
 def test_model_false_does_not_import(project):
     project.model()
     project.config('schema_version = 1\n\n[model]\npath = "model.py"\n')
-    path = project.sample("a.md", properties={"malt": "3.0"})
+    path = project.sample("a.md", properties={"diameter": "3.0"})
     sample = sk.Sample(path, model=False)
     samples = sk.SampleList(project.root, model=False)
     assert not project.imported()
@@ -135,13 +135,13 @@ def test_model_false_does_not_import(project):
 
 
 def test_error_messages_retain_suggestions(project):
-    sample = plato_sample(project)
+    sample = ductility_sample(project)
     with pytest.raises(AttributeError) as caught:
-        sample.plto
-    assert "did you mean: plato?" in str(caught.value)
+        sample.dutility
+    assert "did you mean: ductility?" in str(caught.value)
     with pytest.raises(KeyError) as caught:
-        sk.SampleList(project.root).sort("plto")
-    assert "plato" in str(caught.value)
+        sk.SampleList(project.root).sort("dutility")
+    assert "ductility" in str(caught.value)
 
 
 def test_scalars_round_trip_without_changing_kind(tmp_path):
@@ -149,7 +149,7 @@ def test_scalars_round_trip_without_changing_kind(tmp_path):
         "flag": True,
         "count": 7,
         "ratio": 0.5,
-        "label": "Dunkel 57",
+        "label": "Duplex 57",
         "day": datetime.date(2026, 9, 14),
         "moment": datetime.datetime(2026, 9, 14, 10, 30, 5),
     }
@@ -190,7 +190,7 @@ def test_timezone_aware_datetime_is_refused():
 
 
 def test_list_conversion_is_not_scalar_conversion():
-    prop = sk.Property(compute=lambda: [1.0, 2.0])
+    prop = sk.Property(compute_value=lambda: [1.0, 2.0])
     with pytest.raises(TypeError) as caught:
         prop.compute()
     assert "list" in str(caught.value)
@@ -211,7 +211,7 @@ def test_rejected_list_mutation_changes_neither_side():
 
 def test_rust_work_releases_the_gil(project):
     for position in range(1500):
-        project.sample(f"s{position:04}.md", properties={"malt": f"{position}.5"})
+        project.sample(f"s{position:04}.md", properties={"diameter": f"{position}.5"})
     ticks = [0]
     stop = threading.Event()
 
@@ -231,7 +231,7 @@ def test_rust_work_releases_the_gil(project):
         samples = sk.SampleList(project.root, model=False)
         loading = ticks[0] - before
         before = ticks[0]
-        samples.sort("-malt")
+        samples.sort("-diameter")
         sorting = ticks[0] - before
     finally:
         stop.set()
@@ -262,7 +262,7 @@ def test_error_families_map_to_standard_exceptions(collection, tmp_path):
     with pytest.raises(ValueError):
         sample["path"] = 1
 
-    table = sk.Table({"T": sk.Column(), "R": sk.Column()}, "T", rows=[{"T": 20, "R": 1.0}])
+    table = sk.Table({"T": sk.Property(), "R": sk.Property()}, index="T", rows=[{"T": 20, "R": 1.0}])
     with pytest.raises(KeyError):
         table.at(20, "nothing")
     with pytest.raises(KeyError):
@@ -271,8 +271,8 @@ def test_error_families_map_to_standard_exceptions(collection, tmp_path):
         table[5]
 
     cyclic = sk.Sample()
-    cyclic.a = sk.Property(compute=lambda: 1.0)
-    cyclic.b = sk.Property(compute=lambda: 2.0)
+    cyclic.a = sk.Property(compute_value=lambda: 1.0)
+    cyclic.b = sk.Property(compute_value=lambda: 2.0)
     cyclic.set_dependencies("a", depends_on=["b"])
     with pytest.raises(ValueError):
         cyclic.set_dependencies("b", depends_on=["a"])
@@ -288,9 +288,9 @@ def test_error_families_map_to_standard_exceptions(collection, tmp_path):
     with pytest.raises(FileExistsError):
         samples.to_csv(existing, columns=["name"])
     with pytest.raises(ValueError):
-        samples.to_dict(columns=["malt:"])
+        samples.to_dict(columns=["diameter:"])
     with pytest.raises(TypeError):
-        samples.filter("beer > 3")
+        samples.filter("alloy > 3")
 
     # A whole list is joined in CSV, no longer refused.
     listing = sk.Sample(name="L")
@@ -303,11 +303,11 @@ def test_error_families_map_to_standard_exceptions(collection, tmp_path):
 def test_an_assigned_property_object_reaches_the_sample(tmp_path):
     sample = sk.Sample()
     prop = sk.Property(3.2, unit="g")
-    sample.malt = prop
+    sample.diameter = prop
     prop.value = 3.3
     path = tmp_path / "s.md"
     sample.save(path)
-    assert sample.malt.value == 3.3
+    assert sample.diameter.value == 3.3
     assert "v: 3.3" in path.read_text()
 
 
@@ -317,56 +317,59 @@ def test_a_value_is_recorded_while_its_inputs_are_the_ones_it_read(tmp_path):
     class Dense(sk.Sample):
         def __init__(self, path=None):
             super().__init__(path)
-            self.malt = sk.Property(12.0)
+            self.diameter = sk.Property(12.0)
             self.volume = sk.Property(4.0)
-            self.plato = sk.Property(compute=self._plato)
-            self.set_dependencies("plato", depends_on=["malt", "volume"])
+            self.ductility = sk.Property(compute_value=self._ductility)
+            self.set_dependencies("ductility", depends_on=["diameter", "volume"])
 
-        def _plato(self):
+        def _ductility(self):
             runs[0] += 1
-            return self.malt.value / self.volume.value
+            return self.diameter.value / self.volume.value
 
     sample = Dense()
     sample.compute()
-    assert sample.plato.value == 3.0
-    sample.malt.value = 16.0
-    assert sample.plato.is_outdated
+    assert sample.ductility.value == 3.0
+    sample.diameter.value = 16.0
+    assert sample.ductility.is_outdated
     path = tmp_path / "strong.md"
     sample.save(path)
     assert runs == [1]
     reloaded = sk.Sample(path, model=False)
-    assert reloaded.plato.value == 3.0
-    assert reloaded.plato.is_outdated
+    assert reloaded.ductility.value == 3.0
+    assert reloaded.ductility.is_outdated
 
 
 def test_a_formula_reads_its_sample_while_a_computation_resolves_tables(tmp_path):
     class Conducting(sk.Sample):
         def __init__(self, path=None):
             super().__init__(path)
-            self.foam = sk.Property(2.0)
-            self.mashing = sk.Table(
-                {"T": sk.Column(), "R": sk.Column(), "G": sk.Column()},
-                "T",
+            self.wear = sk.Property(2.0)
+            self.preheating = sk.Table(
+                {
+                    "T": sk.Property(),
+                    "R": sk.Property(),
+                    "G": sk.Property(compute=lambda row: 1 / row.R.value / self.wear.value, depends_on=["row.R", "wear"]),
+                },
+                index="T",
                 rows=[{"T": 65, "R": 10.0}],
-                compute_rows=[
-                    ("G", ["row.R", "foam"], lambda row: 1 / row.R.value / self.foam.value)
-                ],
             )
 
     sample = Conducting()
     sample.compute()
     sample.save(tmp_path / "conducting.md")
-    assert sample.mashing.at(65, "G").value == pytest.approx(0.05)
+    assert sample.preheating.at(65, "G").value == pytest.approx(0.05)
 
     class Reaching(sk.Sample):
         def __init__(self, path=None):
             super().__init__(path)
-            self.other = sk.Table({"T": sk.Column()}, "T", rows=[{"T": 1}])
-            self.mashing = sk.Table(
-                {"T": sk.Column(), "G": sk.Column()},
-                "T",
+            self.other = sk.Table({"T": sk.Property()}, index="T", rows=[{"T": 1}])
+            self.preheating = sk.Table(
+                {
+                    "T": sk.Property(),
+                    "G": sk.Property(compute=lambda row: float(len(self.other)), depends_on=[]),
+                },
+                index="T",
                 rows=[{"T": 65}],
-                compute_rows=[("G", [], lambda row: float(len(self.other)))],
             )
 
     with pytest.raises(RuntimeError) as caught:
@@ -381,12 +384,12 @@ def test_a_sample_crossing_a_thread_is_refused():
     import threading
 
     sample = sk.Sample(name="t")
-    sample.malt = sk.Property(1.0)
+    sample.diameter = sk.Property(1.0)
     outcome = {}
 
     def read():
         try:
-            outcome["value"] = sample.malt.value
+            outcome["value"] = sample.diameter.value
         except BaseException as error:  # noqa: BLE001 - the point is its class
             outcome["error"] = error
 
@@ -397,40 +400,42 @@ def test_a_sample_crossing_a_thread_is_refused():
     assert type(error).__name__ == "PanicException"
     assert not isinstance(error, Exception)
     assert "unsendable" in str(error)
-    assert sample.malt.value == 1.0
+    assert sample.diameter.value == 1.0
 
 
 def test_a_date_python_cannot_hold_is_said(project):
     # The core holds a date of year 0; Python's dates begin in year 1, and its
     # own refusal named no date.
-    path = project.sample("y.md", name="Y", attributes={"brewed": "0000-01-01"})
+    path = project.sample("y.md", name="Y", attributes={"poured": "0000-01-01"})
     sample = sk.Sample(path)
     with pytest.raises(ValueError, match="0000-01-01 is a date Python cannot hold"):
-        sample.brewed
+        sample.poured
     assert sample.name == "Y"
 
 
-def test_a_row_formula_returning_a_pair_is_told_the_form():
-    # `(value, uncertainty)` is what a property's joint formula returns, and
-    # the natural thing to try in a row: it was refused as "a list is not one
-    # cell", with a traceback ending in the package and nothing of the model.
+def test_a_row_formula_returning_a_list_is_told_the_form():
+    # A cell is a number or `(value, uncertainty)`; a list is neither, and was
+    # refused with a traceback ending in the package and nothing of the model.
     def drop(row):
-        return (row.R.value * 2, 0.1)
+        return [row.R.value * 2, 0.1]
 
     class Pairing(sk.Sample):
         def __init__(self, path=None):
             super().__init__(path)
-            self.mashing = sk.Table(
-                {"T": sk.Column(), "R": sk.Column(), "G": sk.Column()},
-                "T",
+            self.preheating = sk.Table(
+                {
+                    "T": sk.Property(),
+                    "R": sk.Property(),
+                    "G": sk.Property(compute=drop, depends_on=["row.R"]),
+                },
+                index="T",
                 rows=[{"T": 65, "R": 10.0}],
-                compute_rows=[("G", ["row.R"], drop)],
             )
 
     with pytest.raises(TypeError) as caught:
         Pairing().compute()
     said = str(caught.value)
-    assert "a row formula returns one value, or sk.Property(value=…, uncertainty=…)" in said
-    assert "returned a tuple" in said
+    assert "a row formula returns one value: a number, or (value, uncertainty)" in said
+    assert "returned a list" in said
     # Named where the model writes it: the function and its file.
     assert "drop" in said and __file__ in said

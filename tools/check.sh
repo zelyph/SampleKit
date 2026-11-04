@@ -35,9 +35,9 @@ step "pytest"
 .venv/bin/python -m pytest -q
 
 step "docs and the demo"
-# Every link of the user guide, and every command it and the demo's steps
-# show, run against the demo built afresh; and examples/brewing,
-# committed and embedded in the binary, is that demo file for file.
+# Every link of the documentation, and every command it and the demo's steps
+# show, run against the demo built afresh; and examples/tensile, committed
+# and embedded in the binary, is that demo file for file.
 tools/check-docs.py
 
 step "the reference, generated"

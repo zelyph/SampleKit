@@ -3,7 +3,7 @@
 //! terminal.
 
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crossterm::event::{
@@ -30,6 +30,15 @@ pub fn run(root: &Path, start: bool) -> Result<(), String> {
 /// `run`, saying how it ended: quit by its keys, or interrupted by Ctrl+C —
 /// which the command line answers with its own interrupt status.
 pub fn run_until(root: &Path, start: bool) -> Result<Ended, String> {
+    // The TUI draws with its theme: the command line's palette, which paints
+    // text with escapes, stays off under it.
+    crate::presentation::terminal_rendering::set_palette(
+        crate::presentation::terminal_rendering::Palette::default(),
+    );
+    // A folder in no project that holds projects opens on the start page,
+    // which offers them: its setup's questions asked to make one more.
+    let start =
+        start || (start::project_at(root).is_none() && !start::projects_inside(root).is_empty());
     // Opened before the terminal is taken, so that what stops it reads as
     // any error does.
     let mut opened = if start {
@@ -54,6 +63,7 @@ pub fn run_until(root: &Path, start: bool) -> Result<Ended, String> {
         );
         reported(info);
     }));
+    let mut unkept: Vec<String> = Vec::new();
     let outcome = (|| {
         enable_raw_mode().map_err(|error| error.to_string())?;
         let mut out = io::stdout();
@@ -70,6 +80,7 @@ pub fn run_until(root: &Path, start: bool) -> Result<Ended, String> {
         // What the start page last opened: quitting a step of the demo comes
         // back to the demo's page.
         let mut last = None;
+        let unkept = &mut unkept;
         let ended = (|| {
             loop {
                 let mut workbench = match opened.take() {
@@ -80,7 +91,9 @@ pub fn run_until(root: &Path, start: bool) -> Result<Ended, String> {
                     },
                 };
                 let ended = session(&mut terminal, &mut workbench)?;
-                model::remember(&workbench);
+                if let Err(said) = model::remember(&workbench) {
+                    unkept.push(said);
+                }
                 // A project opened from the start page goes back there when it
                 // is quit, its configuration when it is left; Ctrl+C closes
                 // everything.
@@ -99,6 +112,11 @@ pub fn run_until(root: &Path, start: bool) -> Result<Ended, String> {
     // has no terminal to restore.
     drop(std::panic::take_hook());
     std::panic::set_hook(Box::new(move |info| previous(info)));
+    // What was not kept for the next session, said once the terminal is
+    // back: a state written nowhere was a session's settings lost unsaid.
+    for said in unkept {
+        eprintln!("warning: {said}");
+    }
     outcome
 }
 
@@ -131,6 +149,16 @@ fn start_page(
                 };
                 continue;
             }
+            StartStep::Show(folder) => {
+                page.message = match opening::open(&folder) {
+                    Ok(()) => format!(
+                        "opened {} — `cd` there to try the command line",
+                        folder.display()
+                    ),
+                    Err(error) => format!("{error} — `cd {}` to reach it", folder.display()),
+                };
+                continue;
+            }
             StartStep::Chosen(outcome) => outcome,
         };
         // A folder that does not open is said on the page, which stays.
@@ -157,6 +185,8 @@ pub enum StartStep {
     Ended(Ended),
     /// A web page to open in the browser.
     Browse(&'static str),
+    /// A folder to show in the file manager.
+    Show(PathBuf),
     /// A folder chosen, and what to do with it.
     Chosen(start::Outcome),
 }
@@ -191,6 +221,7 @@ pub fn start_event(page: &mut Start, event: &Event) -> StartStep {
     match page.key(key) {
         start::Effect::None => StartStep::Stay,
         start::Effect::Browse(url) => StartStep::Browse(url),
+        start::Effect::Show(folder) => StartStep::Show(folder),
         start::Effect::Done(start::Outcome::Quit) => StartStep::Ended(Ended::Quit),
         start::Effect::Done(outcome) => StartStep::Chosen(outcome),
     }
@@ -225,7 +256,8 @@ fn session(
         if (workbench.running.is_some()
             || workbench.drawing.is_some()
             || workbench.installing.is_some()
-            || workbench.planning.is_some())
+            || workbench.planning.is_some()
+            || workbench.scripting.is_some())
             && !event::poll(Duration::from_millis(100)).map_err(|error| error.to_string())?
         {
             workbench.tick();
@@ -234,6 +266,12 @@ fn session(
             if workbench.left() {
                 return Ok(ending(workbench));
             }
+            continue;
+        }
+        // Waiting for a key, the files are looked at once a second: one
+        // changed outside SampleKit is read again without a key pressed.
+        if !event::poll(Duration::from_secs(1)).map_err(|error| error.to_string())? {
+            workbench.catch_up();
             continue;
         }
         // Every key waiting is handled before the next frame: a held key
@@ -247,6 +285,7 @@ fn session(
                 break;
             }
         }
+        workbench.catch_up();
         workbench.tick();
         if workbench.left() {
             return Ok(ending(workbench));
@@ -357,11 +396,32 @@ fn handle(
                 Err(error) => error.to_string(),
             }
         }
+        Effect::OpenAddress(address) => {
+            workbench.message = match opening::open(std::path::Path::new(&address)) {
+                Ok(()) => format!("opened {address}"),
+                Err(error) => error.to_string(),
+            }
+        }
         Effect::Navigate(path) => {
             workbench.message = match opening::navigate(&path) {
                 Ok(folder) => format!("opened {}", folder.display()),
                 Err(error) => error.to_string(),
             }
+        }
+        // An editor of its own window leaves the screen drawn, saying what it
+        // waits for; what is typed meanwhile is the editor's, not the TUI's.
+        Effect::Editor(path) if let Some(editor) = opening::windowed_editor() => {
+            workbench.message = format!("waiting for {editor} to close");
+            let _ = terminal.draw(|frame| super::view::draw(frame, workbench));
+            let edited = opening::edit(&path);
+            while event::poll(Duration::ZERO).unwrap_or(false) {
+                let _ = event::read();
+            }
+            workbench.message = match edited {
+                Ok(()) => format!("edited {}", path.display()),
+                Err(error) => error.to_string(),
+            };
+            workbench.reload();
         }
         Effect::Editor(path) => {
             // The terminal is the editor's while it runs.

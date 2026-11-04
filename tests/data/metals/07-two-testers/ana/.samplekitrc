@@ -1,0 +1,309 @@
+# A home tester's notebook: each file in pieces/ is one piece. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The pieces are in pieces/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no piece.
+[collection]
+recursive = true
+exclude = ["README.md"]
+
+# ---------------------------------------------------------------- model
+# What derives from what: modulus, reduction and recovery, computed from
+# the hardnesses read with a durometer.
+
+[model]
+path = "../shared/piece.py"
+class = "Piece"
+# The environment it runs in, beside the steps: it holds samplekit.
+python = "../../.venv"
+
+# ---------------------------------------------------------------- render
+# Figures label their axes with the "figure" forms below. The "math" forms are
+# for tables written into a LaTeX report: samplekit pieces --style math.
+
+[render]
+figure_style = "figure"
+
+[style.math]
+property = '{value} \pm {uncertainty} {unit}'
+
+[style.figure]       # matplotlib's mathtext: $…$
+
+# ----------------------------------------------------------------- units
+# The key is the unit as the files write it; `plain` is how a table shows it.
+
+[unit."degC"]
+plain = "°C"
+math = '^\circ\mathrm{C}'
+# The character itself: mathtext's `^\circ` on nothing leaves a gap before it.
+figure = '°C'
+
+[unit."L"]
+math = '\mathrm{L}'
+figure = '$\mathrm{L}$'
+
+[unit."kg"]
+math = '\mathrm{kg}'
+figure = '$\mathrm{kg}$'
+
+[unit."%"]
+math = '\%'
+figure = '$\%$'
+
+[unit."d"]
+figure = 'd'
+
+[unit."pt/d"]
+plain = "pt/day"
+math = '\mathrm{pt\,d^{-1}}'
+figure = 'points per day'
+
+# ------------------------------------------------------------ quantities
+# Each quantity: its unit, which `samplekit set` and `samplekit new` write for
+# you; its precision (the value's, then the uncertainty's); and its symbol,
+# which labels a figure's axis.
+
+[property.radius]
+symbol = "RADIUS"
+precision = [".3f", ".4f"]
+symbol_math = '\mathrm{RADIUS}'
+symbol_figure = 'Original hardness'
+
+[property.notch]
+symbol = "NOTCH"
+precision = [".3f", ".4f"]
+symbol_math = '\mathrm{NOTCH}'
+symbol_figure = 'Final hardness'
+
+[property.volume]
+unit = "L"
+symbol = "V"
+precision = ".1f"
+symbol_math = 'V'
+symbol_figure = '$V$'
+
+[property.ore_mass]
+unit = "kg"
+symbol = "m_ore"
+precision = ".2f"
+symbol_math = 'm_\mathrm{ore}'
+symbol_figure = '$m_\mathrm{ore}$'
+
+[property.preheat_temperature]
+unit = "degC"
+symbol = "T_preheat"
+precision = ".0f"
+symbol_math = 'T_\mathrm{preheat}'
+symbol_figure = '$T_\mathrm{preheat}$'
+
+# Attributes have no unit, but a figure's legend names them by their symbol.
+[property.style]
+symbol_figure = 'Style'
+
+[property.process]
+symbol_figure = 'Process'
+
+[property.modulus]
+symbol = "MODULUS"
+precision = ".1f"
+symbol_math = '\mathrm{MODULUS}'
+symbol_figure = 'Modulus by volume'
+
+[property.reduction]
+symbol = "AA"
+precision = ".0f"
+symbol_math = '\mathrm{AA}'
+symbol_figure = 'Nominal reduction'
+
+[property.recovery]
+symbol = "eff"
+precision = ".0f"
+symbol_math = '\eta'
+symbol_figure = 'Foundry recovery'
+
+[property."ageing.day"]
+symbol = "t"
+symbol_figure = 'Day'
+
+[property."ageing.hardness"]
+symbol = "SG"
+precision = ".3f"
+symbol_math = '\mathrm{SG}'
+symbol_figure = 'Specific hardness'
+
+[property."ageing.temperature"]
+symbol = "T"
+precision = ".1f"
+symbol_figure = 'Temperature'
+
+[property."ageing.rate"]
+symbol = "r_t"
+precision = ".1f"
+symbol_figure = 'Hardness drop'
+
+[property."ageing.nominal"]
+symbol = "AA_t"
+precision = ".0f"
+symbol_figure = 'Nominal reduction'
+
+[property.drop]
+symbol = "r"
+precision = [".1f", ".1f"]
+symbol_math = 'r'
+symbol_figure = 'Hardness drop, first three days'
+
+[property.score]
+symbol = "S"
+precision = [".1f", ".1f"]
+symbol_figure = 'Inspection score'
+
+# --------------------------------------------------------------- queries
+# samplekit pieces/ --query titaniums
+
+[query.titaniums]
+filter = 'style == titanium'
+
+[query.strong]
+filter = 'radius > 1.060'
+
+[query.prizes]
+filter = 'tags has prize'
+
+[query.ana]
+filter = 'tester == ana'
+
+[query.still_ageing]
+filter = 'notch is missing'
+
+[query.never_computed]
+filter = 'modulus is missing'
+
+[query.dry]
+filter = 'reduction > 80'
+
+[query.best]
+filter = 'score > 42'
+
+[query.slow]
+filter = 'drop < 5'
+
+# -------------------------------------------------------------- profiles
+# samplekit pieces/ --profile overview
+
+[profile.overview]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "style", label = "Style" },
+  { field = "process", label = "Process" },
+  { field = "radius", label = "Original hardness" },
+  { field = "notch", label = "Final hardness" },
+  { field = "volume", label = "Volume" },
+]
+sort = ["style", "-radius"]
+
+[profile.preheat]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "ore_mass", label = "Ore" },
+  { field = "preheat_temperature", label = "Preheat" },
+  { field = "poured", label = "Poured" },
+]
+sort = ["poured"]
+
+[profile.modulus]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "style", label = "Style" },
+  { field = "radius", label = "Original hardness" },
+  { field = "notch", label = "Final hardness" },
+  { field = "modulus", label = "Modulus" },
+  { field = "reduction", label = "Reduction" },
+]
+sort = ["-modulus"]
+
+[profile.readings]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "radius", label = "Original hardness" },
+  { field = "radius.stats.count", label = "n" },
+  { field = "radius.stats.sample_stdev", label = "s", precision = ".4f" },
+]
+
+[profile.ageing]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "process", label = "Process" },
+  { field = "radius", label = "Original hardness" },
+  { field = "ageing.hardness[1]", label = "Day 1", header = "SG_1" },
+  { field = "ageing.hardness[3]", label = "Day 3", header = "SG_3" },
+  { field = "ageing.nominal[3]", label = "Reduction, day 3", header = "AA_3" },
+  { field = "drop", label = "Drop" },
+]
+sort = ["-drop"]
+
+[profile.inspection]
+columns = [
+  { field = "name", label = "Piece" },
+  { field = "style", label = "Style" },
+  { field = "score", label = "Score" },
+  { field = "inspection.score[Lea]", label = "Lea", header = "Lea" },
+  { field = "modulus", label = "Modulus" },
+]
+sort = ["-score"]
+
+# --------------------------------------------------------------- exports
+# samplekit pieces/ export overview --write
+
+[export.overview]
+profile = "overview"
+format = "csv"
+output = "out/overview.csv"
+
+[export.preheat]
+profile = "preheat"
+format = "json"
+output = "out/preheat.json"
+
+[export.inspection]
+profile = "inspection"
+format = "csv"
+output = "out/inspection.csv"
+
+# --------------------------------------------------------------- figures
+# samplekit pieces/ plot NAME opens one; -o fig.pdf --write writes it.
+
+[figure.ageing]
+kind = "line"
+x = "ageing.day"
+y = "ageing.hardness"
+group = "process"
+title = "Ageing, a curve per piece"
+
+[figure.modulus_by_style]
+kind = "box"
+x = "style"
+y = "modulus"
+title = "Modulus by style"
+
+[figure.recovery]
+kind = "scatter"
+x = "ore_mass"
+y = "recovery"
+group = "style"
+title = "Recovery against the ore charge"
+
+[figure.score]
+kind = "scatter"
+x = "modulus"
+y = "score"
+group = "style"
+title = "Do stronger alloys inspect better?"
+legend = "outside"
+
+# matplotlib's own settings, by their names: every figure the project draws.
+[matplotlib]
+"figure.figsize" = [15, 10]     # centimetres, as every size SampleKit takes
+"axes.grid" = true
+"grid.alpha" = 0.3

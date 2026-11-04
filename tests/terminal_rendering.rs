@@ -100,9 +100,19 @@ fn truncation_does_not_split_a_grapheme() {
 #[test]
 fn truncation_is_marked() {
     // Never a silent cut.
-    let cut = render::truncate("a very long beer name", 10);
+    let cut = render::truncate("a very long alloy name", 10);
     assert!(cut.ends_with('…'), "{cut}");
     assert_eq!(render::truncate("short", 10), "short");
+}
+
+#[test]
+fn a_painted_cell_is_cut_by_what_it_shows() {
+    // An escape counted as text cut a coloured cell short, and could end the
+    // cut inside it.
+    let painted = "\u{1b}[1mabcdefghij\u{1b}[0m";
+    let cut = render::truncate(painted, 6);
+    assert_eq!(render::width(&cut), 6, "{cut:?}");
+    assert_eq!(cut, "\u{1b}[1mabcde…\u{1b}[0m");
 }
 
 // ------------------------------------------------------------- terminal vs pipe
@@ -112,7 +122,7 @@ fn pipe_output_has_no_escapes() {
     // Not even when colour would be enabled: a script parsing this must not
     // receive an escape sequence.
     let out = render::table(
-        headers(&["name", "brix"]),
+        headers(&["name", "porosity"]),
         rows(&[&["A", "2.8"]]),
         Target::Pipe,
         Style::Plain,
@@ -150,8 +160,8 @@ fn narrow_terminal_does_not_reduce_precision() {
     // and the window size has no bearing on it.
     let cell = "12.487000";
     let out = render::table(
-        headers(&["name", "malt"]),
-        rows(&[&["a-very-long-cask-name-here", cell]]),
+        headers(&["name", "diameter"]),
+        rows(&[&["a-very-long-slab-name-here", cell]]),
         Target::Terminal { width: 30 },
         Style::Plain,
     );
@@ -183,13 +193,13 @@ fn decimal_alignment_lines_up_points() {
 fn a_style_adds_a_border_and_never_a_digit() {
     // Boxed and plain differ in their frame and agree on every cell.
     let plain = render::table(
-        headers(&["name", "brix"]),
+        headers(&["name", "porosity"]),
         rows(&[&["A", "2.8014"], &["B", "2.7991"]]),
         wide(),
         Style::Plain,
     );
     let boxed = render::table(
-        headers(&["name", "brix"]),
+        headers(&["name", "porosity"]),
         rows(&[&["A", "2.8014"], &["B", "2.7991"]]),
         wide(),
         Style::Boxed,
@@ -219,7 +229,7 @@ impl Drop for Fixture {
     }
 }
 
-/// One cask with a malt, a volume it has no value for, and a mashing
+/// One slab with a diameter, a volume it has no value for, and a preheating
 /// table — enough for every view kind.
 fn fixture(name: &str) -> Fixture {
     let directory = dunce::canonicalize(std::env::temp_dir())
@@ -229,43 +239,43 @@ fn fixture(name: &str) -> Fixture {
     fs::create_dir_all(&directory).unwrap();
 
     let mut sample = Sample::new();
-    sample.set_name(Some("Keg 42".to_string()));
+    sample.set_name(Some("Billet 42".to_string()));
     sample.set_note("Measured after drying for 24 hours.\n".to_string());
 
-    let mut malt = Property::stored(number(12.5));
-    malt.set_uncertainty(Some(Uncertainty::new(0.05).unwrap()));
-    malt.set_presentation(Presentation {
+    let mut diameter = Property::stored(number(12.5));
+    diameter.set_uncertainty(Some(Uncertainty::new(0.05).unwrap()));
+    diameter.set_presentation(Presentation {
         unit: Some("g".to_string()),
         symbol: Some("m".to_string()),
         precision: Some(Precision::both(".2f").unwrap()),
     });
-    sample.set_property(id("malt"), malt).unwrap();
+    sample.set_property(id("diameter"), diameter).unwrap();
 
-    let mut wort = Property::stored(number(104.221));
-    wort.set_presentation(Presentation {
+    let mut tension = Property::stored(number(104.221));
+    tension.set_presentation(Presentation {
         unit: Some("lintner".to_string()),
         symbol: None,
         precision: Some(Precision::both(".3f").unwrap()),
     });
-    let mut mashing = Table::new(
-        id("mashing"),
+    let mut preheating = Table::new(
+        id("preheating"),
         vec![id("temperature")],
-        ["temperature", "wort"]
+        ["temperature", "tension"]
             .iter()
             .map(|n| (id(n), ColumnMeta::default()))
             .collect::<indexmap::IndexMap<_, _>>(),
         Vec::new(),
     )
     .unwrap();
-    mashing
+    preheating
         .add_row(vec![
             (id("temperature"), Property::stored(number(78.5))),
-            (id("wort"), wort),
+            (id("tension"), tension),
         ])
         .unwrap();
-    sample.set_table(id("mashing"), mashing).unwrap();
+    sample.set_table(id("preheating"), preheating).unwrap();
 
-    let path = directory.join("keg.md");
+    let path = directory.join("billet.md");
     let vocabulary = Vocabulary::of(&sample);
     Fixture {
         sample,
@@ -333,10 +343,16 @@ fn an_explicit_channel_renders_only_that_channel() {
     let fixture = fixture("explicit-channels");
     let profile = config::Profile {
         name: "channels".to_string(),
-        columns: ["malt", "malt.v", "malt.u", "malt.unit", "malt.symbol"]
-            .into_iter()
-            .map(|field| entry(field, None, None, None))
-            .collect(),
+        columns: [
+            "diameter",
+            "diameter.v",
+            "diameter.u",
+            "diameter.unit",
+            "diameter.symbol",
+        ]
+        .into_iter()
+        .map(|field| entry(field, None, None, None))
+        .collect(),
         sort: Vec::new(),
         group: Vec::new(),
     };
@@ -349,11 +365,11 @@ fn an_explicit_channel_renders_only_that_channel() {
     assert_eq!(
         render::columns(&profile, &[subject], None, None),
         [
-            "malt [g]",
-            "malt.v [g]",
-            "malt.u [g]",
-            "malt.unit",
-            "malt.symbol",
+            "diameter [g]",
+            "diameter.v [g]",
+            "diameter.u [g]",
+            "diameter.unit",
+            "diameter.symbol",
         ]
     );
 }
@@ -366,8 +382,8 @@ fn a_profile_row_renders_in_column_order() {
     let profile = config::Profile {
         name: "p".to_string(),
         columns: vec![
-            entry("wort", None, None, None),
-            entry("malt", None, None, None),
+            entry("tension", None, None, None),
+            entry("diameter", None, None, None),
             entry("volume", None, None, None),
         ],
         sort: Vec::new(),
@@ -375,7 +391,7 @@ fn a_profile_row_renders_in_column_order() {
     };
     let cells = render::row(&profile, &subject(&fixture), None, None);
     assert_eq!(cells.len(), 3);
-    // `wort` is a table column, not a property: a bare name addresses
+    // `tension` is a table column, not a property: a bare name addresses
     // the property, so this sample has nothing under it.
     assert_eq!(cells[0], "\u{2014}");
     // One cell for the whole quantity, and no unit in it.
@@ -390,12 +406,12 @@ fn a_header_carries_the_unit_when_the_samples_agree() {
     let grams = fixture("header-unit");
     let profile = config::Profile {
         name: "p".to_string(),
-        columns: vec![entry("malt", Some("Malt"), None, None)],
+        columns: vec![entry("diameter", Some("Diameter"), None, None)],
         sort: Vec::new(),
         group: Vec::new(),
     };
     let headers = render::columns(&profile, &[subject(&grams)], None, None);
-    assert_eq!(headers, ["Malt [g]"]);
+    assert_eq!(headers, ["Diameter [g]"]);
 
     let mut other = fixture("header-unit-other");
     let mut kilograms = Property::stored(number(0.0125));
@@ -404,33 +420,36 @@ fn a_header_carries_the_unit_when_the_samples_agree() {
         symbol: None,
         precision: None,
     });
-    other.sample.set_property(id("malt"), kilograms).unwrap();
+    other
+        .sample
+        .set_property(id("diameter"), kilograms)
+        .unwrap();
     let disagreeing = render::columns(&profile, &[subject(&grams), subject(&other)], None, None);
-    assert_eq!(disagreeing, ["Malt"]);
+    assert_eq!(disagreeing, ["Diameter"]);
 }
 
 #[test]
 fn a_value_with_no_unit_takes_the_unit_off_the_header() {
-    // `5` beside rows in kg was shown under `Malt [kg]`, and read as five
+    // `5` beside rows in kg was shown under `Diameter [kg]`, and read as five
     // kilograms whatever it was written in. A row with no value is no
     // evidence either way.
     let grams = fixture("header-unit-missing");
     let profile = config::Profile {
         name: "p".to_string(),
-        columns: vec![entry("malt", Some("Malt"), None, None)],
+        columns: vec![entry("diameter", Some("Diameter"), None, None)],
         sort: Vec::new(),
         group: Vec::new(),
     };
     let mut bare = fixture("header-unit-bare");
     bare.sample
-        .set_property(id("malt"), Property::stored(number(5.0)))
+        .set_property(id("diameter"), Property::stored(number(5.0)))
         .unwrap();
     let headers = render::columns(&profile, &[subject(&grams), subject(&bare)], None, None);
-    assert_eq!(headers, ["Malt"]);
+    assert_eq!(headers, ["Diameter"]);
     let mut empty = fixture("header-unit-empty");
-    empty.sample.remove_property(&id("malt")).ok();
+    empty.sample.remove_property(&id("diameter")).ok();
     let headers = render::columns(&profile, &[subject(&grams), subject(&empty)], None, None);
-    assert_eq!(headers, ["Malt [g]"]);
+    assert_eq!(headers, ["Diameter [g]"]);
 }
 
 #[test]
@@ -515,7 +534,7 @@ fn one_quantity_renders_with_its_unit_beside_it() {
     let path: PathBuf = dir.join(".samplekitrc");
     fs::write(
         &path,
-        "schema_version = 1\n\n[unit.\"g/L\"]\nplain = \"g/L\"\n\n[property.brix]\nprecision = \".3f\"\n",
+        "schema_version = 1\n\n[unit.\"g/L\"]\nplain = \"g/L\"\n\n[property.porosity]\nprecision = \".3f\"\n",
     )
     .unwrap();
     let project = config::load(&path).unwrap();
@@ -526,7 +545,7 @@ fn one_quantity_renders_with_its_unit_beside_it() {
         ..Presentation::default()
     };
     let value = number(2.1523);
-    let uncertainty = Uncertainty::new(0.0004).unwrap();
+    let uncertainty = Uncertainty::new(0.0006).unwrap();
     // The project's unit variant and precision, the uncertainty rounded as
     // declared like the value.
     assert_eq!(
@@ -534,11 +553,11 @@ fn one_quantity_renders_with_its_unit_beside_it() {
             &value,
             Some(&uncertainty),
             &presentation,
-            "brix",
+            "porosity",
             Some(&project),
             None
         ),
-        "2.152 ± 0.000 g/L"
+        "2.152 ± 0.001 g/L"
     );
     // A column precision overrides the project's.
     assert_eq!(
@@ -546,11 +565,11 @@ fn one_quantity_renders_with_its_unit_beside_it() {
             &value,
             Some(&uncertainty),
             &presentation,
-            "brix",
+            "porosity",
             Some(&project),
             Some(&Precision::both(".2f").unwrap())
         ),
-        "2.15 ± 0.00 g/L"
+        "2.15 ± 0.01 g/L"
     );
     // A text value ignores a precision, and an absent one is left to the caller.
     assert_eq!(
@@ -558,7 +577,7 @@ fn one_quantity_renders_with_its_unit_beside_it() {
             &Value::text("Maris Otter"),
             None,
             &Presentation::default(),
-            "beer",
+            "alloy",
             None,
             Some(&Precision::both(".2f").unwrap())
         ),
@@ -596,8 +615,8 @@ fn a_text_column_header_reads_from_the_left() {
 fn truncate_middle_keeps_both_ends() {
     use samplekit::presentation::terminal_rendering::truncate_middle;
     assert_eq!(truncate_middle("BR-04", 10), "BR-04");
-    let cut = truncate_middle("vintage-2026-brewday-04", 11);
-    assert!(cut.starts_with("vinta") && cut.ends_with("ay-04"), "{cut}");
+    let cut = truncate_middle("heat-2026-testday-04", 11);
+    assert!(cut.starts_with("heat-") && cut.ends_with("ay-04"), "{cut}");
     assert!(cut.contains('\u{2026}'), "{cut}");
 }
 
@@ -605,7 +624,7 @@ fn truncate_middle_keeps_both_ends() {
 fn the_identity_column_is_greyed_whole() {
     use samplekit::presentation::terminal_rendering::{Style, Target, table_identified};
     let out = table_identified(
-        vec!["name".to_string(), "malt".to_string()],
+        vec!["name".to_string(), "diameter".to_string()],
         vec![
             vec!["A".to_string(), "1.0".to_string()],
             vec!["B".to_string(), "2.0".to_string()],
@@ -646,7 +665,11 @@ fn a_long_label_wraps_before_a_column_is_hidden() {
 fn the_columns_a_table_keeps_wrap_rather_than_hide() {
     let out = render::table_keeping(
         headers(&["sample", "value", "state"]),
-        rows(&[&["english-pale", "efficiency", "edited since it was computed"]]),
+        rows(&[&[
+            "english-bronze",
+            "recovery",
+            "edited — typed over its formula",
+        ]]),
         Target::Terminal { width: 30 },
         Style::Plain,
         3,
@@ -661,7 +684,7 @@ fn the_columns_a_table_keeps_wrap_rather_than_hide() {
 fn a_number_is_never_truncated_columns_are_hidden_instead() {
     // Numbers alone too wide: a text column would have wrapped first.
     let out = render::table(
-        headers(&["name", "malt", "brix"]),
+        headers(&["name", "diameter", "porosity"]),
         rows(&[&["S1", "12.487000", "2.8014"]]),
         Target::Terminal { width: 18 },
         Style::Plain,
@@ -681,10 +704,10 @@ fn a_number_is_never_truncated_columns_are_hidden_instead() {
 fn a_table_is_its_layout_drawn() {
     let at = |width: usize| {
         let target = Target::Terminal { width };
-        let head = headers(&["name", "beer", "malt", "brix"]);
+        let head = headers(&["name", "alloy", "diameter", "porosity"]);
         let body = rows(&[
-            &["S1", "altbier strain", "12.487000", "2.8014"],
-            &["S2", "gueuze", "3.10", "5.6800"],
+            &["S1", "alumina strain", "12.487000", "2.8014"],
+            &["S2", "galena", "3.10", "5.6800"],
         ]);
         let drawn = render::draw(
             &render::lay_out(head.clone(), body.clone(), target, Style::Plain, 0, false),
@@ -704,7 +727,7 @@ fn a_table_is_its_layout_drawn() {
 #[test]
 fn the_layout_says_what_it_dropped_and_how_wide() {
     let layout = render::lay_out(
-        headers(&["name", "malt", "brix"]),
+        headers(&["name", "diameter", "porosity"]),
         rows(&[&["S1", "12.487000", "2.8014"]]),
         Target::Terminal { width: 18 },
         Style::Plain,
@@ -712,7 +735,7 @@ fn the_layout_says_what_it_dropped_and_how_wide() {
         false,
     );
     assert_eq!(layout.hidden, 1, "{layout:?}");
-    assert_eq!(layout.headers, ["name", "malt"], "{layout:?}");
+    assert_eq!(layout.headers, ["name", "diameter"], "{layout:?}");
     assert_eq!(layout.widths.len(), 2, "{layout:?}");
     assert_eq!(layout.alignment.len(), 2, "{layout:?}");
     // A number is never narrowed, so its column keeps what it holds.
@@ -731,7 +754,7 @@ fn a_mark_is_composed_once() {
     use samplekit::format::fingerprint::Freshness;
 
     let stale = Freshness::Stale {
-        changed: vec![samplekit::core::property::InputName::Named(id("malt"))],
+        changed: vec![samplekit::core::property::InputName::Named(id("diameter"))],
         upstream: Vec::new(),
     };
     assert_eq!(render::with_mark("1.93", &stale, false), "1.93 ⚠");
@@ -765,26 +788,27 @@ fn a_mark_is_composed_once() {
 #[test]
 fn a_cell_rounds_at_its_declared_precision() {
     // A table on a screen rounds as its export does. At `.0f` the fixture's
-    // `0.05` is `0`, in a cell and in a `.u` column alike.
+    // `0.05` is `1`, in a cell and in a `.u` column alike: an uncertainty is
+    // rounded up, never written as zero.
     let fixture = fixture("rounded");
     let profile = config::Profile {
         name: "rounded".to_string(),
         columns: vec![
-            entry("malt", None, Some(".0f"), None),
-            entry("malt.u", None, Some(".0f"), None),
+            entry("diameter", None, Some(".0f"), None),
+            entry("diameter.u", None, Some(".0f"), None),
         ],
         sort: Vec::new(),
         group: Vec::new(),
     };
     let row = render::row(&profile, &subject(&fixture), None, None);
-    assert!(row[0].ends_with("\u{b1} 0"), "{row:?}");
-    assert_eq!(row[1], "0");
+    assert!(row[0].ends_with("\u{b1} 1"), "{row:?}");
+    assert_eq!(row[1], "1");
 }
 
 #[test]
 fn a_progress_line_never_exceeds_the_terminal_width() {
     use samplekit::presentation::terminal_rendering::{progress_line, width};
-    let text = "sample 12/75 · 30/41 · fermentation_cold.rate_fit · oatmeal-stout-second-batch";
+    let text = "sample 12/75 · 30/41 · ageing_cold.rate_fit · oxidised-nickel-second-batch";
     for columns in [24, 40, 60, 80, 200] {
         let line = progress_line(0.4, text, "3m09s", columns);
         assert!(width(&line) < columns, "{columns}: {line}");
@@ -807,10 +831,14 @@ fn a_progress_line_keeps_the_bar_and_the_time() {
 
 #[test]
 fn a_text_column_gives_way_before_a_column_is_hidden() {
-    // The long beer narrows and wraps, and the number stays shown.
+    // The long alloy narrows and wraps, and the number stays shown.
     let out = render::table(
-        headers(&["name", "beer", "brix"]),
-        rows(&[&["keg-01", "altbier ninety nine point five percent", "2.8014"]]),
+        headers(&["name", "alloy", "porosity"]),
+        rows(&[&[
+            "billet-01",
+            "alumina ninety nine point five percent",
+            "2.8014",
+        ]]),
         Target::Terminal { width: 40 },
         Style::Plain,
     );
@@ -824,10 +852,10 @@ fn a_text_column_gives_way_before_a_column_is_hidden() {
 fn a_text_cell_wraps_instead_of_being_cut() {
     // What SampleKit says is never cut: a long state wraps under itself, and
     // the other columns are not repeated.
-    let state = "stale — fermentation.gravity (itself stale), drop (itself stale) (8 rows)";
+    let state = "stale — ageing.hardness (itself stale), drop (itself stale) (8 rows)";
     let out = render::table(
         headers(&["sample", "value", "state"]),
-        rows(&[&["citra-ipa-first-batch", "fermentation.rate", state]]),
+        rows(&[&["alpha-titanium-first-batch", "ageing.rate", state]]),
         Target::Terminal { width: 90 },
         Style::Plain,
     );
@@ -837,7 +865,7 @@ fn a_text_cell_wraps_instead_of_being_cut() {
     assert!(body.len() >= 2, "{out}");
     assert_eq!(
         body.iter()
-            .filter(|line| line.contains("citra-ipa-first-batch"))
+            .filter(|line| line.contains("alpha-titanium-first-batch"))
             .count(),
         1,
         "{out}"
@@ -863,7 +891,7 @@ fn every_added_column_is_greyed() {
         vec![
             "name".to_string(),
             "project".to_string(),
-            "malt".to_string(),
+            "diameter".to_string(),
         ],
         vec![
             vec!["A".to_string(), "one".to_string(), "1.0".to_string()],
@@ -901,9 +929,9 @@ fn a_list_attribute_renders_its_items() {
     let mut sample = Sample::new();
     sample
         .set_attribute(
-            id("adjuncts"),
+            id("additives"),
             samplekit::core::sample::AttributeValue::list(vec![
-                Value::text("oats"),
+                Value::text("flux"),
                 Value::text("FEC"),
             ])
             .unwrap(),
@@ -918,29 +946,29 @@ fn a_list_attribute_renders_its_items() {
     };
     let view = definition(Vec::new());
     let shown = render::cell(
-        &entry("adjuncts", None, None, None),
+        &entry("additives", None, None, None),
         &subject,
         render::Declaration::Profile(&view),
         None,
         None,
         false,
     );
-    assert_eq!(shown, "oats, FEC");
+    assert_eq!(shown, "flux, FEC");
 }
 
 #[test]
 fn a_count_ignores_the_quantity_precision() {
     let mut sample = Sample::new();
-    let mut foam = Property::measured(
+    let mut wear = Property::measured(
         samplekit::core::value::Readings::new(vec![2.011, 2.017, 2.013]).unwrap(),
         None,
     );
-    foam.set_presentation(Presentation {
+    wear.set_presentation(Presentation {
         unit: Some("mm".to_string()),
         symbol: None,
         precision: Some(Precision::both(".2f").unwrap()),
     });
-    sample.set_property(id("foam"), foam).unwrap();
+    sample.set_property(id("wear"), wear).unwrap();
     let vocabulary = Vocabulary::of(&sample);
     let subject = Subject {
         sample: &sample,
@@ -959,21 +987,21 @@ fn a_count_ignores_the_quantity_precision() {
             false,
         )
     };
-    assert_eq!(shown("foam.stats.count", None), "3");
-    assert_eq!(shown("foam.stats.count", Some(".1f")), "3.0");
-    assert!(shown("foam.stats.mean", None).starts_with("2.01"));
+    assert_eq!(shown("wear.stats.count", None), "3");
+    assert_eq!(shown("wear.stats.count", Some(".1f")), "3.0");
+    assert!(shown("wear.stats.mean", None).starts_with("2.01"));
 }
 
 #[test]
 fn a_template_does_not_alter_the_stored_value() {
     // Presentation stays non-destructive.
     let fixture = fixture("non-destructive");
-    let view = definition(vec![entry("malt", None, None, Some("{value:.0f}"))]);
+    let view = definition(vec![entry("diameter", None, None, Some("{value:.0f}"))]);
     let out = rendered(&subject(&fixture), &view, None, None);
     assert!(out.contains("13") || out.contains("12"), "{out}");
     let stored = fixture
         .sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .value()
         .unwrap();
@@ -992,13 +1020,18 @@ fn a_template_uses_the_resolved_variant() {
     fs::write(
         &path,
         "schema_version = 1\n[render]\nstyle = \"math\"\n\
-         [unit.g]\nmath = \"\\\\mathrm{g}\"\n[style.math]\nseparator = \"\\\\pm\"\n",
+         [unit.g]\nmath = \"\\\\mathrm{g}\"\n[style.math]\nproperty = '{value} \\pm {uncertainty} {unit}'\n",
     )
     .unwrap();
     let loaded = config::load(&path).unwrap();
 
     let fixture = fixture("resolved");
-    let view = definition(vec![entry("malt", None, None, Some("{value:.2f} {unit}"))]);
+    let view = definition(vec![entry(
+        "diameter",
+        None,
+        None,
+        Some("{value:.2f} {unit}"),
+    )]);
     let out = rendered(&subject(&fixture), &view, Some(&loaded), None);
     assert!(out.contains("\\mathrm{g}"), "{out}");
     let _ = fs::remove_dir_all(&directory);
@@ -1010,7 +1043,7 @@ fn a_brace_that_names_nothing_is_text() {
     // has one, and so does a mistyped name. Both come out as written.
     let fixture = fixture("literal-braces");
     let view = definition(vec![entry(
-        "malt",
+        "diameter",
         None,
         None,
         Some("{value:.1f}\\,\\mathrm{g} {oops}"),
@@ -1024,16 +1057,16 @@ fn a_brace_that_names_nothing_is_text() {
 #[test]
 fn a_template_keeps_the_declared_rounding() {
     // A template is pasted into a document, where `<1` is not a number: it
-    // gets the rounding it asked for.
+    // gets the precision it asked for, the uncertainty rounded up.
     let fixture = fixture("template-rounding");
     let view = definition(vec![entry(
-        "malt",
+        "diameter",
         None,
         None,
         Some("{value:.2f} +- {uncertainty:.0f}"),
     )]);
     let out = rendered(&subject(&fixture), &view, None, None);
-    assert!(out.contains("12.50 +- 0"), "{out}");
+    assert!(out.contains("12.50 +- 1"), "{out}");
     assert!(!out.contains('<'), "{out}");
 }
 
@@ -1042,7 +1075,7 @@ fn a_template_fills_value_and_uncertainty() {
     // The nominal LaTeX case.
     let fixture = fixture("latex");
     let view = definition(vec![entry(
-        "malt",
+        "diameter",
         None,
         None,
         Some("\\num{{value:.2f}} \\pm \\num{{uncertainty:.2f}}"),
@@ -1056,7 +1089,7 @@ fn a_template_replaces_the_default_rendering() {
     // And only for the column that declares one.
     let fixture = fixture("template");
     let view = definition(vec![
-        entry("malt", None, None, Some("[{value:.1f}]")),
+        entry("diameter", None, None, Some("[{value:.1f}]")),
         entry("volume", None, None, None),
     ]);
     let out = rendered(&subject(&fixture), &view, None, None);
@@ -1078,7 +1111,7 @@ fn a_missing_property_is_an_absent_cell() {
 fn a_quantity_is_one_cell_at_a_terminal() {
     // `12.50 ± 0.05` in one column; the split into two is the export's.
     let fixture = fixture("quantity");
-    let view = definition(vec![entry("malt", None, None, None)]);
+    let view = definition(vec![entry("diameter", None, None, None)]);
     let out = rendered(&subject(&fixture), &view, None, None);
     assert!(out.contains("12.50 ± 0.05"), "{out}");
 }
@@ -1088,7 +1121,7 @@ fn a_column_with_nothing_behind_it_renders_as_absent() {
     // Rather than being skipped, so the layout does not shift.
     let fixture = fixture("absent-entry");
     let view = definition(vec![
-        entry("malt", None, None, None),
+        entry("diameter", None, None, None),
         entry("volume", None, None, None),
     ]);
     let out = rendered(&subject(&fixture), &view, None, None);
@@ -1105,9 +1138,9 @@ fn a_sample_is_shown_whole_its_note_on_request() {
         .join(format!("samplekit-sheet-{}.md", std::process::id()));
     fs::write(
         &path,
-        "---\nschema_version: 1\nname: W\nbeer: bock\nproperties:\n  malt: {v: 9.0, u: 0.1, unit: g}\n\
+        "---\nschema_version: 1\nname: W\nalloy: chrome\nproperties:\n  diameter: {v: 9.0, u: 0.1, unit: g}\n\
          tables:\n  runs:\n    index: run\n    columns:\n      run: {}\n      load: {unit: N}\n    rows:\n      \
-         - run: 1\n        load: 3.5\n---\nHopped  twice.\n",
+         - run: 1\n        load: 3.5\n---\nTreated  twice.\n",
     )
     .unwrap();
     let (sample, _) = samplekit::format::document::load_sample(&path).unwrap();
@@ -1119,11 +1152,23 @@ fn a_sample_is_shown_whole_its_note_on_request() {
         vocabulary: &vocabulary,
         states: None,
     };
-    let shown = render::sheet(&subject, None, None, None, Target::Pipe, false);
+    let shown = render::sheet(
+        &subject,
+        None,
+        None,
+        None,
+        Target::Pipe,
+        false,
+        Style::Plain,
+        None,
+    );
     let lines: Vec<&str> = shown.lines().collect();
     assert_eq!(lines[0], "W", "{shown}");
-    let beer = lines.iter().position(|line| line.contains("bock")).unwrap();
-    let malt = lines
+    let alloy = lines
+        .iter()
+        .position(|line| line.contains("chrome"))
+        .unwrap();
+    let diameter = lines
         .iter()
         .position(|line| line.contains("± 0.1"))
         .unwrap();
@@ -1131,22 +1176,31 @@ fn a_sample_is_shown_whole_its_note_on_request() {
         .iter()
         .position(|line| line.contains("runs · 1 row"))
         .unwrap();
-    assert!(beer < malt && malt < table, "{shown}");
+    assert!(alloy < diameter && diameter < table, "{shown}");
     assert!(
         shown.contains("load [N]") && shown.contains("3.5"),
         "{shown}"
     );
-    assert!(!shown.contains("Hopped"), "{shown}");
-    let noted = render::sheet(&subject, None, None, None, Target::Pipe, true);
-    assert!(noted.ends_with("Hopped  twice.\n"), "{noted}");
+    assert!(!shown.contains("Treated"), "{shown}");
+    let noted = render::sheet(
+        &subject,
+        None,
+        None,
+        None,
+        Target::Pipe,
+        true,
+        Style::Plain,
+        None,
+    );
+    assert!(noted.ends_with("Treated  twice.\n"), "{noted}");
 }
 
 #[test]
 fn an_added_column_gives_way_before_an_asked_one_is_hidden() {
     // A `project` column the terminal added, kept whole while columns asked
     // for were hidden, laid the table out for the terminal's sake.
-    let headers = headers(&["project", "name", "yeast_strain", "loading", "malt"]);
-    let rows = rows(&[&["cellar/kegs", "BR-01", "WLP001", "8.40", "9.50 ± 0.014"]]);
+    let headers = headers(&["project", "name", "process_strain", "loading", "diameter"]);
+    let rows = rows(&[&["cellar/billets", "BR-01", "WQ-001", "8.40", "9.50 ± 0.014"]]);
     let narrow = render::lay_out(
         headers.clone(),
         rows.clone(),
@@ -1180,13 +1234,13 @@ fn column_of(out: &str, text: &str) -> usize {
 
 #[test]
 fn only_a_number_is_aligned_as_one() {
-    // `12 samples, dry-stout` was a number because its first word was, and
+    // `12 samples, dry-nickel` was a number because its first word was, and
     // its column aligned on a point it did not have.
     let out = render::table(
         headers(&["#", "changed"]),
         rows(&[
             &["1", "12 samples, .samplekitrc"],
-            &["2", "dry-stout"],
+            &["2", "dry-nickel"],
             &["3", "4 samples"],
         ]),
         wide(),
@@ -1194,12 +1248,12 @@ fn only_a_number_is_aligned_as_one() {
     );
     assert_eq!(
         column_of(&out, "12 samples"),
-        column_of(&out, "dry-stout"),
+        column_of(&out, "dry-nickel"),
         "{out}"
     );
     assert_eq!(
         column_of(&out, "4 samples"),
-        column_of(&out, "dry-stout"),
+        column_of(&out, "dry-nickel"),
         "{out}"
     );
     // The point is the value's: `12 ± 3.5` lines up with `1.5 ± 0.2` on
@@ -1228,11 +1282,11 @@ fn only_a_number_is_aligned_as_one() {
 
 #[test]
 fn a_numeric_first_column_is_aligned_as_numbers() {
-    // The first column was always a name's, left-aligned: `-c og,name`
+    // The first column was always a name's, left-aligned: `-c radius,name`
     // asked for a number first and got it read as text.
     let out = render::table(
-        headers(&["og", "name"]),
-        rows(&[&["1.049", "blonde-saison"], &["12.100", "dry-stout"]]),
+        headers(&["radius", "name"]),
+        rows(&[&["1.049", "blonde-steel"], &["12.100", "dry-nickel"]]),
         wide(),
         Style::Plain,
     );
@@ -1250,8 +1304,8 @@ fn a_column_of_several_quantities_ends_its_numbers_at_its_right() {
     let out = render::table(
         headers(&["value", "before"]),
         rows(&[
-            &["abv", "6.8 ± 0.1 %"],
-            &["attenuation", "82 %"],
+            &["modulus", "6.8 ± 0.1 %"],
+            &["reduction", "82 %"],
             &["drop", "14.0 ± 2.4 pt/day"],
         ]),
         wide(),
@@ -1267,15 +1321,15 @@ fn a_column_of_several_quantities_ends_its_numbers_at_its_right() {
 
 #[test]
 fn a_hyphenated_name_is_never_split_at_its_hyphen() {
-    // textwrap hyphenates by default: `farmhouse-saison` broke at its
+    // textwrap hyphenates by default: `farmhouse-steel` broke at its
     // hyphen while its column could hold it whole.
-    let lines = render::wrap("farmhouse-saison and blonde-saison", 20);
+    let lines = render::wrap("farmhouse-steel and blonde-steel", 20);
     assert!(
-        lines.iter().any(|line| line.contains("farmhouse-saison")),
+        lines.iter().any(|line| line.contains("farmhouse-steel")),
         "{lines:?}"
     );
     assert!(
-        lines.iter().any(|line| line.contains("blonde-saison")),
+        lines.iter().any(|line| line.contains("blonde-steel")),
         "{lines:?}"
     );
 }
@@ -1285,11 +1339,213 @@ fn a_long_unbreakable_name_wraps_before_a_column_is_hidden() {
     // A name no space breaks hid every asked-for column at a width that
     // could show them all, wrapped.
     let out = render::table(
-        headers(&["name", "og", "fg"]),
+        headers(&["name", "radius", "notch"]),
         rows(&[&["黒ビール燻製ポーター特別醸造版", "1.066", "1.012"]]),
         Target::Terminal { width: 30 },
         Style::Plain,
     );
     assert!(!out.contains("hidden"), "{out}");
     assert!(out.contains("1.066") && out.contains("1.012"), "{out}");
+}
+
+#[test]
+fn a_bracketed_number_is_still_a_number() {
+    // A value that waits is bracketed, and aligns as the numbers beside it do.
+    let out = render::table(
+        vec!["name".into(), "recovery".into()],
+        vec![
+            vec!["a".into(), "(69)".into()],
+            vec!["b".into(), "62".into()],
+        ],
+        Target::Pipe,
+        Style::default(),
+    );
+    let lines: Vec<&str> = out.lines().collect();
+    let waiting = lines.iter().find(|line| line.starts_with('a')).unwrap();
+    let current = lines.iter().find(|line| line.starts_with('b')).unwrap();
+    assert!(
+        waiting.ends_with("(69)") && current.ends_with("62"),
+        "{out}"
+    );
+    assert_eq!(waiting.len(), current.len(), "right-aligned alike: {out}");
+}
+
+#[test]
+fn a_column_of_plain_numbers_shares_its_decimals() {
+    // `2` beside `1.99`, the decimals of a column of thicknesses unaligned.
+    let made = |thickness: f64, version: &str| {
+        let mut sample = Sample::new();
+        sample
+            .set_property(id("thickness"), Property::stored(number(thickness)))
+            .unwrap();
+        sample
+            .set_attribute(id("version"), Value::text(version))
+            .unwrap();
+        sample
+    };
+    let samples = [made(2.0, "1.10"), made(1.99, "1.2")];
+    let vocabulary =
+        samplekit::query::field_addressing::vocabulary_of(&samples.iter().collect::<Vec<_>>());
+    let subjects: Vec<Subject> = samples
+        .iter()
+        .map(|sample| Subject {
+            sample,
+            path: None,
+            vocabulary: &vocabulary,
+            states: None,
+        })
+        .collect();
+    let rows_at = |precision: Option<&str>| {
+        let view = definition(vec![
+            entry("thickness", None, precision, None),
+            entry("version", None, None, None),
+        ]);
+        let mut rows: Vec<Vec<String>> = subjects
+            .iter()
+            .map(|subject| render::row(&view, subject, None, None))
+            .collect();
+        render::even_decimals(&view, &subjects, &[None, None], None, &mut rows);
+        rows
+    };
+    // A version is text that looks like a number: never padded.
+    assert_eq!(rows_at(None), [["2.00", "1.10"], ["1.99", "1.2"]]);
+    // A declared precision writes them alike already.
+    assert_eq!(rows_at(Some(".1f")), [["2.0", "1.10"], ["2.0", "1.2"]]);
+}
+
+#[test]
+fn a_column_is_written_again_to_its_decimals_never_padded() {
+    // Zeros added to a computed value's short form, `381.889`, wrote
+    // `381.8890` for 381.88912: a digit the number does not have.
+    let made = |value: f64| {
+        let mut sample = Sample::new();
+        sample
+            .set_property(id("stress"), Property::stored(number(value)))
+            .unwrap();
+        sample
+    };
+    let samples = [made(381.88912), made(0.1234)];
+    let vocabulary =
+        samplekit::query::field_addressing::vocabulary_of(&samples.iter().collect::<Vec<_>>());
+    let subjects: Vec<Subject> = samples
+        .iter()
+        .map(|sample| Subject {
+            sample,
+            path: None,
+            vocabulary: &vocabulary,
+            states: None,
+        })
+        .collect();
+    let view = definition(vec![entry("stress", None, None, None)]);
+    let mut rows: Vec<Vec<String>> = subjects
+        .iter()
+        .map(|subject| render::row(&view, subject, None, None))
+        .collect();
+    render::even_decimals(&view, &subjects, &[None, None], None, &mut rows);
+    assert_eq!(rows, [["381.8891"], ["0.1234"]]);
+}
+
+#[test]
+fn a_table_shown_whole_shares_its_decimals() {
+    // `view` wrote a strain of `0` above `0.025`, and a computed stress in
+    // six figures, its column unaligned.
+    let path = dunce::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(format!(
+            "samplekit-sheet-decimals-{}.md",
+            std::process::id()
+        ));
+    fs::write(
+        &path,
+        "---\nschema_version: 1\nname: W\ntables:\n  curve:\n    index: strain\n    columns:\n      \
+         strain: {unit: \"%\"}\n      force: {unit: kN}\n      fit: {}\n    rows:\n      \
+         - {strain: 0, force: 0.0, fit: {v: 1.0, u: 0.0038}}\n      \
+         - {strain: 0.025, force: 1.281, fit: {v: 2.0, u: 0.010}}\n---\n",
+    )
+    .unwrap();
+    let (sample, _) = samplekit::format::document::load_sample(&path).unwrap();
+    let _ = fs::remove_file(&path);
+    let vocabulary = Vocabulary::of(&sample);
+    let subject = Subject {
+        sample: &sample,
+        path: None,
+        vocabulary: &vocabulary,
+        states: None,
+    };
+    let shown = render::sheet(
+        &subject,
+        None,
+        None,
+        None,
+        Target::Pipe,
+        false,
+        Style::Plain,
+        None,
+    );
+    let row = |strain: &str| {
+        shown
+            .lines()
+            .find(|line| line.trim_start().starts_with(strain))
+            .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+            .unwrap_or_default()
+    };
+    assert_eq!(row("0.000"), "0.000 0.000 1.000 ± 0.004", "{shown}");
+    assert_eq!(row("0.025"), "0.025 1.281 2.000 ± 0.010", "{shown}");
+}
+
+#[test]
+fn a_column_of_uncertain_values_shares_its_decimals() {
+    // Each row rounded to two digits of its own uncertainty: a column of
+    // widths read `12.4920 ± 0.0055` above `12.497 ± 0.012`.
+    let made = |value: f64, uncertainty: f64| {
+        let mut property = Property::stored(number(value));
+        property.set_uncertainty(Some(Uncertainty::new(uncertainty).unwrap()));
+        let mut sample = Sample::new();
+        sample.set_property(id("width"), property).unwrap();
+        sample
+    };
+    let column = |pairs: &[(f64, f64)]| -> Vec<String> {
+        let samples: Vec<Sample> = pairs.iter().map(|(v, u)| made(*v, *u)).collect();
+        let vocabulary =
+            samplekit::query::field_addressing::vocabulary_of(&samples.iter().collect::<Vec<_>>());
+        let subjects: Vec<Subject> = samples
+            .iter()
+            .map(|sample| Subject {
+                sample,
+                path: None,
+                vocabulary: &vocabulary,
+                states: None,
+            })
+            .collect();
+        let view = definition(vec![entry("width", None, None, None)]);
+        let mut rows: Vec<Vec<String>> = subjects
+            .iter()
+            .map(|subject| render::row(&view, subject, None, None))
+            .collect();
+        let configs = vec![None; subjects.len()];
+        render::even_decimals(&view, &subjects, &configs, None, &mut rows);
+        rows.into_iter().map(|mut row| row.remove(0)).collect()
+    };
+    // One digit is enough for 0.0055: both rows at three decimals.
+    assert_eq!(
+        column(&[(12.492, 0.0055), (12.497, 0.012)]),
+        ["12.492 ± 0.006", "12.497 ± 0.012"]
+    );
+    // A zero uncertainty, a curve's first row, chooses nothing: it takes the
+    // decimals the others share.
+    assert_eq!(
+        column(&[(0.0, 0.0), (4.123, 0.0206), (7.81, 0.039)]),
+        ["0.000 ± 0.000", "4.123 ± 0.021", "7.810 ± 0.039"]
+    );
+    // 0.0014 keeps its two digits, four decimals; 0.012 keeps its own, three:
+    // no number suits both, and each row keeps its rounding.
+    assert_eq!(
+        column(&[(12.492, 0.0014), (12.497, 0.012)]),
+        ["12.4920 ± 0.0014", "12.497 ± 0.012"]
+    );
+    // Nor does one between 1.2 and 0.0003.
+    assert_eq!(
+        column(&[(12.4, 1.2), (12.4921, 0.0003)]),
+        ["12.4 ± 1.2", "12.49210 ± 0.00030"]
+    );
 }

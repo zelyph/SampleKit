@@ -3,7 +3,7 @@
 //! `--summary` and the workbench both show.
 
 use crate::collection::sample_list::{self as list, SampleList};
-use crate::config::project_config::{ColumnSpec, Profile};
+use crate::config::project_config::{ColumnSpec, Profile, ProjectConfig};
 use crate::core::formatting::{self, Precision, Resolved};
 use crate::core::value::Value;
 use crate::presentation::terminal_rendering as render;
@@ -15,8 +15,14 @@ pub struct SummaryRow {
     pub unit: Option<String>,
     pub summary: Option<list::ColumnSummary>,
     pub precision: Option<Precision>,
-    /// The samples summarised over: the denominator of an empty count.
+    /// The decimals the column's values are written to, where they carry
+    /// uncertainties and nothing is declared: its median and extremes are.
+    pub places: Option<usize>,
+    /// The samples the value applies to: the denominator of the count, those
+    /// saying *not applicable* left out.
     pub of: usize,
+    /// Those saying *not applicable*, counted apart on every surface.
+    pub not_applicable: usize,
 }
 
 /// A row per column of `profile`, over `selected`, and the labels of the
@@ -51,11 +57,23 @@ pub fn rows(
             left_out.push(profile.label_for(column).to_string());
             continue;
         }
+        // A tag set has no mean: left out and said, as text is — read as
+        // absent, it was a row saying no sample carried a tag.
+        if subjects.iter().any(|subject| {
+            matches!(
+                fields::resolve(&field, subject),
+                Ok(fields::Resolution::Tags(_))
+            )
+        }) {
+            left_out.push(profile.label_for(column).to_string());
+            continue;
+        }
         // Over one configuration's part, a column only another part holds is a
-        // row of placeholders.
+        // row of placeholders — that, and nothing else: a formula that failed,
+        // units that disagree, are said.
         let summary = match selected.summarize(&field) {
             Ok(summary) => summary,
-            Err(_) if lenient => None,
+            Err(crate::collection::sample_list::ListError::Field(_)) if lenient => None,
             Err(error) => return Err(error.to_string()),
         };
         // A column holding text, booleans or dates has no mean: it is left out
@@ -63,29 +81,59 @@ pub fn rows(
         // inapplicable one are not the same answer.
         if summary.is_none()
             && let Ok(values) = selected.values(&field)
-            && values
-                .iter()
-                .flatten()
-                .any(|value| !matches!(value, Value::Integer(_) | Value::Number(_) | Value::Absent))
+            && values.iter().flatten().any(|value| {
+                // Not applicable is no text: a group whose samples all say
+                // so was left out as *holding text*.
+                !matches!(
+                    value,
+                    Value::Integer(_) | Value::Number(_) | Value::Absent | Value::NotApplicable
+                )
+            })
         {
             left_out.push(profile.label_for(column).to_string());
             continue;
         }
+        // Over several projects, each sample's unit and precision are its
+        // own project's, and the row's are those every project agrees on:
+        // the first project named headed them all.
+        let configs = configs_of(selected, collection);
+        let distinct = distinct(&configs);
         // A column no sample fills still has the unit its project declares.
         let declared = match &field {
-            Field::Named { name, .. } => collection
-                .config()
-                .and_then(|config| config.property(name.as_str()))
-                .and_then(|declaration| declaration.unit.clone()),
+            Field::Named { name, .. } => agreed(distinct.iter().map(|config| {
+                config
+                    .and_then(|config| config.property(name.as_str()))
+                    .and_then(|declaration| declaration.unit.clone())
+            })),
             _ => None,
         };
+        let unit = if collection.spans_configurations() {
+            render::column_unit_each(column, &subjects, profile, &configs, style)
+        } else {
+            render::column_unit(column, &subjects, profile, collection.config(), style)
+        };
+        let places = render::column_places(profile, column, &subjects, &configs, style);
         rows.push(SummaryRow {
             label: profile.label_for(column).to_string(),
-            unit: render::column_unit(column, &subjects, profile, collection.config(), style)
-                .or(declared),
-            precision: precision(column, &field, profile, selected, collection, style),
+            unit: unit.or(declared),
+            places,
+            precision: agreed(
+                distinct
+                    .iter()
+                    .map(|config| precision(column, &field, profile, selected, *config, style)),
+            ),
+            // Counted from the values where nothing is summarised: a group
+            // whose samples all say *n/a* said `0/1` on a screen and `0` of `0`
+            // in a file.
+            of: summary.as_ref().map_or_else(
+                || selected.len() - not_applicable_in(selected, &field),
+                |summary| summary.considered,
+            ),
+            not_applicable: summary.as_ref().map_or_else(
+                || not_applicable_in(selected, &field),
+                |summary| summary.not_applicable,
+            ),
             summary,
-            of: selected.len(),
         });
     }
     Ok((rows, left_out))
@@ -120,6 +168,16 @@ pub fn grouped(
     Ok((parts, left_out))
 }
 
+/// How many samples of `selected` say `field` is not applicable.
+fn not_applicable_in(selected: &SampleList, field: &Field) -> usize {
+    selected.values(field).map_or(0, |values| {
+        values
+            .iter()
+            .filter(|value| matches!(value, Some(Value::NotApplicable)))
+            .count()
+    })
+}
+
 /// What [`grouped`] gives: each group's key and rows, and the labels left out.
 pub type GroupedRows = Result<(Vec<(Vec<Value>, Vec<SummaryRow>)>, Vec<String>), String>;
 
@@ -139,20 +197,36 @@ pub fn group_value(value: &Value) -> String {
     }
 }
 
-/// A group's heading, each field beside its value — `style = IPA · yeast =
-/// US-05` — so that a table read alone still says which group it is.
+/// A group's heading, each field beside its value — `style = TITANIUM · process =
+/// UT-05` — so that a table read alone still says which group it is.
 pub fn group_heading(names: &[String], key: &[Value]) -> String {
+    group_heading_in(names, key, None)
+}
+
+/// [`group_heading`], a number at the precision `config` declares for its
+/// field, as the column shows it: `radius = 1.054`, where the computation left
+/// `1.0539999999999998`.
+pub fn group_heading_in(names: &[String], key: &[Value], config: Option<&ProjectConfig>) -> String {
     names
         .iter()
         .zip(key)
-        .map(|(name, value)| format!("{name} = {}", group_value(value)))
+        .map(|(name, value)| {
+            let precision = crate::collection::editing::declared_precision(name, config);
+            let shown = match value {
+                Value::Number(_) if precision.is_some() => {
+                    crate::collection::editing::shown_at(value, precision)
+                }
+                _ => group_value(value),
+            };
+            format!("{name} = {shown}")
+        })
         .collect::<Vec<_>>()
         .join(" · ")
 }
 
-/// The heading of the mean's column, which says how it was taken: `mean` where
-/// no row is weighted, `mean (1/u²)` where every row with a mean is, and the
-/// weighted rows named where only some are.
+/// The heading of the mean's column, which says how it was taken: `mean (1/u²)`
+/// where every row with a mean is weighted, `mean` otherwise — each weighted
+/// mean then says so beside it.
 pub fn mean_header<'a>(rows: impl IntoIterator<Item = &'a SummaryRow>) -> String {
     let with_mean: Vec<&SummaryRow> = rows
         .into_iter()
@@ -167,30 +241,40 @@ pub fn mean_header<'a>(rows: impl IntoIterator<Item = &'a SummaryRow>) -> String
                 .is_some_and(|summary| summary.weighted_mean.is_some())
         })
         .collect();
-    // Each column once, over the groups of a grouped summary.
-    let mut labels: Vec<&str> = Vec::new();
-    for row in &weighted {
-        if !labels.contains(&row.label.as_str()) {
-            labels.push(row.label.as_str());
-        }
-    }
-    if weighted.is_empty() {
-        "mean".to_string()
-    } else if weighted.len() == with_mean.len() {
+    if weighted.len() == with_mean.len() && !weighted.is_empty() {
         "mean (1/u²)".to_string()
     } else {
-        format!("mean (1/u²: {})", labels.join(", "))
+        // None weighted, or some: each weighted mean then says so itself,
+        // since a heading naming a column said it of every group, one whose
+        // uncertainty was 0 taking the plain mean among them.
+        "mean".to_string()
     }
+}
+
+/// Whether some rows' means are weighted and others' not: each weighted one
+/// then says `(1/u²)` beside it, as [`written`] writes it.
+pub fn weighting_mixed<'a>(rows: impl IntoIterator<Item = &'a SummaryRow>) -> bool {
+    let mut kinds = rows
+        .into_iter()
+        .filter_map(|row| row.summary.as_ref())
+        .map(|summary| summary.weighted_mean.is_some());
+    let Some(first) = kinds.next() else {
+        return false;
+    };
+    kinds.any(|kind| kind != first)
 }
 
 /// A row's cells after its label, as a terminal table writes them: `n/of`,
 /// mean, s, sem, median, min, max — placeholders for a column with nothing
-/// to summarise.
-pub fn written(row: &SummaryRow) -> Vec<String> {
+/// to summarise. `mixed`, a weighted mean says `(1/u²)` beside it.
+pub fn written(row: &SummaryRow, mixed: bool) -> Vec<String> {
     let mut cells = match &row.summary {
         // Nothing to summarise still says out of how many.
         None => vec![
-            format!("0/{}", row.of),
+            match row.not_applicable {
+                0 => format!("0/{}", row.of),
+                apart => format!("0/{} ({apart} n/a)", row.of),
+            },
             "—".to_string(),
             "—".to_string(),
             "—".to_string(),
@@ -200,48 +284,65 @@ pub fn written(row: &SummaryRow) -> Vec<String> {
         ],
         Some(column) => {
             let summary = &column.summary;
-            let decimals = summary
-                .sample_stdev
+            // The mean is known to its standard error, not to the spread of
+            // the values: rounded to the deviation, a mean of 1437 beside a
+            // standard error of 420 read 1400.
+            let known_to = column
+                .standard_error()
                 .filter(|spread| *spread > 0.0)
-                .map(decimals_of);
+                .or(summary.sample_stdev.filter(|spread| *spread > 0.0));
+            let decimals = known_to.map(decimals_of);
             let written = |value: f64| match (&row.precision, decimals) {
                 (Some(precision), _) => number(value, Some(precision)),
                 // A deviation of ten or more puts its two significant figures
                 // above the point: the mean is rounded to them, not written
                 // whole — `{:.0}` of a mean near 1e20 wrote the float's
                 // noise, 100000000000000131072.
-                (None, Some(0)) => {
-                    to_the_deviation(value, summary.sample_stdev.unwrap_or_default())
-                }
-                (None, Some(decimals)) => format!("{value:.decimals$}"),
+                (None, Some(0)) => to_the_deviation(value, known_to.unwrap_or_default(), false),
+                (None, Some(decimals)) => formatting::fixed(value, decimals),
                 (None, None) => number(value, None),
             };
+            // A standard error is an uncertainty of the mean, rounded up, as
+            // every uncertainty is.
             let spread = |value: Option<f64>, own: bool| match value {
                 None => "—".to_string(),
                 Some(value) if own && row.precision.is_none() && value > 0.0 => {
                     match decimals_of(value) {
-                        0 => to_the_deviation(value, value),
-                        decimals => format!("{value:.decimals$}"),
+                        0 => to_the_deviation(value, value, true),
+                        decimals => formatting::fixed_up(value, decimals),
                     }
                 }
+                Some(value) if own => match &row.precision {
+                    Some(precision) => formatting::spread_at(value, precision),
+                    None => written(value),
+                },
                 Some(value) => written(value),
             };
+            let value_of_column = |value: f64| match (&row.precision, row.places) {
+                (None, Some(places)) => formatting::fixed(value, places),
+                (precision, _) => number(value, precision.as_ref()),
+            };
             vec![
-                match column.not_applicable {
-                    0 => format!("{}/{}", summary.count.get(), column.considered),
+                match row.not_applicable {
+                    0 => format!("{}/{}", summary.count.get(), row.of),
                     // Counted apart: the value does not apply to them.
-                    apart => format!(
-                        "{}/{} ({apart} n/a)",
-                        summary.count.get(),
-                        column.considered
-                    ),
+                    apart => format!("{}/{} ({apart} n/a)", summary.count.get(), row.of),
                 },
-                written(column.mean()),
+                if mixed && column.weighted_mean.is_some() {
+                    format!("{} (1/u²)", written(column.mean()))
+                } else {
+                    written(column.mean())
+                },
                 spread(summary.sample_stdev, false),
-                spread(summary.standard_error, true),
-                written(summary.median),
-                written(summary.minimum),
-                written(summary.maximum),
+                spread(column.standard_error(), true),
+                // A median, a minimum and a maximum are values of the column,
+                // written as the column writes them: rounded to the spread of
+                // the others, a minimum of 0.99 read 0. Values known to an
+                // uncertainty are written to their table's decimals, where
+                // the six-figure form read `12.5027` under `12.503 ± 0.004`.
+                value_of_column(summary.median),
+                value_of_column(summary.minimum),
+                value_of_column(summary.maximum),
             ]
         }
     };
@@ -260,9 +361,10 @@ pub fn decimals_of(number: f64) -> usize {
 }
 
 /// A number rounded to the power of ten of a deviation's second significant
-/// figure, where that lies at or above the units: in full while that is exact
-/// in a double, in scientific notation beyond, its digits the significant ones.
-pub fn to_the_deviation(value: f64, deviation: f64) -> String {
+/// figure, where that lies at or above the units, to the nearest or `up`: in
+/// full while that is exact in a double, in scientific notation beyond, its
+/// digits the significant ones.
+pub fn to_the_deviation(value: f64, deviation: f64, up: bool) -> String {
     let exponent = |number: f64| -> i32 {
         format!("{number:.1e}")
             .split_once('e')
@@ -272,7 +374,17 @@ pub fn to_the_deviation(value: f64, deviation: f64) -> String {
     // The place of the deviation's second significant figure.
     let place = (exponent(deviation) - 1).max(0);
     let scale = 10f64.powi(place);
-    let rounded = (value / scale).round() * scale;
+    // Rounded up on its decimal writing, the arithmetic's last digits
+    // dropped first: a standard error of exactly 120 was written 130.
+    let rounded = match up {
+        true => {
+            formatting::fixed_up(value / scale, 0)
+                .parse::<f64>()
+                .unwrap_or(value / scale)
+                * scale
+        }
+        false => (value / scale).round() * scale,
+    };
     if rounded.abs() < 1e15 {
         return format!("{rounded:.0}");
     }
@@ -290,7 +402,11 @@ pub fn number(number: f64, precision: Option<&Precision>) -> String {
                 &Resolved {
                     unit: None,
                     symbol: None,
-                    separator: "±".to_string(),
+                    property: None,
+                    uncertainty: None,
+                    unitless: None,
+                    unit_alone: None,
+                    unit_in_form: None,
                     precision: None,
                 },
             ),
@@ -305,10 +421,56 @@ pub fn number(number: f64, precision: Option<&Precision>) -> String {
     let resolved = Resolved {
         unit: None,
         symbol: None,
-        separator: "±".to_string(),
+        property: None,
+        uncertainty: None,
+        unitless: None,
+        unit_alone: None,
+        unit_in_form: None,
         precision: Some(precision.clone()),
     };
     formatting::format_value(&value, &resolved)
+}
+
+/// Each selected sample's configuration, in the selection's order.
+fn configs_of<'a>(
+    selected: &SampleList,
+    collection: &'a SampleList,
+) -> Vec<Option<&'a ProjectConfig>> {
+    selected
+        .iter()
+        .map(|entry| {
+            entry
+                .path
+                .as_deref()
+                .map_or(collection.config(), |path| collection.config_for(path))
+        })
+        .collect()
+}
+
+/// The configurations once each, by their folder: at least one, `None` for
+/// samples no project describes.
+fn distinct<'a>(configs: &[Option<&'a ProjectConfig>]) -> Vec<Option<&'a ProjectConfig>> {
+    let mut held: Vec<Option<&ProjectConfig>> = Vec::new();
+    for config in configs {
+        if !held
+            .iter()
+            .any(|seen| seen.map(ProjectConfig::root) == config.map(ProjectConfig::root))
+        {
+            held.push(*config);
+        }
+    }
+    if held.is_empty() {
+        held.push(None);
+    }
+    held
+}
+
+/// The one answer every project gives, else none.
+fn agreed<T: PartialEq>(mut answers: impl Iterator<Item = Option<T>>) -> Option<T> {
+    let first = answers.next()??;
+    answers
+        .all(|answer| answer.as_ref() == Some(&first))
+        .then_some(first)
 }
 
 fn precision(
@@ -316,7 +478,7 @@ fn precision(
     field: &Field,
     profile: &Profile,
     selected: &SampleList,
-    collection: &SampleList,
+    config: Option<&ProjectConfig>,
     style: Option<&str>,
 ) -> Option<Precision> {
     let (address, presentation) = match field {
@@ -341,7 +503,7 @@ fn precision(
         _ => return None,
     };
     let composed = profile.presentation_for(column, &presentation);
-    match collection.config() {
+    let declared = match config {
         Some(config) => {
             config
                 .resolved_as(&composed, &address, style)
@@ -349,5 +511,15 @@ fn precision(
                 .precision
         }
         None => composed.precision,
+    };
+    // **A column of spreads is summarised as spreads**: rounded up, at the
+    // uncertainty's own precision, as its cells are; `0.01` beside `0.001`
+    // gave a mean written `0.00`.
+    if fields::is_spread(fields::channel(field)) {
+        return Some(match declared {
+            Some(precision) => precision.of_uncertainty(),
+            None => Precision::general_spread(),
+        });
     }
+    declared
 }

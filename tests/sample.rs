@@ -111,7 +111,7 @@ impl ComputeRow for RaisingRow {
     }
 }
 
-/// `clarity = 1 / wort`, filled per row.
+/// `rigidity = 1 / tension`, filled per row.
 struct Reciprocal;
 
 impl ComputeRow for Reciprocal {
@@ -120,12 +120,12 @@ impl ComputeRow for Reciprocal {
         row: &RowView,
         _: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
-        let wort = match row.cell(&id("wort")).unwrap().value().unwrap() {
+        let tension = match row.cell(&id("tension")).unwrap().value().unwrap() {
             Value::Number(number) => number,
             other => panic!("{other:?}"),
         };
         let mut out = IndexMap::new();
-        out.insert(id("clarity"), CellOutput::Value(number(1.0 / wort)));
+        out.insert(id("rigidity"), CellOutput::Value(number(1.0 / tension)));
         Ok(out)
     }
 }
@@ -137,11 +137,11 @@ fn columns(names: &[&str]) -> IndexMap<Identifier, ColumnMeta> {
         .collect()
 }
 
-fn boil(derivations: Vec<Derivation>) -> Table {
+fn soak(derivations: Vec<Derivation>) -> Table {
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         derivations,
     )
     .unwrap();
@@ -149,32 +149,32 @@ fn boil(derivations: Vec<Derivation>) -> Table {
         table
             .add_row(vec![
                 (id("temperature"), Property::stored(number(t))),
-                (id("wort"), Property::stored(number(r))),
+                (id("tension"), Property::stored(number(r))),
             ])
             .unwrap();
     }
     table
 }
 
-/// malt -> plato -> haze, each doubling the last.
+/// diameter -> ductility -> roughness, each doubling the last.
 fn chain() -> Sample {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(10.0)))
+        .set_property(id("diameter"), Property::stored(number(10.0)))
         .unwrap();
-    let malt = sample.property(&id("malt")).unwrap();
+    let diameter = sample.property(&id("diameter")).unwrap();
     sample
-        .set_property(id("plato"), Property::computed(Reader::of(malt)))
-        .unwrap();
-    sample
-        .declare_dependencies(&id("plato"), &[named("malt")])
-        .unwrap();
-    let plato = sample.property(&id("plato")).unwrap();
-    sample
-        .set_property(id("haze"), Property::computed(Reader::of(plato)))
+        .set_property(id("ductility"), Property::computed(Reader::of(diameter)))
         .unwrap();
     sample
-        .declare_dependencies(&id("haze"), &[named("plato")])
+        .declare_dependencies(&id("ductility"), &[named("diameter")])
+        .unwrap();
+    let ductility = sample.property(&id("ductility")).unwrap();
+    sample
+        .set_property(id("roughness"), Property::computed(Reader::of(ductility)))
+        .unwrap();
+    sample
+        .declare_dependencies(&id("roughness"), &[named("ductility")])
         .unwrap();
     sample
 }
@@ -185,13 +185,13 @@ fn chain() -> Sample {
 fn property_round_trips_by_name() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(12.5)))
+        .set_property(id("diameter"), Property::stored(number(12.5)))
         .unwrap();
-    assert_eq!(read(&sample.property(&id("malt")).unwrap()), 12.5);
-    assert!(sample.has_property(&id("malt")));
+    assert_eq!(read(&sample.property(&id("diameter")).unwrap()), 12.5);
+    assert!(sample.has_property(&id("diameter")));
     assert_eq!(
-        read(&sample.property(&id("malt")).unwrap()),
-        read(&sample.property(&id("malt")).unwrap())
+        read(&sample.property(&id("diameter")).unwrap()),
+        read(&sample.property(&id("diameter")).unwrap())
     );
 }
 
@@ -215,9 +215,9 @@ fn declaration_order_is_preserved() {
 fn unknown_property_lists_available_names() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("plato"), Property::stored(number(1.0)))
+        .set_property(id("ductility"), Property::stored(number(1.0)))
         .unwrap();
-    let error = sample.property(&id("plto")).unwrap_err();
+    let error = sample.property(&id("dutility")).unwrap_err();
     let SampleError::UnknownProperty {
         available,
         suggestion,
@@ -229,7 +229,7 @@ fn unknown_property_lists_available_names() {
     assert_eq!(available.len(), 1);
     assert_eq!(
         suggestion.as_ref().map(|n| n.to_string()),
-        Some("plato".to_string())
+        Some("ductility".to_string())
     );
 }
 
@@ -239,24 +239,25 @@ fn unknown_property_lists_available_names() {
 fn property_and_table_cannot_share_a_name() {
     // Rejected in both orders of creation.
     let mut one = Sample::new();
-    one.set_property(id("mashing"), Property::stored(number(1.0)))
+    one.set_property(id("preheating"), Property::stored(number(1.0)))
         .unwrap();
     assert_eq!(
-        one.set_table(id("mashing"), boil(Vec::new())).unwrap_err(),
+        one.set_table(id("preheating"), soak(Vec::new()))
+            .unwrap_err(),
         SampleError::NameCollision {
-            name: id("mashing"),
+            name: id("preheating"),
             existing: NameKind::Property
         }
     );
 
     let mut other = Sample::new();
-    other.set_table(id("mashing"), boil(Vec::new())).unwrap();
+    other.set_table(id("preheating"), soak(Vec::new())).unwrap();
     assert_eq!(
         other
-            .set_property(id("mashing"), Property::stored(number(1.0)))
+            .set_property(id("preheating"), Property::stored(number(1.0)))
             .unwrap_err(),
         SampleError::NameCollision {
-            name: id("mashing"),
+            name: id("preheating"),
             existing: NameKind::Table
         }
     );
@@ -292,7 +293,7 @@ fn attribute_and_property_cannot_share_a_name() {
 fn a_reserved_name_is_refused() {
     // Taken before any map is consulted.
     let mut sample = Sample::new();
-    for reserved in ["name", "tags", "path", "filename"] {
+    for reserved in ["name", "tags", "path", "filename", "note"] {
         assert_eq!(
             sample
                 .set_property(id(reserved), Property::stored(number(1.0)))
@@ -312,11 +313,24 @@ fn a_reserved_name_is_refused() {
 }
 
 #[test]
+fn an_attribute_named_note_says_the_note_holds_that_name() {
+    let mut sample = Sample::new();
+    let error = sample
+        .set_attribute(id("note"), Value::text("a remark"))
+        .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "'note' is the note's name, the text below the frontmatter, and no attribute's: \
+         rename it in the file, as remarks: or comment:"
+    );
+}
+
+#[test]
 fn a_leading_underscore_is_refused_for_every_field_kind() {
     let mut sample = Sample::new();
     for error in [
         sample
-            .set_property(id("_malt"), Property::stored(number(1.0)))
+            .set_property(id("_diameter"), Property::stored(number(1.0)))
             .unwrap_err(),
         sample
             .set_attribute(id("_batch"), Value::integer(1))
@@ -329,14 +343,14 @@ fn a_leading_underscore_is_refused_for_every_field_kind() {
         );
     }
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns(&["temperature"]),
         Vec::new(),
     )
     .unwrap();
     assert!(matches!(
-        sample.set_table(id("_mashing"), table),
+        sample.set_table(id("_preheating"), table),
         Err(SampleError::PrivateName { .. })
     ));
 }
@@ -347,65 +361,71 @@ fn a_leading_underscore_is_refused_for_every_field_kind() {
 fn value_change_invalidates_dependents() {
     // Without any explicit invalidation call.
     let sample = chain();
-    let plato = sample.property(&id("plato")).unwrap();
-    assert_eq!(read(&plato), 20.0);
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert_eq!(read(&ductility), 20.0);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(50.0));
-    assert_eq!(read(&plato), 100.0);
+    assert_eq!(read(&ductility), 100.0);
 }
 
 #[test]
 fn value_change_invalidates_transitively() {
     // Three levels deep.
     let sample = chain();
-    let haze = sample.property(&id("haze")).unwrap();
-    assert_eq!(read(&haze), 40.0);
+    let roughness = sample.property(&id("roughness")).unwrap();
+    assert_eq!(read(&roughness), 40.0);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(50.0));
-    assert_eq!(read(&haze), 200.0);
+    assert_eq!(read(&roughness), 200.0);
 }
 
 #[test]
 fn an_unread_intermediate_does_not_hide_a_change() {
-    // `malt` changes, nobody reads `plato`, and reading `haze` still
+    // `diameter` changes, nobody reads `ductility`, and reading `roughness` still
     // recomputes — the case a non-recursive check answers wrongly.
     let sample = chain();
-    let haze = sample.property(&id("haze")).unwrap();
-    assert_eq!(read(&haze), 40.0);
-    sample.property(&id("malt")).unwrap().set_value(number(3.0));
-    // Nothing reads plato here, deliberately.
-    assert_eq!(read(&haze), 12.0);
+    let roughness = sample.property(&id("roughness")).unwrap();
+    assert_eq!(read(&roughness), 40.0);
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(3.0));
+    // Nothing reads ductility here, deliberately.
+    assert_eq!(read(&roughness), 12.0);
 }
 
 #[test]
 fn presentation_change_invalidates_nothing() {
     // A unit correction leaves caches warm.
     let sample = chain();
-    let malt = sample.property(&id("malt")).unwrap();
-    let plato = sample.property(&id("plato")).unwrap();
-    assert_eq!(read(&plato), 20.0);
-    assert!(plato.is_resolved());
-    malt.set_presentation(Presentation {
+    let diameter = sample.property(&id("diameter")).unwrap();
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert_eq!(read(&ductility), 20.0);
+    assert!(ductility.is_resolved());
+    diameter.set_presentation(Presentation {
         unit: Some("g".to_string()),
         symbol: None,
         precision: None,
     });
-    assert!(plato.is_resolved(), "a unit correction invalidated a value");
+    assert!(
+        ductility.is_resolved(),
+        "a unit correction invalidated a value"
+    );
 }
 
 #[test]
 fn mutation_through_a_shared_handle_invalidates() {
     // A handle obtained earlier still triggers invalidation.
     let sample = chain();
-    let early = sample.property(&id("malt")).unwrap();
-    let plato = sample.property(&id("plato")).unwrap();
-    assert_eq!(read(&plato), 20.0);
+    let early = sample.property(&id("diameter")).unwrap();
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert_eq!(read(&ductility), 20.0);
     early.set_value(number(7.0));
-    assert_eq!(read(&plato), 14.0);
+    assert_eq!(read(&ductility), 14.0);
 }
 
 #[test]
@@ -413,42 +433,42 @@ fn replacing_a_property_keeps_existing_handles_live() {
     // A handle taken before replacement observes the new value.
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(10.0)))
+        .set_property(id("diameter"), Property::stored(number(10.0)))
         .unwrap();
-    let early = sample.property(&id("malt")).unwrap();
+    let early = sample.property(&id("diameter")).unwrap();
     sample
-        .set_property(id("malt"), Property::stored(number(99.0)))
+        .set_property(id("diameter"), Property::stored(number(99.0)))
         .unwrap();
     assert_eq!(read(&early), 99.0, "the handle became a detached copy");
 }
 
 #[test]
 fn changing_an_attribute_invalidates_its_dependents() {
-    // An input like a malt, through a different mutation path.
+    // An input like a diameter, through a different mutation path.
     let mut sample = Sample::new();
     sample
         .set_attribute(id("batch"), Value::integer(3))
         .unwrap();
     sample
-        .set_property(id("malt"), Property::stored(number(10.0)))
+        .set_property(id("diameter"), Property::stored(number(10.0)))
         .unwrap();
-    let malt = sample.property(&id("malt")).unwrap();
+    let diameter = sample.property(&id("diameter")).unwrap();
     sample
-        .set_property(id("plato"), Property::computed(Reader::of(malt)))
+        .set_property(id("ductility"), Property::computed(Reader::of(diameter)))
         .unwrap();
     sample
-        .declare_dependencies(&id("plato"), &[named("malt"), named("batch")])
+        .declare_dependencies(&id("ductility"), &[named("diameter"), named("batch")])
         .unwrap();
-    let plato = sample.property(&id("plato")).unwrap();
-    assert!(!plato.is_resolved());
-    assert_eq!(read(&plato), 20.0);
-    assert!(plato.is_resolved());
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert!(!ductility.is_resolved());
+    assert_eq!(read(&ductility), 20.0);
+    assert!(ductility.is_resolved());
 
     sample
         .set_attribute(id("batch"), Value::integer(8))
         .unwrap();
     assert!(
-        !plato.is_resolved(),
+        !ductility.is_resolved(),
         "an attribute change left its dependent current"
     );
 }
@@ -459,12 +479,12 @@ fn changing_an_attribute_invalidates_its_dependents() {
 fn cycle_declaration_is_rejected() {
     let mut sample = chain();
     let error = sample
-        .declare_dependencies(&id("malt"), &[named("haze")])
+        .declare_dependencies(&id("diameter"), &[named("roughness")])
         .unwrap_err();
     let SampleError::Dependency(inner) = &error else {
         panic!("expected a dependency error, got {error:?}");
     };
-    assert!(inner.to_string().contains("malt"), "{inner}");
+    assert!(inner.to_string().contains("diameter"), "{inner}");
     assert!(error.to_string().contains('\u{2192}'), "{error}");
 }
 
@@ -472,11 +492,11 @@ fn cycle_declaration_is_rejected() {
 fn removing_a_property_removes_its_edges() {
     // A later change to a former input affects nothing.
     let mut sample = chain();
-    sample.remove_property(&id("plato")).unwrap();
-    assert!(sample.dependents_of(&id("malt")).unwrap().is_empty());
+    sample.remove_property(&id("ductility")).unwrap();
+    assert!(sample.dependents_of(&id("diameter")).unwrap().is_empty());
     assert!(
         sample
-            .affected_by_change(&named("malt"))
+            .affected_by_change(&named("diameter"))
             .unwrap()
             .is_empty()
     );
@@ -506,13 +526,13 @@ fn removing_an_attribute_removes_its_edges() {
 fn removing_an_input_leaves_its_dependents_broken() {
     // The record still names it, rather than being silently pruned.
     let mut sample = chain();
-    let plato = sample.property(&id("plato")).unwrap();
+    let ductility = sample.property(&id("ductility")).unwrap();
     let mut computed = IndexMap::new();
     computed.insert(
-        InputName::Named(id("malt")),
+        InputName::Named(id("diameter")),
         InputRecord::Digest(Fingerprint::new("a91f42c8")),
     );
-    plato.set_records(Records {
+    ductility.set_records(Records {
         failure: None,
         fingerprint: Some(Fingerprint::new("5b2c9e1f")),
         computed: Some(computed),
@@ -520,13 +540,13 @@ fn removing_an_input_leaves_its_dependents_broken() {
         channel_only: Default::default(),
         statistics: None,
     });
-    sample.remove_property(&id("malt")).unwrap();
-    let still = plato.records();
+    sample.remove_property(&id("diameter")).unwrap();
+    let still = ductility.records();
     assert!(
         still
             .computed
             .unwrap()
-            .contains_key(&InputName::Named(id("malt"))),
+            .contains_key(&InputName::Named(id("diameter"))),
         "the record was pruned"
     );
 }
@@ -536,23 +556,23 @@ fn a_table_declaration_joins_the_sample_graph() {
     // Setting a table makes its columns reachable from what they read.
     let mut sample = Sample::new();
     sample
-        .set_property(id("foam"), Property::stored(number(2.0)))
+        .set_property(id("wear"), Property::stored(number(2.0)))
         .unwrap();
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort")), InputName::Named(id("foam"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension")), InputName::Named(id("wear"))],
             formula: Rc::new(Reciprocal),
         }],
     )
     .unwrap();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     assert_eq!(
-        sample.affected_by_change(&named("foam")).unwrap(),
-        [column("mashing", "clarity")]
+        sample.affected_by_change(&named("wear")).unwrap(),
+        [column("preheating", "rigidity")]
     );
 }
 
@@ -561,53 +581,53 @@ fn a_cycle_through_a_column_is_rejected() {
     // A property reading a column that reads that property.
     let mut sample = Sample::new();
     sample
-        .set_property(id("foam"), Property::stored(number(2.0)))
+        .set_property(id("wear"), Property::stored(number(2.0)))
         .unwrap();
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Named(id("foam"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Named(id("wear"))],
             formula: Rc::new(Reciprocal),
         }],
     )
     .unwrap();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     let error = sample
-        .declare_dependencies(&id("foam"), &[column("mashing", "clarity")])
+        .declare_dependencies(&id("wear"), &[column("preheating", "rigidity")])
         .unwrap_err();
     let SampleError::Dependency(inner) = &error else {
         panic!("expected a dependency error, got {error:?}");
     };
     let drawn = inner.to_string();
-    assert!(drawn.contains("mashing.clarity"), "{drawn}");
-    assert!(drawn.contains("foam"), "{drawn}");
+    assert!(drawn.contains("preheating.rigidity"), "{drawn}");
+    assert!(drawn.contains("wear"), "{drawn}");
 }
 
 #[test]
 fn removing_a_table_removes_its_column_edges() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("foam"), Property::stored(number(2.0)))
+        .set_property(id("wear"), Property::stored(number(2.0)))
         .unwrap();
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Named(id("foam"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Named(id("wear"))],
             formula: Rc::new(Reciprocal),
         }],
     )
     .unwrap();
-    sample.set_table(id("mashing"), table).unwrap();
-    sample.remove_table(&id("mashing")).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
+    sample.remove_table(&id("preheating")).unwrap();
     assert!(
         sample
-            .affected_by_change(&named("foam"))
+            .affected_by_change(&named("wear"))
             .unwrap()
             .is_empty(),
         "a dangling column node survived"
@@ -620,11 +640,11 @@ fn removing_a_table_removes_its_column_edges() {
 fn materialize_resolves_every_lazy_value() {
     let mut sample = chain();
     sample.materialize().unwrap();
-    for name in ["malt", "plato", "haze"] {
+    for name in ["diameter", "ductility", "roughness"] {
         let handle = sample.property(&id(name)).unwrap();
         assert!(!handle.is_computed(), "{name} is still lazy");
     }
-    assert_eq!(read(&sample.property(&id("haze")).unwrap()), 40.0);
+    assert_eq!(read(&sample.property(&id("roughness")).unwrap()), 40.0);
 }
 
 #[test]
@@ -632,12 +652,12 @@ fn materialize_resolves_an_uncertainty_beside_a_stored_value() {
     // A sample materialized on the value alone reaches the file with an
     // uncertainty missing and nothing said about it.
     let mut sample = Sample::new();
-    let mut malt = Property::stored(Value::number(12.5).unwrap());
-    malt.set_uncertainty_formula(Rc::new(Constant(0.05)));
-    sample.set_property(id("malt"), malt).unwrap();
+    let mut diameter = Property::stored(Value::number(12.5).unwrap());
+    diameter.set_uncertainty_formula(Rc::new(Constant(0.05)));
+    sample.set_property(id("diameter"), diameter).unwrap();
 
     sample.materialize().unwrap();
-    let handle = sample.property(&id("malt")).unwrap();
+    let handle = sample.property(&id("diameter")).unwrap();
     assert!(handle.is_resolved(), "the formula never ran");
     assert_eq!(
         handle.uncertainty().unwrap().map(|u| u.magnitude()),
@@ -649,14 +669,14 @@ fn materialize_resolves_an_uncertainty_beside_a_stored_value() {
 fn materialize_reports_which_property_failed() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("plato"), Property::computed(Rc::new(Raising)))
+        .set_property(id("ductility"), Property::computed(Rc::new(Raising)))
         .unwrap();
     let error = sample.materialize().unwrap_err();
     let SampleError::Compute { property, .. } = &error else {
         panic!("expected a compute failure, got {error:?}");
     };
-    assert_eq!(property, &id("plato"));
-    assert!(error.to_string().contains("plato"), "{error}");
+    assert_eq!(property, &id("ductility"));
+    assert!(error.to_string().contains("ductility"), "{error}");
 }
 
 #[test]
@@ -665,10 +685,10 @@ fn materialize_reports_which_cell_failed() {
     let mut sample = Sample::new();
     sample
         .set_table(
-            id("mashing"),
-            boil(vec![Derivation::Row {
-                outputs: vec![id("clarity")],
-                inputs: vec![InputName::Cell(id("wort"))],
+            id("preheating"),
+            soak(vec![Derivation::Row {
+                outputs: vec![id("rigidity")],
+                inputs: vec![InputName::Cell(id("tension"))],
                 formula: Rc::new(RaisingRow),
             }]),
         )
@@ -683,8 +703,8 @@ fn materialize_reports_which_cell_failed() {
     else {
         panic!("expected a cell failure, got {error:?}");
     };
-    assert_eq!(table, &id("mashing"));
-    assert_eq!(column, &id("clarity"));
+    assert_eq!(table, &id("preheating"));
+    assert_eq!(column, &id("rigidity"));
     assert_eq!(index.as_deref(), Some(&[number(65.0)][..]));
 }
 
@@ -695,7 +715,7 @@ fn note_survives_a_modify_cycle() {
     let mut sample = Sample::new();
     sample.set_note("Cut from the left edge.\n".to_string());
     sample
-        .set_property(id("malt"), Property::stored(number(1.0)))
+        .set_property(id("diameter"), Property::stored(number(1.0)))
         .unwrap();
     sample
         .set_attribute(id("batch"), Value::integer(3))
@@ -712,7 +732,7 @@ fn note_with_unusual_whitespace_is_preserved() {
     let mut sample = Sample::new();
     sample.set_note(awkward.to_string());
     sample
-        .set_property(id("malt"), Property::stored(number(1.0)))
+        .set_property(id("diameter"), Property::stored(number(1.0)))
         .unwrap();
     assert_eq!(sample.note(), awkward);
     assert_eq!(sample.note().len(), awkward.len());
@@ -856,9 +876,9 @@ fn tags_keep_the_order_they_were_added() {
 
 // ----------------------------------------------------------------- filling
 
-/// plato = malt / volume, counting its runs.
+/// ductility = diameter / volume, counting its runs.
 struct FillDensity {
-    malt: PropertyHandle,
+    diameter: PropertyHandle,
     volume: PropertyHandle,
     runs: Cell<usize>,
 }
@@ -866,33 +886,33 @@ struct FillDensity {
 impl Compute for FillDensity {
     fn compute(&self) -> Result<Value, ComputeError> {
         self.runs.set(self.runs.get() + 1);
-        Ok(number(read(&self.malt) / read(&self.volume)))
+        Ok(number(read(&self.diameter) / read(&self.volume)))
     }
 }
 
-/// A model's declaration: two inputs without values, and a plato with a
+/// A model's declaration: two inputs without values, and a ductility with a
 /// formula and a unit.
 fn fill_declaration() -> (Sample, Rc<FillDensity>) {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(Value::absent()))
+        .set_property(id("diameter"), Property::stored(Value::absent()))
         .unwrap();
     sample
         .set_property(id("volume"), Property::stored(Value::absent()))
         .unwrap();
     let formula = Rc::new(FillDensity {
-        malt: sample.property(&id("malt")).unwrap(),
+        diameter: sample.property(&id("diameter")).unwrap(),
         volume: sample.property(&id("volume")).unwrap(),
         runs: Cell::new(0),
     });
-    let mut plato = Property::computed(formula.clone());
-    plato.set_presentation(Presentation {
+    let mut ductility = Property::computed(formula.clone());
+    ductility.set_presentation(Presentation {
         unit: Some("g/L".to_string()),
         ..Presentation::default()
     });
-    sample.set_property(id("plato"), plato).unwrap();
+    sample.set_property(id("ductility"), ductility).unwrap();
     sample
-        .declare_dependencies(&id("plato"), &[named("malt"), named("volume")])
+        .declare_dependencies(&id("ductility"), &[named("diameter"), named("volume")])
         .unwrap();
     (sample, formula)
 }
@@ -900,13 +920,13 @@ fn fill_declaration() -> (Sample, Rc<FillDensity>) {
 /// What a file read on its own holds: values, a name and a note, no formula.
 fn fill_file() -> Sample {
     let mut file = Sample::new();
-    file.set_name(Some("Keg 42".to_string()));
-    file.set_property(id("malt"), Property::stored(number(12.4)))
+    file.set_name(Some("Billet 42".to_string()));
+    file.set_property(id("diameter"), Property::stored(number(12.4)))
         .unwrap();
     file.set_property(id("volume"), Property::stored(number(4.0)))
         .unwrap();
     // Not 12.4 / 4.0, so that a run would show.
-    file.set_property(id("plato"), Property::stored(number(3.0)))
+    file.set_property(id("ductility"), Property::stored(number(3.0)))
         .unwrap();
     file.set_note("# Notes\n".to_string());
     file
@@ -916,13 +936,13 @@ fn fill_file() -> Sample {
 fn filling_reads_the_file_into_a_declaration() {
     let (mut sample, formula) = fill_declaration();
     sample.fill_from(fill_file()).unwrap();
-    let plato = sample.property(&id("plato")).unwrap();
-    assert_eq!(read(&plato), 3.0);
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert_eq!(read(&ductility), 3.0);
     assert_eq!(formula.runs.get(), 0);
-    assert!(plato.is_computed());
-    assert!(plato.is_resolved());
-    assert_eq!(plato.presentation().unit.as_deref(), Some("g/L"));
-    assert_eq!(sample.name(), Some("Keg 42"));
+    assert!(ductility.is_computed());
+    assert!(ductility.is_resolved());
+    assert_eq!(ductility.presentation().unit.as_deref(), Some("g/L"));
+    assert_eq!(sample.name(), Some("Billet 42"));
     assert_eq!(sample.note(), "# Notes\n");
 }
 
@@ -930,10 +950,13 @@ fn filling_reads_the_file_into_a_declaration() {
 fn a_filled_value_recomputes_when_an_input_changes() {
     let (mut sample, formula) = fill_declaration();
     sample.fill_from(fill_file()).unwrap();
-    let plato = sample.property(&id("plato")).unwrap();
-    assert_eq!(read(&plato), 3.0);
-    sample.property(&id("malt")).unwrap().set_value(number(8.0));
-    assert_eq!(read(&plato), 2.0);
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert_eq!(read(&ductility), 3.0);
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(8.0));
+    assert_eq!(read(&ductility), 2.0);
     assert_eq!(formula.runs.get(), 1);
 }
 
@@ -944,10 +967,10 @@ fn filling_keeps_what_only_the_declaration_holds() {
         .set_attribute(id("batch"), Value::integer(7))
         .unwrap();
     sample
-        .set_property(id("haze"), Property::stored(number(0.1)))
+        .set_property(id("roughness"), Property::stored(number(0.1)))
         .unwrap();
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         [(id("temperature"), ColumnMeta::default())]
             .into_iter()
@@ -955,12 +978,12 @@ fn filling_keeps_what_only_the_declaration_holds() {
         Vec::new(),
     )
     .unwrap();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     sample.fill_from(fill_file()).unwrap();
     assert!(*sample.attribute(&id("batch")).unwrap() == Value::integer(7));
-    assert_eq!(read(&sample.property(&id("haze")).unwrap()), 0.1);
-    assert!(sample.table(&id("mashing")).is_ok());
-    assert_eq!(read(&sample.property(&id("malt")).unwrap()), 12.4);
+    assert_eq!(read(&sample.property(&id("roughness")).unwrap()), 0.1);
+    assert!(sample.table(&id("preheating")).is_ok());
+    assert_eq!(read(&sample.property(&id("diameter")).unwrap()), 12.4);
 }
 
 #[test]
@@ -983,7 +1006,7 @@ fn filling_refuses_a_name_held_as_another_kind() {
     assert!(!sample.has_property(&id("batch")));
     assert!(
         sample
-            .property(&id("malt"))
+            .property(&id("diameter"))
             .unwrap()
             .value()
             .unwrap()
@@ -995,14 +1018,14 @@ fn filling_refuses_a_name_held_as_another_kind() {
 fn invalidating_a_handle_recomputes_its_dependents() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(2.0)))
+        .set_property(id("diameter"), Property::stored(number(2.0)))
         .unwrap();
-    let first = Reader::of(sample.property(&id("malt")).unwrap());
+    let first = Reader::of(sample.property(&id("diameter")).unwrap());
     sample
         .set_property(id("double"), Property::computed(first.clone()))
         .unwrap();
     sample
-        .declare_dependencies(&id("double"), &[named("malt")])
+        .declare_dependencies(&id("double"), &[named("diameter")])
         .unwrap();
     let second = Reader::of(sample.property(&id("double")).unwrap());
     sample
@@ -1032,7 +1055,7 @@ impl samplekit::core::table::ComputeColumn for FillHalves {
         _: &dyn Scope,
     ) -> Result<IndexMap<Identifier, Vec<CellOutput>>, ComputeError> {
         let cells = columns
-            .column(&id("wort"))
+            .column(&id("tension"))
             .unwrap()
             .cells()
             .map(|(_, cell)| match cell.value().unwrap() {
@@ -1055,7 +1078,7 @@ fn a_table_is_named_by_the_name_it_is_set_under() {
         vec![id("temperature")],
         [
             (id("temperature"), ColumnMeta::default()),
-            (id("wort"), ColumnMeta::default()),
+            (id("tension"), ColumnMeta::default()),
             (id("halved"), ColumnMeta::default()),
         ]
         .into_iter()
@@ -1064,29 +1087,29 @@ fn a_table_is_named_by_the_name_it_is_set_under() {
             outputs: vec![id("halved")],
             inputs: vec![InputName::Column {
                 table: id("draft"),
-                column: id("wort"),
+                column: id("tension"),
             }],
             formula: Rc::new(FillHalves),
         }],
     )
     .unwrap();
     let mut sample = Sample::new();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
 
-    let held = sample.table(&id("mashing")).unwrap();
-    assert_eq!(held.name(), &id("mashing"));
+    let held = sample.table(&id("preheating")).unwrap();
+    assert_eq!(held.name(), &id("preheating"));
     assert_eq!(
         held.inputs_of(&id("halved")).unwrap(),
         &[InputName::Column {
-            table: id("mashing"),
-            column: id("wort"),
+            table: id("preheating"),
+            column: id("tension"),
         }]
     );
     assert!(
         sample
-            .affected_by_change(&column("mashing", "wort"))
+            .affected_by_change(&column("preheating", "tension"))
             .unwrap()
-            .contains(&column("mashing", "halved"))
+            .contains(&column("preheating", "halved"))
     );
 }
 
@@ -1094,14 +1117,14 @@ fn a_table_is_named_by_the_name_it_is_set_under() {
 fn resolve_keeps_the_formulas() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(2.0)))
+        .set_property(id("diameter"), Property::stored(number(2.0)))
         .unwrap();
-    let formula = Reader::of(sample.property(&id("malt")).unwrap());
+    let formula = Reader::of(sample.property(&id("diameter")).unwrap());
     sample
         .set_property(id("double"), Property::computed(formula.clone()))
         .unwrap();
     sample
-        .declare_dependencies(&id("double"), &[named("malt")])
+        .declare_dependencies(&id("double"), &[named("diameter")])
         .unwrap();
 
     sample.resolve().unwrap();
@@ -1110,12 +1133,15 @@ fn resolve_keeps_the_formulas() {
     assert!(double.is_resolved());
     assert_eq!(formula.calls.get(), 1);
 
-    sample.property(&id("malt")).unwrap().set_value(number(3.0));
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(3.0));
     assert_eq!(read(&double), 6.0);
     assert_eq!(formula.calls.get(), 2);
 }
 
-/// clarity = 1 / wort, counting its runs.
+/// rigidity = 1 / tension, counting its runs.
 struct FillRowCount {
     runs: Cell<usize>,
 }
@@ -1127,15 +1153,16 @@ impl ComputeRow for FillRowCount {
         _: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
         self.runs.set(self.runs.get() + 1);
-        let wort = match row.cell(&id("wort")).unwrap().value().unwrap() {
+        let tension = match row.cell(&id("tension")).unwrap().value().unwrap() {
             Value::Number(number) => number,
             other => panic!("expected a number, got {other:?}"),
         };
-        Ok(
-            [(id("clarity"), CellOutput::Value(number_value(1.0 / wort)))]
-                .into_iter()
-                .collect(),
-        )
+        Ok([(
+            id("rigidity"),
+            CellOutput::Value(number_value(1.0 / tension)),
+        )]
+        .into_iter()
+        .collect())
     }
 }
 
@@ -1143,30 +1170,30 @@ impl ComputeRow for FillRowCount {
 fn resolving_a_table_runs_only_its_derivations() {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(2.0)))
+        .set_property(id("diameter"), Property::stored(number(2.0)))
         .unwrap();
-    let double = Reader::of(sample.property(&id("malt")).unwrap());
+    let double = Reader::of(sample.property(&id("diameter")).unwrap());
     sample
         .set_property(id("double"), Property::computed(double.clone()))
         .unwrap();
     sample
-        .declare_dependencies(&id("double"), &[named("malt")])
+        .declare_dependencies(&id("double"), &[named("diameter")])
         .unwrap();
 
     let rows = Rc::new(FillRowCount { runs: Cell::new(0) });
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         [
             (id("temperature"), ColumnMeta::default()),
-            (id("wort"), ColumnMeta::default()),
-            (id("clarity"), ColumnMeta::default()),
+            (id("tension"), ColumnMeta::default()),
+            (id("rigidity"), ColumnMeta::default()),
         ]
         .into_iter()
         .collect(),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: rows.clone(),
         }],
     )
@@ -1174,17 +1201,17 @@ fn resolving_a_table_runs_only_its_derivations() {
     table
         .add_row(vec![
             (id("temperature"), Property::stored(number(65.0))),
-            (id("wort"), Property::stored(number(12.5))),
+            (id("tension"), Property::stored(number(12.5))),
         ])
         .unwrap();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
 
-    sample.resolve_table(&id("mashing")).unwrap();
+    sample.resolve_table(&id("preheating")).unwrap();
     assert_eq!(rows.runs.get(), 1);
     assert_eq!(double.calls.get(), 0);
 
     // Nothing to run the second time.
-    sample.resolve_table(&id("mashing")).unwrap();
+    sample.resolve_table(&id("preheating")).unwrap();
     assert_eq!(rows.runs.get(), 1);
 }
 
@@ -1193,57 +1220,57 @@ fn a_held_table_is_edited_through_its_sample() {
     use samplekit::core::table::RowAddress;
     let rows = Rc::new(FillRowCount { runs: Cell::new(0) });
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         [
             (id("temperature"), ColumnMeta::default()),
-            (id("wort"), ColumnMeta::default()),
-            (id("clarity"), ColumnMeta::default()),
+            (id("tension"), ColumnMeta::default()),
+            (id("rigidity"), ColumnMeta::default()),
         ]
         .into_iter()
         .collect(),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: rows.clone(),
         }],
     )
     .unwrap();
     let mut sample = Sample::new();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     sample
         .add_row(
-            &id("mashing"),
+            &id("preheating"),
             vec![
                 (id("temperature"), Property::stored(number(65.0))),
-                (id("wort"), Property::stored(number(12.5))),
+                (id("tension"), Property::stored(number(12.5))),
             ],
         )
         .unwrap();
-    sample.resolve_table(&id("mashing")).unwrap();
+    sample.resolve_table(&id("preheating")).unwrap();
     assert_eq!(rows.runs.get(), 1);
 
     let at = RowAddress::index(vec![number(65.0)]);
     sample
         .update_row(
-            &id("mashing"),
+            &id("preheating"),
             &at,
-            vec![(id("wort"), Property::stored(number(25.0)))],
+            vec![(id("tension"), Property::stored(number(25.0)))],
         )
         .unwrap();
-    sample.resolve_table(&id("mashing")).unwrap();
+    sample.resolve_table(&id("preheating")).unwrap();
     assert_eq!(rows.runs.get(), 2);
-    let clarity = sample
-        .table(&id("mashing"))
+    let rigidity = sample
+        .table(&id("preheating"))
         .unwrap()
-        .at(&at, &id("clarity"))
+        .at(&at, &id("rigidity"))
         .unwrap()
         .value()
         .unwrap();
-    assert_eq!(clarity, number(1.0 / 25.0));
+    assert_eq!(rigidity, number(1.0 / 25.0));
 
-    sample.invalidate_row(&id("mashing"), &at).unwrap();
-    sample.resolve_table(&id("mashing")).unwrap();
+    sample.invalidate_row(&id("preheating"), &at).unwrap();
+    sample.resolve_table(&id("preheating")).unwrap();
     assert_eq!(rows.runs.get(), 3);
 }
 
@@ -1252,14 +1279,14 @@ fn a_held_table_is_edited_through_its_sample() {
 fn doubling() -> (Sample, Rc<Reader>) {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(2.0)))
+        .set_property(id("diameter"), Property::stored(number(2.0)))
         .unwrap();
-    let formula = Reader::of(sample.property(&id("malt")).unwrap());
+    let formula = Reader::of(sample.property(&id("diameter")).unwrap());
     sample
         .set_property(id("double"), Property::computed(formula.clone()))
         .unwrap();
     sample
-        .declare_dependencies(&id("double"), &[named("malt")])
+        .declare_dependencies(&id("double"), &[named("diameter")])
         .unwrap();
     (sample, formula)
 }
@@ -1269,7 +1296,10 @@ fn peeking_a_handle_discards_no_stale_cache() {
     let (sample, formula) = doubling();
     let double = sample.property(&id("double")).unwrap();
     assert_eq!(read(&double), 4.0);
-    sample.property(&id("malt")).unwrap().set_value(number(3.0));
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(3.0));
     assert!(!double.is_current());
     assert_eq!(double.peek(Property::peek_value), Some(number(4.0)));
     assert!(!double.is_current());
@@ -1283,7 +1313,10 @@ fn marking_a_handle_current_stops_a_rerun() {
     let (sample, formula) = doubling();
     let double = sample.property(&id("double")).unwrap();
     assert_eq!(read(&double), 4.0);
-    sample.property(&id("malt")).unwrap().set_value(number(2.0));
+    sample
+        .property(&id("diameter"))
+        .unwrap()
+        .set_value(number(2.0));
     assert!(!double.is_current());
     double.mark_current();
     assert!(double.is_current());
@@ -1296,53 +1329,53 @@ fn a_held_cell_reports_its_run_and_takes_its_records() {
     use samplekit::core::table::{CellRun, RowAddress};
     let rows = Rc::new(FillRowCount { runs: Cell::new(0) });
     let table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         [
             (id("temperature"), ColumnMeta::default()),
-            (id("wort"), ColumnMeta::default()),
-            (id("clarity"), ColumnMeta::default()),
+            (id("tension"), ColumnMeta::default()),
+            (id("rigidity"), ColumnMeta::default()),
         ]
         .into_iter()
         .collect(),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: rows.clone(),
         }],
     )
     .unwrap();
     let mut sample = Sample::new();
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     sample
         .add_row(
-            &id("mashing"),
+            &id("preheating"),
             vec![
                 (id("temperature"), Property::stored(number(65.0))),
-                (id("wort"), Property::stored(number(12.5))),
+                (id("tension"), Property::stored(number(12.5))),
             ],
         )
         .unwrap();
     let at = RowAddress::index(vec![number(65.0)]);
-    let (mashing, clarity) = (id("mashing"), id("clarity"));
-    let run = |sample: &Sample| sample.cell_run(&mashing, &at, &clarity).unwrap();
+    let (preheating, rigidity) = (id("preheating"), id("rigidity"));
+    let run = |sample: &Sample| sample.cell_run(&preheating, &at, &rigidity).unwrap();
 
     assert_eq!(run(&sample), CellRun::NeverRan);
     assert_eq!(
-        sample.cell_run(&mashing, &at, &id("wort")).unwrap(),
+        sample.cell_run(&preheating, &at, &id("tension")).unwrap(),
         CellRun::NotDerived
     );
-    sample.resolve_table(&mashing).unwrap();
+    sample.resolve_table(&preheating).unwrap();
     assert_eq!(run(&sample), CellRun::Current);
     sample
         .update_row(
-            &mashing,
+            &preheating,
             &at,
-            vec![(id("wort"), Property::stored(number(25.0)))],
+            vec![(id("tension"), Property::stored(number(25.0)))],
         )
         .unwrap();
     assert_eq!(run(&sample), CellRun::Moved);
-    sample.confirm_cell(&mashing, &at, &clarity).unwrap();
+    sample.confirm_cell(&preheating, &at, &rigidity).unwrap();
     assert_eq!(run(&sample), CellRun::Current);
 
     let records = Records {
@@ -1354,82 +1387,82 @@ fn a_held_cell_reports_its_run_and_takes_its_records() {
         statistics: None,
     };
     sample
-        .set_cell_records(&mashing, &at, &clarity, records.clone())
+        .set_cell_records(&preheating, &at, &rigidity, records.clone())
         .unwrap();
-    let held = sample.table(&mashing).unwrap();
-    assert_eq!(held.at(&at, &clarity).unwrap().records(), &records);
+    let held = sample.table(&preheating).unwrap();
+    assert_eq!(held.at(&at, &rigidity).unwrap().records(), &records);
     assert_eq!(run(&sample), CellRun::Current);
-    sample.resolve_table(&mashing).unwrap();
+    sample.resolve_table(&preheating).unwrap();
     assert_eq!(rows.runs.get(), 1);
 }
 
 // ------------------------------------------------------------- overrides
 
-/// malt -> plato -> haze, each doubling the last, with their formulas.
+/// diameter -> ductility -> roughness, each doubling the last, with their formulas.
 fn doubled() -> (Sample, Rc<Reader>, Rc<Reader>) {
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(10.0)))
+        .set_property(id("diameter"), Property::stored(number(10.0)))
         .unwrap();
-    let plato = Reader::of(sample.property(&id("malt")).unwrap());
+    let ductility = Reader::of(sample.property(&id("diameter")).unwrap());
     sample
-        .set_property(id("plato"), Property::computed(plato.clone()))
-        .unwrap();
-    sample
-        .declare_dependencies(&id("plato"), &[named("malt")])
-        .unwrap();
-    let haze = Reader::of(sample.property(&id("plato")).unwrap());
-    sample
-        .set_property(id("haze"), Property::computed(haze.clone()))
+        .set_property(id("ductility"), Property::computed(ductility.clone()))
         .unwrap();
     sample
-        .declare_dependencies(&id("haze"), &[named("plato")])
+        .declare_dependencies(&id("ductility"), &[named("diameter")])
         .unwrap();
-    (sample, plato, haze)
+    let roughness = Reader::of(sample.property(&id("ductility")).unwrap());
+    sample
+        .set_property(id("roughness"), Property::computed(roughness.clone()))
+        .unwrap();
+    sample
+        .declare_dependencies(&id("roughness"), &[named("ductility")])
+        .unwrap();
+    (sample, ductility, roughness)
 }
 
 #[test]
 fn an_override_moves_what_reads_it() {
-    let (sample, plato_formula, haze_formula) = doubled();
-    let plato = sample.property(&id("plato")).unwrap();
-    let haze = sample.property(&id("haze")).unwrap();
-    assert_eq!(read(&haze), 40.0);
+    let (sample, ductility_formula, roughness_formula) = doubled();
+    let ductility = sample.property(&id("ductility")).unwrap();
+    let roughness = sample.property(&id("roughness")).unwrap();
+    assert_eq!(read(&roughness), 40.0);
 
-    plato.set_value(number(7.0));
-    assert!(plato.is_edited());
-    assert_eq!(read(&haze), 14.0);
-    assert_eq!(read(&haze), 14.0);
+    ductility.set_value(number(7.0));
+    assert!(ductility.is_edited());
+    assert_eq!(read(&roughness), 14.0);
+    assert_eq!(read(&roughness), 14.0);
     assert_eq!(
-        (plato_formula.calls.get(), haze_formula.calls.get()),
+        (ductility_formula.calls.get(), roughness_formula.calls.get()),
         (1, 2)
     );
 
-    plato.restore_formula();
-    assert!(!plato.is_edited());
-    assert_eq!(read(&haze), 40.0);
+    ductility.restore_formula();
+    assert!(!ductility.is_edited());
+    assert_eq!(read(&roughness), 40.0);
     assert_eq!(
-        (plato_formula.calls.get(), haze_formula.calls.get()),
+        (ductility_formula.calls.get(), roughness_formula.calls.get()),
         (2, 3)
     );
 }
 
 #[test]
 fn an_override_stops_currency_at_itself() {
-    let (sample, plato_formula, haze_formula) = doubled();
-    let plato = sample.property(&id("plato")).unwrap();
-    let haze = sample.property(&id("haze")).unwrap();
-    plato.set_value(number(7.0));
-    assert_eq!(read(&haze), 14.0);
+    let (sample, ductility_formula, roughness_formula) = doubled();
+    let ductility = sample.property(&id("ductility")).unwrap();
+    let roughness = sample.property(&id("roughness")).unwrap();
+    ductility.set_value(number(7.0));
+    assert_eq!(read(&roughness), 14.0);
 
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
-    assert!(plato.is_current());
-    assert!(haze.is_current());
-    assert_eq!(read(&haze), 14.0);
+    assert!(ductility.is_current());
+    assert!(roughness.is_current());
+    assert_eq!(read(&roughness), 14.0);
     assert_eq!(
-        (plato_formula.calls.get(), haze_formula.calls.get()),
+        (ductility_formula.calls.get(), roughness_formula.calls.get()),
         (0, 1)
     );
 }
@@ -1437,19 +1470,19 @@ fn an_override_stops_currency_at_itself() {
 #[test]
 fn a_value_reading_a_derived_column_is_current_once_read() {
     let mut sample = Sample::new();
-    let table = boil(vec![Derivation::Row {
-        outputs: vec![id("clarity")],
-        inputs: vec![InputName::Cell(id("wort"))],
+    let table = soak(vec![Derivation::Row {
+        outputs: vec![id("rigidity")],
+        inputs: vec![InputName::Cell(id("tension"))],
         formula: Rc::new(Reciprocal),
     }]);
-    sample.set_table(id("mashing"), table).unwrap();
+    sample.set_table(id("preheating"), table).unwrap();
     sample
         .set_property(id("mean"), Property::computed(Rc::new(Constant(1.0))))
         .unwrap();
     sample
-        .declare_dependencies(&id("mean"), &[column("mashing", "clarity")])
+        .declare_dependencies(&id("mean"), &[column("preheating", "rigidity")])
         .unwrap();
-    sample.resolve_table(&id("mashing")).unwrap();
+    sample.resolve_table(&id("preheating")).unwrap();
     let mean = sample.property(&id("mean")).unwrap();
     read(&mean);
     assert!(mean.is_current());
@@ -1853,59 +1886,62 @@ fn replacing_a_property_drops_its_declared_inputs() {
     // keeps reading it.
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(10.0)))
+        .set_property(id("diameter"), Property::stored(number(10.0)))
         .unwrap();
     sample
         .set_property(id("other"), Property::stored(number(3.0)))
         .unwrap();
-    let malt = sample.property(&id("malt")).unwrap();
+    let diameter = sample.property(&id("diameter")).unwrap();
     sample
-        .set_property(id("plato"), Property::computed(Reader::of(malt)))
+        .set_property(id("ductility"), Property::computed(Reader::of(diameter)))
         .unwrap();
     sample
-        .declare_dependencies(&id("plato"), &[named("malt")])
+        .declare_dependencies(&id("ductility"), &[named("diameter")])
         .unwrap();
-    let plato = sample.property(&id("plato")).unwrap();
+    let ductility = sample.property(&id("ductility")).unwrap();
     sample
-        .set_property(id("haze"), Property::computed(Reader::of(plato)))
+        .set_property(id("roughness"), Property::computed(Reader::of(ductility)))
         .unwrap();
     sample
-        .declare_dependencies(&id("haze"), &[named("plato")])
+        .declare_dependencies(&id("roughness"), &[named("ductility")])
         .unwrap();
 
     let other = sample.property(&id("other")).unwrap();
     sample
-        .set_property(id("plato"), Property::computed(Reader::of(other)))
+        .set_property(id("ductility"), Property::computed(Reader::of(other)))
         .unwrap();
     assert!(
-        sample.dependencies_of(&id("plato")).unwrap().is_empty(),
+        sample.dependencies_of(&id("ductility")).unwrap().is_empty(),
         "the old declaration survived the replacement"
     );
-    assert!(sample.dependents_of(&id("malt")).unwrap().is_empty());
+    assert!(sample.dependents_of(&id("diameter")).unwrap().is_empty());
     assert_eq!(
-        sample.dependents_of(&id("plato")).unwrap(),
-        vec![named("haze")],
+        sample.dependents_of(&id("ductility")).unwrap(),
+        vec![named("roughness")],
         "what read the name keeps reading it"
     );
     sample
-        .declare_dependencies(&id("plato"), &[named("other")])
+        .declare_dependencies(&id("ductility"), &[named("other")])
         .unwrap();
     assert_eq!(
-        sample.dependencies_of(&id("plato")).unwrap(),
+        sample.dependencies_of(&id("ductility")).unwrap(),
         vec![named("other")]
     );
-    let plato = sample.property(&id("plato")).unwrap();
-    assert_eq!(read(&plato), 6.0);
+    let ductility = sample.property(&id("ductility")).unwrap();
+    assert_eq!(read(&ductility), 6.0);
     sample
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(99.0));
-    assert!(plato.is_current(), "a dropped input still moved the value");
+    assert!(
+        ductility.is_current(),
+        "a dropped input still moved the value"
+    );
     sample
         .property(&id("other"))
         .unwrap()
         .set_value(number(4.0));
-    assert!(!plato.is_current());
+    assert!(!ductility.is_current());
 }
 
 #[test]
@@ -1914,43 +1950,43 @@ fn confirming_a_fill_records_declarations_settled_after_it() {
     // no record of; `confirm_filled` is the record it is owed.
     let mut declared = Sample::new();
     declared
-        .set_property(id("malt"), Property::stored(Value::absent()))
+        .set_property(id("diameter"), Property::stored(Value::absent()))
         .unwrap();
-    let malt = declared.property(&id("malt")).unwrap();
-    let formula = Reader::of(malt);
+    let diameter = declared.property(&id("diameter")).unwrap();
+    let formula = Reader::of(diameter);
     declared
-        .set_property(id("plato"), Property::computed(formula.clone()))
+        .set_property(id("ductility"), Property::computed(formula.clone()))
         .unwrap();
     let mut file = Sample::new();
-    file.set_property(id("malt"), Property::stored(number(10.0)))
+    file.set_property(id("diameter"), Property::stored(number(10.0)))
         .unwrap();
-    file.set_property(id("plato"), Property::stored(number(20.0)))
+    file.set_property(id("ductility"), Property::stored(number(20.0)))
         .unwrap();
     declared.fill_from(file).unwrap();
     declared
-        .declare_dependencies(&id("plato"), &[named("malt")])
+        .declare_dependencies(&id("ductility"), &[named("diameter")])
         .unwrap();
-    let plato = declared.property(&id("plato")).unwrap();
+    let ductility = declared.property(&id("ductility")).unwrap();
     assert!(
-        !plato.is_current(),
+        !ductility.is_current(),
         "the record taken at the fill knew nothing of the declaration"
     );
     declared.confirm_filled();
-    assert!(plato.is_current());
-    assert_eq!(read(&plato), 20.0, "the file's value, and no run");
+    assert!(ductility.is_current());
+    assert_eq!(read(&ductility), 20.0, "the file's value, and no run");
     assert_eq!(formula.calls.get(), 0);
     declared
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(11.0));
-    assert!(!plato.is_current());
+    assert!(!ductility.is_current());
 }
 
 #[test]
 fn an_unknown_name_in_a_sample_holding_none_of_its_kind_says_so() {
-    // *unknown table 'fermentation' / available: * stood with an empty list.
+    // *unknown table 'ageing' / available: * stood with an empty list.
     let sample = Sample::new();
-    let said = sample.table(&id("fermentation")).unwrap_err().to_string();
+    let said = sample.table(&id("ageing")).unwrap_err().to_string();
     assert!(said.contains("this sample holds no table"), "{said}");
     assert!(!said.contains("available"), "{said}");
 }
@@ -1961,12 +1997,12 @@ fn a_sample_without_a_name_is_named_by_its_file() {
     // name written wins; a sample with no file and no name has none.
     let mut sample = Sample::new();
     assert_eq!(sample.name(), None);
-    sample.set_file(Some(std::path::Path::new("brews/s-1.sample.md")));
+    sample.set_file(Some(std::path::Path::new("pieces/s-1.sample.md")));
     assert_eq!(sample.name(), Some("s-1.sample"));
     assert_eq!(sample.written_name(), None);
-    sample.set_name(Some("Cask A".to_string()));
-    assert_eq!(sample.name(), Some("Cask A"));
-    assert_eq!(sample.written_name(), Some("Cask A"));
+    sample.set_name(Some("Slab A".to_string()));
+    assert_eq!(sample.name(), Some("Slab A"));
+    assert_eq!(sample.written_name(), Some("Slab A"));
     sample.set_name(None);
     assert_eq!(sample.name(), Some("s-1.sample"));
     // Filled from a file, the file's name comes with it.

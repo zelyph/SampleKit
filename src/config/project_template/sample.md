@@ -2,37 +2,41 @@
 schema_version: 1
 name: EXAMPLE
 tags: [example]
-style: pale ale
-brewed: 2026-09-16
+material: steel
+tested: 2026-09-16
 properties:
-  og: {readings: [1.052, 1.053, 1.052]}
-  fg: {readings: [1.011, 1.012, 1.011]}
-  volume: {v: 21.0, unit: L}
-  grain_mass: {v: 5.2, unit: kg}
+  width: {readings: [12.51, 12.52, 12.50], unit: mm}
+  thickness: {readings: [2.003, 1.998, 2.001], unit: mm}
+  gauge_length: {v: 50.0, unit: mm}
 tables:
-  fermentation:
-    index: day
+  curve:
+    index: extension
     columns:
-      day: {unit: d}
-      gravity: {}
-      temperature: {unit: degC}
+      extension: {unit: mm}
+      force: {unit: kN}
     rows:
-      - {day: 1, gravity: 1.046, temperature: 19.0}
-      - {day: 2, gravity: 1.034, temperature: 19.5}
-      - {day: 3, gravity: 1.024, temperature: 20.0}
-      - {day: 5, gravity: 1.015, temperature: 19.5}
-      - {day: 7, gravity: 1.012, temperature: 19.0}
+      - {extension: 0.0, force: 0.0}
+      - {extension: 0.01, force: 1.03}
+      - {extension: 0.02, force: 2.07}
+      - {extension: 0.025, force: 2.57}
+      - {extension: 0.05, force: 5.1}
+      - {extension: 0.1, force: 8.7}
+      - {extension: 0.2, force: 9.8}
+      - {extension: 1.0, force: 11.2}
+      - {extension: 5.0, force: 12.9}
+      - {extension: 10.0, force: 12.95}
+      - {extension: 12.0, force: 12.1}
 ---
 
 # EXAMPLE
 
 Everything above the closing `---` is data SampleKit reads and writes. Everything
 below it is yours: SampleKit never touches a word of it, and it is where remarks
-belong — a comment inside the frontmatter is dropped by the next write.
+belong. A comment inside the frontmatter is dropped by the next write.
 
-Note that `og` and `fg` hold three hydrometer readings each rather than one
-number. The model turns them into a value and an uncertainty, so correcting a
-reading corrects both.
+Note that `width` and `thickness` hold three micrometer readings each rather
+than one number. The model turns them into a value and an uncertainty, so
+correcting a reading corrects both.
 
-Nothing here was brewed — it is an example, so that the model has something to
+Nothing here was tested: it is an example, so that the model has something to
 run on. Delete this file once your own samples are in.

@@ -49,7 +49,7 @@ fn with(properties: &[(&str, PropertySchema)]) -> SampleSchema {
     schema
 }
 
-fn malt() -> PropertySchema {
+fn diameter() -> PropertySchema {
     PropertySchema {
         statistics: None,
         value: Some(number(12.5)),
@@ -77,7 +77,7 @@ fn inputs(pairs: &[(InputName, Value)]) -> IndexMap<InputName, Recorded> {
 #[test]
 fn output_is_deterministic() {
     let schema = with(&[
-        ("malt", malt()),
+        ("diameter", diameter()),
         ("finish", value_only(Value::text("unfiltered"))),
     ]);
     assert_eq!(write(&schema), write(&schema));
@@ -87,13 +87,13 @@ fn output_is_deterministic() {
 fn write_is_idempotent() {
     // write(parse(write(x))) == write(x), over a schema with one of everything.
     let mut schema = with(&[
-        ("malt", malt()),
+        ("diameter", diameter()),
         ("finish", value_only(Value::text("unfiltered"))),
         ("batch", value_only(Value::integer(3))),
         ("cold_crashed", value_only(Value::boolean(true))),
         ("temperature", value_only(number(20.0))),
     ]);
-    schema.name = Some("Keg 42".to_string());
+    schema.name = Some("Billet 42".to_string());
     schema.tags = vec![
         samplekit::format::schema::Tag::Usable(id("reference")),
         samplekit::format::schema::Tag::Usable(id("cold_crashed_run")),
@@ -102,7 +102,7 @@ fn write_is_idempotent() {
         .attributes
         .insert(id("lot"), Value::integer(7).into());
     schema.attributes.insert(
-        id("brewed_on"),
+        id("poured_on"),
         Value::date(Date::new(2026, 3, 14).unwrap()).into(),
     );
 
@@ -121,7 +121,7 @@ fn field_order_is_fixed() {
     // Regardless of construction order.
     let mut schema = empty();
     schema.tables.insert(
-        id("mashing"),
+        id("preheating"),
         TableSchema {
             title: None,
             index: vec![id("temperature")],
@@ -134,9 +134,10 @@ fn field_order_is_fixed() {
                     .into_iter()
                     .collect(),
             ],
+            prepared: Default::default(),
         },
     );
-    schema.properties.insert(id("malt"), malt());
+    schema.properties.insert(id("diameter"), diameter());
     schema
         .attributes
         .insert(id("batch"), Value::integer(3).into());
@@ -161,13 +162,13 @@ fn records_are_written_last() {
         value: Some(number(3.05)),
         unit: Some("g/dl".to_string()),
         computed: Some(record(&[(
-            InputName::Named(id("malt")),
+            InputName::Named(id("diameter")),
             Value::text("9f2c14ab77d0"),
         )])),
         fingerprint: Some(Fingerprint::new("5b2c9e1f0a34")),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("plato", property)]));
+    let out = write(&with(&[("ductility", property)]));
     let order: Vec<usize> = ["v:", "unit:", "computed:", "fingerprint:"]
         .iter()
         .map(|field| {
@@ -190,9 +191,9 @@ fn value_only_property_is_a_bare_scalar() {
 #[test]
 fn property_with_metadata_is_a_flow_mapping() {
     // And stays on one line.
-    let out = write(&with(&[("malt", malt())]));
+    let out = write(&with(&[("diameter", diameter())]));
     assert!(
-        out.contains("  malt: {v: 12.5, u: 0.05, unit: g}\n"),
+        out.contains("  diameter: {v: 12.5, u: 0.05, unit: g}\n"),
         "{out}"
     );
 }
@@ -204,14 +205,14 @@ fn derived_property_is_a_block_mapping() {
         statistics: None,
         value: Some(number(3.05)),
         computed: Some(record(&[(
-            InputName::Named(id("malt")),
+            InputName::Named(id("diameter")),
             Value::text("9f2c14ab77d0"),
         )])),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("malt", malt()), ("plato", derived)]));
-    assert!(out.contains("  plato:\n    v: 3.05\n"), "{out}");
-    assert!(out.contains("  malt: {v:"), "{out}");
+    let out = write(&with(&[("diameter", diameter()), ("ductility", derived)]));
+    assert!(out.contains("  ductility:\n    v: 3.05\n"), "{out}");
+    assert!(out.contains("  diameter: {v:"), "{out}");
 }
 
 #[test]
@@ -240,10 +241,13 @@ fn a_long_flow_mapping_wraps_at_a_hundred_characters() {
         value: Some(number(12.5)),
         uncertainty: Some(0.05),
         unit: Some("kilogram_per_cubic_metre".to_string()),
-        symbol: Some("brix_effective_measured_at_room_temperature".to_string()),
+        symbol: Some("porosity_effective_measured_at_room_temperature".to_string()),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("malt", malt()), ("plato_of_the_keg", long)]));
+    let out = write(&with(&[
+        ("diameter", diameter()),
+        ("ductility_of_the_billet", long),
+    ]));
     for line in out.lines() {
         assert!(
             line.chars().count() <= 100,
@@ -253,14 +257,16 @@ fn a_long_flow_mapping_wraps_at_a_hundred_characters() {
     }
     // And a shorter one does not wrap, so the exception stays the exception.
     assert!(
-        out.contains("  malt: {v: 12.5, u: 0.05, unit: g}\n"),
+        out.contains("  diameter: {v: 12.5, u: 0.05, unit: g}\n"),
         "{out}"
     );
     // It is still readable back.
     let back = parse(&out);
     assert_eq!(
-        back.properties[&id("plato_of_the_keg")].symbol.as_deref(),
-        Some("brix_effective_measured_at_room_temperature")
+        back.properties[&id("ductility_of_the_billet")]
+            .symbol
+            .as_deref(),
+        Some("porosity_effective_measured_at_room_temperature")
     );
 }
 
@@ -301,7 +307,7 @@ fn a_value_beside_readings_is_written_as_it_stands() {
         readings: Some(vec![2.011, 2.017, 2.013, 2.015]),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("foam", written)]));
+    let out = write(&with(&[("wear", written)]));
     assert!(out.contains("v: 2.014,"), "{out}");
     assert!(!out.contains("2.0140000000000002"), "{out}");
     // And writing it again changes nothing.
@@ -318,8 +324,8 @@ fn readings_with_no_value_are_written_alone() {
         readings: Some(vec![2.0, 2.5, 3.0]),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("foam", unwritten)]));
-    assert!(out.contains("foam: {readings: [2.0, 2.5, 3.0]}"), "{out}");
+    let out = write(&with(&[("wear", unwritten)]));
+    assert!(out.contains("wear: {readings: [2.0, 2.5, 3.0]}"), "{out}");
     assert!(!out.contains("v:"), "{out}");
     assert_eq!(write(&parse(&out)), out);
 }
@@ -334,7 +340,7 @@ fn value_is_written_alongside_data() {
         readings: Some(vec![2.0, 2.5, 3.0]),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("foam", property)]));
+    let out = write(&with(&[("wear", property)]));
     assert!(out.contains("v: 2.5"), "{out}");
     assert!(out.contains("readings: [2.0, 2.5, 3.0]"), "{out}");
 }
@@ -439,10 +445,10 @@ fn a_boolean_round_trips_unquoted() {
 fn a_date_round_trips_as_iso() {
     // Unquoted, and read back as a Date rather than as text.
     let date = Date::new(2026, 3, 14).unwrap();
-    let out = write(&with(&[("brewed_on", value_only(Value::date(date)))]));
-    assert!(out.contains("  brewed_on: 2026-03-14\n"), "{out}");
+    let out = write(&with(&[("poured_on", value_only(Value::date(date)))]));
+    assert!(out.contains("  poured_on: 2026-03-14\n"), "{out}");
     assert_eq!(
-        parse(&out).properties[&id("brewed_on")].value,
+        parse(&out).properties[&id("poured_on")].value,
         Some(Value::date(date))
     );
 }
@@ -522,7 +528,7 @@ fn display_precision_does_not_round_storage() {
         value: Some(number(12.498_700_000_000_001)),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("malt", property)]));
+    let out = write(&with(&[("diameter", property)]));
     assert!(out.contains("12.498700000000001"), "{out}");
 }
 
@@ -533,7 +539,7 @@ fn display_precision_does_not_round_storage() {
 /// refused naming its short form: `schema`'s test says so.
 #[test]
 fn the_written_form_is_short() {
-    let written = "schema_version: 1\nproperties:\n  malt: {v: 12.5, u: 0.05}\n";
+    let written = "schema_version: 1\nproperties:\n  diameter: {v: 12.5, u: 0.05}\n";
     let out = write(&parse(written));
     assert!(out.contains("v: 12.5"), "{out}");
     assert!(out.contains("u: 0.05"), "{out}");
@@ -567,14 +573,17 @@ fn an_attribute_input_is_written_as_its_value() {
         statistics: None,
         value: Some(number(3.05)),
         computed: Some(record(&[
-            (InputName::Named(id("malt")), Value::text("9f2c14ab77d0")),
+            (
+                InputName::Named(id("diameter")),
+                Value::text("9f2c14ab77d0"),
+            ),
             (InputName::Named(id("batch")), Value::integer(7)),
         ])),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("plato", property)]));
+    let out = write(&with(&[("ductility", property)]));
     assert!(
-        out.contains("computed: {malt: 9f2c14ab77d0, batch: 7}"),
+        out.contains("computed: {diameter: 9f2c14ab77d0, batch: 7}"),
         "{out}"
     );
 }
@@ -591,10 +600,10 @@ fn a_digest_shaped_attribute_value_round_trips() {
         )])),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("plato", property)]));
+    let out = write(&with(&[("ductility", property)]));
     let back = parse(&out);
     assert_eq!(
-        back.properties[&id("plato")]
+        back.properties[&id("ductility")]
             .computed
             .as_ref()
             .unwrap()
@@ -605,11 +614,11 @@ fn a_digest_shaped_attribute_value_round_trips() {
 
 #[test]
 fn a_cell_record_marks_the_scope_of_each_input() {
-    // `row.wort` and `foam` in one map, and a column and a property
+    // `row.tension` and `wear` in one map, and a column and a property
     // sharing a name stay apart.
     let computed = record(&[
-        (InputName::Cell(id("wort")), Value::text("a91f42c8f0d1")),
-        (InputName::Named(id("foam")), Value::text("3f2a1b09c4d5")),
+        (InputName::Cell(id("tension")), Value::text("a91f42c8f0d1")),
+        (InputName::Named(id("wear")), Value::text("3f2a1b09c4d5")),
     ]);
     let cell = PropertySchema {
         statistics: None,
@@ -617,25 +626,25 @@ fn a_cell_record_marks_the_scope_of_each_input() {
         computed: Some(computed),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("clarity", cell)]));
-    assert!(out.contains("row.wort: a91f42c8f0d1"), "{out}");
-    assert!(out.contains("foam: 3f2a1b09c4d5"), "{out}");
-    let back = parse(&out).properties[&id("clarity")]
+    let out = write(&with(&[("rigidity", cell)]));
+    assert!(out.contains("row.tension: a91f42c8f0d1"), "{out}");
+    assert!(out.contains("wear: 3f2a1b09c4d5"), "{out}");
+    let back = parse(&out).properties[&id("rigidity")]
         .computed
         .clone()
         .unwrap()
         .inputs();
-    assert!(back.contains_key(&InputName::Cell(id("wort"))));
-    assert!(back.contains_key(&InputName::Named(id("foam"))));
+    assert!(back.contains_key(&InputName::Cell(id("tension"))));
+    assert!(back.contains_key(&InputName::Named(id("wear"))));
 }
 
 #[test]
 fn a_whole_column_input_always_names_its_table() {
-    // Never shortened, because a bare name is the cask's.
+    // Never shortened, because a bare name is the slab's.
     let computed = record(&[(
         InputName::Column {
-            table: id("mashing"),
-            column: id("wort"),
+            table: id("preheating"),
+            column: id("tension"),
         },
         Value::text("a91f42c8f0d1"),
     )]);
@@ -645,29 +654,29 @@ fn a_whole_column_input_always_names_its_table() {
         computed: Some(computed),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("mean_wort", property)]));
-    assert!(out.contains("mashing.wort: a91f42c8f0d1"), "{out}");
-    let back = parse(&out).properties[&id("mean_wort")]
+    let out = write(&with(&[("mean_tension", property)]));
+    assert!(out.contains("preheating.tension: a91f42c8f0d1"), "{out}");
+    let back = parse(&out).properties[&id("mean_tension")]
         .computed
         .clone()
         .unwrap()
         .inputs();
     assert!(back.contains_key(&InputName::Column {
-        table: id("mashing"),
-        column: id("wort")
+        table: id("preheating"),
+        column: id("tension")
     }));
 }
 
 // ----------------------------------------------------------------- tables
 
-fn boil(index: Vec<Identifier>) -> TableSchema {
+fn soak(index: Vec<Identifier>) -> TableSchema {
     let mut columns = IndexMap::new();
     columns.insert(id("temperature"), ColumnSchema::default());
     if index.len() > 1 {
-        columns.insert(id("dextrin"), ColumnSchema::default());
+        columns.insert(id("ferrite"), ColumnSchema::default());
     }
     columns.insert(
-        id("wort"),
+        id("tension"),
         ColumnSchema {
             unit: Some("lintner".to_string()),
             symbol: None,
@@ -684,6 +693,7 @@ fn boil(index: Vec<Identifier>) -> TableSchema {
         index,
         columns,
         rows: vec![row],
+        prepared: Default::default(),
     }
 }
 
@@ -693,11 +703,11 @@ fn a_single_index_column_is_written_bare() {
     let mut schema = empty();
     schema
         .tables
-        .insert(id("mashing"), boil(vec![id("temperature")]));
+        .insert(id("preheating"), soak(vec![id("temperature")]));
     let out = write(&schema);
     assert!(out.contains("    index: temperature\n"), "{out}");
     assert_eq!(
-        parse(&out).tables[&id("mashing")].index,
+        parse(&out).tables[&id("preheating")].index,
         vec![id("temperature")]
     );
 }
@@ -705,14 +715,15 @@ fn a_single_index_column_is_written_bare() {
 #[test]
 fn a_composite_index_is_written_as_a_sequence() {
     let mut schema = empty();
-    schema
-        .tables
-        .insert(id("mashing"), boil(vec![id("temperature"), id("dextrin")]));
+    schema.tables.insert(
+        id("preheating"),
+        soak(vec![id("temperature"), id("ferrite")]),
+    );
     let out = write(&schema);
-    assert!(out.contains("    index: [temperature, dextrin]\n"), "{out}");
+    assert!(out.contains("    index: [temperature, ferrite]\n"), "{out}");
     assert_eq!(
-        parse(&out).tables[&id("mashing")].index,
-        vec![id("temperature"), id("dextrin")]
+        parse(&out).tables[&id("preheating")].index,
+        vec![id("temperature"), id("ferrite")]
     );
 }
 
@@ -720,17 +731,17 @@ fn a_composite_index_is_written_as_a_sequence() {
 fn cells_are_written_in_column_order() {
     // The owner's pre-1 collection sorted every row's cells alphabetically
     // while declaring its columns in experiment order. One table, one order.
-    let mut table = boil(vec![id("temperature")]);
+    let mut table = soak(vec![id("temperature")]);
     table.rows.clear();
     let mut row = IndexMap::new();
-    row.insert(id("wort"), value_only(number(12.5)));
+    row.insert(id("tension"), value_only(number(12.5)));
     row.insert(id("temperature"), value_only(number(65.0)));
     // Not a declared column: written last rather than lost, for the next read
     // to refuse by name.
     row.insert(id("stray"), value_only(number(1.0)));
     table.rows.push(row);
     let mut schema = empty();
-    schema.tables.insert(id("mashing"), table);
+    schema.tables.insert(id("preheating"), table);
 
     let out = write(&schema);
     let written: Vec<&str> = out
@@ -740,29 +751,31 @@ fn cells_are_written_in_column_order() {
         .filter_map(|line| line.trim_start_matches(['-', ' ']).split(':').next())
         .filter(|name| !name.is_empty())
         .collect();
-    assert_eq!(written, ["temperature", "wort", "stray"], "{out}");
+    assert_eq!(written, ["temperature", "tension", "stray"], "{out}");
 }
 
 #[test]
 fn a_derived_cell_carries_its_own_record() {
     // Each row's cell holds its own `computed` and `fingerprint`.
-    let mut table = boil(vec![id("temperature")]);
+    let mut table = soak(vec![id("temperature")]);
     table.rows.clear();
-    table.columns.insert(id("clarity"), ColumnSchema::default());
+    table
+        .columns
+        .insert(id("rigidity"), ColumnSchema::default());
     for (t, r, c, digest) in [
         (65.0, 12.5, 0.08, "aaaa11112222"),
         (78.5, 20.0, 0.05, "bbbb33334444"),
     ] {
         let mut row = IndexMap::new();
         row.insert(id("temperature"), value_only(number(t)));
-        row.insert(id("wort"), value_only(number(r)));
+        row.insert(id("tension"), value_only(number(r)));
         row.insert(
-            id("clarity"),
+            id("rigidity"),
             PropertySchema {
                 statistics: None,
                 value: Some(number(c)),
                 computed: Some(record(&[(
-                    InputName::Cell(id("wort")),
+                    InputName::Cell(id("tension")),
                     Value::text(digest),
                 )])),
                 ..PropertySchema::default()
@@ -771,14 +784,14 @@ fn a_derived_cell_carries_its_own_record() {
         table.rows.push(row);
     }
     let mut schema = empty();
-    schema.tables.insert(id("mashing"), table);
+    schema.tables.insert(id("preheating"), table);
     let out = write(&schema);
     assert!(out.contains("aaaa11112222"), "{out}");
     assert!(out.contains("bbbb33334444"), "{out}");
     let back = parse(&out);
-    let rows = &back.tables[&id("mashing")].rows;
+    let rows = &back.tables[&id("preheating")].rows;
     assert_eq!(rows.len(), 2);
-    assert!(rows[0][&id("clarity")].computed.is_some());
+    assert!(rows[0][&id("rigidity")].computed.is_some());
     assert_eq!(rows[1][&id("temperature")].value, Some(number(78.5)));
 }
 
@@ -825,8 +838,8 @@ fn writing_is_lossless() {
     // parse(write(x)) == x: stronger than idempotence, which only says two
     // writes agree. This says nothing was dropped between them.
     let sample = {
-        let mut schema = with(&[("malt", malt())]);
-        schema.name = Some("Keg 42".to_string());
+        let mut schema = with(&[("diameter", diameter())]);
+        schema.name = Some("Billet 42".to_string());
         schema.tags = vec![samplekit::format::schema::Tag::Usable(id("reference"))];
         schema
             .attributes
@@ -914,7 +927,7 @@ fn a_record_names_a_channel_or_an_input() {
 fn an_edited_mark_is_a_one_key_mapping() {
     let mut held = inputs(&[(InputName::Named(id("volume")), Value::text("d312b70e4a55"))]);
     held.insert(
-        InputName::Named(id("grist")),
+        InputName::Named(id("swarf")),
         Recorded::Edited(Fingerprint::edited("3f2a1b09c4d1")),
     );
     let computed = Computed::from(held);
@@ -925,20 +938,20 @@ fn an_edited_mark_is_a_one_key_mapping() {
         fingerprint: Some(Fingerprint::edited("7c01e2b3a9f4")),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("brix", property)]));
+    let out = write(&with(&[("porosity", property)]));
     assert!(
-        out.contains("computed: {volume: d312b70e4a55, grist: {edited: 3f2a1b09c4d1}}"),
+        out.contains("computed: {volume: d312b70e4a55, swarf: {edited: 3f2a1b09c4d1}}"),
         "{out}"
     );
     assert!(out.contains("fingerprint: {edited: 7c01e2b3a9f4}"), "{out}");
 
-    let back = &parse(&out).properties[&id("brix")];
+    let back = &parse(&out).properties[&id("porosity")];
     let fingerprint = back.fingerprint.clone().unwrap();
     assert!(fingerprint.is_edited());
     assert_eq!(fingerprint.as_str(), "7c01e2b3a9f4");
     let records = back.computed.as_ref().unwrap().inputs();
     assert_eq!(
-        records[&InputName::Named(id("grist"))],
+        records[&InputName::Named(id("swarf"))],
         Recorded::Edited(Fingerprint::edited("3f2a1b09c4d1"))
     );
     assert_eq!(
@@ -952,7 +965,7 @@ fn an_edited_mark_is_a_one_key_mapping() {
 fn a_digest_that_reads_as_a_number_is_quoted() {
     let mut held = inputs(&[(InputName::Named(id("volume")), Value::text("972327790827"))]);
     held.insert(
-        InputName::Named(id("grist")),
+        InputName::Named(id("swarf")),
         Recorded::Edited(Fingerprint::edited("844409772e92")),
     );
     let computed = Computed::from(held);
@@ -963,17 +976,17 @@ fn a_digest_that_reads_as_a_number_is_quoted() {
         fingerprint: Some(Fingerprint::new("000000000123")),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("brix", property)]));
+    let out = write(&with(&[("porosity", property)]));
     assert!(
-        out.contains(r#"computed: {volume: "972327790827", grist: {edited: "844409772e92"}}"#),
+        out.contains(r#"computed: {volume: "972327790827", swarf: {edited: "844409772e92"}}"#),
         "{out}"
     );
     assert!(out.contains(r#"fingerprint: "000000000123""#), "{out}");
-    let back = &parse(&out).properties[&id("brix")];
+    let back = &parse(&out).properties[&id("porosity")];
     assert_eq!(back.fingerprint.clone().unwrap().as_str(), "000000000123");
     let records = back.computed.as_ref().unwrap().inputs();
     assert_eq!(
-        records[&InputName::Named(id("grist"))],
+        records[&InputName::Named(id("swarf"))],
         Recorded::Edited(Fingerprint::edited("844409772e92"))
     );
     assert_eq!(
@@ -983,41 +996,23 @@ fn a_digest_that_reads_as_a_number_is_quoted() {
 }
 
 #[test]
-fn a_digest_written_unquoted_still_reads() {
-    let plain = parse(
-        "schema_version: 1\nproperties:\n  brix:\n    v: 1.52\n    computed: {volume: d312b70e4a55}\n    fingerprint: 012345678901\n",
-    );
-    let fingerprint = plain.properties[&id("brix")].fingerprint.clone().unwrap();
-    assert_eq!(fingerprint.as_str(), "012345678901");
-    let marked = parse(
-        "schema_version: 1\nproperties:\n  brix:\n    v: 1.52\n    computed: {grist: {edited: 844409772e92}}\n    fingerprint: {edited: 844409772e92}\n",
-    );
-    let property = &marked.properties[&id("brix")];
-    assert!(property.fingerprint.clone().unwrap().is_edited());
-    assert!(matches!(
-        property.computed.as_ref().unwrap().inputs()[&InputName::Named(id("grist"))],
-        Recorded::Edited(_)
-    ));
-}
-
-#[test]
 fn a_wrapped_record_ending_with_an_edited_mark_reads_back() {
     let mut held = inputs(&[
         (
-            InputName::Named(id("mash_malt")),
+            InputName::Named(id("preheat_diameter")),
             Value::text("d312b70e4a55"),
         ),
         (
-            InputName::Named(id("kettle_malt")),
+            InputName::Named(id("crucible_diameter")),
             Value::text("a91f42c8f0d1"),
         ),
         (
-            InputName::Named(id("fermentable_fraction")),
+            InputName::Named(id("alloying_fraction")),
             Value::text("5b2c9e1f0a34"),
         ),
     ]);
     held.insert(
-        InputName::Named(id("fermentable_malt")),
+        InputName::Named(id("alloying_diameter")),
         Recorded::Edited(Fingerprint::edited("3f2a1b09c4d1")),
     );
     let computed = Computed::from(held);
@@ -1047,7 +1042,7 @@ fn an_integer_and_an_equal_number_hash_alike() {
 
 #[test]
 fn a_derived_cell_is_written_on_one_line() {
-    let written = "---\nschema_version: 1\ntables:\n  mashing:\n    index: T\n    columns:\n      T: {}\n      G: {}\n    rows:\n      - T: 10\n        G:\n          v: 0.5\n          computed: {row.R: d312b70e4a55}\n          fingerprint: 7c01e2b3a9f4\n---\n";
+    let written = "---\nschema_version: 1\ntables:\n  preheating:\n    index: T\n    columns:\n      T: {}\n      G: {}\n    rows:\n      - T: 10\n        G:\n          v: 0.5\n          computed: {row.R: d312b70e4a55}\n          fingerprint: 7c01e2b3a9f4\n---\n";
     let frontmatter = &written[4..written.len() - 4];
     let schema = parse(frontmatter);
     let out = write(&schema);
@@ -1071,29 +1066,36 @@ fn a_failure_is_spelled_like_an_override() {
         failure: Some("ZeroDivisionError: division by zero".to_string()),
         ..PropertySchema::default()
     };
-    let out = write(&with(&[("plato", property.clone())]));
+    let out = write(&with(&[("ductility", property.clone())]));
     assert!(
         out.contains(r#"fingerprint: {failed: "ZeroDivisionError: division by zero"}"#),
         "{out}"
     );
     assert!(!out.contains("value:"), "{out}");
-    assert_eq!(parse(&out).properties[&id("plato")], property, "{out}");
+    assert_eq!(parse(&out).properties[&id("ductility")], property, "{out}");
 }
 
 #[test]
 fn an_empty_property_or_table_is_not_written() {
+    // A table no row fills and no file held prepared is left out; one its
+    // file held prepared is written, its index and columns kept.
     let mut schema = with(&[
-        ("malt", value_only(number(1.0))),
+        ("diameter", value_only(number(1.0))),
         ("volume", PropertySchema::default()),
     ]);
     let out = write(&schema);
     assert!(!out.contains("volume"), "{out}");
-    let table = parse("schema_version: 1\ntables:\n  mashing:\n    index: T\n    columns:\n      T: {}\n    rows: []\n")
-        .tables[&id("mashing")]
+    let table = parse("schema_version: 1\ntables:\n  preheating:\n    index: T\n    columns:\n      T: {}\n    rows: []\n")
+        .tables[&id("preheating")]
         .clone();
-    schema.tables.insert(id("mashing"), table);
+    schema.tables.insert(id("preheating"), table.clone());
     let out = write(&schema);
-    assert!(!out.contains("mashing"), "{out}");
+    assert!(!out.contains("preheating"), "{out}");
+    let mut prepared = table;
+    prepared.prepared = samplekit::format::schema::Prepared(true);
+    schema.tables.insert(id("preheating"), prepared);
+    let out = write(&schema);
+    assert!(out.contains("preheating:\n    index: T"), "{out}");
 }
 
 #[test]
@@ -1132,15 +1134,15 @@ fn a_columns_statistics_are_written_with_it() {
     // stands for each channel — after its presentation, as a property's
     // statistics follow its unit.
     let mut schema = empty();
-    let mut table = boil(vec![id("temperature")]);
-    table.columns[&id("wort")].statistics = Some(schema::Statistics {
+    let mut table = soak(vec![id("temperature")]);
+    table.columns[&id("tension")].statistics = Some(schema::Statistics {
         value: Some(samplekit::core::statistics::Location::Mean),
         uncertainty: Some(samplekit::core::uncertainty::Convention::StandardError),
     });
-    schema.tables.insert(id("mashing"), table);
+    schema.tables.insert(id("preheating"), table);
     let out = write(&schema);
     assert!(
-        out.contains("wort: {unit: lintner, statistics: {v: mean, u: standard_error}}"),
+        out.contains("tension: {unit: lintner, statistics: {v: mean, u: standard_error}}"),
         "{out}"
     );
     assert_eq!(write(&parse(&out)), out);

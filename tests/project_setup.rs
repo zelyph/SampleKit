@@ -76,7 +76,7 @@ fn only_the_steps_accepted_are_done() {
     .unwrap();
     assert_eq!(applied.written.len(), 4);
     assert!(!root.join("samples/EXAMPLE.md").exists());
-    assert!(root.join("model/brew.py").is_file());
+    assert!(root.join("model/specimen.py").is_file());
     let _ = fs::remove_dir_all(root);
 }
 
@@ -274,32 +274,35 @@ fn a_version_is_spelt_as_python_spells_it() {
 fn a_model_already_there_is_named_where_it_is() {
     // *use a model file I already have* names it; nothing is copied.
     let root = scratch("own-model");
-    fs::create_dir_all(root.join("brewery")).unwrap();
+    fs::create_dir_all(root.join("laboratory")).unwrap();
     fs::write(
-        root.join("brewery/beam.py"),
+        root.join("laboratory/beam.py"),
         "import samplekit as sk\n\nclass Beam(sk.Sample):\n    pass\n",
     )
     .unwrap();
-    fs::write(root.join("brewery/notes.txt"), "").unwrap();
+    fs::write(root.join("laboratory/notes.txt"), "").unwrap();
     // What is typed is checked: nothing, a file not there, one not Python.
     assert!(project_setup::model_path(&root, "  ").is_err());
-    let missing = project_setup::model_path(&root, "brewery/none.py").unwrap_err();
-    assert!(missing.contains("no file at brewery/none.py"), "{missing}");
-    let text = project_setup::model_path(&root, "brewery/notes.txt").unwrap_err();
+    let missing = project_setup::model_path(&root, "laboratory/none.py").unwrap_err();
+    assert!(
+        missing.contains("no file at laboratory/none.py"),
+        "{missing}"
+    );
+    let text = project_setup::model_path(&root, "laboratory/notes.txt").unwrap_err();
     assert!(text.contains("not a Python file"), "{text}");
     // From the project's folder, or whole: said from the folder.
     assert_eq!(
-        project_setup::model_path(&root, "./brewery/beam.py").unwrap(),
-        PathBuf::from("brewery/beam.py")
+        project_setup::model_path(&root, "./laboratory/beam.py").unwrap(),
+        PathBuf::from("laboratory/beam.py")
     );
-    let whole = root.join("brewery/beam.py").display().to_string();
+    let whole = root.join("laboratory/beam.py").display().to_string();
     assert_eq!(
         project_setup::model_path(&root, &whole).unwrap(),
-        PathBuf::from("brewery/beam.py")
+        PathBuf::from("laboratory/beam.py")
     );
     // The plan names it, and writes no model of its own.
     let answers = Answers {
-        model: ModelAnswer::Existing(PathBuf::from("brewery/beam.py")),
+        model: ModelAnswer::Existing(PathBuf::from("laboratory/beam.py")),
         ..EMPTY
     };
     assert!(answers.has_model());
@@ -309,7 +312,7 @@ fn a_model_already_there_is_named_where_it_is() {
     assert!(!root.join("model").exists());
     let config = samplekit::config::project_config::load(&root.join(".samplekitrc")).unwrap();
     let model = config.model().expect("the model named");
-    assert!(model.path.ends_with("brewery/beam.py"), "{model:?}");
+    assert!(model.path.ends_with("laboratory/beam.py"), "{model:?}");
     assert!(model.class.is_none());
     let _ = fs::remove_dir_all(root);
 }
@@ -353,4 +356,36 @@ fn each_question_says_its_default_and_the_model_has_three_answers() {
     assert_eq!(answers.model, ModelAnswer::Without);
     assert!(!Question::Starter.asks_path(1));
     let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn the_configuration_names_the_environment_it_makes() {
+    // The model runs in the Python the configuration names, never one found
+    // above: what init writes names the .venv it makes.
+    let root = scratch("names-environment");
+    let plan = project_setup::plan(&root, &EMPTY);
+    project_setup::apply(&plan, |_| true).unwrap();
+    let config = samplekit::config::project_config::load(&root.join(".samplekitrc")).unwrap();
+    assert_eq!(config.python(), Some(std::path::Path::new(".venv")));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn an_editable_install_counts_as_the_package_there() {
+    // `maturin develop` and `pip install -e` leave a record and no folder of
+    // the package: `init` installed it, then said an environment was needed.
+    let root = std::env::temp_dir().join(format!("sk-editable-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let site = root.join(".venv/lib/python3.12/site-packages");
+    std::fs::create_dir_all(site.join("samplekit-1.0.0.dist-info")).unwrap();
+    std::fs::create_dir_all(root.join(".venv/bin")).unwrap();
+    std::fs::write(root.join(".venv/bin/python"), "").unwrap();
+    std::fs::create_dir_all(root.join(".venv/Scripts")).unwrap();
+    std::fs::write(root.join(".venv/Scripts/python.exe"), "").unwrap();
+    let found = project_setup::environment(&root);
+    std::fs::remove_dir_all(&root).unwrap();
+    assert!(
+        matches!(found, project_setup::Environment::Ready(_)),
+        "{found:?}"
+    );
 }

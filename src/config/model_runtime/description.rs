@@ -24,7 +24,7 @@ use crate::core::dependency_graph::Node;
 use crate::core::formatting::Presentation;
 use crate::core::identifier::Identifier;
 use crate::core::property::{
-    ChannelInputs, Compute, ComputeError, ComputeQuantity, InputName, Property,
+    ChannelInputs, Compute, ComputeError, ComputeQuantity, InputName, Produced, Property,
 };
 use crate::core::sample::{AttributeValue, Sample};
 use crate::core::statistics::Location;
@@ -56,6 +56,10 @@ pub struct ModelDescription {
     pub attributes: IndexMap<String, Json>,
     /// In the order the model declares them.
     pub figures: Vec<DescribedFigure>,
+    /// In the order the model declares them; none in a description written
+    /// before scripts were.
+    #[serde(default)]
+    pub scripts: Vec<DescribedScript>,
 }
 
 /// The model it was taken from: its file, relative to the configuration's
@@ -173,6 +177,18 @@ pub enum Origin {
     },
 }
 
+impl DescribedColumn {
+    /// The table's formula that gives its cells, whichever channel it gives:
+    /// the value, or the uncertainty alone beside a value entered.
+    pub fn derived(&self) -> Option<&Origin> {
+        match (&self.value, &self.uncertainty) {
+            (origin @ (Origin::Rows { .. } | Origin::Columns { .. }), _) => Some(origin),
+            (_, Some(origin @ (Origin::Rows { .. } | Origin::Columns { .. }))) => Some(origin),
+            _ => None,
+        }
+    }
+}
+
 impl Origin {
     /// Whether a formula gives it.
     pub fn is_formula(&self) -> bool {
@@ -189,7 +205,7 @@ impl Origin {
         }
     }
 
-    fn statistic(&self) -> Option<&str> {
+    pub fn statistic(&self) -> Option<&str> {
         match self {
             Origin::Statistic { statistic } => Some(statistic),
             _ => None,
@@ -201,6 +217,30 @@ impl Origin {
 pub struct DescribedFigure {
     pub name: String,
     pub draws: Draws,
+    /// Its docstring's first paragraph; empty in a description written
+    /// before figures had one.
+    #[serde(default)]
+    pub description: String,
+}
+
+/// A method marked `@sk.script`: what it acts on, its docstring's first
+/// paragraph, and its options.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DescribedScript {
+    pub name: String,
+    pub acts: Draws,
+    pub description: String,
+    pub options: Vec<DescribedOption>,
+}
+
+/// A script's keyword parameter: its type's name — `int`, `float`, `bool` or
+/// `str` — and its default as text, none where it must be given.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DescribedOption {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub default: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -225,6 +265,11 @@ impl ModelDescription {
             .iter()
             .map(|figure| figure.name.clone())
             .collect()
+    }
+
+    /// A script by its name.
+    pub fn script(&self, name: &str) -> Option<&DescribedScript> {
+        self.scripts.iter().find(|script| script.name == name)
     }
 
     /// The values it declares — properties, tables and their columns — sorted.
@@ -336,6 +381,29 @@ pub fn describe(config: &ProjectConfig, from: &Path) -> Result<ModelDescription,
     if let Some(current) = current_description(config) {
         return Ok(current);
     }
+    // A model whose loading ran past its limit is not loaded again in this
+    // process: each sample of `status` waited the limit anew.
+    thread_local! {
+        static TIMED_OUT: std::cell::RefCell<Vec<(PathBuf, std::time::Duration)>> =
+            const { std::cell::RefCell::new(Vec::new()) };
+    }
+    let root = config.root().to_path_buf();
+    if let Some(limit) = TIMED_OUT.with(|held| {
+        held.borrow()
+            .iter()
+            .find(|(at, _)| *at == root)
+            .map(|(_, limit)| *limit)
+    }) {
+        return Err(ModelError::TimedOut { value: None, limit });
+    }
+    let described = describe_now(config, from);
+    if let Err(ModelError::TimedOut { value: None, limit }) = &described {
+        TIMED_OUT.with(|held| held.borrow_mut().push((root, *limit)));
+    }
+    described
+}
+
+fn describe_now(config: &ProjectConfig, from: &Path) -> Result<ModelDescription, ModelError> {
     let (template, python) = match availability(Some(config), from)? {
         Availability::Ready { template, python } => (template, python),
         Availability::Unavailable { reason } => return Err(ModelError::NoInterpreter { reason }),
@@ -352,6 +420,51 @@ pub fn describe(config: &ProjectConfig, from: &Path) -> Result<ModelDescription,
     })
 }
 
+/// `.samplekit/.gitignore`, where it is missing: the model's description and
+/// the failures' records are made by each machine for itself, and a
+/// researcher who puts the project in git carries neither. It leaves itself
+/// out too, each machine writing its own, so that `git status` lists nothing
+/// SampleKit made. One there already is left as it is, and so is the
+/// researcher's own `.gitignore`.
+pub fn keep_out_of_git(root: &Path) {
+    let folder = root.join(".samplekit");
+    let path = folder.join(".gitignore");
+    const WRITTEN: &str = "# Written by SampleKit: what each machine makes for itself.\n";
+    // One SampleKit wrote before the journals of writes under way is given
+    // their line, and one whose `.gitignore` left out every `.gitignore`
+    // below — the history's, which a shared history commits — its own alone;
+    // the researcher's own is never touched.
+    if let Ok(held) = fs::read_to_string(&path) {
+        if held.starts_with(WRITTEN) {
+            let mut lines: Vec<&str> = held
+                .lines()
+                .map(|line| {
+                    if line == ".gitignore" {
+                        "/.gitignore"
+                    } else {
+                        line
+                    }
+                })
+                .collect();
+            if !lines.contains(&"*.lock") {
+                lines.push("*.lock");
+            }
+            let mended = lines.join("\n") + "\n";
+            if mended != held {
+                let _ = fs::write(&path, mended);
+            }
+        }
+        return;
+    }
+    if fs::create_dir_all(&folder).is_err() {
+        return;
+    }
+    let _ = fs::write(
+        &path,
+        format!("{WRITTEN}/.gitignore\nmodel.json\nfailures/\n*.lock\n"),
+    );
+}
+
 /// Writes a description beside the configuration whose folder is `root`,
 /// only where its content changed.
 pub fn write_description(root: &Path, description: &ModelDescription) -> Result<(), ModelError> {
@@ -366,6 +479,7 @@ pub fn write_description(root: &Path, description: &ModelDescription) -> Result<
     };
     let folder = path.parent().expect("the description lies in .samplekit/");
     fs::create_dir_all(folder).map_err(not_recorded)?;
+    keep_out_of_git(root);
     let written = folder.join(format!(".model.json.{}", std::process::id()));
     fs::write(&written, text).map_err(not_recorded)?;
     fs::rename(&written, &path).map_err(not_recorded)
@@ -459,13 +573,21 @@ impl ComputeQuantity for NeverRun {
     }
 }
 
-impl ComputeRow for NeverRun {
+/// A table's row formula described, with the one channel it fills, where it
+/// fills one alone.
+struct NeverRunRow(Option<Produced>);
+
+impl ComputeRow for NeverRunRow {
     fn compute(
         &self,
         _row: &RowView,
         _scope: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
         Err(never_run())
+    }
+
+    fn produces(&self) -> Option<Produced> {
+        self.0
     }
 }
 
@@ -576,9 +698,19 @@ impl ModelDescription {
                     .map(convention_of)
                     .transpose()?;
                 columns.insert(identifier(&column.name)?, meta);
-                let (fills, reads, by_row) = match &column.value {
-                    Origin::Rows { reads, fills } => (fills, reads, true),
-                    Origin::Columns { reads, fills } => (fills, reads, false),
+                // The formula gives the value, the whole cell or its value
+                // alone; or the uncertainty alone, beside a value entered.
+                let (fills, reads, by_row, produces) = match (&column.value, &column.uncertainty) {
+                    (Origin::Rows { reads, fills }, uncertainty) => (
+                        fills,
+                        reads,
+                        true,
+                        uncertainty.as_ref().map(|_| Produced::Value),
+                    ),
+                    (Origin::Columns { reads, fills }, _) => (fills, reads, false, None),
+                    (_, Some(Origin::Rows { reads, fills })) => {
+                        (fills, reads, true, Some(Produced::Uncertainty))
+                    }
                     _ => continue,
                 };
                 if !derived.insert(fills.clone()) {
@@ -596,7 +728,7 @@ impl ModelDescription {
                     Derivation::Row {
                         outputs,
                         inputs,
-                        formula: Rc::new(NeverRun),
+                        formula: Rc::new(NeverRunRow(produces)),
                     }
                 } else {
                     Derivation::Column {
@@ -698,18 +830,19 @@ impl ModelDescription {
     /// What `status` plans without the model: the sample read from its file
     /// under the declarations the description holds, planned as the worker
     /// plans it for `status` — forced, every formula, nothing named — with the
-    /// formulas whose digest differs from `recorded`.
+    /// values whose formula as it is now is not among those `recorded` knows to
+    /// have computed them.
     pub fn plan(
         &self,
         path: &Path,
-        recorded: &BTreeMap<String, String>,
+        recorded: &BTreeMap<String, Vec<String>>,
     ) -> Result<Vec<Planned>, ModelError> {
         let sample = self.modelled(path)?;
         let stored = document::load_sample(path).ok().map(|(sample, _)| sample);
         let mut changed: Vec<String> = Vec::new();
         for (name, property) in &self.properties {
-            if let (Some(now), Some(then)) = (&property.formula, recorded.get(name))
-                && now != then
+            if let (Some(now), Some(known)) = (&property.formula, recorded.get(name))
+                && !known.contains(now)
             {
                 changed.push(name.clone());
             }
@@ -717,8 +850,8 @@ impl ModelDescription {
         for (name, table) in &self.tables {
             for column in &table.columns {
                 let label = format!("{name}.{}", column.name);
-                if let (Some(now), Some(then)) = (&column.formula, recorded.get(&label))
-                    && now != then
+                if let (Some(now), Some(known)) = (&column.formula, recorded.get(&label))
+                    && !known.contains(now)
                 {
                     changed.push(label);
                 }
@@ -755,6 +888,8 @@ fn statistic_owed(handle: &crate::core::sample::PropertyHandle) -> bool {
             property.has_declared_statistic()
                 && property.readings().is_some()
                 && property.written_value().is_none()
+                // One the file states is read as it stands.
+                && !property.statistic_taken()
         })
 }
 
@@ -806,6 +941,14 @@ fn cell_reason(
     {
         return Ok(Some("edited"));
     }
+    // A cell its formula failed on is said failed, as `status` says it: the
+    // plan listed it *never computed*.
+    if held
+        .at(&address, column)
+        .is_ok_and(|cell| cell.records().failure.is_some())
+    {
+        return Ok(Some("failed"));
+    }
     if sample
         .cell_run(table, &address, column)
         .map_err(|error| error.to_string())?
@@ -841,6 +984,9 @@ fn plan_of(sample: &Sample, changed: &[String]) -> Result<Vec<(String, &'static 
             Some("edited")
         } else if owed(&handle) {
             Some("never computed")
+        } else if handle.peek(|property| property.stated_statistic() != (None, None)) {
+            // The model's statistic is taken over the one the file states.
+            Some("statistic")
         } else if fingerprint::is_stale(sample, name).map_err(|error| error.to_string())? {
             Some("outdated")
         } else if changed.iter().any(|value| value == name.as_str()) {
@@ -892,7 +1038,7 @@ fn node_inputs(sample: &Sample, node: &Node) -> Vec<Node> {
             .into_iter()
             .map(|input| match input {
                 InputName::Named(name) => Node::Named(name),
-                InputName::Cell(other) => Node::Column {
+                InputName::Cell(other) | InputName::CellValue(other) => Node::Column {
                     table: table.clone(),
                     column: other,
                 },
@@ -902,13 +1048,33 @@ fn node_inputs(sample: &Sample, node: &Node) -> Vec<Node> {
     }
 }
 
+/// How much a reason a value is planned for says is wrong with it: a
+/// column's cells are said by the worst.
+fn severity(reason: &str) -> u8 {
+    match reason {
+        "failed" => 6,
+        "outdated" | "formula changed" => 5,
+        "never computed" => 4,
+        "statistic" => 3,
+        "edited" => 2,
+        "current" => 0,
+        _ => 1,
+    }
+}
+
 /// Grouped by value and ordered so that every value comes after what it reads.
 fn in_order(sample: &Sample, reasoned: Vec<(Node, &'static str)>) -> Vec<(String, &'static str)> {
+    // A column's cells differ: the column is its worst cell's — failed, then
+    // outdated, then owed, then the rest — where it was its first cell's, and
+    // a failed or changed cell below a current one went unsaid.
     let mut groups: IndexMap<Node, (String, &'static str)> = IndexMap::new();
     for (node, reason) in reasoned {
-        groups
+        let held = groups
             .entry(node.clone())
             .or_insert((node.to_string(), reason));
+        if severity(reason) > severity(held.1) {
+            held.1 = reason;
+        }
     }
     let mut ordered = Vec::with_capacity(groups.len());
     let mut visited = HashSet::new();
@@ -947,7 +1113,15 @@ fn said(
 ) -> Vec<(String, String)> {
     let mut plan: Vec<(String, String)> = plan
         .into_iter()
-        .map(|(value, reason)| (value, reason.to_string()))
+        .map(|(value, reason)| {
+            let said = match reason {
+                "statistic" => property_of(sample, &value)
+                    .and_then(|handle| handle.peek(Property::statistic_change_said))
+                    .unwrap_or_else(|| "outdated".to_string()),
+                other => other.to_string(),
+            };
+            (value, said)
+        })
         .collect();
     let mut planned: HashSet<String> = plan.iter().map(|(value, _)| value.clone()).collect();
     for (value, reason) in plan.clone() {
@@ -965,21 +1139,48 @@ fn said(
             }
         }
     }
-    let (mut waiting, mut made) = (HashSet::new(), HashSet::new());
+    let (mut waiting, mut made, mut failed) = (HashSet::new(), HashSet::new(), HashSet::new());
     plan.into_iter()
         .map(|(value, reason)| {
-            let missing = missing_inputs(sample, stored, &value, &waiting, &made);
+            // A value typed over its formula waits for nothing: it is not
+            // computed until it is given back. Typed where the formula never
+            // ran, it was said to wait for the inputs it no longer needs.
+            // What failed holds back what reads it, as what waits does: it
+            // waits *behind what failed*, where it was said never computed.
+            let held_back: HashSet<String> = waiting.union(&failed).cloned().collect();
+            let missing = if reason == "edited" {
+                Vec::new()
+            } else {
+                missing_inputs(sample, stored, &value, &held_back, &made)
+            };
             if missing.is_empty() {
-                made.insert(value.clone());
+                // A value whose formula failed gives nothing to what reads
+                // it, which waits for it, as `compute` says: it was said
+                // *never computed*, and a run promised that failed again.
                 let reason = if failed_before(sample, &value) {
+                    failed.insert(value.clone());
                     "failed".to_string()
                 } else {
+                    made.insert(value.clone());
                     reason
                 };
                 (value, reason)
             } else {
                 waiting.insert(value.clone());
-                let reason = format!("waits for {}", missing.join(", "));
+                let named: Vec<String> = missing
+                    .iter()
+                    .map(|input| {
+                        if failed.contains(input) {
+                            format!("{input}, which failed")
+                        } else if waiting.contains(input) && *input != value {
+                            // An input that waits itself, said so.
+                            format!("{input}, which waits")
+                        } else {
+                            input.clone()
+                        }
+                    })
+                    .collect();
+                let reason = format!("waits for {}", named.join("; "));
                 (value, reason)
             }
         })
@@ -1049,11 +1250,22 @@ fn missing_inputs(
             return true;
         }
         let Some(handle) = property_of(sample, name) else {
-            // A table, an attribute, or a name the model does not hold.
-            return true;
+            // An attribute held empty — read by a formula, and no file gives
+            // it — is owed as a value is; a table, an attribute that holds
+            // something, or a name the model does not hold, is not.
+            return Identifier::new(name).ok().is_none_or(|name| {
+                sample.attribute(&name).map_or(true, |held| {
+                    !matches!(
+                        held,
+                        crate::core::sample::AttributeValue::Scalar(Value::Absent)
+                    )
+                })
+            });
         };
+        // A statistic of readings not taken yet is taken by this computation,
+        // running nothing: given, as a formula planned before is.
         if !handle.is_computed() {
-            return holds_a_value(&handle);
+            return holds_a_value(&handle) || statistic_owed(&handle);
         }
         let Some(stored) = stored else {
             return false;
@@ -1066,29 +1278,63 @@ fn missing_inputs(
             Err(_) => stored.has_attribute(&name) || stored.table(&name).is_ok(),
         }
     };
-    let column_held = |name: &str| -> bool {
-        let Some((table, column)) = name.split_once('.') else {
-            return true;
-        };
+    // What of a column read whole nobody entered, as the worker says it: the
+    // column, where no row holds a value; else its first empty cell,
+    // `ageing.hardness[15]`; `None` where every row holds one.
+    let column_hole = |name: &str| -> Option<String> {
+        let (table, column) = name.split_once('.')?;
         let column = column.split('[').next().unwrap_or(column);
         let (Ok(table), Ok(column)) = (Identifier::new(table), Identifier::new(column)) else {
-            return true;
+            return None;
         };
         for source in [Some(sample), stored].into_iter().flatten() {
             let Ok(held) = source.table(&table) else {
                 continue;
             };
             let Ok(view) = held.column(&column) else {
-                return true;
+                return None;
             };
-            if view.cells().any(|(_, cell)| {
+            let holds = |cell: &Property| {
                 cell.peek_value()
                     .is_some_and(|value| !matches!(value, Value::Absent))
-            }) {
-                return true;
+            };
+            if !view.cells().any(|(_, cell)| holds(cell)) {
+                continue;
             }
+            return view
+                .cells()
+                .find(|(_, cell)| !holds(cell))
+                .map(|(index, _)| {
+                    let shown: Vec<String> = index
+                        .iter()
+                        .map(|part| crate::collection::editing::shown_value(part))
+                        .collect();
+                    format!("{name}[{}]", shown.join(", "))
+                });
         }
-        false
+        Some(name.to_string())
+    };
+    // A column its table's formula gives row by row reads its table's
+    // columns one row at a time: a row without its input waits alone.
+    let own_table = value.split_once('.').map(|(table, _)| table);
+    let row_by_row = |name: &str| -> bool {
+        let Some(own) = own_table else {
+            return false;
+        };
+        if name.split_once('.').map(|(table, _)| table) != Some(own) {
+            return false;
+        }
+        let column = value.split_once('.').map_or("", |(_, column)| column);
+        Identifier::new(own)
+            .ok()
+            .zip(Identifier::new(column).ok())
+            .and_then(|(table, column)| {
+                sample
+                    .table(&table)
+                    .ok()
+                    .map(|held| held.is_derived_by_rows(&column))
+            })
+            .unwrap_or(true)
     };
     let mut missing = Vec::new();
     for name in inputs {
@@ -1096,8 +1342,11 @@ fn missing_inputs(
             continue;
         }
         if name.contains('.') {
-            if !made.contains(&name) && !column_held(&name) {
-                missing.push(name);
+            if made.contains(&name) || row_by_row(&name) {
+                continue;
+            }
+            if let Some(hole) = column_hole(&name) {
+                missing.push(hole);
             }
             continue;
         }

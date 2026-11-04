@@ -21,6 +21,11 @@ pub(super) struct PlotFlags {
     /// `--title`, `--x-label`, `--y-label`, `--style`, `--group` and `--kind`,
     /// replacing what a figure declares.
     pub(super) overrides: FigureOverrides,
+    /// `--accept`: the states the values it is drawn from may be in, and the
+    /// figure exit 0.
+    pub(super) accept: super::Accepted,
+    /// The export drawing it, said first, as a table's export says itself.
+    pub(super) export: Option<String>,
 }
 
 /// What matplotlib writes, by extension: a figure's file names its format.
@@ -28,6 +33,29 @@ const FORMATS: [&str; 14] = [
     "eps", "jpeg", "jpg", "pdf", "pgf", "png", "ps", "raw", "rgba", "svg", "svgz", "tif", "tiff",
     "webp",
 ];
+
+/// Whether `config`, or its model, declares the figure `name`.
+fn declares_figure(config: Option<&ProjectConfig>, name: &str) -> bool {
+    config.is_some_and(|config| {
+        config.figure(name).is_some()
+            || runtime::model_declarations(config)
+                .0
+                .iter()
+                .any(|declared| declared == name)
+    })
+}
+
+/// `plot` again, its targets the selection's projects: their samples the
+/// filters and queries given select, as from the root.
+fn plot_in(mut options: Options, flags: &PlotFlags, roots: Vec<PathBuf>) -> Outcome {
+    let mut roots = roots.into_iter();
+    let Some(first) = roots.next() else {
+        return Ok(());
+    };
+    options.positionals = vec![first.to_string_lossy().into_owned()];
+    EXTRA_TARGETS.with(|extra| *extra.borrow_mut() = roots.collect());
+    plot(options, flags)
+}
 
 pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
     let (root, _) = target_and_extra(&options)?;
@@ -44,6 +72,48 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
     let collection = loaded(&root)?;
     warn_skipped(&collection, &options);
     let config = collection.config();
+
+    // From a root above several projects, a figure the root does not declare
+    // is the selection's projects': drawn from them, as `samplekit
+    // data/samples plot NAME` draws it. `samplekit . plot NAME -f …` drew
+    // nothing, though every sample selected was one project's.
+    if let (Some(name), None) = (&flags.figure, &flags.axes)
+        && !declares_figure(config, name)
+        && collection.spans_configurations()
+        && let Ok(selected) = select(&collection, &options, &root)
+    {
+        let here = |path: &Path| relative_to_here(path);
+        match collection.scope_of(&selected) {
+            Some(list::Scope::One(own)) if config.is_none_or(|root| root.root() != own.root()) => {
+                return plot_in(options, flags, vec![own.root().to_path_buf()]);
+            }
+            Some(list::Scope::SameModel(projects)) => {
+                let roots = projects
+                    .iter()
+                    .map(|project| project.root().to_path_buf())
+                    .collect();
+                return plot_in(options, flags, roots);
+            }
+            Some(list::Scope::Mixed(projects)) => {
+                // The projects declaring it first, for the command suggested.
+                let mut projects = projects;
+                projects.sort_by_key(|project| !declares_figure(Some(project), name));
+                let named: Vec<String> = projects
+                    .iter()
+                    .filter(|project| config.is_none_or(|root| root.root() != project.root()))
+                    .map(|project| here(project.root()))
+                    .collect();
+                return Err(Fail::usage(format!(
+                    "the selection spans several projects of different models — {}: only the \
+                     root's figures are offered, and it declares no '{name}'\n  name one \
+                     project, samplekit {} plot {name}, or narrow the selection",
+                    named.join(", "),
+                    named.first().cloned().unwrap_or_default()
+                )));
+            }
+            _ => {}
+        }
+    }
 
     let choice = match (&flags.figure, &flags.axes) {
         (_, Some((x, y))) => FigureChoice::AdHoc(Box::new(FigureDeclaration::ad_hoc(
@@ -90,8 +160,8 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
         figures.extend(of_the_model.iter().cloned());
         check_the_name(name, *model, config, &of_the_model)?;
         // A folder where the figure's name goes is a name forgotten, not a
-        // figure the model might make: `plot -o x.png --write brews` ran the
-        // model to ask it for a figure called `brews`.
+        // figure the model might make: `plot -o x.png --write pieces` ran the
+        // model to ask it for a figure called `pieces`.
         if *model && !of_the_model.iter().any(|figure| figure == name) && Path::new(name).exists() {
             return Err(Fail::usage(format!(
                 "no figure named '{name}' — it is a path: a figure's name comes first, \
@@ -209,20 +279,24 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
         .filter_map(|entry| entry.path.clone())
         .collect();
     let what = match &choice {
-        FigureChoice::Named { name, .. } => format!("'{name}'"),
+        FigureChoice::Named { name, .. } => name.clone(),
         FigureChoice::AdHoc(axes) => format!("{} against {}", axes.y, axes.x),
+    };
+    let header = match &flags.export {
+        Some(export) => format!("export {export} · figure {what}"),
+        None => format!("figure {what}"),
     };
     // A figure no selected sample can give a point to is the data's answer,
     // said before anything starts: matplotlib's refusal came back as a usage
     // error, of *the 1*.
-    let named_axes = match &choice {
+    let declared_axes = match &choice {
         FigureChoice::Named { name, model: false } => config
             .and_then(|config| config.figure(name))
             .map(|declared| (declared.x.clone(), declared.y.clone())),
         FigureChoice::AdHoc(declared) => Some((declared.x.clone(), declared.y.clone())),
         FigureChoice::Named { .. } => None,
-    }
-    .filter(|(x, y)| {
+    };
+    let named_axes = declared_axes.clone().filter(|(x, y)| {
         // Only names the project knows: a misspelt one is the question's,
         // and is answered with its nearest where it is resolved.
         let neighbours = siblings_of(&root);
@@ -260,6 +334,61 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
         }
     }
 
+    // What the axes read that is not current: said in the preview, and a
+    // written figure exits 2 for it, as an export does, unless accepted.
+    let mut behind = samplekit::collection::exports::Behind::default();
+    // Every declared axis, a table's column as well as a property.
+    let behind_axes: Vec<String> = match (&declared_axes, config) {
+        (Some((x, y)), Some(config)) => {
+            let columns = [x, y]
+                .iter()
+                .filter_map(|axis| samplekit::config::profiles::parse_column(axis).ok())
+                .collect();
+            let profile = samplekit::config::profiles::anonymous(columns);
+            behind = samplekit::collection::exports::behind(&selected, &profile, Some(config));
+            behind.named.clone()
+        }
+        _ => Vec::new(),
+    };
+
+    // **Two units on one axis are refused**, as in a table's column: points
+    // in Ductility and in SG drawn on one scale compare nothing.
+    if let Some((x, y)) = &named_axes {
+        let columns = [x, y]
+            .iter()
+            .filter_map(|axis| samplekit::config::profiles::parse_column(axis).ok())
+            .collect();
+        let axes = samplekit::config::profiles::anonymous(columns);
+        let disagreeing: Vec<String> = tables::units_across(&collection, &selected, &axes, None)
+            .into_iter()
+            .filter(|(_, spellings)| spellings.len() > 1)
+            .map(|(field, spellings)| format!("{field} is in {}", spellings.join(" and ")))
+            .collect();
+        if !disagreeing.is_empty() {
+            return Err(Fail::data(format!(
+                "an axis cannot say which unit it is in: {}\n  \
+                 a figure of two units is two figures — narrow the selection, or samplekit \
+                 validate says which files disagree",
+                disagreeing.join("; ")
+            )));
+        }
+        // Over several projects, a unit in one and none in another disagree
+        // as two units do: the axis took the first one's, `RADIUS [SG]`, over
+        // samples that have none.
+        let unitless = unit_against_none(&collection, &selected, &axes);
+        if !unitless.is_empty() {
+            return Err(Fail::data(format!(
+                "an axis cannot say which unit it is in: {}\n  \
+                 the projects drawn must give it one unit — declare it in each, or draw \
+                 them apart",
+                unitless.join("; ")
+            )));
+        }
+        if let Some(note) = declared_otherwise(&collection, &selected, &axes) {
+            errp!("{note}\n");
+        }
+    }
+
     // `-o` shows what it would write until --write, and starts nothing to do
     // so.
     if let Some(path) = &options.output {
@@ -270,9 +399,10 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
                      may refuse\n"
                 );
             }
+            // What and where, as every preview's first line says it.
             if per_sample {
                 outln!(
-                    "{what} → {}\n  a file per sample, {}",
+                    "{header} · {} · a file per sample, {}\n",
                     relative_to_here(path),
                     counted_as(samples.len(), "file", "files")
                 );
@@ -287,12 +417,13 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
                     FigureChoice::Named { .. } => None,
                 };
                 let left_out = axes
-                    .map(|(x, y)| left_out(&selected, &[&x, &y]))
+                    .as_ref()
+                    .map(|(x, y)| left_out(&selected, &[x, y]))
                     .unwrap_or_default();
                 let drawn = samples.len() - left_out.iter().map(|(_, count)| count).sum::<usize>();
                 if left_out.is_empty() {
                     outln!(
-                        "{what} → {}\n  a figure of {}",
+                        "{header} · {} · {}\n",
                         relative_to_here(path),
                         counted_as(samples.len(), "sample", "samples")
                     );
@@ -304,10 +435,19 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
                         })
                         .collect();
                     outln!(
-                        "{what} → {}\n  a figure of {drawn} of {} — {}",
+                        "{header} · {} · {drawn} of {}\n\n  {}",
                         relative_to_here(path),
                         counted_as(samples.len(), "sample", "samples"),
                         said.join(", ")
+                    );
+                }
+                // What it is drawn from that is not current, as an export
+                // says it: its --write exits 2 for it, unless accepted.
+                if !behind_axes.is_empty() {
+                    outln!(
+                        "\n  drawn from values that are not current: {}\n    {}",
+                        counted_as(behind_axes.len(), "value", "values"),
+                        behind_axes.join(", ")
                     );
                 }
             }
@@ -316,21 +456,41 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
             } else if let Some(refused) = exports::refusal(path) {
                 outln!("  --write refuses it: {refused}");
             } else if path.exists() {
-                outln!("  the file is there, and --write replaces it");
+                outln!("  the file is there, and is replaced");
             }
             // The folder is made as an export's is: said, and made only by
             // --write.
             if let Some(directory) = missing_folder(path) {
                 outln!(
-                    "  {} does not exist, and --write creates it",
+                    "  {} does not exist, and is made",
                     relative_to_here(&directory)
                 );
             }
-            outln!("\n{}", advice("nothing written — pass --write to apply"));
+            outln!();
+            offer_to_apply(
+                "apply these changes?",
+                "nothing written — pass --write to apply",
+            );
             return Ok(());
         }
         if !per_sample && let Some(refused) = exports::refusal(path) {
-            return Err(Fail::io(format!("{}: {refused}", path.display())));
+            return Err(Fail::usage(format!("{}: {refused}", path.display())));
+        }
+        // Written outright, it says what and where first, as every write
+        // does: a yes at the question has shown it already.
+        if !APPLYING.load(AtomicOrdering::Relaxed) {
+            outln!(
+                "{header} · {} · {}",
+                relative_to_here(path),
+                if per_sample {
+                    format!(
+                        "a file per sample, {}",
+                        counted_as(samples.len(), "file", "files")
+                    )
+                } else {
+                    counted_as(samples.len(), "sample", "samples")
+                }
+            );
         }
         if let Some(directory) = missing_folder(path) {
             std::fs::create_dir_all(&directory)
@@ -365,6 +525,11 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
         project_style: !flags.no_project_style,
         said: COMMAND_LINE.get().cloned(),
         snapshot: AT.get().map(|at| at.snapshot.clone()),
+        workbench: false,
+        // The axes known here, what they read is judged here, by every state
+        // `--accept` names; a figure the model draws reads what it reads, and
+        // any state accepted lets it pass.
+        accept_outdated: declared_axes.is_some() || flags.accept != super::Accepted::default(),
     };
     plotting::draw(&python, &request).map_err(plot_failure)?;
     // Drawn from the project as it was, the file is recorded here, against that
@@ -387,7 +552,9 @@ pub(super) fn plot(mut options: Options, flags: &PlotFlags) -> Outcome {
             outln!("written: {}", relative_to_here(path));
         }
     }
-    Ok(())
+    // Drawn, and a failure all the same, as an export written from values not
+    // current is, by the same rule.
+    super::tables::accepted_or_failed("the figure", &behind, &flags.accept)
 }
 
 /// A figure nobody declares, said one way: with every figure there is, the
@@ -517,17 +684,17 @@ fn refuse_axes_of_the_model(name: &str, overrides: &FigureOverrides) -> Outcome 
 }
 
 /// The interpreter for a figure that runs no code of the project's: the one
-/// the project names, else the nearest environment.
+/// the project declares. Without a project, none is declared, and none is
+/// searched for.
 fn project_python(config: Option<&ProjectConfig>, root: &Path) -> Result<PathBuf, Fail> {
     match config {
-        Some(config) => runtime::interpreter_for(config, root).map_err(model_failure),
-        None => runtime::find_interpreter(root).ok_or_else(|| {
-            Fail::io(format!(
-                "no environment found: a figure is drawn by matplotlib, in the .venv/ beside \
-                 the project — looked from {} upward",
-                root.display()
-            ))
-        }),
+        Some(config) => runtime::figure_interpreter(config).map_err(Fail::io),
+        None => Err(Fail::io(format!(
+            "no interpreter is declared: a figure is drawn by matplotlib, in the Python a \
+             project's .samplekitrc names under [model] python, and no .samplekitrc is above {} \
+             — samplekit init makes one",
+            root.display()
+        ))),
     }
 }
 
@@ -568,68 +735,92 @@ fn plot_failure(error: PlotError) -> Fail {
 }
 
 /// `list figures`: the declared ones, and the model's, which its description
-/// holds — written again first where it is stale.
+/// holds — written again first where it is stale. Each as `list scripts`
+/// writes a script: its name and what it draws, its title or docstring
+/// beneath, then what it plots.
 pub(super) fn list_figures(collection: &SampleList, root: &Path) -> Outcome {
     let declaring = offered(collection);
     let mut listed = 0usize;
+    // Each configuration's heading, its indent and its figures: written once
+    // all are known, their names in one column.
+    let mut groups: Vec<(Option<String>, &str, Vec<Listed>)> = Vec::new();
     for (file, config) in &declaring {
-        let indent = match file {
-            Some(file) => {
-                outln!("{}", file.display());
-                "  "
-            }
-            None => "",
-        };
-        for name in config.figure_names() {
-            let figure = config.figure(name).expect("a listed name is declared");
-            let grouped = figure
-                .group
-                .as_ref()
-                .map(|group| format!(", one series per {group}"))
-                .unwrap_or_default();
-            listed += 1;
-            // The name alone on its line, what it draws beneath it: several
-            // figures side by side on one line each read as one run of text.
-            match origin_of(config, DeclarationKind::Figure, name) {
-                Some(origin) => outln!("{indent}{name}  {origin}"),
-                None => outln!("{indent}{name}"),
-            }
-            if let Some(title) = &figure.title {
-                outln!("{indent}    {title}");
-            }
-            outln!(
-                "{indent}    {} of {} against {}{grouped}",
-                figure.kind.as_str(),
-                figure.y,
-                figure.x
-            );
-        }
+        let heading = file.as_ref().map(|file| file.display().to_string());
+        let indent = if heading.is_some() { "  " } else { "" };
+        let entries: Vec<Listed> = config
+            .figure_names()
+            .into_iter()
+            .map(|name| {
+                let figure = config.figure(name).expect("a listed name is declared");
+                let grouped = figure
+                    .group
+                    .as_ref()
+                    .map(|group| format!(", a series per {group}"))
+                    .unwrap_or_default();
+                let mut scope = "on the selection".to_string();
+                // Where another file declares it, said beside what it draws.
+                if let Some(origin) = origin_of(config, DeclarationKind::Figure, name) {
+                    scope.push_str(&format!(" · {origin}"));
+                }
+                let kind = figure.kind.as_str();
+                let article = if kind.starts_with(['a', 'e', 'i', 'o', 'u']) {
+                    "an"
+                } else {
+                    "a"
+                };
+                Listed {
+                    name: name.to_string(),
+                    scope,
+                    lines: figure
+                        .title
+                        .iter()
+                        .cloned()
+                        .chain(std::iter::once(format!(
+                            "{article} {kind} of {} against {}{grouped}",
+                            figure.y, figure.x
+                        )))
+                        .collect(),
+                    options: Vec::new(),
+                }
+            })
+            .collect();
+        listed += entries.len();
+        groups.push((heading, indent, entries));
     }
     match runtime::availability(collection.config(), root) {
         Ok(Availability::Ready { .. }) => {
             if let Some(config) = collection.config() {
-                let names = runtime::describe(config, root)
-                    .map_err(|error| Fail::data(error.to_string()))?
-                    .figure_names();
+                let described = runtime::describe(config, root)
+                    .map_err(|error| Fail::data(error.to_string()))?;
                 // Under the configuration whose model draws them, where the
                 // list is split by configuration: printed after the last one,
                 // they read as a nested project's.
                 let headed = declaring.iter().any(|(file, _)| file.is_some());
-                let indent = if headed && !names.is_empty() {
-                    if let Some(config) = collection.config() {
-                        outln!(
+                let (heading, indent) = if headed && !described.figures.is_empty() {
+                    (
+                        Some(format!(
                             "{} — its model",
                             config.root().join(".samplekitrc").display()
-                        );
-                    }
-                    "  "
+                        )),
+                        "  ",
+                    )
                 } else {
-                    ""
+                    (None, "")
                 };
-                for name in names {
-                    listed += 1;
-                    outln!("{indent}{name}\n{indent}    drawn by the model");
-                }
+                let entries: Vec<Listed> = described
+                    .figures
+                    .iter()
+                    .map(|figure| Listed {
+                        name: figure.name.clone(),
+                        scope: acts_on(figure.draws).to_string(),
+                        lines: std::iter::once(figure.description.clone())
+                            .filter(|line| !line.is_empty())
+                            .collect(),
+                        options: Vec::new(),
+                    })
+                    .collect();
+                listed += entries.len();
+                groups.push((heading, indent, entries));
             }
         }
         Ok(Availability::Unavailable { reason }) => {
@@ -637,6 +828,20 @@ pub(super) fn list_figures(collection: &SampleList, root: &Path) -> Outcome {
         }
         Ok(Availability::NoTemplate) => {}
         Err(error) => warn(&format!("the model's figures cannot be listed: {error}")),
+    }
+    let widest = groups
+        .iter()
+        .flat_map(|(_, _, entries)| entries.iter())
+        .map(|entry| render::width(&entry.name))
+        .max()
+        .unwrap_or(0);
+    for (heading, indent, entries) in &groups {
+        if let Some(heading) = heading {
+            outln!("{heading}");
+        }
+        for line in listed_lines(entries, widest) {
+            outln!("{indent}{line}");
+        }
     }
     // Said when there is nothing to list: an empty output reads, to a
     // script, the same as a command that crashed.
@@ -646,6 +851,188 @@ pub(super) fn list_figures(collection: &SampleList, root: &Path) -> Outcome {
         );
     }
     Ok(())
+}
+
+/// A figure or a script as a listing writes it: its name, what it acts on,
+/// the lines that describe it, and its options as `--set` gives them.
+pub(super) struct Listed {
+    pub(super) name: String,
+    pub(super) scope: String,
+    pub(super) lines: Vec<String>,
+    /// Each `--set NAME=TYPE` and what it is by default.
+    pub(super) options: Vec<(String, String)>,
+}
+
+/// What a figure draws or a script acts on, in the listing's words.
+pub(super) fn acts_on(draws: runtime::Draws) -> &'static str {
+    match draws {
+        runtime::Draws::Sample => "on each sample",
+        runtime::Draws::Collection => "on the selection",
+    }
+}
+
+/// The listing's lines: each name alone, what it acts on in one column after
+/// the longest, its description and options indented beneath.
+pub(super) fn listed_lines(entries: &[Listed], widest: usize) -> Vec<String> {
+    let widest = entries
+        .iter()
+        .map(|entry| render::width(&entry.name))
+        .max()
+        .unwrap_or(0)
+        .max(widest);
+    let option_width = entries
+        .iter()
+        .flat_map(|entry| entry.options.iter())
+        .map(|(option, _)| render::width(option))
+        .max()
+        .unwrap_or(0);
+    let mut out = Vec::new();
+    for entry in entries {
+        out.push(format!(
+            "{}{}   {}",
+            entry.name,
+            " ".repeat(widest - render::width(&entry.name)),
+            entry.scope
+        ));
+        for line in &entry.lines {
+            out.push(format!("    {line}"));
+        }
+        for (option, said) in &entry.options {
+            out.push(format!(
+                "    {option}{}   {said}",
+                " ".repeat(option_width - render::width(option))
+            ));
+        }
+    }
+    out
+}
+
+/// Each axis one project gives a unit and another, holding the field, none:
+/// `radius is in SG in alpha, and in no unit in gamma`.
+fn unit_against_none(
+    collection: &SampleList,
+    selected: &SampleList,
+    axes: &samplekit::config::project_config::Profile,
+) -> Vec<String> {
+    if !collection.spans_configurations() {
+        return Vec::new();
+    }
+    let vocabulary = selected.vocabulary();
+    // By field: the projects with its unit, and those holding it without one.
+    let mut with: Vec<(String, Vec<String>)> = Vec::new();
+    let mut without: Vec<(String, Vec<String>)> = Vec::new();
+    for part in collection.by_configuration(selected) {
+        let title = configuration_title(part.file.as_deref());
+        let guards: Vec<_> = part
+            .samples
+            .iter()
+            .map(|entry| entry.sample.borrow())
+            .collect();
+        let subjects: Vec<Subject> = part
+            .samples
+            .iter()
+            .zip(guards.iter())
+            .map(|(entry, guard)| Subject {
+                sample: guard,
+                path: entry.path.as_deref(),
+                vocabulary: &vocabulary,
+                states: entry.states.as_deref(),
+            })
+            .collect();
+        let units = render::units_of(axes, &subjects, part.config, None);
+        for column in axes.columns() {
+            let Ok(Field::Named { name, .. }) = fields::parse(&column.field) else {
+                continue;
+            };
+            let field = name.to_string();
+            if let Some((_, spellings)) = units
+                .iter()
+                .find(|(held, spellings)| *held == field && !spellings.is_empty())
+            {
+                let said = format!("{} in {title}", spellings.join(" and "));
+                match with.iter_mut().find(|(held, _)| *held == field) {
+                    Some((_, list)) => list.push(said),
+                    None => with.push((field, vec![said])),
+                }
+            } else if guards.iter().any(|sample| sample.has_property(&name)) {
+                match without.iter_mut().find(|(held, _)| *held == field) {
+                    Some((_, list)) => list.push(title.clone()),
+                    None => without.push((field, vec![title.clone()])),
+                }
+            }
+        }
+    }
+    with.into_iter()
+        .filter_map(|(field, units)| {
+            let none = without.iter().find(|(held, _)| *held == field)?;
+            Some(format!(
+                "{field} is in {}, and in no unit in {}",
+                units.join(", "),
+                none.1.join(", ")
+            ))
+        })
+        .collect()
+}
+
+/// Each axis's field and its unit's spellings.
+type Spellings = Vec<(String, Vec<String>)>;
+
+/// Over several projects, the first named draws: its Python, its spellings
+/// of the units. Said once where another project declares others, so that
+/// naming the projects in another order is no surprise.
+fn declared_otherwise(
+    collection: &SampleList,
+    selected: &SampleList,
+    axes: &samplekit::config::project_config::Profile,
+) -> Option<String> {
+    if !collection.spans_configurations() {
+        return None;
+    }
+    let vocabulary = selected.vocabulary();
+    let mut first: Option<(String, Option<PathBuf>, Spellings)> = None;
+    let mut others: Vec<String> = Vec::new();
+    for part in collection.by_configuration(selected) {
+        if part.samples.is_empty() {
+            continue;
+        }
+        let title = configuration_title(part.file.as_deref());
+        let guards: Vec<_> = part
+            .samples
+            .iter()
+            .map(|entry| entry.sample.borrow())
+            .collect();
+        let subjects: Vec<Subject> = part
+            .samples
+            .iter()
+            .zip(guards.iter())
+            .map(|(entry, guard)| Subject {
+                sample: guard,
+                path: entry.path.as_deref(),
+                vocabulary: &vocabulary,
+                states: entry.states.as_deref(),
+            })
+            .collect();
+        let units = render::units_of(axes, &subjects, part.config, Some("figure"));
+        let python = part
+            .config
+            .and_then(|config| runtime::figure_interpreter(config).ok());
+        match &first {
+            None => first = Some((title, python, units)),
+            Some((_, first_python, first_units)) => {
+                if python != *first_python || units != *first_units {
+                    others.push(title);
+                }
+            }
+        }
+    }
+    let (title, _, _) = first?;
+    (!others.is_empty()).then(|| {
+        format!(
+            "drawn with the Python and the unit spellings of {title}, the first project named; \
+             {} declares others",
+            others.join(", ")
+        )
+    })
 }
 
 /// What a figure draws over several projects: every sample selected, for axes
@@ -667,14 +1054,33 @@ fn one_project(
     let own = collection
         .config()
         .map(|config| config.root().to_path_buf());
-    let drawn = parts
+    // Projects of the same model — its file and its class — are one model's
+    // samples, drawn together.
+    let model = |config: Option<&ProjectConfig>| {
+        config.and_then(runtime::template_of).map(|template| {
+            (
+                dunce::canonicalize(template.path())
+                    .unwrap_or_else(|_| template.path().to_path_buf()),
+                template.class().map(str::to_string),
+            )
+        })
+    };
+    let own_model = model(collection.config());
+    let alike: Vec<usize> = parts
         .iter()
-        .position(|part| part.config.map(|config| config.root().to_path_buf()) == own);
+        .enumerate()
+        .filter(|(_, part)| {
+            part.config.map(|config| config.root().to_path_buf()) == own
+                || (own_model.is_some() && model(part.config) == own_model)
+        })
+        .map(|(at, _)| at)
+        .collect();
+
     // Several projects' are one line, each under -v.
     let mut not_drawn: Vec<String> = Vec::new();
     let mut samples = 0;
     for (at, part) in parts.iter().enumerate() {
-        if Some(at) == drawn || part.samples.is_empty() {
+        if alike.contains(&at) || part.samples.is_empty() {
             continue;
         }
         samples += part.samples.len();
@@ -693,14 +1099,21 @@ fn one_project(
         ),
         &not_drawn,
     );
-    Ok(match drawn {
-        Some(at) => parts
-            .into_iter()
-            .nth(at)
-            .map(|part| part.samples)
-            .unwrap_or_else(|| selected.filter_by(|_| false)),
-        None => selected.filter_by(|_| false),
-    })
+    let kept: Vec<PathBuf> = parts
+        .iter()
+        .enumerate()
+        .filter(|(at, _)| alike.contains(at))
+        .flat_map(|(_, part)| {
+            part.samples
+                .iter()
+                .filter_map(|entry| entry.path.clone())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    Ok(
+        selected
+            .filter_entries(|entry| entry.path.as_ref().is_some_and(|path| kept.contains(path))),
+    )
 }
 
 /// How many selected samples hold no value of each axis, the first missing one

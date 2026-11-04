@@ -3,37 +3,36 @@
 # Every section is optional: a bare directory of sample files is already a
 # collection. This file only says what the files need not repeat.
 #
-# The example is a home brewer's notebook, as in SampleKit's demo: each sample
-# is one brew. Order here is the order you will edit it in: what the project
+# The example is a tensile test, as in SampleKit's demo: each sample is one
+# specimen. Order here is the order you will edit it in: what the project
 # *is* first, then what you ask it for, and last the presentation of each
-# quantity — the long part, which you will come back to rarely.
+# property, the long part, which you will come back to rarely.
 
 schema_version = 1
 
 
 # ------------------------------------------------------------------ the model
 #
-# The Python that says what a brew has and how what is derived is derived. It
-# runs in the Python of the nearest .venv/ above the samples.
+# The Python that says what a specimen has and how what is derived is derived.
+# It runs in the environment `python` names: a folder beside this file, which
+# holds samplekit, or an interpreter.
 
 [model]
-path = "model/brew.py"
-class = "Brew"
+path = "model/specimen.py"
+class = "Specimen"
+python = ".venv"
 
 
 # ------------------------------------------------------------- the collection
 #
-# Which files here are samples.
+# Which files here are samples: every *.md in this folder and the folders
+# below it. A sub-directory with its own .samplekitrc is a project of its own,
+# and is left to it. Under [collection]:
 #
-#   recursive = true   also read sub-directories (the default is this directory
-#                      only). A sub-directory with its own .samplekitrc is a
-#                      project of its own, and is left to it.
+#   recursive = false           read this folder alone, not the folders below
 #   include  = ["*.md"]         which files to read, if not every *.md
 #   exclude  = ["draft-*"]      which to leave alone — they stay on disk and
 #                               SampleKit never reads or writes them
-
-[collection]
-recursive = true
 
 
 # ----------------------------------------------------------------- selections
@@ -42,34 +41,36 @@ recursive = true
 # The expression is the one `-f` takes.
 
 [query.strong]
-filter = "abv > 5"
+filter = "tensile_strength > 400"
 
 
 # --------------------------------------------------------------------- shapes
 #
 # A named set of columns: samplekit samples/ --profile overview
-# `sort` orders the rows; a leading `-` reverses that key.
+# `sort` orders the rows; a leading `-` reverses that key. A field sorted by
+# must be one the samples hold: `sort = ["material", "-tensile_strength"]`
+# suits specimens that all say their material.
 
 [profile.overview]
 columns = [
-  { field = "style", label = "Style" },
-  { field = "abv", label = "Alcohol" },
-  { field = "attenuation", label = "Attenuation" },
-  { field = "efficiency", label = "Efficiency" },
+  { field = "material" },
+  { field = "young_modulus", label = "E" },
+  { field = "tensile_strength", label = "Rm" },
+  { field = "elongation", label = "A" },
 ]
-sort = ["style", "-abv"]
+sort = ["-tensile_strength"]
 
 
 # ---------------------------------------------------------------------- a sample
 #
-# One sample at a time, whole — its values, then its tables unfolded:
-# samplekit view samples/EXAMPLE.md, and --note adds its note. Nothing to
+# One sample at a time, whole, its values, then its tables unfolded:
+# samplekit samples/EXAMPLE.md view, and --note adds its note. Nothing to
 # declare.
 
 
 # -------------------------------------------------------------------- exports
 #
-# A dataset you regenerate: samplekit export overview samples/
+# A dataset you write again: samplekit export overview
 # It writes the file named here; `-o -` sends it to stdout instead.
 
 [export.overview]
@@ -79,108 +80,115 @@ output = "out/overview.csv"
 
 
 # =============================================================================
-# Presentation — the part a file need not repeat.
+# Presentation: the part a file need not repeat.
 #
-# Below: how each unit is spelled in each style, then what each quantity is
+# Below: how each unit is spelled in each style, then what each property is
 # called and to how many digits it is written. A file may still override any of
-# it, quantity by quantity; it rarely needs to.
+# it, property by property; it rarely needs to.
 # =============================================================================
+
+
+# --------------------------------------------------------------------- styles
+#
+# A style is a way of spelling units and symbols, declared by its name:
+# `plain`, what a terminal shows, needs no declaration. `math` writes them for
+# LaTeX: samplekit samples/ -c tensile_strength --style math. Its property
+# says how a value is written, its uncertainty and its unit in their places.
+
+[style.math]
+property = '{value} \pm {uncertainty} {unit}'
 
 
 # ---------------------------------------------------------------------- units
 #
 # The key is the spelling your files use. `plain` is what a terminal shows,
-# `math` what --style math writes, for LaTeX.
+# `math` what --style math writes.
 
-[unit."L"]
-math = '\mathrm{L}'
+[unit."mm"]
+math = '\mathrm{mm}'
 
-[unit."kg"]
-math = '\mathrm{kg}'
+[unit."mm²"]
+math = '\mathrm{mm^2}'
+
+[unit."kN"]
+math = '\mathrm{kN}'
+
+[unit."MPa"]
+math = '\mathrm{MPa}'
+
+[unit."GPa"]
+math = '\mathrm{GPa}'
+
+[unit."J"]
+math = '\mathrm{J}'
 
 [unit."%"]
 math = '\%'
 
-[unit."degC"]
-plain = "°C"
-math = '^\circ\mathrm{C}'
 
-[unit."d"]
-math = '\mathrm{d}'
-
-[unit."pt/d"]
-plain = "pt/day"
-math = '\mathrm{pt\,d^{-1}}'
-
-
-# ----------------------------------------------------------------- quantities
+# ----------------------------------------------------------------- properties
 #
 # unit         written for you by `samplekit set` and `samplekit new`
-# symbol       what a table header calls it
+# symbol       what a figure's axis and a formula's name call it; a table's
+#              header is the field, or the label a profile gives it
 # symbol_math  the same, for --style math
 # precision    how it is written: ".3f" for three decimals, ".3e" for
 #              exponential, ".3g" for three significant digits. A pair,
-#              [".3f", ".4f"], writes the value and its uncertainty differently.
+#              [".1f", ".2f"], writes the value and its uncertainty differently.
+#              An uncertainty is rounded up, never understated.
 
-[property.og]
-symbol = "OG"
-precision = [".3f", ".4f"]
+[property.width]
+symbol = "w"
+precision = ".3f"
 
-[property.fg]
-symbol = "FG"
-precision = [".3f", ".4f"]
+[property.thickness]
+symbol = "t"
+precision = ".4f"
 
-[property.volume]
-unit = "L"
-symbol = "V"
-precision = [".1f", ".1f"]
+[property.gauge_length]
+symbol = "L0"
+symbol_math = 'L_0'
+precision = ".1f"
 
-[property.grain_mass]
-unit = "kg"
-symbol = "m_grain"
-symbol_math = 'm_\mathrm{grain}'
+[property.area]
+symbol = "S0"
+symbol_math = 'S_0'
 precision = ".2f"
 
-[property.abv]
-symbol = "ABV"
-precision = [".1f", ".1f"]
+[property.young_modulus]
+symbol = "E"
+precision = ".1f"
 
-[property.attenuation]
-symbol = "AA"
+[property.tensile_strength]
+symbol = "Rm"
+symbol_math = 'R_\mathrm{m}'
 precision = ".0f"
 
-[property.efficiency]
-symbol = "eff"
-symbol_math = '\eta'
-precision = ".0f"
-
-[property.alcohol]
-symbol = "m_alc"
-symbol_math = 'm_\mathrm{alc}'
-precision = [".0f", ".0f"]
-
-[property.drop]
-symbol = "r"
-precision = [".1f", ".1f"]
+[property.elongation]
+symbol = "A"
+precision = ".1f"
 
 # A table's column is named table.column.
 
-[property."fermentation.day"]
-symbol = "t"
-precision = ".0f"
-
-[property."fermentation.gravity"]
-symbol = "SG"
+[property."curve.extension"]
+symbol = "dL"
+symbol_math = '\Delta L'
 precision = ".3f"
 
-[property."fermentation.temperature"]
-symbol = "T"
-precision = ".1f"
+[property."curve.force"]
+symbol = "F"
+precision = ".2f"
 
-[property."fermentation.apparent"]
-symbol = "AA_t"
+[property."curve.strain"]
+symbol = "e"
+symbol_math = '\varepsilon'
+precision = ".3f"
+
+[property."curve.stress"]
+symbol = "s"
+symbol_math = '\sigma'
 precision = ".0f"
 
-[property."fermentation.rate"]
-symbol = "r_t"
-precision = ".1f"
+[property."curve.energy"]
+symbol = "W"
+precision = ".2f"

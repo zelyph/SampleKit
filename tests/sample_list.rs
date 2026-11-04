@@ -32,14 +32,14 @@ impl Scratch {
         Scratch(path)
     }
 
-    /// A sample file with a name, a status and an optional plato.
-    fn sample(&self, file: &str, name: &str, status: &str, plato: Option<f64>) -> PathBuf {
+    /// A sample file with a name, a status and an optional ductility.
+    fn sample(&self, file: &str, name: &str, status: &str, ductility: Option<f64>) -> PathBuf {
         let mut body = format!("---\nschema_version: 1\nname: {name}\nstatus: {status}\n");
-        body.push_str("properties:\n  malt: {v: 12.5, unit: g}\n");
-        if let Some(plato) = plato {
-            body.push_str(&format!("  plato: {{v: {plato}, unit: g/L}}\n"));
+        body.push_str("properties:\n  diameter: {v: 12.5, unit: g}\n");
+        if let Some(ductility) = ductility {
+            body.push_str(&format!("  ductility: {{v: {ductility}, unit: g/L}}\n"));
         }
-        body.push_str("---\nBrewing notes for ");
+        body.push_str("---\nMetals notes for ");
         body.push_str(name);
         body.push_str(".\n");
         let path = self.0.join(file);
@@ -66,7 +66,7 @@ impl Drop for Scratch {
     }
 }
 
-/// Three casks: two approved, one reviewed, one of them unmeasured.
+/// Three slabs: two approved, one reviewed, one of them unmeasured.
 fn corpus(scratch: &Scratch) {
     scratch.sample("a.md", "A", "approved", Some(2.8));
     scratch.sample("b.md", "B", "reviewed", Some(1.2));
@@ -173,7 +173,7 @@ fn filter_chains() {
         .filter(&filter::parse("status == approved").unwrap())
         .unwrap();
     let measured = approved
-        .filter(&filter::parse("plato is present").unwrap())
+        .filter(&filter::parse("ductility is present").unwrap())
         .unwrap();
     assert_eq!(names(&measured), ["A"]);
 }
@@ -184,13 +184,13 @@ fn sort_mutates_and_sorted_does_not() {
     let scratch = Scratch::new("sort-pair");
     corpus(&scratch);
     let mut collection = list::from_directory(&scratch.0).unwrap();
-    let by_plato = spec("plato", true);
+    let by_ductility = spec("ductility", true);
 
-    let copy = collection.sorted(&by_plato).unwrap();
+    let copy = collection.sorted(&by_ductility).unwrap();
     assert_eq!(names(&copy), ["A", "B", "C"]);
     assert_eq!(names(&collection), ["A", "B", "C"]);
 
-    collection.sort(&spec("plato", false)).unwrap();
+    collection.sort(&spec("ductility", false)).unwrap();
     assert_eq!(names(&collection), ["B", "A", "C"]);
 }
 
@@ -207,16 +207,18 @@ fn a_narrowed_list_keeps_the_vocabulary_it_came_from() {
         .filter(&filter::parse("name == \"B\"").unwrap())
         .unwrap();
     assert_eq!(kept.len(), 1);
-    let plato = samplekit::query::ordering::parse_spec(&["plato".to_string()]).unwrap();
-    assert_eq!(kept.sorted(&plato).unwrap().len(), 1);
+    let ductility = samplekit::query::ordering::parse_spec(&["ductility".to_string()]).unwrap();
+    assert_eq!(kept.sorted(&ductility).unwrap().len(), 1);
     assert!(
         kept.vocabulary()
-            .has_name(&Identifier::new("plato").unwrap())
+            .has_name(&Identifier::new("ductility").unwrap())
     );
     // Narrowed twice, it is still the collection's.
-    let again = kept.filter(&filter::parse("malt > 1").unwrap()).unwrap();
-    assert!(again.sorted(&plato).is_ok());
-    let ghost = samplekit::query::ordering::parse_spec(&["plto".to_string()]).unwrap();
+    let again = kept
+        .filter(&filter::parse("diameter > 1").unwrap())
+        .unwrap();
+    assert!(again.sorted(&ductility).is_ok());
+    let ghost = samplekit::query::ordering::parse_spec(&["dutility".to_string()]).unwrap();
     assert!(matches!(kept.sorted(&ghost), Err(ListError::Order(_))));
 }
 
@@ -239,7 +241,7 @@ fn a_shared_sample_is_not_copied_by_sorting() {
     corpus(&scratch);
     let mut collection = list::from_directory(&scratch.0).unwrap();
     let held = collection.get(0).unwrap().sample.clone();
-    collection.sort(&spec("plato", true)).unwrap();
+    collection.sort(&spec("ductility", true)).unwrap();
     held.borrow_mut().set_name(Some("moved".to_string()));
     assert!(names(&collection).contains(&"moved".to_string()));
 }
@@ -252,7 +254,9 @@ fn values_returns_one_entry_per_sample() {
     let scratch = Scratch::new("values");
     corpus(&scratch);
     let collection = list::from_directory(&scratch.0).unwrap();
-    let values = collection.values(&fields::parse("plato").unwrap()).unwrap();
+    let values = collection
+        .values(&fields::parse("ductility").unwrap())
+        .unwrap();
     assert_eq!(values, [Some(number(2.8)), Some(number(1.2)), None]);
 }
 
@@ -263,7 +267,7 @@ fn summarize_ignores_absent_values() {
     corpus(&scratch);
     let collection = list::from_directory(&scratch.0).unwrap();
     let summary = collection
-        .summarize(&fields::parse("plato").unwrap())
+        .summarize(&fields::parse("ductility").unwrap())
         .unwrap()
         .unwrap();
     assert_eq!(summary.summary.count.get(), 2);
@@ -272,15 +276,20 @@ fn summarize_ignores_absent_values() {
 
 #[test]
 fn summarize_reports_what_it_skipped() {
-    // Fifty-eight platos out of seventy casks reads as `58 / 70`.
+    // Fifty-eight ductilities out of seventy slabs reads as `58 / 70`.
     let scratch = Scratch::new("denominator");
     for n in 0..70 {
-        let plato = if n < 58 { Some(2.0) } else { None };
-        scratch.sample(&format!("s{n:02}.md"), &format!("S{n}"), "approved", plato);
+        let ductility = if n < 58 { Some(2.0) } else { None };
+        scratch.sample(
+            &format!("s{n:02}.md"),
+            &format!("S{n}"),
+            "approved",
+            ductility,
+        );
     }
     let collection = list::from_directory(&scratch.0).unwrap();
     let summary = collection
-        .summarize(&fields::parse("plato").unwrap())
+        .summarize(&fields::parse("ductility").unwrap())
         .unwrap()
         .unwrap();
     assert_eq!(summary.summary.count.get(), 58);
@@ -429,7 +438,7 @@ fn in_memory_sample_without_a_path_cannot_save_each() {
     // With its position named.
     let mut sample = Sample::new();
     sample
-        .set_property(id("malt"), Property::stored(number(1.0)))
+        .set_property(id("diameter"), Property::stored(number(1.0)))
         .unwrap();
     let mut collection = list::from_samples(vec![sample]);
     let error = collection.save_each().unwrap_err();
@@ -443,13 +452,13 @@ fn in_memory_sample_without_a_path_cannot_save_each() {
 
 #[test]
 fn a_property_missing_from_one_sample_warns_about_nothing() {
-    // Absent is data; only unknown is a mistake. `plato` is missing from C
+    // Absent is data; only unknown is a mistake. `ductility` is missing from C
     // and present in A, so a profile naming it is correct.
     let scratch = Scratch::new("check-absent");
     corpus(&scratch);
     fs::write(
         scratch.0.join(".samplekitrc"),
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"plato\"}]\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"ductility\"}]\n",
     )
     .unwrap();
     let collection = list::from_directory(&scratch.0).unwrap();
@@ -515,7 +524,7 @@ fn files_find_their_project() {
     let scratch = Scratch::new("from-files");
     scratch.raw(
         ".samplekitrc",
-        "schema_version = 1\n[property.malt]\nunit = \"g\"\n",
+        "schema_version = 1\n[property.diameter]\nunit = \"g\"\n",
     );
     let path = scratch.sample("a.md", "A", "approved", Some(2.8));
     assert!(
@@ -527,7 +536,7 @@ fn files_find_their_project() {
     let found = list::from_files(&[path]).unwrap();
     let config = found.config().expect("the project above the file");
     assert_eq!(
-        config.property("malt").and_then(|p| p.unit.as_deref()),
+        config.property("diameter").and_then(|p| p.unit.as_deref()),
         Some("g")
     );
     assert_eq!(found.len(), 1);
@@ -541,7 +550,7 @@ fn a_list_built_from_entries_shares_their_samples() {
     let shared = Rc::new(RefCell::new(Sample::new()));
     shared
         .borrow_mut()
-        .set_property(id("malt"), Property::stored(number(1.0)))
+        .set_property(id("diameter"), Property::stored(number(1.0)))
         .unwrap();
     let list = list::from_entries(vec![Entry {
         path: None,
@@ -550,10 +559,10 @@ fn a_list_built_from_entries_shares_their_samples() {
     }]);
     shared
         .borrow()
-        .property(&id("malt"))
+        .property(&id("diameter"))
         .unwrap()
         .set_value(number(2.0));
-    let values = list.values(&fields::parse("malt").unwrap()).unwrap();
+    let values = list.values(&fields::parse("diameter").unwrap()).unwrap();
     assert_eq!(values, vec![Some(number(2.0))]);
     assert!(Rc::ptr_eq(&list.get(0).unwrap().sample, &shared));
 }
@@ -703,16 +712,16 @@ fn a_list_position_no_sample_holds_is_reported() {
     let scratch = Scratch::new("check-list-position");
     fs::write(
         scratch.0.join(".samplekitrc"),
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"adjuncts[#1]\"}, {field = \"adjuncts[#2]\"}]\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"additives[#1]\"}, {field = \"additives[#2]\"}]\n",
     )
     .unwrap();
     scratch.raw(
         "a.sample.md",
-        "---\nschema_version: 1\nname: A\nadjuncts: [oats]\n---\n",
+        "---\nschema_version: 1\nname: A\nadditives: [flux]\n---\n",
     );
     scratch.raw(
         "b.sample.md",
-        "---\nschema_version: 1\nname: B\nadjuncts: [oats, FEC]\n---\n",
+        "---\nschema_version: 1\nname: B\nadditives: [flux, FEC]\n---\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let warnings = list::check_profile(
@@ -722,8 +731,8 @@ fn a_list_position_no_sample_holds_is_reported() {
     assert_eq!(
         warnings,
         vec![FieldWarning::NoItem {
-            field: "adjuncts[#2]".to_string(),
-            name: "adjuncts".to_string(),
+            field: "additives[#2]".to_string(),
+            name: "additives".to_string(),
         }]
     );
 }
@@ -873,7 +882,7 @@ fn an_unreadable_configuration_is_set_aside_and_said() {
 
 #[test]
 fn a_value_the_model_declares_is_a_name_before_it_is_computed() {
-    // init's own project: its profile names brix before compute has run, and
+    // init's own project: its profile names porosity before compute has run, and
     // a sort on it was refused as a misspelling.
     let scratch = Scratch::new("declared");
     scratch.sample("a.md", "A", "draft", None);
@@ -885,15 +894,20 @@ fn a_value_the_model_declares_is_a_name_before_it_is_computed() {
     fs::write(
         scratch.0.join("model.py"),
         "import samplekit as sk\nclass M(sk.Sample):\n    def __init__(self, path=None, name=None):\n        \
-         super().__init__(path, name=name)\n        self.brix = sk.Property(compute=lambda: 1.0)\n",
+         super().__init__(path, name=name)\n        self.porosity = sk.Property(compute_value=lambda: 1.0)\n",
     )
     .unwrap();
     let collection = list::from_directory(&scratch.0).unwrap();
-    let brix = Identifier::new("brix").unwrap();
-    assert!(collection.vocabulary().has_name(&brix));
+    let porosity = Identifier::new("porosity").unwrap();
+    assert!(collection.vocabulary().has_name(&porosity));
     // A narrowing keeps it.
-    assert!(collection.filter_by(|_| true).vocabulary().has_name(&brix));
-    let spec = samplekit::query::ordering::parse_spec(&["-brix".to_string()]).unwrap();
+    assert!(
+        collection
+            .filter_by(|_| true)
+            .vocabulary()
+            .has_name(&porosity)
+    );
+    let spec = samplekit::query::ordering::parse_spec(&["-porosity".to_string()]).unwrap();
     let mut narrowed = collection.filter_by(|_| true);
     narrowed.sort(&spec).unwrap();
 }
@@ -912,13 +926,13 @@ fn a_table_the_model_declares_is_not_a_value_name() {
     fs::write(
         scratch.0.join("model.py"),
         "import samplekit as sk\nclass M(sk.Sample):\n    def __init__(self, path=None, name=None):\n        \
-         super().__init__(path, name=name)\n        self.brix = sk.Property(compute=lambda: 1.0)\n        \
-         self.co2 = sk.Table({\"t\": sk.Column()})\n",
+         super().__init__(path, name=name)\n        self.porosity = sk.Property(compute_value=lambda: 1.0)\n        \
+         self.co2 = sk.Table({\"t\": sk.Property()}, index=\"t\")\n",
     )
     .unwrap();
     let collection = list::from_directory(&scratch.0).unwrap();
     let vocabulary = collection.vocabulary();
-    assert!(vocabulary.has_name(&Identifier::new("brix").unwrap()));
+    assert!(vocabulary.has_name(&Identifier::new("porosity").unwrap()));
     assert!(!vocabulary.has_name(&Identifier::new("co2").unwrap()));
     assert!(!vocabulary.has_name(&Identifier::new("t").unwrap()));
 }
@@ -979,9 +993,12 @@ fn a_list_is_grouped_by_the_combinations_of_its_values() {
     assert_eq!(names(&groups[0].samples), ["A", "C", "D"]);
     assert_eq!(names(&groups[1].samples), ["B"]);
     // Numbers as numbers: 2.8 before 10, which text would put first.
-    let plato = fields::parse("plato").unwrap();
+    let ductility = fields::parse("ductility").unwrap();
     let groups = collection
-        .group_by(&[status.clone(), plato.clone()], list::GroupOrder::Values)
+        .group_by(
+            &[status.clone(), ductility.clone()],
+            list::GroupOrder::Values,
+        )
         .unwrap();
     let keys: Vec<Vec<Value>> = groups.iter().map(|group| group.key.clone()).collect();
     assert_eq!(
@@ -995,12 +1012,15 @@ fn a_list_is_grouped_by_the_combinations_of_its_values() {
     );
     // One list, each group's samples together.
     let grouped = collection
-        .grouped(&[plato], list::GroupOrder::Values)
+        .grouped(&[ductility], list::GroupOrder::Values)
         .unwrap();
     assert_eq!(names(&grouped), ["B", "A", "D", "C"]);
-    match collection.group_by(&[fields::parse("plto").unwrap()], list::GroupOrder::Values) {
+    match collection.group_by(
+        &[fields::parse("dutility").unwrap()],
+        list::GroupOrder::Values,
+    ) {
         Err(ListError::Field(error)) => {
-            assert!(error.to_string().contains("plato"), "{error}")
+            assert!(error.to_string().contains("ductility"), "{error}")
         }
         Err(other) => panic!("{other}"),
         Ok(_) => panic!("a misspelt field groups nothing"),
@@ -1015,18 +1035,18 @@ fn groups_listed_follow_the_order_of_their_first_samples() {
     corpus(&scratch);
     scratch.sample("d.md", "D", "approved", Some(10.0));
     let collection = list::from_directory(&scratch.0).unwrap();
-    let plato = fields::parse("plato").unwrap();
+    let ductility = fields::parse("ductility").unwrap();
     let status = fields::parse("status").unwrap();
     let keys = |groups: &[list::Group]| -> Vec<Vec<Value>> {
         groups.iter().map(|group| group.key.clone()).collect()
     };
-    let heaviest_first = collection.sorted(&spec("plato", true)).unwrap();
+    let heaviest_first = collection.sorted(&spec("ductility", true)).unwrap();
     let groups = heaviest_first
-        .group_by(std::slice::from_ref(&plato), list::GroupOrder::Listed)
+        .group_by(std::slice::from_ref(&ductility), list::GroupOrder::Listed)
         .unwrap();
     assert_eq!(keys(&groups)[..2], [vec![number(10.0)], vec![number(2.8)]]);
     // By another field: the status of the lightest sample first.
-    let lightest_first = collection.sorted(&spec("plato", false)).unwrap();
+    let lightest_first = collection.sorted(&spec("ductility", false)).unwrap();
     assert_eq!(names(&lightest_first)[0], "B");
     let groups = lightest_first
         .group_by(std::slice::from_ref(&status), list::GroupOrder::Listed)
@@ -1068,7 +1088,7 @@ fn states_a_list_carries_reach_what_is_narrowed_from_it() {
     ]);
     let kept = stated.filter(&failed).unwrap();
     assert_eq!(names(&kept), ["A"]);
-    let sorted = kept.sorted(&spec("plato", false)).unwrap();
+    let sorted = kept.sorted(&spec("ductility", false)).unwrap();
     assert_eq!(names(&sorted.filter(&failed).unwrap()), ["A"]);
     let current = filter::parse("state == current").unwrap();
     assert_eq!(names(&stated.filter(&current).unwrap()), ["B"]);

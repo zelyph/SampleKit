@@ -151,7 +151,7 @@ def test_a_declaration_by_channel_type_checks(tmp_path):
     script.write_text(
         "import samplekit as sk\n"
         "def build(sample: sk.Sample) -> None:\n"
-        "    sample.p = sk.Property(compute=lambda: 1.0,\n"
+        "    sample.p = sk.Property(compute_value=lambda: 1.0,\n"
         "                           depends_on={'v': ['a'], 'u': ['a', 'p.v']})\n"
         "    sample.set_dependencies('p', depends_on={'v': ['a']})\n"
         "    sample.set_dependencies('p', depends_on=['a'])\n"
@@ -177,15 +177,15 @@ def test_several_paths_load_a_list(tmp_path):
 
 
 def test_a_models_arithmetic_type_checks(tmp_path):
-    # The demo's model and its scripts, bodies checked: a property's value,
+    # The demo's models and its scripts, bodies checked: a property's value,
     # a column's values and a folder loaded were unions no arithmetic, and no
     # loop over the samples, got past.
-    brewing = ROOT / "fixtures" / "brewing"
-    sources = [*brewing.joinpath("model").glob("*.py"), *brewing.joinpath("scripts").glob("*.py")]
-    assert len(sources) == 4, sources
+    tensile = ROOT / "fixtures" / "tensile"
+    sources = [*tensile.joinpath("model").glob("*.py"), *tensile.joinpath("scripts").glob("*.py")]
+    assert len(sources) == 12, sources
     for source in sources:
         (tmp_path / source.name).write_text(source.read_text())
-    # Untyped globals: a script's own `by_yeast = {}` is no question of the
+    # Untyped globals: a script's own `by_process = {}` is no question of the
     # stub's.
     result = mypy("--check-untyped-defs", "--allow-untyped-globals",
                   *sorted(tmp_path.glob("*.py")))

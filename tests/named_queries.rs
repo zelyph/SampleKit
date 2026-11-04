@@ -31,7 +31,7 @@ impl Scratch {
             at.join(file),
             format!(
                 "---\nschema_version: 1\nname: {name}\nstatus: {status}\ntags: [reference]\n\
-                 properties:\n  malt: {{v: 1.0, unit: g}}\n---\nnote\n"
+                 properties:\n  diameter: {{v: 1.0, unit: g}}\n---\nnote\n"
             ),
         )
         .unwrap();
@@ -71,7 +71,7 @@ directory = "transport"
 filter = 'tags has reference'
 
 [query.broken]
-filter = 'plto == 1'
+filter = 'dutility == 1'
 "#;
 
 fn project(name: &str) -> (Scratch, project_config::ProjectConfig) {
@@ -141,7 +141,7 @@ fn same_query_matches_across_surfaces() {
 fn declared_base_applies_when_no_target_is_given() {
     // Without it, the predicate runs over whatever directory the user happens
     // to be in — often the whole of `samples/`, whose subdirectories hold
-    // casks described by different templates.
+    // slabs described by different templates.
     let (_scratch, config) = project("base");
     let query = queries::named(&config, "approved").unwrap();
     assert_eq!(
@@ -180,7 +180,7 @@ fn error_names_the_query() {
     let error = queries::run(query, &collection).unwrap_err();
     let message = error.to_string();
     assert!(message.contains("named query 'broken'"), "{message}");
-    assert!(message.contains("plto"), "{message}");
+    assert!(message.contains("dutility"), "{message}");
 }
 
 #[test]
@@ -221,8 +221,8 @@ fn tui_state_is_not_written_to_project_config() {
 
 #[test]
 fn membership_is_read_from_the_samples() {
-    // There is no saved group: *the reference casks of this vintage* is
-    // `tags has reference`, declared on each cask by a person rather than
+    // There is no saved group: *the reference slabs of this casting* is
+    // `tags has reference`, declared on each slab by a person rather than
     // recorded in a list outside the files.
     let (scratch, config) = project("membership");
     let collection = list::from_directory(&scratch.0).unwrap();

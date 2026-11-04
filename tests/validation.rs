@@ -95,9 +95,9 @@ impl Drop for Scratch {
 fn a_declared_statistic_that_disagrees_is_a_defect() {
     // The file states which statistic the channel came from, so a number that
     // is not it is evidence rather than a guess — the condition set for it.
-    let mut malt = stated(&[12.4, 12.5, 12.6], 5.0);
-    malt.set_records(declares(Convention::StandardError));
-    let report = validate::run(&list::from_samples(vec![sample("A", "malt", malt)]));
+    let mut diameter = stated(&[12.4, 12.5, 12.6], 5.0);
+    diameter.set_records(declares(Convention::StandardError));
+    let report = validate::run(&list::from_samples(vec![sample("A", "diameter", diameter)]));
     assert!(validate::has_defects(&report), "{:?}", details(&report));
     let Some(Detail::DeclaredStatisticDisagrees {
         quantity,
@@ -109,7 +109,7 @@ fn a_declared_statistic_that_disagrees_is_a_defect() {
     else {
         panic!("{:?}", details(&report));
     };
-    assert_eq!(quantity, "malt");
+    assert_eq!(quantity, "diameter");
     assert_eq!(*channel, "uncertainty");
     assert_eq!(*declared, "standard_error");
     assert!(stored.starts_with('5'), "the file's number: {stored}");
@@ -132,14 +132,14 @@ fn a_statistic_its_readings_moved_under_is_stale_not_a_defect() {
             ..Default::default()
         })
         .unwrap();
-    let mut malt = stated(&[12.4, 12.5, 12.6], 5.0);
+    let mut diameter = stated(&[12.4, 12.5, 12.6], 5.0);
     let mut records = declares(Convention::StandardError);
     records.computed = Some(indexmap::IndexMap::from([(
         samplekit::core::property::InputName::Named(samplekit::format::fingerprint::readings_key()),
         samplekit::core::property::InputRecord::Digest(then),
     )]));
-    malt.set_records(records);
-    let report = validate::run(&list::from_samples(vec![sample("A", "malt", malt)]));
+    diameter.set_records(records);
+    let report = validate::run(&list::from_samples(vec![sample("A", "diameter", diameter)]));
     assert!(
         !details(&report)
             .iter()
@@ -152,9 +152,9 @@ fn a_statistic_its_readings_moved_under_is_stale_not_a_defect() {
 #[test]
 fn a_declared_statistic_that_agrees_is_no_finding() {
     // Nothing to say: the file stated what the number should be, and it is.
-    let mut malt = stated(&[12.4, 12.5, 12.6], 0.1 / 3.0_f64.sqrt());
-    malt.set_records(declares(Convention::StandardError));
-    let report = validate::run(&list::from_samples(vec![sample("A", "malt", malt)]));
+    let mut diameter = stated(&[12.4, 12.5, 12.6], 0.1 / 3.0_f64.sqrt());
+    diameter.set_records(declares(Convention::StandardError));
+    let report = validate::run(&list::from_samples(vec![sample("A", "diameter", diameter)]));
     assert!(!validate::has_defects(&report), "{:?}", details(&report));
     assert!(
         details(&report).is_empty(),
@@ -167,7 +167,7 @@ fn a_declared_statistic_that_agrees_is_no_finding() {
 fn a_single_reading_is_not_checked() {
     // No convention derives an uncertainty from one reading, so a number stored
     // beside one came from somewhere this module cannot see.
-    let collection = list::from_samples(vec![sample("A", "malt", stated(&[12.5], 0.2))]);
+    let collection = list::from_samples(vec![sample("A", "diameter", stated(&[12.5], 0.2))]);
     let report = validate::run(&collection);
     assert!(report.findings.is_empty(), "{:?}", details(&report));
 }
@@ -176,28 +176,28 @@ fn a_single_reading_is_not_checked() {
 fn a_property_without_readings_is_not_checked() {
     let mut property = Property::stored(Value::number(12.5).unwrap());
     property.set_uncertainty(Some(Uncertainty::new(0.2).unwrap()));
-    let collection = list::from_samples(vec![sample("A", "malt", property)]);
+    let collection = list::from_samples(vec![sample("A", "diameter", property)]);
     assert!(validate::run(&collection).findings.is_empty());
 }
 
 #[test]
 fn a_unit_that_differs_across_the_collection_is_reported() {
-    // `g/L` on two casks and `kg/hL` on one, without knowing what
+    // `g/L` on two slabs and `kg/hL` on one, without knowing what
     // either means: a unit is an uninterpreted string.
     let collection = list::from_samples(vec![
         sample(
             "A",
-            "brix",
+            "porosity",
             with_unit(Property::stored(Value::number(2.8).unwrap()), "g/L"),
         ),
         sample(
             "B",
-            "brix",
+            "porosity",
             with_unit(Property::stored(Value::number(2.7).unwrap()), "g/L"),
         ),
         sample(
             "C",
-            "brix",
+            "porosity",
             with_unit(Property::stored(Value::number(2800.0).unwrap()), "kg/hL"),
         ),
     ]);
@@ -209,7 +209,7 @@ fn a_unit_that_differs_across_the_collection_is_reported() {
     else {
         panic!("{:?}", details(&report));
     };
-    assert_eq!(quantity, "brix");
+    assert_eq!(quantity, "porosity");
     assert_eq!(
         spellings,
         &[("g/L".to_string(), 2), ("kg/hL".to_string(), 1)]
@@ -222,15 +222,15 @@ fn a_unit_that_differs_across_the_collection_is_reported() {
 
 #[test]
 fn a_missing_unit_is_not_a_disagreement() {
-    // Absence is already visible in the file, and a cask not yet measured
+    // Absence is already visible in the file, and a slab not yet measured
     // is ordinary.
     let collection = list::from_samples(vec![
         sample(
             "A",
-            "brix",
+            "porosity",
             with_unit(Property::stored(Value::number(2.8).unwrap()), "g/L"),
         ),
-        sample("B", "brix", Property::stored(Value::Absent)),
+        sample("B", "porosity", Property::stored(Value::Absent)),
     ]);
     assert!(validate::run(&collection).findings.is_empty());
 }
@@ -241,15 +241,15 @@ fn table_columns_are_checked_like_properties() {
     let scratch = Scratch::new("table-columns");
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\ntables:\n  mashing:\n    index: [temperature]\n    \
-         columns:\n      temperature: {unit: degC}\n      wort: {unit: lintner}\n    rows:\n      \
-         - {temperature: 293.0, wort: 104.2}\n---\nNotes.\n",
+        "---\nschema_version: 1\nname: A\ntables:\n  preheating:\n    index: [temperature]\n    \
+         columns:\n      temperature: {unit: degC}\n      tension: {unit: lintner}\n    rows:\n      \
+         - {temperature: 293.0, tension: 104.2}\n---\nNotes.\n",
     );
     scratch.write(
         "b.md",
-        "---\nschema_version: 1\nname: B\ntables:\n  mashing:\n    index: [temperature]\n    \
-         columns:\n      temperature: {unit: degC}\n      wort: {unit: klintner}\n    rows:\n      \
-         - {temperature: 293.0, wort: 0.1042}\n---\nNotes.\n",
+        "---\nschema_version: 1\nname: B\ntables:\n  preheating:\n    index: [temperature]\n    \
+         columns:\n      temperature: {unit: degC}\n      tension: {unit: klintner}\n    rows:\n      \
+         - {temperature: 293.0, tension: 0.1042}\n---\nNotes.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let report = validate::run(&collection);
@@ -263,7 +263,7 @@ fn table_columns_are_checked_like_properties() {
     assert!(
         matches!(
             disagreements[0],
-            Detail::UnitDisagrees { quantity, .. } if quantity == "mashing.wort"
+            Detail::UnitDisagrees { quantity, .. } if quantity == "preheating.tension"
         ),
         "{:?}",
         disagreements[0]
@@ -281,11 +281,11 @@ fn a_unit_that_contradicts_the_declaration_is_reported() {
     let scratch = Scratch::new("contradiction");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[property.brix]\nunit = \"g/L\"\n",
+        "schema_version = 1\n[property.porosity]\nunit = \"g/L\"\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  brix: {v: 2.8, unit: g/dl}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  porosity: {v: 2.8, unit: g/dl}\n---\nN.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let report = validate::run(&collection);
@@ -300,7 +300,7 @@ fn a_unit_that_contradicts_the_declaration_is_reported() {
     else {
         panic!("{:?}", details(&report));
     };
-    assert_eq!(quantity, "brix");
+    assert_eq!(quantity, "porosity");
     assert_eq!(written, "g/dl");
     assert_eq!(declared, "g/L");
 }
@@ -313,13 +313,13 @@ fn a_whole_collection_contradicting_the_declaration_is_reported() {
     let scratch = Scratch::new("all-contradict");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[property.malt]\nunit = \"g\"\n",
+        "schema_version = 1\n[property.diameter]\nunit = \"g\"\n",
     );
     for name in ["a", "b", "c"] {
         scratch.write(
             &format!("{name}.md"),
             &format!(
-                "---\nschema_version: 1\nname: {name}\nproperties:\n  malt: {{v: 1.0, unit: kg}}\n---\nN.\n"
+                "---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: {{v: 1.0, unit: kg}}\n---\nN.\n"
             ),
         );
     }
@@ -347,8 +347,8 @@ fn without_a_declared_unit_only_homogeneity_is_checked() {
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  brix: {v: 2.8, unit: g/dl}\n  \
-         malt: {v: 1.0, unit: g}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  porosity: {v: 2.8, unit: g/dl}\n  \
+         diameter: {v: 1.0, unit: g}\n---\nN.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let report = validate::run(&collection);
@@ -362,12 +362,12 @@ fn a_precision_that_cannot_apply_is_reported() {
     let scratch = Scratch::new("cannot-apply");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[property.brewed_on]\nprecision = \".3f\"\n\
-         [property.brix]\nprecision = \".3f\"\n",
+        "schema_version = 1\n[property.poured_on]\nprecision = \".3f\"\n\
+         [property.porosity]\nprecision = \".3f\"\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  brewed_on: 2026-09-12\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  poured_on: 2026-09-12\n---\nN.\n",
     );
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
     assert!(validate::has_defects(&report));
@@ -387,7 +387,7 @@ fn a_precision_that_cannot_apply_is_reported() {
     fs::remove_file(scratch.0.join("a.md")).unwrap();
     scratch.write(
         "b.md",
-        "---\nschema_version: 1\nname: B\nproperties:\n  brix: {unit: g/dl}\n---\nN.\n",
+        "---\nschema_version: 1\nname: B\nproperties:\n  porosity: {unit: g/dl}\n---\nN.\n",
     );
     let absent = validate::run(&list::from_directory(&scratch.0).unwrap());
     assert!(absent.findings.is_empty(), "{:?}", details(&absent));
@@ -401,11 +401,11 @@ fn a_precision_that_writes_a_value_as_zero_is_noted() {
     let scratch = Scratch::new("writes-zero");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[property.foaming]\nprecision = \".3f\"\n",
+        "schema_version = 1\n[property.wearing]\nprecision = \".3f\"\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  foaming: 3.0e-5\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  wearing: 3.0e-5\n---\nN.\n",
     );
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
     assert!(!validate::has_defects(&report));
@@ -417,7 +417,7 @@ fn a_precision_that_writes_a_value_as_zero_is_noted() {
     else {
         panic!("{:?}", details(&report));
     };
-    assert_eq!(quantity, "foaming");
+    assert_eq!(quantity, "wearing");
     assert_eq!(specifier, ".3f");
     assert!(value.contains("3"), "{value}");
     assert_eq!(report.findings[0].severity, Severity::Note);
@@ -427,11 +427,11 @@ fn a_precision_that_writes_a_value_as_zero_is_noted() {
     fs::remove_file(scratch.0.join("a.md")).unwrap();
     scratch.write(
         "b.md",
-        "---\nschema_version: 1\nname: B\nproperties:\n  foaming: 0.0\n---\nN.\n",
+        "---\nschema_version: 1\nname: B\nproperties:\n  wearing: 0.0\n---\nN.\n",
     );
     scratch.write(
         "c.md",
-        "---\nschema_version: 1\nname: C\nproperties:\n  foaming: 1.25\n---\nN.\n",
+        "---\nschema_version: 1\nname: C\nproperties:\n  wearing: 1.25\n---\nN.\n",
     );
     let quiet = validate::run(&list::from_directory(&scratch.0).unwrap());
     assert!(quiet.findings.is_empty(), "{:?}", details(&quiet));
@@ -446,17 +446,17 @@ fn a_project_declaration_the_files_shadow_is_noted() {
     let scratch = Scratch::new("shadowed");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[property.grist]\nsymbol = \"m\"\n\
+        "schema_version = 1\n[property.swarf]\nsymbol = \"m\"\n\
          [property.height]\nsymbol = \"h\"\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  grist: {v: 12.5, symbol: w}\n  \
+        "---\nschema_version: 1\nname: A\nproperties:\n  swarf: {v: 12.5, symbol: w}\n  \
          collar: {v: 4.0, symbol: h}\n---\nNotes.\n",
     );
     scratch.write(
         "b.md",
-        "---\nschema_version: 1\nname: B\nproperties:\n  grist: {v: 13.5, symbol: w}\n  \
+        "---\nschema_version: 1\nname: B\nproperties:\n  swarf: {v: 13.5, symbol: w}\n  \
          collar: {v: 4.5}\n---\nNotes.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
@@ -468,7 +468,7 @@ fn a_project_declaration_the_files_shadow_is_noted() {
         .filter(|detail| matches!(detail, Detail::DeclarationIsShadowed { .. }))
         .collect();
     // `collar` agrees where it is written and is absent where it is not:
-    // neither is a shadow. `grist` is one note for both files.
+    // neither is a shadow. `swarf` is one note for both files.
     assert_eq!(shadowed.len(), 1, "{:?}", details(&report));
     let Detail::DeclarationIsShadowed {
         quantity,
@@ -480,7 +480,7 @@ fn a_project_declaration_the_files_shadow_is_noted() {
     else {
         panic!("{:?}", shadowed[0]);
     };
-    assert_eq!(quantity, "grist");
+    assert_eq!(quantity, "swarf");
     assert_eq!(*channel, "symbol");
     assert_eq!(declared, "m");
     assert_eq!(written, "w");
@@ -494,7 +494,7 @@ fn a_file_that_is_not_canonical_is_a_note_not_a_defect() {
     let scratch = Scratch::new("canonical");
     scratch.write(
         "a.md",
-        "---\nname: A\nschema_version: 1\nproperties:\n  malt: {v: 12.5}\n---\nNotes.\n",
+        "---\nname: A\nschema_version: 1\nproperties:\n  diameter: {v: 12.5}\n---\nNotes.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let report = validate::run(&collection);
@@ -511,9 +511,9 @@ fn stale_values_are_one_note_per_sample() {
     let scratch = Scratch::new("stale");
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  malt:\n    v: 12.5\n  \
-         plato:\n    v: 2.8\n    computed:\n      malt: 0123456789ab\n  \
-         haze:\n    v: 0.1\n    computed:\n      malt: 0123456789ab\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter:\n    v: 12.5\n  \
+         ductility:\n    v: 2.8\n    computed:\n      diameter: 0123456789ab\n  \
+         roughness:\n    v: 0.1\n    computed:\n      diameter: 0123456789ab\n---\nN.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let report = validate::run(&collection);
@@ -572,7 +572,7 @@ fn a_clean_collection_produces_no_findings() {
     scratch.write(
         "a.md",
         "---\nschema_version: 1\nname: A\nproperties:\n  \
-         malt: {v: 12.5, unit: g}\n---\nNotes.\n",
+         diameter: {v: 12.5, unit: g}\n---\nNotes.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let report = validate::run(&collection);
@@ -584,8 +584,16 @@ fn a_clean_collection_produces_no_findings() {
 fn a_report_counts_what_it_looked_at() {
     // A finding count without a denominator is not a result.
     let collection = list::from_samples(vec![
-        sample("A", "malt", Property::stored(Value::number(1.0).unwrap())),
-        sample("B", "malt", Property::stored(Value::number(2.0).unwrap())),
+        sample(
+            "A",
+            "diameter",
+            Property::stored(Value::number(1.0).unwrap()),
+        ),
+        sample(
+            "B",
+            "diameter",
+            Property::stored(Value::number(2.0).unwrap()),
+        ),
     ]);
     assert_eq!(validate::run(&collection).samples, 2);
     assert_eq!(validate::run(&list::empty()).samples, 0);
@@ -596,11 +604,11 @@ fn each_sample_is_checked_against_its_own_project_units() {
     let scratch = Scratch::new("nested-units");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[collection]\nrecursive = true\n[property.malt]\nunit = \"g\"\n",
+        "schema_version = 1\n[collection]\nrecursive = true\n[property.diameter]\nunit = \"g\"\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  malt: {v: 2.8, unit: g}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter: {v: 2.8, unit: g}\n---\nN.\n",
     );
     fs::create_dir_all(scratch.0.join("cellar")).unwrap();
     scratch.write(
@@ -640,7 +648,7 @@ fn an_unreadable_file_is_a_defect() {
     let scratch = Scratch::new("unreadable");
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  brix: {v: 2.8}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  porosity: {v: 2.8}\n---\nN.\n",
     );
     scratch.write("b.md", "---\nschema_version: 1\nname: [oops\n---\nN.\n");
     let collection = list::from_directory(&scratch.0).unwrap();
@@ -710,76 +718,77 @@ fn a_name_two_files_give_alike_is_a_defect() {
 }
 
 #[test]
-fn text_in_a_numeric_quantity_is_a_defect() {
-    let scratch = Scratch::new("kind-disagrees");
-    for (file, value) in [("a.md", "2.0"), ("b.md", "3"), ("c.md", "\"ninety\"")] {
-        scratch.write(
-            file,
-            &format!("---\nschema_version: 1\nname: {file}\nproperties:\n  malt: {{v: {value}}}\n---\nN.\n"),
-        );
-    }
+fn text_in_a_quantity_the_model_declares_is_a_defect() {
+    // One sample alone: the model's description says a number belongs there.
+    let scratch = Scratch::new("model-number");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[model]\npath = \"model.py\"\n",
+    );
+    scratch.write(
+        "model.py",
+        "import samplekit as sk\n\nclass Billet(sk.Sample):\n    def __init__(self, path=None, name=None):\n        \
+         super().__init__(path, name=name)\n        self.diameter = sk.Property()\n",
+    );
+    scratch.write(
+        "c.md",
+        "---\nschema_version: 1\nname: c\nproperties:\n  diameter: {v: \"ninety\"}\n---\nN.\n",
+    );
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
     let finding = report
         .findings
         .iter()
-        .find(|finding| matches!(finding.detail, Detail::KindDisagrees { .. }))
+        .find(|finding| matches!(finding.detail, Detail::NumberExpected { .. }))
         .unwrap_or_else(|| panic!("{:?}", report.findings));
     assert_eq!(finding.severity, Severity::Defect);
     assert!(finding.path.as_ref().unwrap().ends_with("c.md"));
-    assert_eq!(
-        finding.detail,
-        Detail::KindDisagrees {
-            quantity: "malt".to_string(),
-            kinds: vec![("number".to_string(), 2), ("text".to_string(), 1)],
-        }
-    );
 }
 
 #[test]
-fn an_invalid_date_among_dates_is_a_defect() {
-    let scratch = Scratch::new("date-kinds");
-    for (file, made) in [
-        ("a.md", "2026-03-01"),
-        ("b.md", "2026-04-01"),
-        ("c.md", "2026-13-45"),
+fn other_samples_do_not_decide_what_a_value_is() {
+    // Text among numbers, and a date among dates, where neither the model nor
+    // the project declares anything: nothing is said of what the others hold.
+    let scratch = Scratch::new("no-kinds");
+    for (file, value, made) in [
+        ("a.md", "2.0", "2026-03-01"),
+        ("b.md", "3", "2026-04-01"),
+        ("c.md", "\"ninety\"", "2026-13-45"),
     ] {
         scratch.write(
             file,
-            &format!("---\nschema_version: 1\nname: {file}\nmade: {made}\n---\nN.\n"),
+            &format!(
+                "---\nschema_version: 1\nname: {file}\nmade: {made}\nproperties:\n  diameter: {{v: {value}}}\n---\nN.\n"
+            ),
         );
     }
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
-    let finding = report
-        .findings
-        .iter()
-        .find(|finding| matches!(finding.detail, Detail::KindDisagrees { .. }))
-        .unwrap_or_else(|| panic!("{:?}", report.findings));
-    assert!(finding.path.as_ref().unwrap().ends_with("c.md"));
-    assert_eq!(
-        finding.detail,
-        Detail::KindDisagrees {
-            quantity: "made".to_string(),
-            kinds: vec![("date".to_string(), 2), ("text".to_string(), 1)],
-        }
+    assert!(
+        report
+            .findings
+            .iter()
+            .all(|finding| finding.severity != Severity::Defect),
+        "{:?}",
+        report.findings
     );
 }
 
 #[test]
 fn a_template_brace_near_a_channel_is_noted() {
-    // `{valeu}` prints `{valeu}` in a manuscript table. A command's argument and
-    // a word far from every channel are LaTeX's, and are left alone.
+    // `{valeu}` prints `{valeu}` in a manuscript table. A command's argument is
+    // LaTeX's, and left alone; a word standing alone far from every channel is
+    // noted without a channel to suggest.
     let scratch = Scratch::new("template-brace");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt\", template = \
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter\", template = \
          \"\\\\num{{value:.3f}} \\\\text{valeur} {valeu} {untis} {table} \\\\si{{unit}}\"}]\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  malt: {v: 2.0}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter: {v: 2.0}\n---\nN.\n",
     );
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
-    let noted: Vec<(String, String)> = report
+    let noted: Vec<(String, Option<String>)> = report
         .findings
         .iter()
         .filter_map(|finding| match &finding.detail {
@@ -795,8 +804,9 @@ fn a_template_brace_near_a_channel_is_noted() {
     assert_eq!(
         noted,
         [
-            ("valeu".to_string(), "value".to_string()),
-            ("untis".to_string(), "unit".to_string())
+            ("valeu".to_string(), Some("value".to_string())),
+            ("untis".to_string(), Some("unit".to_string())),
+            ("table".to_string(), None)
         ]
     );
     assert!(!validate::has_defects(&report));
@@ -813,7 +823,7 @@ fn a_declaration_naming_no_field_is_a_defect() {
         scratch.write(
             file,
             &format!(
-                "---\nschema_version: 1\nname: {file}\nproperties:\n  malt: {{v: 2.0}}\n---\nN.\n"
+                "---\nschema_version: 1\nname: {file}\nproperties:\n  diameter: {{v: 2.0}}\n---\nN.\n"
             ),
         );
     }
@@ -838,14 +848,14 @@ fn a_figure_naming_no_field_is_a_defect() {
     scratch.write(
         ".samplekitrc",
         "schema_version = 1\n\
-         [figure.good]\nx = \"m.T\"\ny = \"m.ebc\"\ngroup = \"tags\"\n\
-         [figure.typo]\nx = \"mal\"\ny = \"malt\"\ngroup = \"beet\"\n",
+         [figure.good]\nx = \"m.T\"\ny = \"m.hv\"\ngroup = \"tags\"\n\
+         [figure.typo]\nx = \"diametr\"\ny = \"diameter\"\ngroup = \"alloi\"\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nbeer: schwarz\nproperties:\n  malt: {v: 2.0}\n\
-         tables:\n  m:\n    index: T\n    columns:\n      T: {}\n      ebc: {}\n    rows:\n      \
-         - {T: 20.0, ebc: 5.1}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nalloy: cobalt\nproperties:\n  diameter: {v: 2.0}\n\
+         tables:\n  m:\n    index: T\n    columns:\n      T: {}\n      hv: {}\n    rows:\n      \
+         - {T: 20.0, hv: 5.1}\n---\nN.\n",
     );
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
     let declared: Vec<String> = report
@@ -862,8 +872,8 @@ fn a_figure_naming_no_field_is_a_defect() {
     assert_eq!(
         declared,
         [
-            "figure 'typo': no sample has 'mal' — did you mean 'malt'?",
-            "figure 'typo': no sample has 'beet' — did you mean 'beer'?",
+            "figure 'typo': no sample has 'diametr' — did you mean 'diameter'?",
+            "figure 'typo': no sample has 'alloi' — did you mean 'alloy'?",
         ]
     );
     assert!(validate::has_defects(&report));
@@ -911,22 +921,29 @@ fn a_key_written_twice_is_a_defect() {
     let scratch = Scratch::new("duplicate-key");
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nyeast_strain: US05\nyeast_strain: S04\nproperties:\n  malt: {v: 1.0}\n  malt: {v: 2.0}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nprocess_strain: UT05\nprocess_strain: T04\nproperties:\n  diameter: {v: 1.0}\n  diameter: {v: 2.0}\n---\nN.\n",
     );
     scratch.write(
         "b.md",
-        "---\nschema_version: 1\nname: B\nyeast_strain: US05\n---\nN.\n",
+        "---\nschema_version: 1\nname: B\nprocess_strain: UT05\n---\nN.\n",
     );
-    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
-    let keys: Vec<String> = report
+    // Not read at all: which of its values is meant cannot be told, and every
+    // command read the last without a word.
+    let collection = list::from_directory(&scratch.0).unwrap();
+    assert_eq!(collection.len(), 1);
+    let report = validate::run(&collection);
+    let said: Vec<String> = report
         .findings
         .iter()
         .filter_map(|finding| match &finding.detail {
-            Detail::DuplicateKey { key } => Some(key.clone()),
+            Detail::Unreadable { reason } => Some(reason.clone()),
             _ => None,
         })
         .collect();
-    assert_eq!(keys, ["yeast_strain", "properties.malt"]);
+    assert!(
+        said.len() == 1 && said[0].contains("'process_strain' is written twice"),
+        "{said:?}"
+    );
 }
 
 #[test]
@@ -939,24 +956,29 @@ fn a_key_repeated_inside_text_is_no_defect() {
         "---\nschema_version: 1\nname: A\nprotocol: |\n  step: a\n  step: b\n\n  step: c\n\
          notes: >-\n  step: d\n  step: e\nsteps:\n  - |\n    step: f\n    step: g\n\
          flow: [\n  'step: h',\n  'step: i']\nquoted: \"step: j\n  step: k\"\n\
-         properties:\n  malt: {v: 1.0}\n---\nN.\n",
+         properties:\n  diameter: {v: 1.0}\n---\nN.\n",
     );
     // A block scalar ends where its indentation does: a key repeated after it
     // is still found.
     scratch.write(
         "b.md",
-        "---\nschema_version: 1\nname: B\nprotocol: |\n  step: a\nyeast_strain: US05\nyeast_strain: S04\n---\nN.\n",
+        "---\nschema_version: 1\nname: B\nprotocol: |\n  step: a\nprocess_strain: UT05\nprocess_strain: T04\n---\nN.\n",
     );
-    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
-    let keys: Vec<(String, String)> = report
-        .findings
+    // The text is read; the key written twice after the block is not.
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let read: Vec<String> = collection
         .iter()
-        .filter_map(|finding| match &finding.detail {
-            Detail::DuplicateKey { key } => Some((finding.sample.clone(), key.clone())),
-            _ => None,
-        })
+        .filter_map(|entry| entry.sample.borrow().name().map(str::to_string))
         .collect();
-    assert_eq!(keys, [("B".to_string(), "yeast_strain".to_string())]);
+    assert_eq!(read, ["A"]);
+    assert!(
+        collection.skipped().iter().any(|skipped| skipped
+            .reason
+            .to_string()
+            .contains("'process_strain' is written twice")),
+        "{:?}",
+        collection.skipped()
+    );
 }
 
 #[test]
@@ -999,19 +1021,19 @@ fn a_name_two_files_share_is_shown_with_its_file() {
     let scratch = Scratch::new("shared-name");
     for (file, name, value) in [
         ("a.md", "X", "2.0"),
-        ("b.md", "X", "\"heavy\""),
+        ("b.md", "X", "\"2,5\""),
         ("c.md", "Y", "3.0"),
     ] {
         scratch.write(
             file,
-            &format!("---\nschema_version: 1\nname: {name}\nproperties:\n  malt: {{v: {value}}}\n---\nN.\n"),
+            &format!("---\nschema_version: 1\nname: {name}\nproperties:\n  diameter: {{v: {value}}}\n---\nN.\n"),
         );
     }
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
     let finding = report
         .findings
         .iter()
-        .find(|finding| matches!(finding.detail, Detail::KindDisagrees { .. }))
+        .find(|finding| matches!(finding.detail, Detail::NumberExpected { .. }))
         .unwrap_or_else(|| panic!("{:?}", report.findings));
     assert_eq!(finding.sample, "X (b.md)");
 }
@@ -1087,7 +1109,7 @@ fn a_text_that_reads_as_a_number_is_a_defect() {
     for (file, value) in [("a.md", "\"12,5\""), ("b.md", "13.0")] {
         scratch.write(
             file,
-            &format!("---\nschema_version: 1\nname: {file}\nproperties:\n  malt: {{v: {value}, unit: mg}}\n---\nN.\n"),
+            &format!("---\nschema_version: 1\nname: {file}\nproperties:\n  diameter: {{v: {value}, unit: mg}}\n---\nN.\n"),
         );
     }
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
@@ -1106,14 +1128,23 @@ fn a_sample_without_its_version_is_a_note() {
     let scratch = Scratch::new("missing-version");
     scratch.write("a.md", "---\nname: a\n---\nN.\n");
     scratch.write("b.md", "---\nschema_version: 1\nname: b\n---\nN.\n");
-    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    scratch.write("c.md", "---\ntitle: notes\n---\nN.\n");
+    // No version, no sample: left out as a README is, and said once.
+    let collection = list::from_directory(&scratch.0).unwrap();
+    assert_eq!(collection.len(), 1);
+    let report = validate::run(&collection);
     let notes: Vec<_> = report
         .findings
         .iter()
-        .filter(|finding| matches!(finding.detail, Detail::MissingVersion))
+        .filter(|finding| matches!(finding.detail, Detail::MissingVersion { files: 2 }))
         .collect();
     assert_eq!(notes.len(), 1, "{:?}", report.findings);
     assert_eq!(notes[0].severity, Severity::Note);
+    assert!(
+        validate::described(notes[0]).contains("this file and 1 other declare no schema_version"),
+        "{}",
+        validate::described(notes[0])
+    );
 }
 
 #[test]
@@ -1121,10 +1152,10 @@ fn a_defect_in_a_part_is_reported_and_the_rest_validated() {
     let mut defective = Sample::new();
     defective.set_name(Some("A".to_string()));
     defective.set_unusable_tags(vec!["my tag".to_string()]);
-    defective.set_aside_table(id("conditioning"), "duplicate index".to_string());
+    defective.set_aside_table(id("tempering"), "duplicate index".to_string());
     let collection = list::from_samples(vec![
         defective,
-        sample("B", "malt", stated(&[12.4, 12.5, 12.6], 5.0)),
+        sample("B", "diameter", stated(&[12.4, 12.5, 12.6], 5.0)),
     ]);
     let report = validate::run(&collection);
     assert!(validate::has_defects(&report));
@@ -1175,31 +1206,6 @@ fn a_configuration_given_instead_of_the_nearest_reports_declarations_as_defects(
 }
 
 #[test]
-fn an_uncertainty_a_precision_writes_as_zero_is_noted() {
-    // The value channel alone was looked at: `u: 0.0004` under `.2f` is
-    // written `0.0` in every file and export — a claim of a perfect
-    // measurement — and beside a value of exactly zero nothing was said.
-    let scratch = Scratch::new("uncertainty-zero");
-    scratch.write(
-        ".samplekitrc",
-        "schema_version = 1\n[property.tiny]\nprecision = \".2f\"\n",
-    );
-    scratch.write(
-        "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  tiny: {v: 0.0, u: 0.0004}\n---\nN.\n",
-    );
-    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
-    assert!(
-        details(&report).iter().any(|detail| matches!(
-            detail,
-            Detail::PrecisionWritesZero { quantity, .. } if quantity == "tiny.u"
-        )),
-        "{:?}",
-        details(&report)
-    );
-}
-
-#[test]
 fn an_override_is_not_counted_as_work_to_do() {
     // The invariant the note states and nothing tested: `NotCurrent` counts
     // stale, broken and failed values, never one a hand wrote over a formula
@@ -1207,10 +1213,10 @@ fn an_override_is_not_counted_as_work_to_do() {
     let scratch = Scratch::new("override-not-work");
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  malt:\n    v: 12.5\n  \
-         plato:\n    v: 2.8\n    computed:\n      malt: 0123456789ab\n    \
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter:\n    v: 12.5\n  \
+         ductility:\n    v: 2.8\n    computed:\n      diameter: 0123456789ab\n    \
          fingerprint: {edited: 0123456789ab}\n  \
-         haze:\n    v: 0.1\n    computed:\n      malt: 0123456789ab\n---\nN.\n",
+         roughness:\n    v: 0.1\n    computed:\n      diameter: 0123456789ab\n---\nN.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     let report = validate::run(&collection);
@@ -1218,7 +1224,7 @@ fn an_override_is_not_counted_as_work_to_do() {
         .into_iter()
         .filter(|detail| matches!(detail, Detail::NotCurrent { .. }))
         .collect();
-    // haze is stale; plato is an override, and is not counted.
+    // roughness is stale; ductility is an override, and is not counted.
     assert_eq!(
         counted,
         [&Detail::NotCurrent { values: 1 }],
@@ -1235,10 +1241,10 @@ fn an_override_is_noted_and_is_not_a_defect() {
     let scratch = Scratch::new("override-noted");
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  malt:\n    v: 12.5\n  \
-         plato:\n    v: 2.8\n    computed:\n      malt: 0123456789ab\n    \
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter:\n    v: 12.5\n  \
+         ductility:\n    v: 2.8\n    computed:\n      diameter: 0123456789ab\n    \
          fingerprint: {edited: 0123456789ab}\n  \
-         volume:\n    v: 4.4\n    computed:\n      malt: 0123456789ab\n    \
+         volume:\n    v: 4.4\n    computed:\n      diameter: 0123456789ab\n    \
          fingerprint: {edited: 0123456789ab}\n---\nN.\n",
     );
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
@@ -1262,19 +1268,19 @@ fn a_value_the_model_declares_is_not_a_misspelling() {
     scratch.write(
         "model/cell.py",
         "import samplekit as sk\n\nclass Cell(sk.Sample):\n    def __init__(self, path=None):\n        \
-         self.brix = sk.Property(compute=self._brix, depends_on=[])\n        \
-         super().__init__(path)\n\n    def _brix(self):\n        return 1.0\n",
+         self.porosity = sk.Property(compute_value=self._porosity, depends_on=[])\n        \
+         super().__init__(path)\n\n    def _porosity(self):\n        return 1.0\n",
     );
     scratch.write(
         ".samplekitrc",
         "schema_version = 1\n[model]\npath = \"model/cell.py\"\n\
-         [query.strong]\nfilter = \"brix > 3\"\n[profile.p]\ncolumns = [{field = \"brix\"}, {field = \"brixx\"}]\n",
+         [query.strong]\nfilter = \"porosity > 3\"\n[profile.p]\ncolumns = [{field = \"porosity\"}, {field = \"porosityy\"}]\n",
     );
     for file in ["a.md", "b.md"] {
         scratch.write(
             file,
             &format!(
-                "---\nschema_version: 1\nname: {file}\nproperties:\n  malt: {{v: 2.0}}\n---\nN.\n"
+                "---\nschema_version: 1\nname: {file}\nproperties:\n  diameter: {{v: 2.0}}\n---\nN.\n"
             ),
         );
     }
@@ -1291,21 +1297,21 @@ fn a_value_the_model_declares_is_not_a_misspelling() {
         })
         .collect();
     assert_eq!(declared.len(), 1, "{declared:?}");
-    assert!(declared[0].contains("brixx"), "{declared:?}");
+    assert!(declared[0].contains("porosityy"), "{declared:?}");
 }
 
 #[test]
 fn a_finding_names_the_value_it_is_about() {
     let about = Detail::NumberExpected {
-        quantity: "malt".to_string(),
+        quantity: "diameter".to_string(),
         text: "heavy".to_string(),
     };
-    assert_eq!(about.quantity(), Some("malt"));
+    assert_eq!(about.quantity(), Some("diameter"));
     let table = Detail::TableSetAside {
-        table: "conditioning".to_string(),
+        table: "tempering".to_string(),
         reason: "two rows at one index".to_string(),
     };
-    assert_eq!(table.quantity(), Some("conditioning"));
+    assert_eq!(table.quantity(), Some("tempering"));
     let file = Detail::Unreadable {
         reason: "not YAML".to_string(),
     };
@@ -1318,7 +1324,7 @@ fn a_number_beside_readings_is_not_second_guessed() {
     // statistic gives is the model's or a hand's, and not a finding.
     let report = validate::run(&list::from_samples(vec![sample(
         "A",
-        "malt",
+        "diameter",
         stated(&[12.4, 12.5, 12.6], 5.0),
     )]));
     assert!(report.findings.is_empty(), "{:?}", details(&report));
@@ -1326,7 +1332,7 @@ fn a_number_beside_readings_is_not_second_guessed() {
 
 #[test]
 fn text_in_a_column_with_a_unit_is_a_defect() {
-    // `sweetness=12.1,12.3,12.2` stored as text in a column measured in cP was
+    // `stiffness=12.1,12.3,12.2` stored as text in a column measured in cP was
     // reported by nothing.
     let mut sample = Sample::new();
     sample.set_name(Some("V".to_string()));
@@ -1334,23 +1340,23 @@ fn text_in_a_column_with_a_unit_is_a_defect() {
     meta.presentation.unit = Some("cP".to_string());
     let columns: indexmap::IndexMap<Identifier, samplekit::core::table::ColumnMeta> = [
         (id("T"), samplekit::core::table::ColumnMeta::default()),
-        (id("sweetness"), meta),
+        (id("stiffness"), meta),
     ]
     .into_iter()
     .collect();
     let mut table =
-        samplekit::core::table::Table::new(id("mouthfeel"), vec![id("T")], columns, Vec::new())
+        samplekit::core::table::Table::new(id("toughness"), vec![id("T")], columns, Vec::new())
             .unwrap();
     table
         .add_row(vec![
             (id("T"), Property::stored(Value::integer(20))),
             (
-                id("sweetness"),
+                id("stiffness"),
                 Property::stored(Value::text("12.1,12.3,12.2")),
             ),
         ])
         .unwrap();
-    sample.set_table(id("mouthfeel"), table).unwrap();
+    sample.set_table(id("toughness"), table).unwrap();
     let report = validate::run(&list::from_samples(vec![sample]));
     let found = report
         .findings
@@ -1373,7 +1379,7 @@ fn files_named_one_by_one_are_judged_alone() {
     );
     let file = scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  malt: 1.0\n---\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter: 1.0\n---\n",
     );
     let alone = validate::run_on_files(&list::from_directory(&file).unwrap());
     assert!(
@@ -1402,11 +1408,11 @@ fn not_applicable_takes_no_precision() {
     let scratch = Scratch::new("na-precision");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[property.fg]\nprecision = \".3f\"\n",
+        "schema_version = 1\n[property.notch]\nprecision = \".3f\"\n",
     );
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  fg: n/a\n---\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  notch: n/a\n---\n",
     );
     let report = validate::run(&list::from_directory(&scratch.0).unwrap());
     assert!(!validate::has_defects(&report), "{:?}", details(&report));
@@ -1426,29 +1432,29 @@ fn states_say_what_the_files_say_of_each_sample() {
     let scratch = Scratch::new("states");
     scratch.write(
         "a-failed.md",
-        "---\nschema_version: 1\nname: A\nproperties:\n  malt: {v: 2.0}\n  \
-         volume: {computed: {malt: bbbbbbbbbbbb}, fingerprint: {failed: ZeroDivisionError}}\n\
+        "---\nschema_version: 1\nname: A\nproperties:\n  diameter: {v: 2.0}\n  \
+         volume: {computed: {diameter: bbbbbbbbbbbb}, fingerprint: {failed: ZeroDivisionError}}\n\
          ---\nN.\n",
     );
     scratch.write(
         "b-stale.md",
-        "---\nschema_version: 1\nname: B\nproperties:\n  malt: {v: 2.0}\n  \
-         plato: {v: 2.8, computed: {malt: 0123456789ab}}\n---\nN.\n",
+        "---\nschema_version: 1\nname: B\nproperties:\n  diameter: {v: 2.0}\n  \
+         ductility: {v: 2.8, computed: {diameter: 0123456789ab}}\n---\nN.\n",
     );
     scratch.write(
         "c-edited.md",
-        "---\nschema_version: 1\nname: C\nproperties:\n  malt: {v: 2.0}\n  \
-         plato:\n    v: 2.8\n    computed:\n      malt: 0123456789ab\n    \
+        "---\nschema_version: 1\nname: C\nproperties:\n  diameter: {v: 2.0}\n  \
+         ductility:\n    v: 2.8\n    computed:\n      diameter: 0123456789ab\n    \
          fingerprint: {edited: 0123456789ab}\n---\nN.\n",
     );
     scratch.write(
         "d-clean.md",
-        "---\nschema_version: 1\nname: D\nproperties:\n  malt: {v: 2.0}\n---\nN.\n",
+        "---\nschema_version: 1\nname: D\nproperties:\n  diameter: {v: 2.0}\n---\nN.\n",
     );
     scratch.write(
         "e-waiting.md",
-        "---\nschema_version: 1\nname: E\nproperties:\n  malt: {}\n  \
-         plato: {v: 2.8, computed: {malt: 0123456789ab}}\n---\nN.\n",
+        "---\nschema_version: 1\nname: E\nproperties:\n  diameter: {}\n  \
+         ductility: {v: 2.8, computed: {diameter: 0123456789ab}}\n---\nN.\n",
     );
     let collection = list::from_directory(&scratch.0).unwrap();
     assert_eq!(
@@ -1474,16 +1480,13 @@ fn a_defect_in_its_file_makes_a_sample_defective() {
     let scratch = Scratch::new("defective");
     scratch.write(
         "a.md",
-        "---\nschema_version: 1\nname: A\nyeast_strain: US05\nyeast_strain: S04\nproperties:\n  \
-         malt: {v: 2.0}\n  plato: {v: 2.8, computed: {malt: 0123456789ab}}\n---\nN.\n",
+        "---\nschema_version: 1\nname: A\nproperties:\n  carbon: {v: \"2.0\"}\n  \
+         diameter: {v: 2.0}\n  ductility: {v: 2.8, computed: {diameter: 0123456789ab}}\n---\nN.\n",
     );
-    // A note — no schema_version — is no defect.
-    scratch.write("b.md", "---\nname: B\nyeast_strain: US05\n---\nN.\n");
+    // A file without schema_version is no sample, and no defect of one.
+    scratch.write("b.md", "---\nname: B\nprocess_strain: UT05\n---\nN.\n");
     let collection = list::from_directory(&scratch.0).unwrap();
-    assert_eq!(
-        words_of(&collection),
-        [vec!["defective", "outdated"], vec![]]
-    );
+    assert_eq!(words_of(&collection), [vec!["defective", "outdated"]]);
 }
 
 #[test]
@@ -1492,13 +1495,13 @@ fn a_copy_of_an_imported_declaration_is_a_note() {
     scratch.write(
         ".samplekitrc",
         "schema_version = 1\n[property.height]\nunit = \"cL\"\nsymbol = \"h\"\n\
-         [property.malt]\nunit = \"g\"\nprecision = \".1f\"\n",
+         [property.diameter]\nunit = \"g\"\nprecision = \".1f\"\n",
     );
     scratch.write(
         "c1/.samplekitrc",
         "schema_version = 1\nimport = \"..\"\n\
          [property.height]\nunit = \"cL\"\nsymbol = \"h\"\n\
-         [property.malt]\nunit = \"g\"\nprecision = \".3f\"\n",
+         [property.diameter]\nunit = \"g\"\nprecision = \".3f\"\n",
     );
     scratch.write("c1/a.md", "---\nschema_version: 1\nname: A\n---\nN.\n");
     let report = validate::run(&list::from_directory(&scratch.0.join("c1")).unwrap());
@@ -1519,7 +1522,7 @@ fn a_copy_of_an_imported_declaration_is_a_note() {
         found,
         [
             (Severity::Note, "[property.height]".to_string()),
-            (Severity::Note, "[property.malt] unit".to_string()),
+            (Severity::Note, "[property.diameter] unit".to_string()),
         ]
     );
     assert!(!validate::has_defects(&report), "{report:?}");
@@ -1613,14 +1616,14 @@ fn a_profile_grouping_by_no_field_is_a_defect() {
     let scratch = Scratch::new("group-declarations");
     scratch.write(
         ".samplekitrc",
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt\"}]\ngroup = [\"beet\"]\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter\"}]\ngroup = [\"alloi\"]\n",
     );
     for file in ["a.md", "b.md"] {
         scratch.write(
             file,
             &format!(
-                "---\nschema_version: 1\nname: {file}\nbeer: schwarz\n\
-                 properties:\n  malt: {{v: 2.0}}\n---\nN.\n"
+                "---\nschema_version: 1\nname: {file}\nalloy: cobalt\n\
+                 properties:\n  diameter: {{v: 2.0}}\n---\nN.\n"
             ),
         );
     }
@@ -1639,8 +1642,385 @@ fn a_profile_grouping_by_no_field_is_a_defect() {
     assert_eq!(said.len(), 1, "{said:?}");
     assert_eq!(said[0].0, "profile 'p'");
     assert!(
-        said[0].1.contains("beet") && said[0].1.contains("beer"),
+        said[0].1.contains("alloi") && said[0].1.contains("alloy"),
         "{said:?}"
     );
     assert!(validate::has_defects(&report));
+}
+
+#[test]
+fn a_value_outside_its_declared_range_is_a_defect() {
+    let scratch = Scratch::new("range");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[property.volume]\nunit = \"L\"\nrange = [0, 50]\n",
+    );
+    for (file, volume) in [("a.md", "20"), ("b.md", "-5")] {
+        scratch.write(
+            file,
+            &format!("---\nschema_version: 1\nname: {file}\nproperties:\n  volume: {{v: {volume}, unit: L}}\n---\nN.\n"),
+        );
+    }
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    let outside: Vec<&validate::Finding> = report
+        .findings
+        .iter()
+        .filter(|finding| matches!(finding.detail, Detail::OutsideRange { .. }))
+        .collect();
+    assert_eq!(outside.len(), 1, "{:?}", report.findings);
+    assert_eq!(outside[0].severity, Severity::Defect);
+    assert!(outside[0].path.as_ref().unwrap().ends_with("b.md"));
+    assert!(
+        validate::described(outside[0]).contains("volume = -5 L is outside its range, 0 to 50 L"),
+        "{}",
+        validate::described(outside[0])
+    );
+}
+
+#[test]
+fn names_alike_but_for_case_or_accents_are_a_note() {
+    // `Ab` and `ab`, `Café` written whole and as `e` with its accent: one file
+    // on macOS and Windows, and no finding said so.
+    let scratch = Scratch::new("names-alike");
+    scratch.write("a.md", "---\nschema_version: 1\nname: Ab\n---\n");
+    scratch.write("b.md", "---\nschema_version: 1\nname: ab\n---\n");
+    scratch.write("c.md", "---\nschema_version: 1\nname: \"Caf\u{e9}\"\n---\n");
+    scratch.write(
+        "d.md",
+        "---\nschema_version: 1\nname: \"Cafe\u{301}\"\n---\n",
+    );
+    scratch.write("e.md", "---\nschema_version: 1\nname: other\n---\n");
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    let alike: Vec<&validate::Finding> = report
+        .findings
+        .iter()
+        .filter(|finding| matches!(finding.detail, Detail::NamesAlike { .. }))
+        .collect();
+    assert_eq!(alike.len(), 2, "{:?}", report.findings);
+    assert!(
+        alike
+            .iter()
+            .all(|finding| finding.severity == Severity::Note)
+    );
+    assert!(!validate::has_defects(&report));
+}
+
+#[test]
+fn the_demos_steps_note_nothing_of_their_own_configuration() {
+    // Steps 04 and 05 declared a unit's `math` form with no `math` style: each
+    // raised notes on a configuration the learner did not write.
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/tensile");
+    for step in ["02-readings", "03-curve", "04-results"] {
+        let collection = list::from_directory(&root.join(step)).unwrap();
+        let report = validate::run(&collection);
+        let styles: Vec<String> = report
+            .findings
+            .iter()
+            .map(|finding| format!("{:?}", finding.detail))
+            .filter(|said| said.contains("no style"))
+            .collect();
+        assert!(styles.is_empty(), "{step}: {styles:?}");
+    }
+}
+
+#[test]
+fn a_field_one_sample_alone_holds_a_slip_from_another_is_a_note() {
+    // `set radiuss=1.070` was refused with *did you mean 'radius'?*, written anyway,
+    // and `validate` never said it again.
+    let scratch = Scratch::new("field-slip");
+    for (name, field) in [("A", "radius"), ("B", "radius"), ("C", "radiuss")] {
+        fs::write(
+            scratch.0.join(format!("{name}.md")),
+            format!(
+                "---\nschema_version: 1\nname: {name}\nproperties:\n  {field}: {{v: 1.05}}\n---\n"
+            ),
+        )
+        .unwrap();
+    }
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let report = validate::run(&collection);
+    let slips: Vec<&validate::Finding> = report
+        .findings
+        .iter()
+        .filter(|finding| matches!(finding.detail, Detail::FieldAlike { .. }))
+        .collect();
+    assert_eq!(slips.len(), 1, "{:?}", details(&report));
+    assert_eq!(slips[0].severity, Severity::Note);
+    assert!(
+        matches!(&slips[0].detail, Detail::FieldAlike { field, near, others: 2 } if field == "radiuss" && near == "radius"),
+        "{:?}",
+        slips[0].detail
+    );
+}
+
+#[test]
+fn a_unit_declared_for_a_reserved_field_is_a_note() {
+    // `[property.name]` with a unit passed in silence: a name is a text.
+    let scratch = Scratch::new("reserved-unit");
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        "schema_version = 1\n[property.name]\nsymbol = \"N\"\nunit = \"g\"\n",
+    )
+    .unwrap();
+    fs::write(
+        scratch.0.join("A.md"),
+        "---\nschema_version: 1\nname: A\nproperties:\n  radius: {v: 1.05}\n---\n",
+    )
+    .unwrap();
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let report = validate::run(&collection);
+    assert!(
+        report
+            .findings
+            .iter()
+            .any(|finding| format!("{:?}", finding.detail)
+                .contains("unit is declared: 'name' is SampleKit's own field")),
+        "{:?}",
+        details(&report)
+    );
+}
+
+#[test]
+fn a_text_in_a_column_of_numbers_is_a_defect() {
+    // Written by hand in a table's cell, `1,016` passed `validate`, where the
+    // same text in a quantity was a defect. A column of remarks holding one
+    // number stays one.
+    let scratch = Scratch::new("text-in-numbers");
+    fs::write(
+        scratch.0.join("A.md"),
+        "---\nschema_version: 1\nname: A\ntables:\n  ageing:\n    index: day\n    \
+         columns:\n      day: {}\n      hardness: {}\n      remark: {}\n    rows:\n      \
+         - {day: 1, hardness: 1.05, remark: bubbling}\n      \
+         - {day: 2, hardness: '1,016', remark: 3}\n      \
+         - {day: 3, hardness: 1.012, remark: calm}\n---\n",
+    )
+    .unwrap();
+    let collection = list::from_directory(&scratch.0).unwrap();
+    let report = validate::run(&collection);
+    let expected: Vec<String> = report
+        .findings
+        .iter()
+        .filter_map(|finding| match &finding.detail {
+            Detail::NumberExpected { quantity, .. } => Some(quantity.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(expected.len(), 1, "{:?}", details(&report));
+    assert!(expected[0].starts_with("ageing.hardness"), "{expected:?}");
+}
+
+#[test]
+fn a_pattern_that_does_not_read_is_said_without_samples() {
+    // It may be why no sample is read: said all the same.
+    let scratch = Scratch::new("pattern-no-samples");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[collection]\ninclude = [\"[a.md\"]\n",
+    );
+    scratch.write("a.md", "---\nschema_version: 1\nname: A\n---\nN.\n");
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    assert!(
+        report
+            .findings
+            .iter()
+            .any(|finding| finding.severity == Severity::Defect
+                && matches!(&finding.detail, Detail::FilesPatternUnusable { entry, .. }
+                if entry == "include '[a.md'")),
+        "{:?}",
+        report.findings
+    );
+}
+
+#[test]
+fn a_readme_excluded_is_not_every_sample_excluded() {
+    let scratch = Scratch::new("readme-excluded");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[collection]\nexclude = [\"README.md\"]\n",
+    );
+    scratch.write("README.md", "# A project\n");
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    assert!(
+        !report
+            .findings
+            .iter()
+            .any(|finding| format!("{:?}", finding.detail).contains("excludes every sample")),
+        "{:?}",
+        report.findings
+    );
+}
+
+#[test]
+fn a_files_entry_an_import_declares_is_said_in_its_file() {
+    // The file that writes it, and the entry as it writes it.
+    let scratch = Scratch::new("files-imported");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[collection]\nfiles = [\"{project}/photos\"]\n",
+    );
+    scratch.write("tins/.samplekitrc", "schema_version = 1\nimport = \"..\"\n");
+    scratch.write("tins/a.md", "---\nschema_version: 1\nname: A\n---\nN.\n");
+    let report = validate::run(&list::from_directory(&scratch.0.join("tins")).unwrap());
+    let finding = report
+        .findings
+        .iter()
+        .find(|finding| matches!(finding.detail, Detail::FilesPatternUnusable { .. }))
+        .expect("a note on the files entry");
+    assert_eq!(
+        finding.path.as_deref(),
+        Some(scratch.0.join(".samplekitrc").as_path())
+    );
+    assert!(
+        matches!(&finding.detail, Detail::FilesPatternUnusable { entry, .. }
+            if entry == "{project}/photos"),
+        "{finding:?}"
+    );
+}
+
+#[test]
+fn a_roots_declarations_are_judged_by_the_projects_importing_it() {
+    // A root declaring the columns every project below it holds: noted as
+    // held by no sample, the root's own samples alone being asked.
+    let scratch = Scratch::new("root-declarations");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[collection]\nrecursive = true\n[property.\"m.eps\"]\nprecision = \".2f\"\n",
+    );
+    scratch.write("own.md", "---\nschema_version: 1\nname: own\n---\n");
+    scratch.write("p/.samplekitrc", "schema_version = 1\nimport = \"..\"\n");
+    scratch.write(
+        "p/a.md",
+        "---\nschema_version: 1\nname: a\ntables:\n  m:\n    index: T\n    rows:\n      - {T: 20, eps: 4.1}\n---\n",
+    );
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    assert!(
+        !report
+            .findings
+            .iter()
+            .any(|finding| matches!(&finding.detail, Detail::DeclarationNamesNoField { declaration, .. } if declaration.contains("m.eps"))),
+        "{:?}",
+        report.findings
+    );
+}
+
+#[test]
+fn an_imported_query_one_project_cannot_answer_is_a_note_of_its_file() {
+    // A root's query naming a field one importing project holds and another
+    // does not: a defect of the other's file, which does not declare it.
+    let scratch = Scratch::new("imported-query");
+    scratch.write(
+        ".samplekitrc",
+        "schema_version = 1\n[collection]\nrecursive = true\n\
+         [query.mine]\nfilter = \"tester == ana\"\n",
+    );
+    for (project, sample, attribute) in [("ana", "a", "tester: ana\n"), ("cider", "c", "")] {
+        scratch.write(
+            &format!("{project}/.samplekitrc"),
+            "schema_version = 1\nimport = \"..\"\n",
+        );
+        scratch.write(
+            &format!("{project}/{sample}.md"),
+            &format!("---\nschema_version: 1\nname: {sample}\n{attribute}---\n"),
+        );
+    }
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    let about: Vec<_> = report
+        .findings
+        .iter()
+        .filter(|finding| matches!(&finding.detail, Detail::DeclarationNamesNoField { declaration, .. } if declaration == "query 'mine'"))
+        .collect();
+    assert!(!about.is_empty(), "{:?}", report.findings);
+    assert!(
+        about
+            .iter()
+            .all(|finding| finding.severity == Severity::Note
+                && finding.path.as_deref() == Some(scratch.0.join(".samplekitrc").as_path())),
+        "{about:?}"
+    );
+}
+
+#[test]
+fn a_link_that_leads_to_no_sample_or_to_several_is_a_defect() {
+    let scratch = Scratch::new("links");
+    scratch.write(".samplekitrc", "schema_version = 1\n");
+    let sample = |name: &str, attributes: &str| {
+        format!("---\nschema_version: 1\nname: {name}\n{attributes}---\n")
+    };
+    scratch.write(
+        "bars/bar-01.md",
+        &sample(
+            "bar-01",
+            "twin: \"[[bar-02]]\"\nby_name: \"[[second bar]]\"\nsupplier: https://example.org\n\
+             lost: \"[[bar-09|the ninth]]\"\nboth: \"[[bar-03]]\"\n",
+        ),
+    );
+    scratch.write("bars/bar-02.md", &sample("second bar", ""));
+    scratch.write("bars/bar-03.md", &sample("bar-03a", ""));
+    scratch.write("old/bar-03.md", &sample("bar-03b", ""));
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    let links: Vec<String> = report
+        .findings
+        .iter()
+        .filter(|finding| matches!(finding.detail, Detail::LinkLeadsNowhere { .. }))
+        .inspect(|finding| assert_eq!(finding.severity, Severity::Defect))
+        .map(validate::described)
+        .collect();
+    assert_eq!(links.len(), 2, "{links:#?}");
+    assert!(
+        links.iter().any(|said| said.starts_with(
+            "lost: [[bar-09|the ninth]] leads to no sample — no file of the project is named bar-09"
+        )),
+        "{links:?}"
+    );
+    assert!(
+        links
+            .iter()
+            .any(|said| said.starts_with("both: [[bar-03]] leads to 2 samples")),
+        "{links:?}"
+    );
+    // A file named alone is judged against its whole project.
+    let alone =
+        validate::run_on_files(&list::from_files(&[scratch.0.join("bars/bar-01.md")]).unwrap());
+    assert_eq!(
+        alone
+            .findings
+            .iter()
+            .filter(|finding| matches!(finding.detail, Detail::LinkLeadsNowhere { .. }))
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn a_markdown_link_to_a_path_where_nothing_is_is_a_defect() {
+    let scratch = Scratch::new("markdown-links");
+    scratch.write(".samplekitrc", "schema_version = 1\n");
+    scratch.write("reports/bar-01.pdf", "%PDF");
+    scratch.write(
+        "bars/bar-01.md",
+        "---\nschema_version: 1\nname: bar-01\ntwin: \"[the twin](bar-02.md)\"\n\
+         report: \"[report](../reports/bar-01.pdf)\"\nlost: \"[report](../reports/bar-09.pdf)\"\n\
+         parents: [\"[[bar-02]]\", \"[plate](../plates/p3.md)\"]\n---\n",
+    );
+    scratch.write(
+        "bars/bar-02.md",
+        "---\nschema_version: 1\nname: bar-02\n---\n",
+    );
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    let links: Vec<String> = report
+        .findings
+        .iter()
+        .filter(|finding| matches!(finding.detail, Detail::LinkLeadsNowhere { .. }))
+        .map(validate::described)
+        .collect();
+    assert_eq!(
+        links,
+        [
+            "lost: [report](../reports/bar-09.pdf) leads to nothing — no file is at \
+             ../reports/bar-09.pdf, from the sample's folder",
+            "parents: [plate](../plates/p3.md) leads to nothing — no file is at \
+             ../plates/p3.md, from the sample's folder",
+        ],
+        "{links:#?}"
+    );
 }

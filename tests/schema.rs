@@ -38,33 +38,33 @@ impl Compute for Fixed {
     }
 }
 
-/// A cask with one of everything the shape can carry.
-fn cask() -> Sample {
+/// A slab with one of everything the shape can carry.
+fn slab() -> Sample {
     let mut sample = Sample::new();
-    sample.set_name(Some("Keg 42".to_string()));
+    sample.set_name(Some("Billet 42".to_string()));
     sample.set_tags(vec![id("reference"), id("cold_crashed")]);
     sample
         .set_attribute(id("batch"), Value::integer(7))
         .unwrap();
     sample
         .set_attribute(
-            id("brewed_on"),
+            id("poured_on"),
             Value::date(Date::new(2026, 3, 14).unwrap()),
         )
         .unwrap();
 
-    let mut malt = Property::stored(number(12.487));
-    malt.set_uncertainty(Some(Uncertainty::new(0.005).unwrap()));
-    malt.set_presentation(Presentation {
+    let mut diameter = Property::stored(number(12.487));
+    diameter.set_uncertainty(Some(Uncertainty::new(0.005).unwrap()));
+    diameter.set_presentation(Presentation {
         unit: Some("g".to_string()),
         symbol: Some("m".to_string()),
         precision: None,
     });
-    sample.set_property(id("malt"), malt).unwrap();
+    sample.set_property(id("diameter"), diameter).unwrap();
 
     sample
         .set_property(
-            id("foam"),
+            id("wear"),
             Property::measured(Readings::new(vec![2.011, 2.017, 2.013]).unwrap(), None),
         )
         .unwrap();
@@ -72,7 +72,7 @@ fn cask() -> Sample {
         .set_property(id("finish"), Property::stored(Value::text("unfiltered")))
         .unwrap();
     sample
-        .set_property(id("haze"), Property::stored(Value::absent()))
+        .set_property(id("roughness"), Property::stored(Value::absent()))
         .unwrap();
     sample
 }
@@ -85,24 +85,24 @@ fn round_trip(sample: &Sample) -> Sample {
 
 #[test]
 fn round_trip_preserves_values() {
-    let back = round_trip(&cask());
-    assert_eq!(read(&back, "malt"), number(12.487));
+    let back = round_trip(&slab());
+    assert_eq!(read(&back, "diameter"), number(12.487));
     assert_eq!(read(&back, "finish"), Value::text("unfiltered"));
-    assert_eq!(back.name(), Some("Keg 42"));
+    assert_eq!(back.name(), Some("Billet 42"));
     assert_eq!(back.attribute(&id("batch")).unwrap(), &Value::integer(7));
     assert_eq!(
-        back.attribute(&id("brewed_on")).unwrap(),
+        back.attribute(&id("poured_on")).unwrap(),
         &Value::date(Date::new(2026, 3, 14).unwrap())
     );
-    let malt = back.property(&id("malt")).unwrap();
-    assert_eq!(malt.uncertainty().unwrap().unwrap().magnitude(), 0.005);
+    let diameter = back.property(&id("diameter")).unwrap();
+    assert_eq!(diameter.uncertainty().unwrap().unwrap().magnitude(), 0.005);
 }
 
 #[test]
 fn round_trip_preserves_observations() {
     // Raw readings survive, not only their mean.
-    let back = round_trip(&cask());
-    let readings = back.property(&id("foam")).unwrap().readings().unwrap();
+    let back = round_trip(&slab());
+    let readings = back.property(&id("wear")).unwrap().readings().unwrap();
     assert_eq!(readings.as_slice(), [2.011, 2.017, 2.013]);
 }
 
@@ -112,12 +112,12 @@ fn an_equal_precision_pair_is_read_as_one() {
     // thing. A precision is declared in the project, so it is read there.
     #[derive(serde::Deserialize)]
     struct Declared {
-        malt: PrecisionSchema,
+        diameter: PrecisionSchema,
         volume: PrecisionSchema,
     }
     let parsed: Declared =
-        toml::from_str("malt = [\".3f\", \".3f\"]\nvolume = [\".3f\", \".1e\"]\n").unwrap();
-    assert_eq!(parsed.malt, PrecisionSchema::Both(".3f".to_string()));
+        toml::from_str("diameter = [\".3f\", \".3f\"]\nvolume = [\".3f\", \".1e\"]\n").unwrap();
+    assert_eq!(parsed.diameter, PrecisionSchema::Both(".3f".to_string()));
     assert_eq!(
         parsed.volume,
         PrecisionSchema::Split(".3f".to_string(), ".1e".to_string())
@@ -129,11 +129,11 @@ fn a_precision_in_a_file_is_an_unknown_field() {
     // A precision is the project's: in a property, a column or a cell it is
     // refused like any field the format does not have, never dropped.
     for source in [
-        "schema_version: 1\nproperties:\n  malt: {v: 12.5, precision: .3f}\n",
-        "schema_version: 1\ntables:\n  conditioning:\n    index: day\n    columns:\n      \
+        "schema_version: 1\nproperties:\n  diameter: {v: 12.5, precision: .3f}\n",
+        "schema_version: 1\ntables:\n  tempering:\n    index: day\n    columns:\n      \
          day: {}\n      volume_left: {unit: vol, precision: .2f}\n    rows:\n      \
          - {day: 1, volume_left: 2.5}\n",
-        "schema_version: 1\ntables:\n  conditioning:\n    index: day\n    columns:\n      \
+        "schema_version: 1\ntables:\n  tempering:\n    index: day\n    columns:\n      \
          day: {}\n      volume_left: {}\n    rows:\n      \
          - {day: 1, volume_left: {v: 2.5, precision: .2f}}\n",
     ] {
@@ -149,45 +149,45 @@ fn a_precision_in_a_file_is_an_unknown_field() {
 
 #[test]
 fn round_trip_preserves_display_metadata() {
-    let back = round_trip(&cask());
-    let presentation = back.property(&id("malt")).unwrap().presentation();
+    let back = round_trip(&slab());
+    let presentation = back.property(&id("diameter")).unwrap().presentation();
     assert_eq!(presentation.unit.as_deref(), Some("g"));
     assert_eq!(presentation.symbol.as_deref(), Some("m"));
 }
 
 #[test]
 fn round_trip_preserves_declaration_order() {
-    let back = round_trip(&cask());
+    let back = round_trip(&slab());
     let order: Vec<String> = back
         .property_names()
         .iter()
         .map(|name| name.to_string())
         .collect();
-    assert_eq!(order, ["malt", "foam", "finish", "haze"]);
+    assert_eq!(order, ["diameter", "wear", "finish", "roughness"]);
     let attributes: Vec<String> = back
         .attribute_names()
         .iter()
         .map(|name| name.to_string())
         .collect();
-    assert_eq!(attributes, ["batch", "brewed_on"]);
+    assert_eq!(attributes, ["batch", "poured_on"]);
 }
 
 #[test]
 fn round_trip_preserves_tags_and_their_order() {
     // Neither sorted nor deduplicated.
-    let back = round_trip(&cask());
+    let back = round_trip(&slab());
     assert_eq!(back.tags(), [id("reference"), id("cold_crashed")]);
 }
 
 #[test]
 fn round_trip_preserves_absent_values() {
     // Absent does not become 0 or empty text.
-    let back = round_trip(&cask());
-    assert_eq!(read(&back, "haze"), Value::absent());
-    assert!(read(&back, "haze").is_absent());
+    let back = round_trip(&slab());
+    assert_eq!(read(&back, "roughness"), Value::absent());
+    assert!(read(&back, "roughness").is_absent());
     // And the shape omits it rather than writing a placeholder.
-    let shape = schema::from_sample(&cask()).unwrap();
-    assert_eq!(shape.properties[&id("haze")].value, None);
+    let shape = schema::from_sample(&slab()).unwrap();
+    assert_eq!(shape.properties[&id("roughness")].value, None);
 }
 
 #[test]
@@ -195,12 +195,12 @@ fn round_trip_drops_formulas() {
     // Their absence is specified, not accidental.
     let mut sample = Sample::new();
     sample
-        .set_property(id("plato"), Property::computed(Rc::new(Fixed(3.05))))
+        .set_property(id("ductility"), Property::computed(Rc::new(Fixed(3.05))))
         .unwrap();
     sample.materialize().unwrap();
     let back = round_trip(&sample);
-    assert_eq!(read(&back, "plato"), number(3.05));
-    assert!(!back.property(&id("plato")).unwrap().is_computed());
+    assert_eq!(read(&back, "ductility"), number(3.05));
+    assert!(!back.property(&id("ductility")).unwrap().is_computed());
 }
 
 #[test]
@@ -208,12 +208,12 @@ fn unresolved_value_cannot_be_saved() {
     // A lazy property refuses conversion, naming itself.
     let mut sample = Sample::new();
     sample
-        .set_property(id("plato"), Property::computed(Rc::new(Fixed(3.05))))
+        .set_property(id("ductility"), Property::computed(Rc::new(Fixed(3.05))))
         .unwrap();
     assert_eq!(
         schema::from_sample(&sample).unwrap_err(),
         SchemaError::UnresolvedValue {
-            property: id("plato")
+            property: id("ductility")
         }
     );
 }
@@ -221,11 +221,11 @@ fn unresolved_value_cannot_be_saved() {
 // ----------------------------------------------------------------- records
 
 fn with_records() -> Sample {
-    let mut sample = cask();
-    let plato = {
+    let mut sample = slab();
+    let ductility = {
         let mut computed = IndexMap::new();
         computed.insert(
-            InputName::Named(id("malt")),
+            InputName::Named(id("diameter")),
             InputRecord::Digest(Fingerprint::new("9f2c14ab77d0")),
         );
         computed.insert(
@@ -243,10 +243,10 @@ fn with_records() -> Sample {
         });
         property
     };
-    sample.set_property(id("plato"), plato).unwrap();
+    sample.set_property(id("ductility"), ductility).unwrap();
     // An input carries a fingerprint and no `computed`.
-    let malt = sample.property(&id("malt")).unwrap();
-    malt.set_records(Records {
+    let diameter = sample.property(&id("diameter")).unwrap();
+    diameter.set_records(Records {
         produced: None,
         channel_only: Default::default(),
         statistics: None,
@@ -260,12 +260,12 @@ fn with_records() -> Sample {
 #[test]
 fn round_trip_preserves_both_records() {
     let back = round_trip(&with_records());
-    let records = back.property(&id("plato")).unwrap().records();
+    let records = back.property(&id("ductility")).unwrap().records();
     assert_eq!(records.fingerprint, Some(Fingerprint::new("5b2c9e1f0a34")));
     let computed = records.computed.unwrap();
     // A property input keeps its digest; an attribute input keeps its value.
     assert_eq!(
-        computed[&InputName::Named(id("malt"))],
+        computed[&InputName::Named(id("diameter"))],
         InputRecord::Digest(Fingerprint::new("9f2c14ab77d0"))
     );
     assert_eq!(
@@ -278,9 +278,9 @@ fn round_trip_preserves_both_records() {
 fn an_input_carries_a_fingerprint_without_being_computed() {
     // The two records are on different sets.
     let back = round_trip(&with_records());
-    let malt = back.property(&id("malt")).unwrap().records();
-    assert_eq!(malt.fingerprint, Some(Fingerprint::new("9f2c14ab77d0")));
-    assert_eq!(malt.computed, None);
+    let diameter = back.property(&id("diameter")).unwrap().records();
+    assert_eq!(diameter.fingerprint, Some(Fingerprint::new("9f2c14ab77d0")));
+    assert_eq!(diameter.computed, None);
 }
 
 #[test]
@@ -291,7 +291,7 @@ fn computed_naming_an_absent_property_is_accepted() {
         r#"
 schema_version: 1
 properties:
-  plato:
+  ductility:
     v: 3.05
     computed: {vanished: 9f2c14ab77d0}
 "#,
@@ -299,7 +299,7 @@ properties:
     .unwrap();
     let sample = schema::into_sample(shape).unwrap();
     let computed = sample
-        .property(&id("plato"))
+        .property(&id("ductility"))
         .unwrap()
         .records()
         .computed
@@ -313,61 +313,11 @@ properties:
 #[test]
 fn short_aliases_parse_to_the_long_fields() {
     let shape =
-        parse("schema_version: 1\nproperties:\n  malt: {v: 12.5, u: 0.05, unit: g}\n").unwrap();
-    let malt = &shape.properties[&id("malt")];
-    assert_eq!(malt.value, Some(number(12.5)));
-    assert_eq!(malt.uncertainty, Some(0.05));
-    assert_eq!(malt.unit.as_deref(), Some("g"));
-}
-
-#[test]
-fn a_long_spelling_is_refused_naming_its_short_form() {
-    // `value` and `uncertainty` are not read — in a property, a cell, a
-    // statistic or a computed record — and the refusal names the key and what
-    // it is written now, rather than listing every field a quantity has.
-    for (source, key, now) in [
-        (
-            "schema_version: 1\nproperties:\n  malt: {value: 12.5, unit: g}\n",
-            "value",
-            "v",
-        ),
-        (
-            "schema_version: 1\nproperties:\n  malt: {v: 12.5, uncertainty: 0.05}\n",
-            "uncertainty",
-            "u",
-        ),
-        (
-            "schema_version: 1\ntables:\n  conditioning:\n    index: day\n    columns:\n      \
-             day: {}\n      volume_left: {}\n    rows:\n      \
-             - {day: 1, volume_left: {value: 2.5}}\n",
-            "value",
-            "v",
-        ),
-        (
-            "schema_version: 1\nproperties:\n  malt: {readings: [1, 2], \
-             statistics: {v: mean, uncertainty: standard_error}}\n",
-            "uncertainty",
-            "u",
-        ),
-        (
-            "schema_version: 1\nproperties:\n  malt: {v: 2, computed: {value: {a: 1}}}\n",
-            "value",
-            "v",
-        ),
-    ] {
-        let file = format!("---\n{source}---\n");
-        let error = samplekit::format::document::parse(&file)
-            .unwrap_err()
-            .to_string();
-        assert!(
-            error.contains(&format!("'{key}' is written '{now}'")),
-            "{error}"
-        );
-        assert!(error.contains("rename it"), "{error}");
-        assert!(!error.contains("expected one of"), "{error}");
-    }
-    // A key that merely contains one is not one.
-    assert!(parse("schema_version: 1\nvalues: [1, 2]\n").is_ok());
+        parse("schema_version: 1\nproperties:\n  diameter: {v: 12.5, u: 0.05, unit: g}\n").unwrap();
+    let diameter = &shape.properties[&id("diameter")];
+    assert_eq!(diameter.value, Some(number(12.5)));
+    assert_eq!(diameter.uncertainty, Some(0.05));
+    assert_eq!(diameter.unit.as_deref(), Some("g"));
 }
 
 #[test]
@@ -463,15 +413,16 @@ fn future_version_is_refused() {
 #[test]
 fn unknown_field_is_refused() {
     // An extra key inside a property fails rather than being dropped.
-    let error = parse("schema_version: 1\nproperties:\n  malt: {v: 1.0, formula: malt/volume}\n")
-        .unwrap_err();
+    let error =
+        parse("schema_version: 1\nproperties:\n  diameter: {v: 1.0, formula: diameter/volume}\n")
+            .unwrap_err();
     assert!(error.to_string().contains("formula"), "{error}");
 }
 
 #[test]
 fn an_unknown_top_level_mapping_is_refused() {
     // `propertys:` fails on its shape, while `batch: 7` becomes an attribute.
-    let error = parse("schema_version: 1\npropertys:\n  malt: 1.0\n").unwrap_err();
+    let error = parse("schema_version: 1\npropertys:\n  diameter: 1.0\n").unwrap_err();
     assert!(error.to_string().contains("mapping"), "{error}");
     let fine = parse("schema_version: 1\nbatch: 7\n").unwrap();
     assert_eq!(fine.attributes[&id("batch")], Value::integer(7));
@@ -480,7 +431,7 @@ fn an_unknown_top_level_mapping_is_refused() {
 #[test]
 fn invalid_key_is_refused() {
     // A key containing `@` fails at parse time, with the grammar in the message.
-    let error = parse("schema_version: 1\nproperties:\n  mashing@293: 1.0\n").unwrap_err();
+    let error = parse("schema_version: 1\nproperties:\n  preheating@293: 1.0\n").unwrap_err();
     let message = error.to_string();
     assert!(message.contains('@'), "{message}");
     assert!(
@@ -507,7 +458,7 @@ fn no_field_can_hold_a_callable() {
     // future change can add one without amending the note first.
     for field in ["formula", "callback", "compute", "python", "import_path"] {
         let source =
-            format!("schema_version: 1\nproperties:\n  malt:\n    v: 1.0\n    {field}: x\n");
+            format!("schema_version: 1\nproperties:\n  diameter:\n    v: 1.0\n    {field}: x\n");
         assert!(parse(&source).is_err(), "{field} was accepted");
     }
     // And the eight fields it does have are exactly these.
@@ -542,7 +493,7 @@ fn a_sample_written_as_it_stands_runs_no_formula() {
 
     let formula = Rc::new(Once(Cell::new(0)));
     let mut sample = Sample::new();
-    let name = Identifier::new("plato").unwrap();
+    let name = Identifier::new("ductility").unwrap();
     sample
         .set_property(name.clone(), Property::computed(formula.clone()))
         .unwrap();
@@ -562,8 +513,8 @@ fn a_sample_written_as_it_stands_runs_no_formula() {
 #[test]
 fn an_edited_mark_round_trips() {
     let mut sample = Sample::new();
-    let mut grist = Property::stored(number(3.2));
-    grist.set_records(Records {
+    let mut swarf = Property::stored(number(3.2));
+    swarf.set_records(Records {
         produced: None,
         channel_only: Default::default(),
         statistics: None,
@@ -571,14 +522,14 @@ fn an_edited_mark_round_trips() {
         fingerprint: Some(Fingerprint::edited("7c01e2b3a9f4")),
         computed: None,
     });
-    sample.set_property(id("grist"), grist).unwrap();
+    sample.set_property(id("swarf"), swarf).unwrap();
     let mut computed = IndexMap::new();
     computed.insert(
-        InputName::Named(id("grist")),
+        InputName::Named(id("swarf")),
         InputRecord::Digest(Fingerprint::edited("3f2a1b09c4d1")),
     );
-    let mut brix = Property::stored(number(1.52));
-    brix.set_records(Records {
+    let mut porosity = Property::stored(number(1.52));
+    porosity.set_records(Records {
         produced: None,
         channel_only: Default::default(),
         statistics: None,
@@ -586,10 +537,10 @@ fn an_edited_mark_round_trips() {
         fingerprint: Some(Fingerprint::new("5b2c9e1f0a34")),
         computed: Some(computed),
     });
-    sample.set_property(id("brix"), brix).unwrap();
+    sample.set_property(id("porosity"), porosity).unwrap();
 
     let back = round_trip(&sample);
-    for name in ["grist", "brix"] {
+    for name in ["swarf", "porosity"] {
         assert_eq!(
             back.property(&id(name)).unwrap().records(),
             sample.property(&id(name)).unwrap().records(),
@@ -602,7 +553,7 @@ fn an_edited_mark_round_trips() {
 fn a_precision_that_is_neither_one_nor_two_specifiers_says_what_it_is() {
     // Where a precision is declared: the project.
     let error = toml::from_str::<std::collections::BTreeMap<String, PrecisionSchema>>(
-        "malt = [\".1f\", \".2f\", \".3f\"]\n",
+        "diameter = [\".1f\", \".2f\", \".3f\"]\n",
     )
     .unwrap_err();
     assert!(
@@ -613,36 +564,46 @@ fn a_precision_that_is_neither_one_nor_two_specifiers_says_what_it_is() {
 
 #[test]
 fn a_malformed_property_is_named() {
-    let parsed = parse("schema_version: 1\nproperties:\n  malt: {v: 1.0, u: -0.5}\n").unwrap();
+    let parsed = parse("schema_version: 1\nproperties:\n  diameter: {v: 1.0, u: -0.5}\n").unwrap();
     let Err(error) = schema::into_sample(parsed) else {
         panic!("a negative uncertainty was accepted");
     };
     let message = error.to_string();
     assert!(
-        message.contains("'malt'") && !message.contains("table '_'"),
+        message.contains("'diameter'") && !message.contains("table '_'"),
         "{message}"
     );
 }
 
 #[test]
-fn a_missing_version_is_read_as_the_current_one() {
-    let schema = parse("name: Keg 42\n").unwrap();
-    assert_eq!(schema.schema_version, 1);
+fn a_missing_version_is_refused_as_no_sample() {
+    // A sample says which shape it is: read as the current one, a file of
+    // another shape changed meaning without a word.
+    let schema = parse("name: Billet 42\n").unwrap();
+    let refused = schema::into_sample(schema).unwrap_err();
+    assert!(
+        matches!(refused, schema::SchemaError::MissingVersion),
+        "{refused:?}"
+    );
+    assert!(
+        refused.to_string().contains("'schema_version: 1'"),
+        "{refused}"
+    );
 }
 
 #[test]
 fn a_written_value_beside_readings_is_the_value() {
     let sample = schema::into_sample(
         parse(
-            "schema_version: 1\nproperties:\n  foam: {v: 2.5, readings: [2.011, 2.017, 2.013]}\n",
+            "schema_version: 1\nproperties:\n  wear: {v: 2.5, readings: [2.011, 2.017, 2.013]}\n",
         )
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(read(&sample, "foam"), number(2.5));
+    assert_eq!(read(&sample, "wear"), number(2.5));
     let back = round_trip(&sample);
-    assert_eq!(read(&back, "foam"), number(2.5));
-    let readings = back.property(&id("foam")).unwrap().readings().unwrap();
+    assert_eq!(read(&back, "wear"), number(2.5));
+    let readings = back.property(&id("wear")).unwrap().readings().unwrap();
     assert_eq!(readings.as_slice(), [2.011, 2.017, 2.013]);
 }
 
@@ -661,31 +622,31 @@ fn an_unusable_tag_is_kept_and_the_rest_read() {
 
 #[test]
 fn a_duplicated_table_index_sets_the_table_aside() {
-    let source = "schema_version: 1\nproperties:\n  malt: {v: 1.0}\ntables:\n  conditioning:\n    index: day\n    columns: {day: {}, volume_left: {}}\n    rows:\n      - {day: {v: 1}, volume_left: {v: 2.0}}\n      - {day: {v: 1}, volume_left: {v: 2.1}}\n";
+    let source = "schema_version: 1\nproperties:\n  diameter: {v: 1.0}\ntables:\n  tempering:\n    index: day\n    columns: {day: {}, volume_left: {}}\n    rows:\n      - {day: {v: 1}, volume_left: {v: 2.0}}\n      - {day: {v: 1}, volume_left: {v: 2.1}}\n";
     let sample = schema::into_sample(parse(source).unwrap()).unwrap();
-    assert!(sample.table(&id("conditioning")).is_err());
+    assert!(sample.table(&id("tempering")).is_err());
     assert_eq!(sample.set_aside_tables().len(), 1);
-    assert_eq!(read(&sample, "malt"), number(1.0));
+    assert_eq!(read(&sample, "diameter"), number(1.0));
 }
 
 #[test]
 fn a_columns_statistics_reach_its_cells() {
     // Read without the model, a cell's readings take the statistic its column
     // states, and the cell carries no statement of its own.
-    let source = "schema_version: 1\nname: V\ntables:\n  mouthfeel:\n    index: T\n    \
-                  columns:\n      T: {}\n      sweetness: {statistics: {v: mean}}\n    rows:\n      \
-                  - T: 40\n        sweetness: {readings: [1.0, 2.0, 3.0]}\n";
+    let source = "schema_version: 1\nname: V\ntables:\n  toughness:\n    index: T\n    \
+                  columns:\n      T: {}\n      stiffness: {statistics: {v: mean}}\n    rows:\n      \
+                  - T: 40\n        stiffness: {readings: [1.0, 2.0, 3.0]}\n";
     let sample = schema::into_sample(parse(source).unwrap()).unwrap();
-    let table = sample.table(&id("mouthfeel")).unwrap();
+    let table = sample.table(&id("toughness")).unwrap();
     let cell = table
         .at(
             &samplekit::core::table::RowAddress::Index(vec![Value::integer(40)]),
-            &id("sweetness"),
+            &id("stiffness"),
         )
         .unwrap();
     assert_eq!(cell.value().unwrap(), number(2.0));
     let written = schema::from_sample(&sample).unwrap();
-    let table = &written.tables[&id("mouthfeel")];
-    assert!(table.columns[&id("sweetness")].statistics.is_some());
-    assert!(table.rows[0][&id("sweetness")].statistics.is_none());
+    let table = &written.tables[&id("toughness")];
+    assert!(table.columns[&id("stiffness")].statistics.is_some());
+    assert!(table.rows[0][&id("stiffness")].statistics.is_none());
 }

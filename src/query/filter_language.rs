@@ -26,7 +26,7 @@ pub struct Filter {
 /// The parsed expression, one variant per production of the grammar. Private:
 /// a filter is built by `parse` and read by `evaluate`, and nothing outside
 /// needs to walk it.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Expr {
     Or(Box<Expr>, Box<Expr>),
     And(Box<Expr>, Box<Expr>),
@@ -35,6 +35,15 @@ enum Expr {
         field: Field,
         operator: Operator,
         operand: Value,
+    },
+    /// `radius > notch`: a field on either side. A bare word after `==` or `!=` is
+    /// the field only where the sample holds one of that name, and the text
+    /// otherwise, as it always was; quoted, it is the text.
+    CompareFields {
+        field: Field,
+        operator: Operator,
+        other: Field,
+        word: String,
     },
     Membership {
         field: Field,
@@ -48,12 +57,32 @@ enum Expr {
         field: Field,
         operand: Value,
     },
+    /// `printing.gas has argon`, `printing has argon`: whether a cell of the
+    /// column — of any column, where none is named — holds the operand.
+    TableHas {
+        table: Identifier,
+        column: Option<Identifier>,
+        operand: Value,
+    },
+    /// `printing where (gas == argon && laser_power > 200)`: whether one row
+    /// meets the condition, a name of the table's columns that row's cell.
+    Where {
+        table: Identifier,
+        condition: Box<Expr>,
+    },
     /// `state == failed`, `state has failed`, `state in (a, b)`: whether the
     /// sample holds any of the words; `!=` is its negation. Its own variant
     /// because a state is a set asked about, never a value compared.
     State {
         words: Vec<StateWord>,
         negated: bool,
+    },
+    /// `links to steel-02`, `parents links to P3`: whether an attribute, or
+    /// the one named, holds a link to that sample as the link writes it: a
+    /// wikilink's target, a Markdown link's file name.
+    LinksTo {
+        field: Option<Identifier>,
+        target: String,
     },
 }
 
@@ -89,6 +118,14 @@ pub struct Diagnostics {
     /// An operator the field cannot take, whatever the collection holds.
     pub wrong_operators: Vec<OperatorMisuse>,
     pub unknown_tags: Vec<TagWarning>,
+    /// A text compared with that no sample holds for its field, where one
+    /// holds a text close to it: `style == ipaa` beside `titanium`. A warning, as
+    /// an unknown tag is, and not counted by [`Diagnostics::is_empty`].
+    pub unmatched_texts: Vec<TextWarning>,
+    /// A number compared with `==` that no sample holds, where one holds a
+    /// number shown as it, rounded: `radius == 1.049` beside a stored 1.0487. A
+    /// warning, said whole.
+    pub unmatched_numbers: Vec<String>,
     /// Samples a comparison cannot be asked of because the field holds text
     /// there, where other samples hold what it compares: left aside by
     /// [`evaluate_leaving_aside`], and named by the caller. Not a problem of
@@ -97,7 +134,7 @@ pub struct Diagnostics {
 }
 
 /// A comparison some samples cannot answer, because the field holds text in
-/// them: `og > 1.06` where one brew's `og` is `high`.
+/// them: `radius > 1.06` where one piece's `radius` is `high`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SetAside {
     pub field: Field,
@@ -113,6 +150,25 @@ pub struct SetAside {
 pub struct TagWarning {
     pub tag: Identifier,
     pub suggestion: Option<String>,
+}
+
+/// A text no sample holds for the field compared with, and the one held that
+/// it is nearest to — the same letters in another case, or a slip away.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextWarning {
+    pub field: String,
+    pub written: String,
+    pub suggestion: String,
+}
+
+impl fmt::Display for TextWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "no sample has {} '{}' — did you mean '{}'?",
+            self.field, self.written, self.suggestion
+        )
+    }
 }
 
 /// One comparison that cannot succeed anywhere in the collection.
@@ -222,7 +278,7 @@ enum TokenKind {
 }
 
 /// Quote-aware rather than whitespace-splitting. Splitting on whitespace is
-/// what made `beer == "Dunkel 57"` require care and made an index containing a
+/// what made `alloy == "Duplex 57"` require care and made an index containing a
 /// space unaddressable.
 fn tokenize(source: &str) -> Result<Vec<Token>, FilterError> {
     let characters: Vec<(usize, char)> = source.char_indices().collect();
@@ -366,6 +422,8 @@ fn tokenize(source: &str) -> Result<Vec<Token>, FilterError> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Expect {
     Field,
+    /// After `TABLE where`: the parenthesis opening the condition.
+    Open,
     Operator,
     /// After `is`: `missing` or `present`, and nothing else.
     Presence,
@@ -421,7 +479,7 @@ fn split_tail(source: &str) -> Tail<'_> {
         .char_indices()
         .rev()
         .find(|(_, c)| {
-            // An operator being typed belongs to the tail: `malt !` is a partial
+            // An operator being typed belongs to the tail: `diameter !` is a partial
             // `!=`, which the tokenizer alone would read as the connective `not`.
             c.is_whitespace() || matches!(c, '(' | ')' | ',')
         })
@@ -436,12 +494,16 @@ fn split_tail(source: &str) -> Tail<'_> {
 /// Walks the settled tokens and reports what comes next, and which field the
 /// position belongs to. A forward walk rather than a backward look: the
 /// grammar is what decides, and reading it forwards is how the parser reads it.
-fn expectation(tokens: &[Token]) -> (Expect, Option<String>) {
+fn expectation(tokens: &[Token]) -> (Expect, Option<String>, Option<String>) {
     let mut expect = Expect::Field;
     let mut field: Option<String> = None;
     // `in` opens a list, and its parenthesis holds operands rather than the
     // start of another predicate.
     let mut membership = false;
+    // The table each open parenthesis asks a row of — `TABLE where (` — or
+    // none, innermost last.
+    let mut rows: Vec<Option<String>> = Vec::new();
+    let mut table: Option<String> = None;
     for token in tokens {
         match &token.kind {
             TokenKind::Open => {
@@ -451,8 +513,12 @@ fn expectation(tokens: &[Token]) -> (Expect, Option<String>) {
                 } else {
                     Expect::Field
                 };
+                rows.push(table.take());
             }
-            TokenKind::Close => expect = Expect::Connective,
+            TokenKind::Close => {
+                expect = Expect::Connective;
+                rows.pop();
+            }
             // Inside `in (a, b`, a comma opens another operand.
             TokenKind::Comma => expect = Expect::Operand,
             TokenKind::Symbol(_) => expect = Expect::Operand,
@@ -469,6 +535,10 @@ fn expectation(tokens: &[Token]) -> (Expect, Option<String>) {
                         Expect::Operand
                     }
                     "is" => Expect::Presence,
+                    "where" if matches!(expect, Expect::Operator) => {
+                        table = field.clone();
+                        Expect::Open
+                    }
                     "missing" | "present" => Expect::Connective,
                     _ => match expect {
                         Expect::Field => {
@@ -481,7 +551,8 @@ fn expectation(tokens: &[Token]) -> (Expect, Option<String>) {
             }
         }
     }
-    (expect, field)
+    let row = rows.into_iter().rev().flatten().next();
+    (expect, field, row)
 }
 
 /// An operand as it can be typed back, which is the rule Field addressing's
@@ -564,6 +635,103 @@ fn operands_for(field: Option<&str>, subject: &Subject) -> Vec<String> {
     }
 }
 
+/// A table or a column without its row, named in a filter: `(table, column)`.
+fn whole(name: &str, subject: &Subject) -> Option<(Identifier, Option<Identifier>)> {
+    match fields::parse(name) {
+        Ok(Field::Named {
+            name,
+            channel: fields::Channel::Value,
+        }) if subject.vocabulary.has_table(&name) => Some((name, None)),
+        Err(FieldError::MissingIndex { table, column })
+            if subject.vocabulary.has_column(&table, &column) =>
+        {
+            Some((table, Some(column)))
+        }
+        _ => None,
+    }
+}
+
+/// What a whole table takes — `has`, `where` — and a whole column — `has`;
+/// inside `where`, a column is one row's cell, and takes what a cell does.
+fn whole_operators(field: Option<&str>, in_row: bool, subject: &Subject) -> Option<Vec<String>> {
+    if in_row {
+        return None;
+    }
+    match whole(field?, subject)? {
+        (_, None) => Some(vec!["has".to_string(), "where".to_string()]),
+        (_, Some(_)) => Some(vec!["has".to_string()]),
+    }
+}
+
+/// What a whole table's or column's cells hold, as operands.
+fn cells_of(field: Option<&str>, subject: &Subject) -> Option<Vec<String>> {
+    let (table, column) = whole(field?, subject)?;
+    let Ok(held) = subject.sample.table(&table) else {
+        return Some(Vec::new());
+    };
+    let columns: Vec<Identifier> = match column {
+        Some(column) => vec![column],
+        None => held.column_names().into_iter().cloned().collect(),
+    };
+    let mut values: Vec<String> = Vec::new();
+    for column in &columns {
+        for position in 0..held.rows().count() {
+            let cell = Field::Cell {
+                table: table.clone(),
+                column: column.clone(),
+                row: crate::core::table::RowAddress::Ordinal(position),
+                channel: fields::Channel::Value,
+            };
+            if let Ok(Some(value)) = scalar(&cell, subject) {
+                let written = typeable(&value);
+                if !written.is_empty() && !values.contains(&written) {
+                    values.push(written);
+                }
+            }
+        }
+    }
+    Some(values)
+}
+
+/// The fields a filter may name here: the sample's; a table by its name and a
+/// column without its row, which `has` and `where` ask; inside `TABLE where
+/// (…)`, that table's columns first.
+fn field_candidates(typed: &str, row: Option<&str>, subject: &Subject) -> Vec<String> {
+    let lowered = typed.to_lowercase();
+    let mut candidates: Vec<String> = Vec::new();
+    if let Some(table) = row.and_then(|table| Identifier::new(table).ok()) {
+        candidates.extend(
+            subject
+                .vocabulary
+                .columns_as_strings(&table)
+                .into_iter()
+                .filter(|column| column.to_lowercase().starts_with(&lowered)),
+        );
+    }
+    for table in subject.vocabulary.tables_as_strings() {
+        if table.to_lowercase().starts_with(&lowered) && !candidates.contains(&table) {
+            candidates.push(table.clone());
+        }
+        if let Some(column) = typed.strip_prefix(&format!("{table}."))
+            && !column.contains('[')
+            && let Ok(name) = Identifier::new(&table)
+        {
+            for held in subject.vocabulary.columns_as_strings(&name) {
+                let whole = format!("{table}.{held}");
+                if held.starts_with(column) && !candidates.contains(&whole) {
+                    candidates.push(whole);
+                }
+            }
+        }
+    }
+    for candidate in fields::complete(typed, subject) {
+        if !candidates.contains(&candidate) {
+            candidates.push(candidate);
+        }
+    }
+    candidates
+}
+
 /// What could come next in a half-typed expression.
 ///
 /// Never parses and never fails: completion runs on every keystroke, where a
@@ -577,19 +745,40 @@ pub fn complete(source: &str, subject: &Subject) -> Vec<String> {
     let Ok(tokens) = tokenize(tail.head) else {
         return Vec::new();
     };
-    let (expect, field) = expectation(&tokens);
+    let (expect, field, row) = expectation(&tokens);
+    // Inside `TABLE where (…)`, a name of its columns is that column.
+    let field = match (&row, field) {
+        (Some(table), Some(name))
+            if Identifier::new(table).is_ok_and(|table| {
+                Identifier::new(&name)
+                    .is_ok_and(|column| subject.vocabulary.has_column(&table, &column))
+            }) =>
+        {
+            Some(format!("{table}.{name}"))
+        }
+        (_, field) => field,
+    };
     // A word operator accepted against the closing quote cannot be continued:
     // `has` and `in` need the space that follows them, and so does a connective.
     let (candidates, trailing) = match expect {
-        Expect::Field => (fields::complete(&tail.typed, subject), ""),
-        Expect::Operator => (operators_for(field.as_deref(), subject), " "),
+        Expect::Field => (field_candidates(&tail.typed, row.as_deref(), subject), ""),
+        Expect::Open => (vec!["(".to_string()], ""),
+        Expect::Operator => (
+            whole_operators(field.as_deref(), row.is_some(), subject)
+                .unwrap_or_else(|| operators_for(field.as_deref(), subject)),
+            " ",
+        ),
         Expect::Presence => (vec!["missing".to_string(), "present".to_string()], " "),
-        Expect::Operand => (operands_for(field.as_deref(), subject), ""),
+        Expect::Operand => (
+            cells_of(field.as_deref(), subject)
+                .unwrap_or_else(|| operands_for(field.as_deref(), subject)),
+            "",
+        ),
         Expect::Connective => (["&&", "||"].iter().map(|w| (*w).to_string()).collect(), " "),
     };
     let typed = tail.typed.to_lowercase();
     // A field's candidates are already those the typed text leads to — and some
-    // do not begin with it: `ebc` finds the column `measurements.ebc[20]` by
+    // do not begin with it: `hv` finds the column `measurements.hv[20]` by
     // its own name, which a second prefix test here threw away.
     let matched = matches!(expect, Expect::Field);
     candidates
@@ -635,6 +824,8 @@ pub fn parse(source: &str) -> Result<Filter, FilterError> {
         fields: Vec::new(),
         tags: Vec::new(),
         states: Vec::new(),
+        depth: 0,
+        terms: 0,
     };
     let root = parser.expression()?;
     if let Some(token) = parser.peek() {
@@ -679,9 +870,47 @@ struct Parser<'a> {
     fields: Vec<Field>,
     tags: Vec<Identifier>,
     states: Vec<StateWord>,
+    /// How deep the parentheses and negations open now.
+    depth: usize,
+    /// How many predicates the connectives joined so far.
+    terms: usize,
 }
 
+/// The deepest a filter nests, and the most predicates it joins: past them a
+/// filter is refused rather than read, since reading it — and weighing it,
+/// sample by sample — goes as deep as it nests. Ten thousand parentheses
+/// overflowed the stack, and `samplekit` stopped on SIGABRT, `validate`
+/// among the commands, a query in `.samplekitrc` holding one.
+const MAX_DEPTH: usize = 200;
+const MAX_TERMS: usize = 2000;
+
 impl<'a> Parser<'a> {
+    /// One more level, refused past [`MAX_DEPTH`].
+    fn deeper(&mut self, at: usize) -> Result<(), FilterError> {
+        self.depth += 1;
+        if self.depth > MAX_DEPTH {
+            return Err(FilterError::Syntax {
+                position: at,
+                expected: format!("at most {MAX_DEPTH} parentheses and negations, one in another"),
+                found: "more".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    /// One more predicate joined, refused past [`MAX_TERMS`].
+    fn joined(&mut self) -> Result<(), FilterError> {
+        self.terms += 1;
+        if self.terms > MAX_TERMS {
+            return Err(FilterError::Syntax {
+                position: self.position(),
+                expected: format!("at most {MAX_TERMS} predicates joined"),
+                found: "more".to_string(),
+            });
+        }
+        Ok(())
+    }
+
     fn peek(&self) -> Option<&'a Token> {
         self.tokens.get(self.at)
     }
@@ -700,6 +929,17 @@ impl<'a> Parser<'a> {
     /// A keyword matches case-insensitively, so `IS` works — but it is only a
     /// keyword where one is expected: `is`, `in`, `has`, `contains` and
     /// `starts_with` after a field, `not`, `missing` and `present` after `is`.
+    /// The sample `links to` names, a word or quoted.
+    fn links_to(&mut self, field: Option<Identifier>) -> Result<Expr, FilterError> {
+        let target = match self.peek().map(|token| token.kind.clone()) {
+            Some(TokenKind::Word(word)) => word,
+            Some(TokenKind::Quoted(text)) => text,
+            _ => return Err(self.unexpected("the sample linked to, by its file's name")),
+        };
+        self.at += 1;
+        Ok(Expr::LinksTo { field, target })
+    }
+
     fn keyword(&mut self, word: &str) -> bool {
         if self.word().is_some_and(|w| w.eq_ignore_ascii_case(word)) {
             self.at += 1;
@@ -743,6 +983,7 @@ impl<'a> Parser<'a> {
     fn expression(&mut self) -> Result<Expr, FilterError> {
         let mut left = self.conjunction()?;
         while self.connective("||") {
+            self.joined()?;
             let right = self.conjunction()?;
             left = Expr::Or(Box::new(left), Box::new(right));
         }
@@ -752,6 +993,7 @@ impl<'a> Parser<'a> {
     fn conjunction(&mut self) -> Result<Expr, FilterError> {
         let mut left = self.negation()?;
         while self.connective("&&") {
+            self.joined()?;
             let right = self.negation()?;
             left = Expr::And(Box::new(left), Box::new(right));
         }
@@ -760,7 +1002,10 @@ impl<'a> Parser<'a> {
 
     fn negation(&mut self) -> Result<Expr, FilterError> {
         if self.connective("!") {
-            return Ok(Expr::Not(Box::new(self.negation()?)));
+            self.deeper(self.position())?;
+            let inside = self.negation()?;
+            self.depth -= 1;
+            return Ok(Expr::Not(Box::new(inside)));
         }
         self.primary()
     }
@@ -772,7 +1017,9 @@ impl<'a> Parser<'a> {
             {
                 let opened = token.at;
                 self.at += 1;
+                self.deeper(opened)?;
                 let inside = self.expression()?;
+                self.depth -= 1;
                 match self.peek() {
                     Some(Token {
                         kind: TokenKind::Close,
@@ -796,6 +1043,25 @@ impl<'a> Parser<'a> {
             return Err(self.unexpected("a field"));
         };
         self.at += 1;
+        // `links to NAME`: any attribute's link.
+        if path.eq_ignore_ascii_case("links") && self.keyword("to") {
+            return self.links_to(None);
+        }
+        // `FIELD links to NAME`: that attribute's.
+        if self.word().is_some_and(|word| word.eq_ignore_ascii_case("links"))
+            && self
+                .tokens
+                .get(self.at + 1)
+                .is_some_and(|token| matches!(&token.kind, TokenKind::Word(word) if word.eq_ignore_ascii_case("to")))
+        {
+            let name = Identifier::new(&path).map_err(|_| FilterError::Syntax {
+                position: at,
+                expected: "an attribute's name".to_string(),
+                found: format!("'{path}'"),
+            })?;
+            self.at += 2;
+            return self.links_to(Some(name));
+        }
         // `not x > 1`: a field called `not` followed by another field, or by a
         // parenthesis, was once a negation, and is said as such.
         if path.eq_ignore_ascii_case("not")
@@ -816,7 +1082,51 @@ impl<'a> Parser<'a> {
                 found: format!("'{path}', which is a name: negation is written '!'"),
             });
         }
-        let field = fields::parse(&path).map_err(|e| FilterError::Field(Box::new(e)))?;
+        // A column without its row is a list of its cells, which `has` asks.
+        let field = match fields::parse(&path) {
+            Err(FieldError::MissingIndex { table, column }) if self.keyword("has") => {
+                let operand = self.has_operand()?;
+                return Ok(Expr::TableHas {
+                    table,
+                    column: Some(column),
+                    operand,
+                });
+            }
+            parsed => parsed.map_err(|e| FilterError::Field(Box::new(e)))?,
+        };
+        // `TABLE where (…)`: one row meeting the condition, its names that
+        // row's cells. They are not the sample's fields.
+        if let Field::Named {
+            name,
+            channel: fields::Channel::Value,
+        } = &field
+            && self.keyword("where")
+        {
+            let opened = match self.peek() {
+                Some(Token {
+                    kind: TokenKind::Open,
+                    at,
+                }) => *at,
+                _ => return Err(self.unexpected("'(' opening the condition a row meets")),
+            };
+            self.at += 1;
+            self.deeper(opened)?;
+            let held = self.fields.len();
+            let condition = self.expression()?;
+            self.fields.truncate(held);
+            self.depth -= 1;
+            match self.peek() {
+                Some(Token {
+                    kind: TokenKind::Close,
+                    ..
+                }) => self.at += 1,
+                _ => return Err(FilterError::UnbalancedParenthesis { position: opened }),
+            }
+            return Ok(Expr::Where {
+                table: name.clone(),
+                condition: Box::new(condition),
+            });
+        }
         if !self.fields.contains(&field) {
             self.fields.push(field.clone());
         }
@@ -844,7 +1154,7 @@ impl<'a> Parser<'a> {
             return self.membership(field);
         }
         if self.keyword("has") {
-            let Some(token) = self.peek() else {
+            let Some(token) = self.peek().cloned() else {
                 return Err(self.unexpected("a tag"));
             };
             let (text, operand) = match &token.kind {
@@ -871,6 +1181,32 @@ impl<'a> Parser<'a> {
         }
 
         let operator = self.operator()?;
+        // A bare word naming a field compares two fields: `radius > notch`. After an
+        // ordering operator it can be nothing else a sample holds; after `==`
+        // or `!=` it may be the text `style == titanium` always was, and is the
+        // field only where the sample holds one.
+        if let Some(Token {
+            kind: TokenKind::Word(word),
+            ..
+        }) = self.peek()
+            && matches!(literal(word), Value::Text(_))
+            && !matches!(operator, Operator::Contains | Operator::StartsWith)
+            && let Ok(other) = fields::parse(word)
+            && !matches!(other, Field::Reserved(_))
+        {
+            let word = word.clone();
+            self.at += 1;
+            if !matches!(operator, Operator::Eq | Operator::Ne) && !self.fields.contains(&other) {
+                self.fields.push(other.clone());
+            }
+            let _ = at;
+            return Ok(Expr::CompareFields {
+                field,
+                operator,
+                other,
+                word,
+            });
+        }
         let operand = self.operand()?;
         let _ = at;
         Ok(Expr::Compare {
@@ -878,6 +1214,17 @@ impl<'a> Parser<'a> {
             operator,
             operand,
         })
+    }
+
+    /// What `has` asks of a column or a table: a word, or a quoted text.
+    fn has_operand(&mut self) -> Result<Value, FilterError> {
+        let operand = match self.peek().map(|token| &token.kind) {
+            Some(TokenKind::Word(word)) => literal(word),
+            Some(TokenKind::Quoted(text)) => Value::text(text.clone()),
+            _ => return Err(self.unexpected("a value a cell may hold")),
+        };
+        self.at += 1;
+        Ok(operand)
     }
 
     /// `state == X`, `state != X`, `state has X`, `state in (X, Y)`: whether
@@ -1080,6 +1427,91 @@ pub fn fields(filter: &Filter) -> &[Field] {
     &filter.fields
 }
 
+/// The fields a filter compares with a number, or with another field: those
+/// whose unit matters, since `volume > 20` means nothing over litres and
+/// millilitres. A presence test, a tag or a text asked for is none.
+pub fn numbers_compared(filter: &Filter) -> Vec<Field> {
+    fn walk(expr: &Expr, out: &mut Vec<Field>) {
+        match expr {
+            Expr::Or(left, right) | Expr::And(left, right) => {
+                walk(left, out);
+                walk(right, out);
+            }
+            Expr::Not(inner) => walk(inner, out),
+            Expr::Compare {
+                field,
+                operand: Value::Number(_) | Value::Integer(_),
+                ..
+            } => {
+                out.push(field.clone());
+            }
+            Expr::CompareFields { field, other, .. } => {
+                out.push(field.clone());
+                out.push(other.clone());
+            }
+            Expr::Membership { field, operands }
+                if operands
+                    .iter()
+                    .any(|operand| matches!(operand, Value::Number(_) | Value::Integer(_))) =>
+            {
+                out.push(field.clone());
+            }
+            // A row's names that are the sample's fields; its columns are
+            // `columns_compared`'s.
+            Expr::Where { condition, .. } => walk(condition, out),
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(&filter.root, &mut out);
+    out
+}
+
+/// The whole columns a filter compares with a number — `t.c has 3`, a name
+/// of `t where (c > 3)` — as `(table, column)`: a column's unit must agree
+/// across the samples as a field's must. A name of a row no column holds is
+/// left to `check`, which says it.
+pub fn columns_compared(filter: &Filter) -> Vec<(Identifier, Identifier)> {
+    fn walk(expr: &Expr, out: &mut Vec<(Identifier, Identifier)>) {
+        match expr {
+            Expr::Or(left, right) | Expr::And(left, right) => {
+                walk(left, out);
+                walk(right, out);
+            }
+            Expr::Not(inner) => walk(inner, out),
+            Expr::TableHas {
+                table,
+                column: Some(column),
+                operand: Value::Number(_) | Value::Integer(_),
+            } => out.push((table.clone(), column.clone())),
+            Expr::Where { table, condition } => {
+                let mut inner = Vec::new();
+                numbers_walk(condition, &mut inner);
+                for field in inner {
+                    if let Field::Named { name, .. } = field {
+                        out.push((table.clone(), name));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(&filter.root, &mut out);
+    out
+}
+
+/// `numbers_compared`'s walk, over one expression.
+fn numbers_walk(expr: &Expr, out: &mut Vec<Field>) {
+    let filter = Filter {
+        root: expr.clone(),
+        fields: Vec::new(),
+        tags: Vec::new(),
+        states: Vec::new(),
+    };
+    out.extend(numbers_compared(&filter));
+}
+
 /// The words a filter asks of `state`, empty where it names no `state`.
 pub fn state_words(filter: &Filter) -> &[StateWord] {
     &filter.states
@@ -1094,7 +1526,7 @@ pub fn evaluate(filter: &Filter, subject: &Subject) -> Result<Truth, FilterError
 /// The same, with a comparison the field's text cannot answer read as unknown,
 /// as an absent value is: the sample is left aside, never selected, even under
 /// `!` — what [`Diagnostics::set_aside`] names. A conflict of the operand's own
-/// making, `og == high` over numbers, is still one.
+/// making, `radius == high` over numbers, is still one.
 pub fn evaluate_leaving_aside(filter: &Filter, subject: &Subject) -> Result<Truth, FilterError> {
     evaluate_in(&filter.root, subject, true)
 }
@@ -1113,6 +1545,7 @@ fn evaluate_in(expr: &Expr, subject: &Subject, leaving_aside: bool) -> Result<Tr
             Ok(evaluate_expr(left, subject)?.and(evaluate_expr(right, subject)?))
         }
         Expr::Not(inner) => Ok(evaluate_expr(inner, subject)?.not()),
+        Expr::LinksTo { field, target } => Ok(links_to(subject, field.as_ref(), target)),
         Expr::State { words, negated } => {
             let states = subject
                 .states
@@ -1144,6 +1577,59 @@ fn evaluate_in(expr: &Expr, subject: &Subject, leaving_aside: bool) -> Result<Tr
                 Truth::False
             })
         }
+        Expr::TableHas {
+            table,
+            column,
+            operand,
+        } => table_has(table, column.as_ref(), operand, subject),
+        // A name of the table's columns is that row's cell; any row meeting
+        // the condition is enough.
+        Expr::Where { table, condition } => {
+            // A name neither the table's column nor the sample's is said a
+            // column of the table, the nearest offered: `atmospher` was an
+            // unknown field among forty others.
+            if subject.vocabulary.has_table(table) {
+                for name in row_names(condition) {
+                    if !subject.vocabulary.has_column(table, name)
+                        && !subject.vocabulary.has_name(name)
+                        && !subject.vocabulary.has_table(name)
+                    {
+                        let available = subject.vocabulary.columns_as_strings(table);
+                        return Err(FilterError::Field(Box::new(FieldError::UnknownColumn {
+                            table: table.clone(),
+                            name: name.to_string(),
+                            suggestion: crate::core::identifier::nearest(
+                                name.as_str(),
+                                available.iter().map(String::as_str),
+                            ),
+                            available,
+                        })));
+                    }
+                }
+            }
+            let rows = match subject.sample.table(table) {
+                Ok(held) => held.rows().count(),
+                Err(_) => return absent_table(table, subject),
+            };
+            let mut truth = Truth::False;
+            for position in 0..rows {
+                let row = in_row(condition, table, position, subject);
+                truth = truth.or(evaluate_expr(&row, subject)?);
+                if truth == Truth::True {
+                    break;
+                }
+            }
+            Ok(truth)
+        }
+        // `printing has argon`: a table's every cell.
+        Expr::HasTag {
+            field:
+                Field::Named {
+                    name,
+                    channel: fields::Channel::Value,
+                },
+            operand,
+        } if subject.vocabulary.has_table(name) => table_has(name, None, operand, subject),
         Expr::HasTag { field, operand } => match resolve(field, subject)? {
             Resolution::Tags(tags) => Ok(
                 if matches!(operand, Value::Text(text) if Identifier::new(text).is_ok_and(|tag| tags.contains(&tag)))
@@ -1153,13 +1639,14 @@ fn evaluate_in(expr: &Expr, subject: &Subject, leaving_aside: bool) -> Result<Tr
                     Truth::False
                 },
             ),
-            Resolution::List(values) => Ok(
-                if values.iter().any(|value| predicate_equals(value, operand)) {
-                    Truth::True
-                } else {
-                    Truth::False
-                },
-            ),
+            Resolution::List(values) => {
+                for value in &values {
+                    if equals_checked(field, value, operand, "has")? {
+                        return Ok(Truth::True);
+                    }
+                }
+                Ok(Truth::False)
+            }
             // `has` applies to `tags` and to nothing else. Overloading one
             // operator with two meanings by field type would put a substring
             // test and an exact test a keystroke apart.
@@ -1184,11 +1671,49 @@ fn evaluate_in(expr: &Expr, subject: &Subject, leaving_aside: bool) -> Result<Tr
                 return Ok(Truth::Unknown);
             };
             for operand in operands {
-                if predicate_equals(&left, operand) {
+                if equals_checked(field, &left, operand, "in")? {
                     return Ok(Truth::True);
                 }
             }
             Ok(Truth::False)
+        }
+        Expr::CompareFields {
+            field,
+            operator,
+            other,
+            word,
+        } => {
+            let equality = matches!(operator, Operator::Eq | Operator::Ne);
+            // `style == titanium` beside no field named titanium: the text, as ever.
+            let right = match scalar(other, subject) {
+                Err(FilterError::Field(_)) if equality => {
+                    let as_text = Expr::Compare {
+                        field: field.clone(),
+                        operator: *operator,
+                        operand: Value::text(word.clone()),
+                    };
+                    return evaluate_expr(&as_text, subject);
+                }
+                answer => answer?,
+            };
+            let Some(left) = scalar(field, subject)? else {
+                return Ok(Truth::Unknown);
+            };
+            let Some(right) = right else {
+                return Ok(Truth::Unknown);
+            };
+            // Litres against kilograms compare nothing: refused, as a table
+            // refuses two units in a column.
+            if let (Some(this), Some(that)) = (unit_of(field, subject), unit_of(other, subject))
+                && this != that
+            {
+                return Err(FilterError::UnitsDiffer {
+                    left: Box::new(field.clone()),
+                    right: Box::new(other.clone()),
+                    units: (this, that),
+                });
+            }
+            compare(field, &left, *operator, &right)
         }
         Expr::Compare {
             field,
@@ -1207,6 +1732,205 @@ fn evaluate_in(expr: &Expr, subject: &Subject, leaving_aside: bool) -> Result<Tr
                 answer => answer,
             }
         }
+    }
+}
+
+/// Whether a cell of `table` — of `column`, or of any — holds `operand`. A
+/// sample without the table answers unknown; a table or a column no sample
+/// holds is an error.
+fn table_has(
+    table: &Identifier,
+    column: Option<&Identifier>,
+    operand: &Value,
+    subject: &Subject,
+) -> Result<Truth, FilterError> {
+    if let Some(column) = column
+        && !subject.vocabulary.has_column(table, column)
+        && subject.vocabulary.has_table(table)
+    {
+        let available = subject.vocabulary.columns_as_strings(table);
+        return Err(FilterError::Field(Box::new(FieldError::UnknownColumn {
+            table: table.clone(),
+            name: column.to_string(),
+            suggestion: crate::core::identifier::nearest(
+                column.as_str(),
+                available.iter().map(String::as_str),
+            ),
+            available,
+        })));
+    }
+    let held = match subject.sample.table(table) {
+        Ok(held) => held,
+        Err(_) => return absent_table(table, subject),
+    };
+    // A column another sample's table holds and this one's does not is
+    // unknown here, as an absent field is: answered *no*, its negation
+    // selected a sample nothing was known of.
+    if let Some(column) = column
+        && !held.column_names().into_iter().any(|held| held == column)
+    {
+        return Ok(Truth::Unknown);
+    }
+    let column_named = column.is_some();
+    let columns: Vec<Identifier> = match column {
+        Some(column) => vec![column.clone()],
+        None => held.column_names().into_iter().cloned().collect(),
+    };
+    let rows = held.rows().count();
+    for column in &columns {
+        for position in 0..rows {
+            let cell = Field::Cell {
+                table: table.clone(),
+                column: column.clone(),
+                row: crate::core::table::RowAddress::Ordinal(position),
+                channel: fields::Channel::Value,
+            };
+            // A formula that failed is never an absence: said, as everywhere.
+            // A whole table's columns hold text and numbers both: each cell
+            // of another kind than the operand is no match; one column named
+            // is asked as `in` is.
+            let Some(value) = scalar(&cell, subject)? else {
+                continue;
+            };
+            let equal = if column_named {
+                equals_checked(&cell, &value, operand, "has")?
+            } else {
+                predicate_equals(&value, operand)
+            };
+            if equal {
+                return Ok(Truth::True);
+            }
+        }
+    }
+    Ok(Truth::False)
+}
+
+/// A table this sample does not hold: unknown where another sample holds it,
+/// an error where none does.
+fn absent_table(table: &Identifier, subject: &Subject) -> Result<Truth, FilterError> {
+    if subject.vocabulary.has_table(table) {
+        return Ok(Truth::Unknown);
+    }
+    let available = subject.vocabulary.tables_as_strings();
+    Err(FilterError::Field(Box::new(FieldError::UnknownTable {
+        name: table.to_string(),
+        suggestion: crate::core::identifier::nearest(
+            table.as_str(),
+            available.iter().map(String::as_str),
+        ),
+        available,
+    })))
+}
+
+/// The names a row's condition reads: those of its fields, not a bare word
+/// after `==` that may be a text.
+fn row_names(condition: &Expr) -> Vec<&Identifier> {
+    let mut names = Vec::new();
+    fn walk<'a>(expr: &'a Expr, names: &mut Vec<&'a Identifier>) {
+        let mut push = |field: &'a Field| {
+            if let Field::Named { name, .. } = field {
+                names.push(name);
+            }
+        };
+        match expr {
+            Expr::Or(left, right) | Expr::And(left, right) => {
+                walk(left, names);
+                walk(right, names);
+            }
+            Expr::Not(inner) => walk(inner, names),
+            Expr::Compare { field, .. }
+            | Expr::Membership { field, .. }
+            | Expr::Presence { field, .. }
+            | Expr::HasTag { field, .. } => push(field),
+            Expr::CompareFields {
+                field,
+                operator,
+                other,
+                ..
+            } => {
+                push(field);
+                if !matches!(operator, Operator::Eq | Operator::Ne) {
+                    push(other);
+                }
+            }
+            _ => {}
+        }
+    }
+    walk(condition, &mut names);
+    names
+}
+
+/// `condition` asked of one row of `table`: each name of the table's columns
+/// that row's cell, every other name the sample's.
+fn in_row(condition: &Expr, table: &Identifier, position: usize, subject: &Subject) -> Expr {
+    let cell = |field: &Field| match field {
+        Field::Named { name, channel } if subject.vocabulary.has_column(table, name) => {
+            Field::Cell {
+                table: table.clone(),
+                column: name.clone(),
+                row: crate::core::table::RowAddress::Ordinal(position),
+                channel: *channel,
+            }
+        }
+        other => other.clone(),
+    };
+    let inner = |expr: &Expr| Box::new(in_row(expr, table, position, subject));
+    match condition {
+        Expr::Or(left, right) => Expr::Or(inner(left), inner(right)),
+        Expr::And(left, right) => Expr::And(inner(left), inner(right)),
+        Expr::Not(expr) => Expr::Not(inner(expr)),
+        Expr::Compare {
+            field,
+            operator,
+            operand,
+        } => Expr::Compare {
+            field: cell(field),
+            operator: *operator,
+            operand: operand.clone(),
+        },
+        Expr::CompareFields {
+            field,
+            operator,
+            other,
+            word,
+        } => Expr::CompareFields {
+            field: cell(field),
+            operator: *operator,
+            other: cell(other),
+            word: word.clone(),
+        },
+        Expr::Membership { field, operands } => Expr::Membership {
+            field: cell(field),
+            operands: operands.clone(),
+        },
+        Expr::Presence { field, present } => Expr::Presence {
+            field: cell(field),
+            present: *present,
+        },
+        Expr::HasTag { field, operand } => Expr::HasTag {
+            field: cell(field),
+            operand: operand.clone(),
+        },
+        other => other.clone(),
+    }
+}
+
+/// The unit a field's value is in, where the sample says one: a property's,
+/// or a cell's column.
+fn unit_of(field: &Field, subject: &Subject) -> Option<String> {
+    match field {
+        Field::Named { name, .. } => subject
+            .sample
+            .property(name)
+            .ok()
+            .and_then(|handle| handle.presentation().unit),
+        Field::Cell { table, column, .. } => subject
+            .sample
+            .table(table)
+            .ok()
+            .and_then(|held| held.column(column).ok())
+            .and_then(|view| view.presentation().unit.clone()),
+        _ => None,
     }
 }
 
@@ -1251,7 +1975,7 @@ fn compare(
 ) -> Result<Truth, FilterError> {
     let truth = |yes: bool| Ok(if yes { Truth::True } else { Truth::False });
     // A comparison that cannot succeed is reported with both sides named: the
-    // field's kind and the operand, because `malt > "heavy"` needs to say which
+    // field's kind and the operand, because `diameter > "heavy"` needs to say which
     // half is wrong.
     let conflict = |_: ValueError| {
         FilterError::TypeConflict(Box::new(TypeConflict {
@@ -1309,6 +2033,28 @@ fn compare(
     }
 }
 
+/// Equality as `in` and `has` ask it: a number is never text, and asking
+/// whether one is the other is a mistake said, as `==` says it — answered
+/// *no*, `radius in (high, low)` selected nothing, and its negation everything.
+fn equals_checked(
+    field: &Field,
+    left: &Value,
+    operand: &Value,
+    operator: &str,
+) -> Result<bool, FilterError> {
+    let number = |value: &Value| matches!(value, Value::Number(_) | Value::Integer(_));
+    let text = |value: &Value| matches!(value, Value::Text(_));
+    if (number(left) && text(operand)) || (text(left) && number(operand)) {
+        return Err(FilterError::TypeConflict(Box::new(TypeConflict {
+            field: field.clone(),
+            operator: operator.to_string(),
+            operand: operand.clone(),
+            field_kind: left.kind(),
+        })));
+    }
+    Ok(predicate_equals(left, operand))
+}
+
 /// Predicate equality has one domain-specific widening that value identity
 /// cannot have without violating `Eq`: a date operand denotes its whole day.
 fn predicate_equals(left: &Value, right: &Value) -> bool {
@@ -1321,7 +2067,7 @@ fn predicate_equals(left: &Value, right: &Value) -> bool {
 }
 
 impl SetAside {
-    /// The one sentence every surface says it in: *b left aside: 'og' holds
+    /// The one sentence every surface says it in: *b left aside: 'radius' holds
     /// text there, which > cannot compare*.
     pub fn said(&self) -> String {
         let mut names: Vec<&str> = self.samples.iter().take(5).map(String::as_str).collect();
@@ -1418,6 +2164,270 @@ fn inspect(
     }
 }
 
+/// The texts `root` compares with that no sample holds for their field and
+/// one holds a text near: a list of the empty answer's likely cause. Text
+/// matched exactly somewhere, or near nothing held, is no warning.
+fn unmatched_texts(
+    root: &Expr,
+    collection: &[&Sample],
+    vocabulary: &fields::Vocabulary,
+    diagnostics: &mut Diagnostics,
+) {
+    let mut asked: Vec<(&Field, &str)> = Vec::new();
+    // A bare word after `==` naming a field no sample holds is the text it
+    // always was, and is asked about as text.
+    let mut either: Vec<(&Field, &Field, &str)> = Vec::new();
+    // A text asked of a table's cells: the table, its column or any, the text.
+    let mut cells: Vec<(&Identifier, Option<&Identifier>, &str)> = Vec::new();
+    fn gather<'a>(
+        expr: &'a Expr,
+        asked: &mut Vec<(&'a Field, &'a str)>,
+        either: &mut Vec<(&'a Field, &'a Field, &'a str)>,
+        cells: &mut Vec<(&'a Identifier, Option<&'a Identifier>, &'a str)>,
+        row: Option<&'a Identifier>,
+    ) {
+        match expr {
+            Expr::Or(left, right) | Expr::And(left, right) => {
+                gather(left, asked, either, cells, row);
+                gather(right, asked, either, cells, row);
+            }
+            Expr::Not(inner) => gather(inner, asked, either, cells, row),
+            Expr::TableHas {
+                table,
+                column,
+                operand: Value::Text(text),
+            } => cells.push((table, column.as_ref(), text)),
+            Expr::Where { table, condition } => {
+                gather(condition, asked, either, cells, Some(table));
+            }
+            // Inside `where`, a name may be the row's column.
+            Expr::Compare {
+                field: Field::Named { name, .. },
+                operator: Operator::Eq | Operator::Ne,
+                operand: Value::Text(text),
+            } if row.is_some() => cells.push((row.expect("just matched"), Some(name), text)),
+            // `atmosphere == aire`: a bare word that may be a text.
+            Expr::CompareFields {
+                field: Field::Named { name, .. },
+                operator: Operator::Eq | Operator::Ne,
+                word,
+                ..
+            } if row.is_some() => cells.push((row.expect("just matched"), Some(name), word)),
+            Expr::CompareFields {
+                field,
+                operator: Operator::Eq | Operator::Ne,
+                other,
+                word,
+            } => either.push((field, other, word)),
+            Expr::Compare {
+                field,
+                operator: Operator::Eq | Operator::Ne,
+                operand: Value::Text(text),
+            } => asked.push((field, text)),
+            Expr::Membership { field, operands } => {
+                asked.extend(operands.iter().filter_map(|operand| match operand {
+                    Value::Text(text) => Some((field, text.as_str())),
+                    _ => None,
+                }))
+            }
+            Expr::HasTag {
+                field,
+                operand: Value::Text(text),
+            } => asked.push((field, text)),
+            _ => {}
+        }
+    }
+    gather(root, &mut asked, &mut either, &mut cells, None);
+    // `carbon has citr`: a table, which only the collection can tell.
+    asked.retain(|(field, text)| match field {
+        Field::Named {
+            name,
+            channel: fields::Channel::Value,
+        } if vocabulary.has_table(name) => {
+            cells.push((name, None, text));
+            false
+        }
+        _ => true,
+    });
+    // `printing has argn`: the texts the table's cells hold, nearest first.
+    for (table, column, written) in cells {
+        if let Some(column) = column
+            && !vocabulary.has_column(table, column)
+        {
+            continue;
+        }
+        let mut held: Vec<String> = Vec::new();
+        let name = match column {
+            Some(column) => format!("{table}.{column}"),
+            None => table.to_string(),
+        };
+        for sample in collection {
+            let subject = Subject {
+                sample,
+                path: None,
+                vocabulary,
+                states: None,
+            };
+            for written in cells_of(Some(&name), &subject).unwrap_or_default() {
+                let text = written.trim_matches('"').to_string();
+                if !held.contains(&text) {
+                    held.push(text);
+                }
+            }
+        }
+        if held.is_empty() || held.iter().any(|text| text == written) {
+            continue;
+        }
+        let suggestion = held
+            .iter()
+            .find(|text| text.eq_ignore_ascii_case(written))
+            .cloned()
+            .or_else(|| crate::core::identifier::nearest(written, held.iter().map(String::as_str)));
+        if let Some(suggestion) = suggestion {
+            let warning = TextWarning {
+                field: name.clone(),
+                written: written.to_string(),
+                suggestion,
+            };
+            if !diagnostics.unmatched_texts.contains(&warning) {
+                diagnostics.unmatched_texts.push(warning);
+            }
+        }
+    }
+    for (field, other, word) in either {
+        let held = collection.iter().any(|sample| {
+            let subject = Subject {
+                sample,
+                path: None,
+                vocabulary,
+                states: None,
+            };
+            matches!(scalar(other, &subject), Ok(Some(_)))
+        });
+        if !held {
+            asked.push((field, word));
+        }
+    }
+    for (field, written) in asked {
+        let mut held: Vec<String> = Vec::new();
+        for sample in collection {
+            let subject = Subject {
+                sample,
+                path: None,
+                vocabulary,
+                states: None,
+            };
+            let values = match fields::resolve(field, &subject) {
+                Ok(fields::Resolution::Scalar(Some(value))) => vec![value],
+                Ok(fields::Resolution::List(values)) => values,
+                _ => Vec::new(),
+            };
+            for value in values {
+                if let Value::Text(text) = value
+                    && !held.contains(&text)
+                {
+                    held.push(text);
+                }
+            }
+        }
+        if held.is_empty() || held.iter().any(|text| text == written) {
+            continue;
+        }
+        let suggestion = held
+            .iter()
+            .find(|text| text.eq_ignore_ascii_case(written))
+            .cloned()
+            .or_else(|| crate::core::identifier::nearest(written, held.iter().map(String::as_str)));
+        if let Some(suggestion) = suggestion {
+            let warning = TextWarning {
+                field: fields::describe(field),
+                written: written.to_string(),
+                suggestion,
+            };
+            if !diagnostics.unmatched_texts.contains(&warning) {
+                diagnostics.unmatched_texts.push(warning);
+            }
+        }
+    }
+}
+
+/// The numbers `root` asks equality of that no sample holds, where one holds a
+/// number that, rounded to as many decimals as the number written, is it:
+/// what a table shows was typed, and matched nothing.
+fn unmatched_numbers(
+    root: &Expr,
+    collection: &[&Sample],
+    vocabulary: &fields::Vocabulary,
+    diagnostics: &mut Diagnostics,
+) {
+    fn gather<'a>(expr: &'a Expr, asked: &mut Vec<(&'a Field, f64)>) {
+        match expr {
+            Expr::Or(left, right) | Expr::And(left, right) => {
+                gather(left, asked);
+                gather(right, asked);
+            }
+            Expr::Not(inner) => gather(inner, asked),
+            Expr::Compare {
+                field,
+                operator: Operator::Eq,
+                operand,
+            } => match operand {
+                Value::Number(number) => asked.push((field, *number)),
+                Value::Integer(number) => asked.push((field, *number as f64)),
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+    let mut asked = Vec::new();
+    gather(root, &mut asked);
+    for (field, written) in asked {
+        // As many decimals as the number written, read back from its
+        // shortest form.
+        let shown = format!("{written}");
+        let decimals = shown.split_once('.').map_or(0, |(_, after)| after.len()) as i32;
+        let half = 0.5 * 10f64.powi(-decimals) * (1.0 + 1e-9);
+        let mut exact = false;
+        let mut near: Option<f64> = None;
+        for sample in collection {
+            let subject = Subject {
+                sample,
+                path: None,
+                vocabulary,
+                states: None,
+            };
+            let held = match fields::resolve(field, &subject) {
+                Ok(fields::Resolution::Scalar(Some(Value::Number(held)))) => held,
+                Ok(fields::Resolution::Scalar(Some(Value::Integer(held)))) => held as f64,
+                _ => continue,
+            };
+            if held == written {
+                exact = true;
+                break;
+            }
+            if near.is_none() && (held - written).abs() <= half {
+                near = Some(held);
+            }
+        }
+        if exact {
+            continue;
+        }
+        if let Some(held) = near {
+            let name = fields::describe(field);
+            let low = written - 0.5 * 10f64.powi(-decimals);
+            let high = written + 0.5 * 10f64.powi(-decimals);
+            let digits = (decimals + 1).max(0) as usize;
+            let warning = format!(
+                "no sample has {name} == {shown}; one holds {held}, shown {shown} rounded — \
+                 {name} >= {low:.digits$} && {name} < {high:.digits$} asks for those"
+            );
+            if !diagnostics.unmatched_numbers.contains(&warning) {
+                diagnostics.unmatched_numbers.push(warning);
+            }
+        }
+    }
+}
+
 /// Every problem across the whole collection, in one pass: unknown fields,
 /// misspellings with suggestions, and comparisons that cannot succeed anywhere.
 pub fn check(filter: &Filter, collection: &[&Sample]) -> Diagnostics {
@@ -1442,7 +2452,7 @@ pub fn check(filter: &Filter, collection: &[&Sample]) -> Diagnostics {
         };
         if met.answered {
             // Two comparisons of one field over the same samples are one
-            // sentence: `og < 2 && og > 1` said b twice.
+            // sentence: `radius < 2 && radius > 1` said b twice.
             match diagnostics
                 .set_aside
                 .iter_mut()
@@ -1476,6 +2486,8 @@ pub fn check(filter: &Filter, collection: &[&Sample]) -> Diagnostics {
             diagnostics.unknown_fields.push(error);
         }
     }
+    unmatched_texts(&filter.root, collection, &vocabulary, &mut diagnostics);
+    unmatched_numbers(&filter.root, collection, &vocabulary, &mut diagnostics);
     for tag in &filter.tags {
         if !vocabulary.has_tag(tag) {
             diagnostics.unknown_tags.push(TagWarning {
@@ -1545,6 +2557,12 @@ pub enum FilterError {
         operator: String,
         reason: String,
     },
+    /// Two fields compared whose units differ: `volume > ore_mass`.
+    UnitsDiffer {
+        left: Box<Field>,
+        right: Box<Field>,
+        units: (String, String),
+    },
     /// A word `state` does not have, refused at `parse`.
     UnknownState {
         position: usize,
@@ -1600,6 +2618,14 @@ impl fmt::Display for FilterError {
                 "{operator} cannot be used on '{}': {reason}",
                 fields::describe(field.as_ref())
             ),
+            FilterError::UnitsDiffer { left, right, units } => write!(
+                f,
+                "'{}' is in {} and '{}' in {}: two properties compared must be in one unit",
+                fields::describe(left.as_ref()),
+                units.0,
+                fields::describe(right.as_ref()),
+                units.1
+            ),
             FilterError::UnknownState {
                 position,
                 word,
@@ -1651,5 +2677,65 @@ pub fn caret(source: &str, error: &FilterError) -> Option<String> {
     // The message first, so that whatever prefixes it cannot shift the caret
     // off the character it points at.
     let pad = " ".repeat(position.min(source.chars().count()));
-    Some(format!("{error}\n  {source}\n  {pad}^"))
+    // A comma between two digits is a decimal comma: `radius > 1,05`.
+    let characters: Vec<char> = source.chars().collect();
+    let decimal_comma = characters.get(position) == Some(&',')
+        && position > 0
+        && characters[position - 1].is_ascii_digit()
+        && characters
+            .get(position + 1)
+            .is_some_and(char::is_ascii_digit);
+    let hint = if decimal_comma {
+        let whole: String = characters[..position]
+            .iter()
+            .rev()
+            .take_while(|c| c.is_ascii_digit())
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect();
+        let fraction: String = characters[position + 1..]
+            .iter()
+            .take_while(|c| c.is_ascii_digit())
+            .collect();
+        format!("\n  a decimal comma? a number is written with a point: {whole}.{fraction}")
+    } else {
+        String::new()
+    };
+    Some(format!("{error}\n  {source}\n  {pad}^{hint}"))
+}
+
+/// Whether the sample's attributes, or the one named, hold a link to
+/// `target` as the link writes it: a wikilink's target, a Markdown link's file
+/// name without its `.md` (and `.sample`).
+fn links_to(subject: &Subject, field: Option<&Identifier>, target: &str) -> Truth {
+    use crate::core::link::{self, Link};
+    use crate::core::sample::AttributeValue;
+    let leads = |text: &str| match link::parse(text) {
+        Some(Link::Sample { target: named, .. }) => named == target,
+        Some(Link::Path { path, .. }) => std::path::Path::new(&path)
+            .file_stem()
+            .map(|stem| stem.to_string_lossy())
+            .is_some_and(|stem| stem.strip_suffix(".sample").unwrap_or(&stem) == target),
+        _ => false,
+    };
+    let holds = |value: &AttributeValue| {
+        let texts: Vec<&Value> = match value {
+            AttributeValue::Scalar(value) => vec![value],
+            AttributeValue::List(items) => items.iter().collect(),
+        };
+        texts
+            .into_iter()
+            .any(|value| matches!(value, Value::Text(text) if leads(text)))
+    };
+    let found = match field {
+        Some(name) => subject.sample.attribute(name).is_ok_and(holds),
+        None => subject
+            .sample
+            .attribute_names()
+            .into_iter()
+            .filter_map(|name| subject.sample.attribute(name).ok())
+            .any(holds),
+    };
+    if found { Truth::True } else { Truth::False }
 }

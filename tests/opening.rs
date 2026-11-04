@@ -108,3 +108,60 @@ fn an_opened_file_leaves_no_process_behind() {
     assert!(zombies().is_empty(), "{:?}", zombies());
     let _ = std::fs::remove_dir_all(&scratch);
 }
+
+#[test]
+fn windows_shows_a_file_selected_in_its_folder() {
+    let here = dunce::canonicalize(std::env::temp_dir()).unwrap();
+    let folder = opening::explorer_line(&here);
+    assert!(folder.starts_with('"') && folder.ends_with('"'), "{folder}");
+    assert!(!folder.contains('/'), "{folder}");
+    // A file is shown selected in its folder, its path whole: `..` and a
+    // link's `/` as Windows writes them.
+    let file = opening::explorer_line(Path::new("images/../a.png"));
+    assert!(file.starts_with("/select,\""), "{file}");
+    assert!(file.ends_with("a.png\""), "{file}");
+    assert!(
+        !file.contains('/') || file.starts_with("/select,"),
+        "{file}"
+    );
+    assert!(!file[8..].contains('/'), "{file}");
+}
+
+#[test]
+fn an_editor_of_its_own_window_is_told_from_one_in_the_terminal() {
+    let _held = ENVIRONMENT
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let with = |editor: Option<&str>| {
+        unsafe {
+            std::env::remove_var("VISUAL");
+            match editor {
+                Some(editor) => std::env::set_var("EDITOR", editor),
+                None => std::env::remove_var("EDITOR"),
+            }
+        }
+        opening::windowed_editor()
+    };
+    for terminal in [
+        "vim",
+        "nvim",
+        "nano",
+        "emacs -nw",
+        "emacsclient -t",
+        "/usr/bin/micro",
+    ] {
+        assert_eq!(with(Some(terminal)), None, "{terminal}");
+    }
+    assert_eq!(with(Some("code --wait")).as_deref(), Some("VS Code"));
+    assert_eq!(with(Some("gedit")).as_deref(), Some("gedit"));
+    assert_eq!(with(Some("emacs")).as_deref(), Some("emacs"));
+    // None named: Notepad on Windows, the file's application elsewhere.
+    assert_eq!(
+        with(None).as_deref(),
+        Some(if cfg!(windows) {
+            "Notepad"
+        } else {
+            "the file's application"
+        })
+    );
+}

@@ -49,19 +49,19 @@ fn value_at(table: &Table, row: &RowAddress, column: &str) -> f64 {
     }
 }
 
-/// A temperature-indexed boil: three rows, a wort column, and a
-/// clarity column for the derivations to fill.
-fn boil() -> Table {
+/// A temperature-indexed soak: three rows, a tension column, and a
+/// rigidity column for the derivations to fill.
+fn soak() -> Table {
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         Vec::new(),
     )
     .unwrap();
     for (t, r) in [(65.0, 12.5), (200.0, 15.0), (78.5, 20.0)] {
         table
-            .add_row(cells(&[("temperature", t), ("wort", r)]))
+            .add_row(cells(&[("temperature", t), ("tension", r)]))
             .unwrap();
     }
     table
@@ -69,7 +69,7 @@ fn boil() -> Table {
 
 fn derived(derivations: Vec<Derivation>, column_names: &[&str]) -> Table {
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns(column_names),
         derivations,
@@ -77,7 +77,7 @@ fn derived(derivations: Vec<Derivation>, column_names: &[&str]) -> Table {
     .unwrap();
     for (t, r) in [(65.0, 12.5), (200.0, 15.0), (78.5, 20.0)] {
         table
-            .add_row(cells(&[("temperature", t), ("wort", r)]))
+            .add_row(cells(&[("temperature", t), ("tension", r)]))
             .unwrap();
     }
     table
@@ -85,18 +85,18 @@ fn derived(derivations: Vec<Derivation>, column_names: &[&str]) -> Table {
 
 // ------------------------------------------------------------------- scope
 
-/// The cask, as a table sees it: properties and attributes, and no tables.
+/// The slab, as a table sees it: properties and attributes, and no tables.
 #[derive(Default)]
-struct Cask {
+struct Slab {
     values: RefCell<HashMap<Identifier, Value>>,
     generations: RefCell<HashMap<Identifier, u64>>,
 }
 
-impl Cask {
-    fn with(name: &str, value: Value) -> Cask {
-        let cask = Cask::default();
-        cask.set(name, value);
-        cask
+impl Slab {
+    fn with(name: &str, value: Value) -> Slab {
+        let slab = Slab::default();
+        slab.set(name, value);
+        slab
     }
 
     fn set(&self, name: &str, value: Value) {
@@ -105,7 +105,7 @@ impl Cask {
     }
 }
 
-impl Scope for Cask {
+impl Scope for Slab {
     fn read(&self, name: &Identifier) -> Result<Value, ComputeError> {
         Ok(self
             .values
@@ -159,16 +159,16 @@ fn a_cell_whose_formula_raised_records_the_failure() {
     // cache of its own, so unless the failure is written onto the cell it is
     // written nowhere — and `status` goes on calling the cell merely stale,
     // with the failure gone from the repository by the next morning.
-    let columns = ["temperature", "clarity"]
+    let columns = ["temperature", "rigidity"]
         .iter()
         .map(|name| (id(name), ColumnMeta::default()))
         .collect::<IndexMap<Identifier, ColumnMeta>>();
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
         columns,
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
+            outputs: vec![id("rigidity")],
             inputs: vec![InputName::Cell(id("temperature"))],
             formula: Rc::new(Raises),
         }],
@@ -178,11 +178,11 @@ fn a_cell_whose_formula_raised_records_the_failure() {
         .add_row(vec![(id("temperature"), Property::stored(number(65.0)))])
         .unwrap();
 
-    let outcome = table.resolve(&Cask::default());
+    let outcome = table.resolve(&Slab::default());
     assert!(outcome.is_err(), "the derivation raises");
 
     let at = samplekit::core::table::RowAddress::Index(vec![number(65.0)]);
-    let cell = table.at(&at, &id("clarity")).unwrap();
+    let cell = table.at(&at, &id("rigidity")).unwrap();
     let failure = cell.records().failure.clone();
     assert!(
         failure
@@ -192,7 +192,7 @@ fn a_cell_whose_formula_raised_records_the_failure() {
     );
 }
 
-/// `clarity = 1 / wort`, one cell per row.
+/// `rigidity = 1 / tension`, one cell per row.
 struct Reciprocal {
     calls: Cell<usize>,
 }
@@ -206,8 +206,8 @@ impl Reciprocal {
 
     fn derivation(self: &Rc<Self>) -> Derivation {
         Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: self.clone(),
         }
     }
@@ -222,50 +222,50 @@ impl ComputeRow for Reciprocal {
         self.calls.set(self.calls.get() + 1);
         let mut out = IndexMap::new();
         out.insert(
-            id("clarity"),
-            CellOutput::Value(number(1.0 / reads(row, "wort"))),
+            id("rigidity"),
+            CellOutput::Value(number(1.0 / reads(row, "tension"))),
         );
         Ok(out)
     }
 }
 
-/// `clarity = 1 / (wort * foam)`: one value from the row, one
-/// from the cask.
-struct OverGravity {
+/// `rigidity = 1 / (tension * wear)`: one value from the row, one
+/// from the slab.
+struct OverHardness {
     calls: Cell<usize>,
 }
 
-impl OverGravity {
-    fn new() -> Rc<OverGravity> {
-        Rc::new(OverGravity {
+impl OverHardness {
+    fn new() -> Rc<OverHardness> {
+        Rc::new(OverHardness {
             calls: Cell::new(0),
         })
     }
 
     fn derivation(self: &Rc<Self>) -> Derivation {
         Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort")), InputName::Named(id("foam"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension")), InputName::Named(id("wear"))],
             formula: self.clone(),
         }
     }
 }
 
-impl ComputeRow for OverGravity {
+impl ComputeRow for OverHardness {
     fn compute(
         &self,
         row: &RowView,
         scope: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
         self.calls.set(self.calls.get() + 1);
-        let foam = match scope.read(&id("foam"))? {
+        let wear = match scope.read(&id("wear"))? {
             Value::Number(number) => number,
             other => panic!("expected a number, got {other:?}"),
         };
         let mut out = IndexMap::new();
         out.insert(
-            id("clarity"),
-            CellOutput::Value(number(1.0 / (reads(row, "wort") * foam))),
+            id("rigidity"),
+            CellOutput::Value(number(1.0 / (reads(row, "tension") * wear))),
         );
         Ok(out)
     }
@@ -286,7 +286,7 @@ impl Fit {
     fn derivation(self: &Rc<Self>) -> Derivation {
         Derivation::Row {
             outputs: vec![id("r"), id("q"), id("pitch")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: self.clone(),
         }
     }
@@ -299,11 +299,11 @@ impl ComputeRow for Fit {
         _: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
         self.calls.set(self.calls.get() + 1);
-        let wort = reads(row, "wort");
+        let tension = reads(row, "tension");
         let mut out = IndexMap::new();
-        out.insert(id("r"), CellOutput::Value(number(wort)));
-        out.insert(id("q"), CellOutput::Value(number(wort * 100.0)));
-        out.insert(id("pitch"), CellOutput::Value(number(wort / 10.0)));
+        out.insert(id("r"), CellOutput::Value(number(tension)));
+        out.insert(id("q"), CellOutput::Value(number(tension * 100.0)));
+        out.insert(id("pitch"), CellOutput::Value(number(tension / 10.0)));
         Ok(out)
     }
 }
@@ -322,8 +322,8 @@ impl WithUncertainty {
 
     fn derivation(self: &Rc<Self>) -> Derivation {
         Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: self.clone(),
         }
     }
@@ -336,20 +336,20 @@ impl ComputeRow for WithUncertainty {
         _: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
         self.calls.set(self.calls.get() + 1);
-        let clarity = 1.0 / reads(row, "wort");
+        let rigidity = 1.0 / reads(row, "tension");
         let mut out = IndexMap::new();
         out.insert(
-            id("clarity"),
+            id("rigidity"),
             CellOutput::Quantity(
-                number(clarity),
-                Some(Uncertainty::new(clarity / 100.0).unwrap()),
+                number(rigidity),
+                Some(Uncertainty::new(rigidity / 100.0).unwrap()),
             ),
         );
         Ok(out)
     }
 }
 
-/// `normalized = wort / max(wort)`: one run for the whole table.
+/// `normalized = tension / max(tension)`: one run for the whole table.
 struct Normalize {
     calls: Cell<usize>,
     short: bool,
@@ -367,8 +367,8 @@ impl Normalize {
         Derivation::Column {
             outputs: vec![id("normalized")],
             inputs: vec![InputName::Column {
-                table: id("mashing"),
-                column: id("wort"),
+                table: id("preheating"),
+                column: id("tension"),
             }],
             formula: self.clone(),
         }
@@ -382,7 +382,7 @@ impl ComputeColumn for Normalize {
         _: &dyn Scope,
     ) -> Result<IndexMap<Identifier, Vec<CellOutput>>, ComputeError> {
         self.calls.set(self.calls.get() + 1);
-        let column = set.column(&id("wort")).unwrap();
+        let column = set.column(&id("tension")).unwrap();
         let values: Vec<f64> = column
             .cells()
             .map(|(_, cell)| match cell.value().unwrap() {
@@ -414,7 +414,7 @@ impl ComputeRow for Wrong {
         _: &dyn Scope,
     ) -> Result<IndexMap<Identifier, CellOutput>, ComputeError> {
         let mut out = IndexMap::new();
-        out.insert(id("wort"), CellOutput::Value(number(0.0)));
+        out.insert(id("tension"), CellOutput::Value(number(0.0)));
         Ok(out)
     }
 }
@@ -423,11 +423,11 @@ impl ComputeRow for Wrong {
 
 #[test]
 fn column_order_is_declaration_order() {
-    let mut table = boil();
+    let mut table = soak();
     let before: Vec<String> = table.column_names().iter().map(|n| n.to_string()).collect();
-    assert_eq!(before, ["temperature", "wort", "clarity"]);
+    assert_eq!(before, ["temperature", "tension", "rigidity"]);
     table
-        .update_row(&by_index(&[65.0]), cells(&[("wort", 9.0)]))
+        .update_row(&by_index(&[65.0]), cells(&[("tension", 9.0)]))
         .unwrap();
     let after: Vec<String> = table.column_names().iter().map(|n| n.to_string()).collect();
     assert_eq!(before, after, "a mutation reordered the columns");
@@ -436,8 +436,8 @@ fn column_order_is_declaration_order() {
 #[test]
 fn every_row_has_every_column() {
     // An unsupplied cell is Absent, which is a recorded statement.
-    let table = boil();
-    let cell = table.at(&by_index(&[65.0]), &id("clarity")).unwrap();
+    let table = soak();
+    let cell = table.at(&by_index(&[65.0]), &id("rigidity")).unwrap();
     assert_eq!(cell.value().unwrap(), Value::absent());
     assert_eq!(
         table.row(&by_index(&[65.0])).unwrap().column_names().len(),
@@ -447,7 +447,7 @@ fn every_row_has_every_column() {
 
 #[test]
 fn rows_iterate_in_declaration_order() {
-    let table = boil();
+    let table = soak();
     let order: Vec<f64> = table
         .rows()
         .map(|row| match row.index()[0] {
@@ -463,8 +463,8 @@ fn rows_iterate_in_declaration_order() {
 fn a_column_view_pairs_cells_with_their_index() {
     // Never a bare sequence: a column detached from its indexes is a list of
     // numbers nobody can locate.
-    let table = boil();
-    let column = table.column(&id("wort")).unwrap();
+    let table = soak();
+    let column = table.column(&id("tension")).unwrap();
     let pairs: Vec<(f64, f64)> = column
         .cells()
         .map(|(index, cell)| {
@@ -488,9 +488,9 @@ fn a_column_view_pairs_cells_with_their_index() {
 #[test]
 fn at_addresses_by_index_value() {
     // Whatever its position.
-    let table = boil();
-    assert_eq!(value_at(&table, &by_index(&[78.5]), "wort"), 20.0);
-    assert_eq!(value_at(&table, &by_index(&[65.0]), "wort"), 12.5);
+    let table = soak();
+    assert_eq!(value_at(&table, &by_index(&[78.5]), "tension"), 20.0);
+    assert_eq!(value_at(&table, &by_index(&[65.0]), "tension"), 12.5);
 }
 
 #[test]
@@ -570,7 +570,7 @@ fn negative_zero_index_matches_zero() {
 #[test]
 fn index_matching_is_exact() {
     // Tolerant matching would need a tolerance, and any tolerance is wrong for
-    // some vintage.
+    // some casting.
     let mut table = Table::new(id("t"), vec![id("k")], columns(&["k", "v"]), Vec::new()).unwrap();
     table
         .add_row(vec![
@@ -587,8 +587,8 @@ fn index_matching_is_exact() {
 
 #[test]
 fn an_ordinal_addresses_a_row() {
-    let table = boil();
-    assert_eq!(value_at(&table, &RowAddress::ordinal(2), "wort"), 20.0);
+    let table = soak();
+    assert_eq!(value_at(&table, &RowAddress::ordinal(2), "tension"), 20.0);
     assert_eq!(table.row(&RowAddress::ordinal(1)).unwrap().position(), 1);
 }
 
@@ -613,8 +613,8 @@ fn an_ordinal_and_an_index_value_are_distinguishable() {
 fn an_ordinal_is_never_a_tuple_component() {
     // It addresses the whole row whatever the index arity, and a mixed address
     // is unrepresentable: RowAddress::Ordinal holds one number.
-    let table = boil();
-    assert!(table.at(&RowAddress::ordinal(0), &id("wort")).is_ok());
+    let table = soak();
+    assert!(table.at(&RowAddress::ordinal(0), &id("tension")).is_ok());
     // A composite table refuses an address of the wrong arity rather than
     // reading one component as a position.
     let mut composite = Table::new(
@@ -637,9 +637,11 @@ fn an_ordinal_is_never_a_tuple_component() {
 #[test]
 fn an_ordinal_past_the_end_is_an_error() {
     // Not an empty result.
-    let table = boil();
+    let table = soak();
     assert_eq!(
-        table.at(&RowAddress::ordinal(9), &id("wort")).unwrap_err(),
+        table
+            .at(&RowAddress::ordinal(9), &id("tension"))
+            .unwrap_err(),
         TableError::OrdinalOutOfRange {
             ordinal: 9,
             length: 3
@@ -651,35 +653,35 @@ fn an_ordinal_past_the_end_is_an_error() {
 
 #[test]
 fn unknown_column_lists_available_columns() {
-    let table = boil();
+    let table = soak();
     let error = table
-        .at(&by_index(&[65.0]), &id("carbonation_level"))
+        .at(&by_index(&[65.0]), &id("nitridation_level"))
         .unwrap_err();
     let TableError::UnknownColumn { available, .. } = &error else {
         panic!("expected an unknown column, got {error:?}");
     };
     let names: Vec<String> = available.iter().map(|n| n.to_string()).collect();
-    assert_eq!(names, ["temperature", "wort", "clarity"]);
-    assert!(error.to_string().contains("wort"), "{error}");
+    assert_eq!(names, ["temperature", "tension", "rigidity"]);
+    assert!(error.to_string().contains("tension"), "{error}");
 }
 
 #[test]
 fn unknown_column_suggests_nearest_name() {
-    let table = boil();
-    let error = table.at(&by_index(&[65.0]), &id("wortt")).unwrap_err();
+    let table = soak();
+    let error = table.at(&by_index(&[65.0]), &id("tensionn")).unwrap_err();
     let TableError::UnknownColumn { suggestion, .. } = &error else {
         panic!("expected an unknown column, got {error:?}");
     };
     assert_eq!(
         suggestion.as_ref().map(|n| n.to_string()),
-        Some("wort".to_string())
+        Some("tension".to_string())
     );
 }
 
 #[test]
 fn unknown_index_lists_available_indexes() {
-    let table = boil();
-    let error = table.at(&by_index(&[999.0]), &id("wort")).unwrap_err();
+    let table = soak();
+    let error = table.at(&by_index(&[999.0]), &id("tension")).unwrap_err();
     let TableError::UnknownIndex { per_column, .. } = &error else {
         panic!("expected an unknown index, got {error:?}");
     };
@@ -725,9 +727,9 @@ fn the_wrong_number_of_components_is_its_own_error() {
 
 #[test]
 fn duplicate_index_is_rejected() {
-    let mut table = boil();
+    let mut table = soak();
     let error = table
-        .add_row(cells(&[("temperature", 65.0), ("wort", 1.0)]))
+        .add_row(cells(&[("temperature", 65.0), ("tension", 1.0)]))
         .unwrap_err();
     assert_eq!(
         error,
@@ -743,9 +745,9 @@ fn duplicate_index_is_rejected() {
 #[test]
 fn a_composite_index_identifies_a_row() {
     let mut table = Table::new(
-        id("mashing"),
-        vec![id("temperature"), id("dextrin")],
-        columns(&["temperature", "dextrin", "wort"]),
+        id("preheating"),
+        vec![id("temperature"), id("ferrite")],
+        columns(&["temperature", "ferrite", "tension"]),
         Vec::new(),
     )
     .unwrap();
@@ -754,50 +756,50 @@ fn a_composite_index_identifies_a_row() {
             table
                 .add_row(cells(&[
                     ("temperature", t),
-                    ("dextrin", f),
-                    ("wort", t + f / 1e9),
+                    ("ferrite", f),
+                    ("tension", t + f / 1e9),
                 ]))
                 .unwrap();
         }
     }
     assert_eq!(table.rows().count(), 6);
-    assert_eq!(value_at(&table, &by_index(&[65.0, 2e9]), "wort"), 67.0);
+    assert_eq!(value_at(&table, &by_index(&[65.0, 2e9]), "tension"), 67.0);
 }
 
 #[test]
 fn a_repeated_component_is_not_a_duplicate() {
-    // Rows share a temperature and differ by dextrin.
+    // Rows share a temperature and differ by ferrite.
     let mut table = Table::new(
-        id("mashing"),
-        vec![id("temperature"), id("dextrin")],
-        columns(&["temperature", "dextrin", "wort"]),
+        id("preheating"),
+        vec![id("temperature"), id("ferrite")],
+        columns(&["temperature", "ferrite", "tension"]),
         Vec::new(),
     )
     .unwrap();
     table
         .add_row(cells(&[
             ("temperature", 65.0),
-            ("dextrin", 1e9),
-            ("wort", 1.0),
+            ("ferrite", 1e9),
+            ("tension", 1.0),
         ]))
         .unwrap();
     table
         .add_row(cells(&[
             ("temperature", 65.0),
-            ("dextrin", 2e9),
-            ("wort", 2.0),
+            ("ferrite", 2e9),
+            ("tension", 2.0),
         ]))
         .unwrap();
     assert_eq!(table.index_values(&id("temperature")).unwrap().len(), 1);
-    assert_eq!(table.index_values(&id("dextrin")).unwrap().len(), 2);
+    assert_eq!(table.index_values(&id("ferrite")).unwrap().len(), 2);
 }
 
 #[test]
 fn a_composite_miss_reports_each_dimension() {
     let mut table = Table::new(
-        id("mashing"),
-        vec![id("temperature"), id("dextrin")],
-        columns(&["temperature", "dextrin", "wort"]),
+        id("preheating"),
+        vec![id("temperature"), id("ferrite")],
+        columns(&["temperature", "ferrite", "tension"]),
         Vec::new(),
     )
     .unwrap();
@@ -805,17 +807,19 @@ fn a_composite_miss_reports_each_dimension() {
         table
             .add_row(cells(&[
                 ("temperature", 20.5),
-                ("dextrin", f),
-                ("wort", 1.0),
+                ("ferrite", f),
+                ("tension", 1.0),
             ]))
             .unwrap();
     }
-    let error = table.at(&by_index(&[20.0, 2e9]), &id("wort")).unwrap_err();
+    let error = table
+        .at(&by_index(&[20.0, 2e9]), &id("tension"))
+        .unwrap_err();
     let TableError::UnknownIndex { per_column, .. } = &error else {
         panic!("expected an unknown index, got {error:?}");
     };
     assert_eq!(per_column[0].nearest, Some(number(20.5)), "temperature");
-    assert_eq!(per_column[1].nearest, None, "dextrin matched");
+    assert_eq!(per_column[1].nearest, None, "ferrite matched");
     assert!(error.to_string().contains("matched"), "{error}");
 }
 
@@ -860,7 +864,7 @@ fn computed_cell_is_lazy() {
     let formula = Reciprocal::new();
     let table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
     assert_eq!(formula.calls.get(), 0);
     assert!(!table.is_resolved());
@@ -871,11 +875,11 @@ fn computed_cell_sees_its_own_row() {
     let formula = Reciprocal::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
-    table.resolve(&Cask::default()).unwrap();
-    assert_eq!(value_at(&table, &by_index(&[65.0]), "clarity"), 1.0 / 12.5);
-    assert_eq!(value_at(&table, &by_index(&[78.5]), "clarity"), 1.0 / 20.0);
+    table.resolve(&Slab::default()).unwrap();
+    assert_eq!(value_at(&table, &by_index(&[65.0]), "rigidity"), 1.0 / 12.5);
+    assert_eq!(value_at(&table, &by_index(&[78.5]), "rigidity"), 1.0 / 20.0);
     assert_eq!(formula.calls.get(), 3, "once per row");
     assert!(table.is_resolved());
 }
@@ -886,14 +890,14 @@ fn a_cell_cannot_reach_another_row() {
     let formula = Reciprocal::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
-    table.resolve(&Cask::default()).unwrap();
+    table.resolve(&Slab::default()).unwrap();
     for row in table.rows() {
-        let wort = reads(&row, "wort");
-        let clarity = reads(&row, "clarity");
+        let tension = reads(&row, "tension");
+        let rigidity = reads(&row, "rigidity");
         assert!(
-            (clarity - 1.0 / wort).abs() < 1e-12,
+            (rigidity - 1.0 / tension).abs() < 1e-12,
             "a cell was computed from another row"
         );
         // And nothing on the view reaches a second row.
@@ -903,15 +907,15 @@ fn a_cell_cannot_reach_another_row() {
 
 #[test]
 fn a_cell_reads_a_sample_property() {
-    let formula = OverGravity::new();
+    let formula = OverHardness::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
-    let cask = Cask::with("foam", number(2.0));
-    table.resolve(&cask).unwrap();
+    let slab = Slab::with("wear", number(2.0));
+    table.resolve(&slab).unwrap();
     assert_eq!(
-        value_at(&table, &by_index(&[65.0]), "clarity"),
+        value_at(&table, &by_index(&[65.0]), "rigidity"),
         1.0 / (12.5 * 2.0)
     );
 }
@@ -921,37 +925,37 @@ fn a_cell_goes_stale_alone() {
     let formula = Reciprocal::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
-    let cask = Cask::default();
-    table.resolve(&cask).unwrap();
+    let slab = Slab::default();
+    table.resolve(&slab).unwrap();
     assert_eq!(formula.calls.get(), 3);
 
     table
-        .update_row(&by_index(&[65.0]), cells(&[("wort", 10.0)]))
+        .update_row(&by_index(&[65.0]), cells(&[("tension", 10.0)]))
         .unwrap();
-    table.resolve(&cask).unwrap();
+    table.resolve(&slab).unwrap();
     assert_eq!(formula.calls.get(), 4, "one row changed, one run");
-    assert_eq!(value_at(&table, &by_index(&[65.0]), "clarity"), 0.1);
-    assert_eq!(value_at(&table, &by_index(&[78.5]), "clarity"), 1.0 / 20.0);
+    assert_eq!(value_at(&table, &by_index(&[65.0]), "rigidity"), 0.1);
+    assert_eq!(value_at(&table, &by_index(&[78.5]), "rigidity"), 1.0 / 20.0);
 }
 
 #[test]
 fn a_sample_input_stales_the_whole_column() {
     // All eleven read it, so all eleven go.
-    let formula = OverGravity::new();
+    let formula = OverHardness::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
-    let cask = Cask::with("foam", number(2.0));
-    table.resolve(&cask).unwrap();
+    let slab = Slab::with("wear", number(2.0));
+    table.resolve(&slab).unwrap();
     assert_eq!(formula.calls.get(), 3);
-    cask.set("foam", number(4.0));
-    table.resolve(&cask).unwrap();
-    assert_eq!(formula.calls.get(), 6, "every row read the foam");
+    slab.set("wear", number(4.0));
+    table.resolve(&slab).unwrap();
+    assert_eq!(formula.calls.get(), 6, "every row read the wear");
     assert_eq!(
-        value_at(&table, &by_index(&[65.0]), "clarity"),
+        value_at(&table, &by_index(&[65.0]), "rigidity"),
         1.0 / (12.5 * 4.0)
     );
 }
@@ -962,9 +966,9 @@ fn one_row_derivation_fills_several_columns() {
     let formula = Fit::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "r", "q", "pitch"],
+        &["temperature", "tension", "r", "q", "pitch"],
     );
-    table.resolve(&Cask::default()).unwrap();
+    table.resolve(&Slab::default()).unwrap();
     assert_eq!(formula.calls.get(), 3);
     assert_eq!(value_at(&table, &by_index(&[65.0]), "r"), 12.5);
     assert_eq!(value_at(&table, &by_index(&[65.0]), "q"), 1250.0);
@@ -977,14 +981,14 @@ fn a_row_derivation_stales_its_outputs_together() {
     let formula = Fit::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "r", "q", "pitch"],
+        &["temperature", "tension", "r", "q", "pitch"],
     );
-    let cask = Cask::default();
-    table.resolve(&cask).unwrap();
+    let slab = Slab::default();
+    table.resolve(&slab).unwrap();
     table
-        .update_row(&by_index(&[200.0]), cells(&[("wort", 30.0)]))
+        .update_row(&by_index(&[200.0]), cells(&[("tension", 30.0)]))
         .unwrap();
-    table.resolve(&cask).unwrap();
+    table.resolve(&slab).unwrap();
     assert_eq!(formula.calls.get(), 4, "one row, one run, three columns");
     assert_eq!(value_at(&table, &by_index(&[200.0]), "r"), 30.0);
     assert_eq!(value_at(&table, &by_index(&[200.0]), "q"), 3000.0);
@@ -997,11 +1001,11 @@ fn a_joint_column_runs_once_per_cell() {
     let formula = WithUncertainty::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
-    table.resolve(&Cask::default()).unwrap();
+    table.resolve(&Slab::default()).unwrap();
     assert_eq!(formula.calls.get(), 3);
-    let cell = table.at(&by_index(&[65.0]), &id("clarity")).unwrap();
+    let cell = table.at(&by_index(&[65.0]), &id("rigidity")).unwrap();
     let value = 1.0 / 12.5;
     assert_eq!(cell.value().unwrap(), number(value));
     assert_eq!(
@@ -1015,9 +1019,9 @@ fn a_column_derivation_fills_every_row() {
     let formula = Normalize::new(false);
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "normalized"],
+        &["temperature", "tension", "normalized"],
     );
-    table.resolve(&Cask::default()).unwrap();
+    table.resolve(&Slab::default()).unwrap();
     assert_eq!(formula.calls.get(), 1, "once for the table");
     assert_eq!(value_at(&table, &by_index(&[78.5]), "normalized"), 1.0);
     assert_eq!(
@@ -1033,14 +1037,14 @@ fn a_column_derivation_stales_entirely() {
     let formula = Normalize::new(false);
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "normalized"],
+        &["temperature", "tension", "normalized"],
     );
-    let cask = Cask::default();
-    table.resolve(&cask).unwrap();
+    let slab = Slab::default();
+    table.resolve(&slab).unwrap();
     table
-        .update_row(&by_index(&[65.0]), cells(&[("wort", 40.0)]))
+        .update_row(&by_index(&[65.0]), cells(&[("tension", 40.0)]))
         .unwrap();
-    table.resolve(&cask).unwrap();
+    table.resolve(&slab).unwrap();
     assert_eq!(formula.calls.get(), 2);
     assert_eq!(value_at(&table, &by_index(&[65.0]), "normalized"), 1.0);
     assert_eq!(value_at(&table, &by_index(&[78.5]), "normalized"), 0.5);
@@ -1052,13 +1056,13 @@ fn a_derived_cell_carries_no_record_until_it_is_saved() {
     let formula = Reciprocal::new();
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
-    table.resolve(&Cask::default()).unwrap();
-    let cell = table.at(&by_index(&[65.0]), &id("clarity")).unwrap();
+    table.resolve(&Slab::default()).unwrap();
+    let cell = table.at(&by_index(&[65.0]), &id("rigidity")).unwrap();
     assert!(cell.records().is_empty());
-    assert!(table.is_derived(&id("clarity")));
-    assert!(!table.is_derived(&id("wort")));
+    assert!(table.is_derived(&id("rigidity")));
+    assert!(!table.is_derived(&id("tension")));
 }
 
 // --------------------------------------------------------------- refusals
@@ -1066,20 +1070,20 @@ fn a_derived_cell_carries_no_record_until_it_is_saved() {
 #[test]
 fn an_undeclared_output_is_refused() {
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
+            outputs: vec![id("rigidity")],
             inputs: Vec::new(),
             formula: Rc::new(Wrong),
         }],
     )
     .unwrap();
     table
-        .add_row(cells(&[("temperature", 65.0), ("wort", 1.0)]))
+        .add_row(cells(&[("temperature", 65.0), ("tension", 1.0)]))
         .unwrap();
-    let error = table.resolve(&Cask::default()).unwrap_err();
+    let error = table.resolve(&Slab::default()).unwrap_err();
     assert!(
         matches!(error, TableError::OutputMismatch { .. }),
         "{error:?}"
@@ -1092,10 +1096,10 @@ fn a_short_column_result_is_refused() {
     let formula = Normalize::new(true);
     let mut table = derived(
         vec![formula.derivation()],
-        &["temperature", "wort", "normalized"],
+        &["temperature", "tension", "normalized"],
     );
     assert_eq!(
-        table.resolve(&Cask::default()),
+        table.resolve(&Slab::default()),
         Err(TableError::OutputLength {
             column: id("normalized"),
             expected: 3,
@@ -1110,14 +1114,14 @@ fn two_derivations_cannot_fill_one_column() {
     let other = Reciprocal::new();
     assert_eq!(
         Table::new(
-            id("mashing"),
+            id("preheating"),
             vec![id("temperature")],
-            columns(&["temperature", "wort", "clarity"]),
+            columns(&["temperature", "tension", "rigidity"]),
             vec![one.derivation(), other.derivation()],
         )
         .unwrap_err(),
         TableError::ColumnDerivedTwice {
-            column: id("clarity")
+            column: id("rigidity")
         }
     );
 }
@@ -1127,9 +1131,9 @@ fn a_derivation_naming_an_unknown_column_is_refused() {
     // Whether the name is an output or an input.
     let formula = Reciprocal::new();
     let outputs_wrong = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort"]),
+        columns(&["temperature", "tension"]),
         vec![formula.derivation()],
     );
     assert!(matches!(
@@ -1138,9 +1142,9 @@ fn a_derivation_naming_an_unknown_column_is_refused() {
     ));
 
     let inputs_wrong = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "clarity"]),
+        columns(&["temperature", "rigidity"]),
         vec![formula.derivation()],
     );
     assert!(matches!(
@@ -1162,7 +1166,7 @@ fn a_column_named_row_is_refused() {
 fn a_leading_underscore_is_refused_on_tables_and_columns() {
     assert!(matches!(
         Table::new(
-            id("_mashing"),
+            id("_preheating"),
             vec![id("temperature")],
             columns(&["temperature"]),
             Vec::new()
@@ -1171,7 +1175,7 @@ fn a_leading_underscore_is_refused_on_tables_and_columns() {
     ));
     assert!(matches!(
         Table::new(
-            id("mashing"),
+            id("preheating"),
             vec![id("_temperature")],
             columns(&["_temperature"]),
             Vec::new()
@@ -1236,7 +1240,7 @@ fn cell_metadata_overrides_column_metadata() {
 
 // ----------------------------------------------------------------- filling
 
-/// clarity = 1 / wort, counting its runs.
+/// rigidity = 1 / tension, counting its runs.
 #[derive(Default)]
 struct FillReciprocal {
     runs: Cell<usize>,
@@ -1251,8 +1255,8 @@ impl ComputeRow for FillReciprocal {
         self.runs.set(self.runs.get() + 1);
         let mut out = IndexMap::new();
         out.insert(
-            id("clarity"),
-            CellOutput::Value(number(1.0 / reads(row, "wort"))),
+            id("rigidity"),
+            CellOutput::Value(number(1.0 / reads(row, "tension"))),
         );
         Ok(out)
     }
@@ -1261,31 +1265,31 @@ impl ComputeRow for FillReciprocal {
 /// A model's declaration: the columns and the formula, and no rows.
 fn fill_declared(formula: &Rc<FillReciprocal>) -> Table {
     Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: formula.clone(),
         }],
     )
     .unwrap()
 }
 
-/// What a file holds: rows with a clarity, or without one.
+/// What a file holds: rows with a rigidity, or without one.
 fn fill_file(rows: &[(f64, f64, Option<f64>)]) -> Table {
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         Vec::new(),
     )
     .unwrap();
-    for (temperature, wort, clarity) in rows {
-        let mut row = cells(&[("temperature", *temperature), ("wort", *wort)]);
-        if let Some(clarity) = clarity {
-            row.push((id("clarity"), Property::stored(number(*clarity))));
+    for (temperature, tension, rigidity) in rows {
+        let mut row = cells(&[("temperature", *temperature), ("tension", *tension)]);
+        if let Some(rigidity) = rigidity {
+            row.push((id("rigidity"), Property::stored(number(*rigidity))));
         }
         table.add_row(row).unwrap();
     }
@@ -1296,26 +1300,26 @@ fn fill_file(rows: &[(f64, f64, Option<f64>)]) -> Table {
 fn filling_keeps_derivations_and_file_rows() {
     let formula = Rc::new(FillReciprocal::default());
     let mut table = fill_declared(&formula);
-    let scope = Cask::default();
+    let scope = Slab::default();
     table
         .fill_from(
             fill_file(&[(65.0, 12.5, Some(0.08)), (200.0, 15.0, Some(0.0667))]),
             &scope,
         )
         .unwrap();
-    assert!(table.is_derived(&id("clarity")));
+    assert!(table.is_derived(&id("rigidity")));
     assert!(table.is_resolved());
     table.resolve(&scope).unwrap();
     assert_eq!(formula.runs.get(), 0);
-    assert_eq!(value_at(&table, &by_index(&[65.0]), "clarity"), 0.08);
-    assert_eq!(value_at(&table, &by_index(&[200.0]), "wort"), 15.0);
+    assert_eq!(value_at(&table, &by_index(&[65.0]), "rigidity"), 0.08);
+    assert_eq!(value_at(&table, &by_index(&[200.0]), "tension"), 15.0);
 }
 
 #[test]
 fn filling_runs_only_what_the_file_lacks() {
     let formula = Rc::new(FillReciprocal::default());
     let mut table = fill_declared(&formula);
-    let scope = Cask::default();
+    let scope = Slab::default();
     table
         .fill_from(
             fill_file(&[(65.0, 12.5, Some(0.08)), (200.0, 15.0, None)]),
@@ -1324,15 +1328,18 @@ fn filling_runs_only_what_the_file_lacks() {
         .unwrap();
     table.resolve(&scope).unwrap();
     assert_eq!(formula.runs.get(), 1);
-    assert_eq!(value_at(&table, &by_index(&[65.0]), "clarity"), 0.08);
-    assert_eq!(value_at(&table, &by_index(&[200.0]), "clarity"), 1.0 / 15.0);
+    assert_eq!(value_at(&table, &by_index(&[65.0]), "rigidity"), 0.08);
+    assert_eq!(
+        value_at(&table, &by_index(&[200.0]), "rigidity"),
+        1.0 / 15.0
+    );
 }
 
 #[test]
 fn a_filled_derived_cell_goes_stale_when_its_input_changes() {
     let formula = Rc::new(FillReciprocal::default());
     let mut table = fill_declared(&formula);
-    let scope = Cask::default();
+    let scope = Slab::default();
     table
         .fill_from(
             fill_file(&[(65.0, 12.5, Some(0.08)), (200.0, 15.0, Some(0.0667))]),
@@ -1340,52 +1347,55 @@ fn a_filled_derived_cell_goes_stale_when_its_input_changes() {
         )
         .unwrap();
     table
-        .update_row(&by_index(&[200.0]), cells(&[("wort", 30.0)]))
+        .update_row(&by_index(&[200.0]), cells(&[("tension", 30.0)]))
         .unwrap();
     table.resolve(&scope).unwrap();
     assert_eq!(formula.runs.get(), 1);
-    assert_eq!(value_at(&table, &by_index(&[200.0]), "clarity"), 1.0 / 30.0);
-    assert_eq!(value_at(&table, &by_index(&[65.0]), "clarity"), 0.08);
+    assert_eq!(
+        value_at(&table, &by_index(&[200.0]), "rigidity"),
+        1.0 / 30.0
+    );
+    assert_eq!(value_at(&table, &by_index(&[65.0]), "rigidity"), 0.08);
 }
 
 #[test]
 fn filling_keeps_declared_rows_and_columns_the_file_lacks() {
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         Vec::new(),
     )
     .unwrap();
     table
-        .add_row(cells(&[("temperature", 300.0), ("clarity", 0.025)]))
+        .add_row(cells(&[("temperature", 300.0), ("rigidity", 0.025)]))
         .unwrap();
     let mut file = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "remark"]),
+        columns(&["temperature", "tension", "remark"]),
         Vec::new(),
     )
     .unwrap();
     file.add_row(cells(&[
         ("temperature", 65.0),
-        ("wort", 12.5),
+        ("tension", 12.5),
         ("remark", 1.0),
     ]))
     .unwrap();
-    table.fill_from(file, &Cask::default()).unwrap();
+    table.fill_from(file, &Slab::default()).unwrap();
 
     let names: Vec<&str> = table
         .column_names()
         .into_iter()
         .map(Identifier::as_str)
         .collect();
-    assert_eq!(names, ["temperature", "wort", "clarity", "remark"]);
+    assert_eq!(names, ["temperature", "tension", "rigidity", "remark"]);
     assert_eq!(
         table.index_tuples(),
         vec![vec![&number(65.0)], vec![&number(300.0)]]
     );
-    assert_eq!(value_at(&table, &by_index(&[300.0]), "clarity"), 0.025);
+    assert_eq!(value_at(&table, &by_index(&[300.0]), "rigidity"), 0.025);
     assert_eq!(value_at(&table, &by_index(&[65.0]), "remark"), 1.0);
     assert!(
         table
@@ -1402,21 +1412,21 @@ fn filling_refuses_a_different_index() {
     let formula = Rc::new(FillReciprocal::default());
     let mut table = fill_declared(&formula);
     table
-        .add_row(cells(&[("temperature", 65.0), ("wort", 12.5)]))
+        .add_row(cells(&[("temperature", 65.0), ("tension", 12.5)]))
         .unwrap();
     let file = Table::new(
-        id("mashing"),
-        vec![id("wort")],
-        columns(&["temperature", "wort"]),
+        id("preheating"),
+        vec![id("tension")],
+        columns(&["temperature", "tension"]),
         Vec::new(),
     )
     .unwrap();
-    let refused = table.fill_from(file, &Cask::default());
+    let refused = table.fill_from(file, &Slab::default());
     assert_eq!(
         refused,
         Err(TableError::IndexMismatch {
             declared: vec![id("temperature")],
-            file: vec![id("wort")],
+            file: vec![id("tension")],
         })
     );
     assert_eq!(table.index_tuples().len(), 1);
@@ -1442,12 +1452,12 @@ fn renaming_requalifies_its_column_inputs() {
     let mut table = Table::new(
         id("old"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "halved"]),
+        columns(&["temperature", "tension", "halved"]),
         vec![Derivation::Column {
             outputs: vec![id("halved")],
             inputs: vec![InputName::Column {
                 table: id("old"),
-                column: id("wort"),
+                column: id("tension"),
             }],
             formula: Rc::new(FillNothing),
         }],
@@ -1459,7 +1469,7 @@ fn renaming_requalifies_its_column_inputs() {
         table.inputs_of(&id("halved")).unwrap(),
         &[InputName::Column {
             table: id("new"),
-            column: id("wort"),
+            column: id("tension"),
         }]
     );
     assert_eq!(
@@ -1476,12 +1486,12 @@ fn an_invalidated_row_runs_again() {
     let formula = Rc::new(FillReciprocal::default());
     let mut table = fill_declared(&formula);
     table
-        .add_row(cells(&[("temperature", 65.0), ("wort", 12.5)]))
+        .add_row(cells(&[("temperature", 65.0), ("tension", 12.5)]))
         .unwrap();
     table
-        .add_row(cells(&[("temperature", 200.0), ("wort", 15.0)]))
+        .add_row(cells(&[("temperature", 200.0), ("tension", 15.0)]))
         .unwrap();
-    let scope = Cask::default();
+    let scope = Slab::default();
     table.resolve(&scope).unwrap();
     assert_eq!(formula.runs.get(), 2);
 
@@ -1496,7 +1506,7 @@ fn an_invalidated_row_runs_again() {
 
 // ------------------------------------------------------------- settling
 
-/// A cask that tells its epoch and counts the counters read from it.
+/// A slab that tells its epoch and counts the counters read from it.
 #[derive(Default)]
 struct Watched {
     epoch: Cell<u64>,
@@ -1530,19 +1540,19 @@ impl Scope for Watched {
 fn a_settled_table_resolves_without_reading_a_counter() {
     let formula = Rc::new(FillReciprocal::default());
     let mut table = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort")), InputName::Named(id("foam"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension")), InputName::Named(id("wear"))],
             formula: formula.clone(),
         }],
     )
     .unwrap();
-    for (temperature, wort) in [(65.0, 12.5), (200.0, 15.0)] {
+    for (temperature, tension) in [(65.0, 12.5), (200.0, 15.0)] {
         table
-            .add_row(cells(&[("temperature", temperature), ("wort", wort)]))
+            .add_row(cells(&[("temperature", temperature), ("tension", tension)]))
             .unwrap();
     }
     let scope = Watched::default();
@@ -1561,7 +1571,7 @@ fn a_settled_table_resolves_without_reading_a_counter() {
     assert_eq!(formula.runs.get(), 2);
 
     table
-        .update_row(&by_index(&[65.0]), cells(&[("wort", 25.0)]))
+        .update_row(&by_index(&[65.0]), cells(&[("tension", 25.0)]))
         .unwrap();
     assert!(!table.is_settled(&scope));
     table.resolve(&scope).unwrap();
@@ -1571,12 +1581,12 @@ fn a_settled_table_resolves_without_reading_a_counter() {
 #[test]
 fn a_column_derivation_refuses_a_row_input() {
     let column_span = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "normalized"]),
+        columns(&["temperature", "tension", "normalized"]),
         vec![Derivation::Column {
             outputs: vec![id("normalized")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: Normalize::new(false),
         }],
     );
@@ -1590,14 +1600,14 @@ fn a_column_derivation_refuses_a_row_input() {
 fn a_row_derivation_refuses_a_whole_column_of_its_own_table() {
     // A cell resting on its own table's whole column is a Column derivation.
     let row_span = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
+            outputs: vec![id("rigidity")],
             inputs: vec![InputName::Column {
-                table: id("mashing"),
-                column: id("wort"),
+                table: id("preheating"),
+                column: id("tension"),
             }],
             formula: Reciprocal::new(),
         }],
@@ -1612,20 +1622,20 @@ fn a_derivation_may_read_a_column_of_another_table() {
         column: id("offset"),
     };
     let row_span = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "clarity"]),
+        columns(&["temperature", "tension", "rigidity"]),
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort")), foreign.clone()],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension")), foreign.clone()],
             formula: Reciprocal::new(),
         }],
     );
     assert!(row_span.is_ok(), "{row_span:?}");
     let column_span = Table::new(
-        id("mashing"),
+        id("preheating"),
         vec![id("temperature")],
-        columns(&["temperature", "wort", "normalized"]),
+        columns(&["temperature", "tension", "normalized"]),
         vec![Derivation::Column {
             outputs: vec![id("normalized")],
             inputs: vec![foreign],
@@ -1641,50 +1651,50 @@ fn a_derived_cell_supplied_with_its_row_is_held() {
     // override, as one written by hand into an existing row is.
     let mut table = derived(
         vec![Derivation::Row {
-            outputs: vec![id("clarity")],
-            inputs: vec![InputName::Cell(id("wort"))],
+            outputs: vec![id("rigidity")],
+            inputs: vec![InputName::Cell(id("tension"))],
             formula: Reciprocal::new(),
         }],
-        &["temperature", "wort", "clarity"],
+        &["temperature", "tension", "rigidity"],
     );
     table
         .add_row(cells(&[
             ("temperature", 300.0),
-            ("wort", 4.0),
-            ("clarity", 99.0),
+            ("tension", 4.0),
+            ("rigidity", 99.0),
         ]))
         .unwrap();
     table
-        .add_row(cells(&[("temperature", 400.0), ("wort", 8.0)]))
+        .add_row(cells(&[("temperature", 400.0), ("tension", 8.0)]))
         .unwrap();
     let held = by_index(&[300.0]);
     let free = by_index(&[400.0]);
-    assert!(table.is_held(&held, &id("clarity")).unwrap());
-    assert!(!table.is_held(&free, &id("clarity")).unwrap());
-    table.resolve(&Cask::default()).unwrap();
-    assert_eq!(value_at(&table, &held, "clarity"), 99.0);
-    assert_eq!(value_at(&table, &free, "clarity"), 0.125);
-    table.release_cells(&id("clarity"), Some(&held)).unwrap();
+    assert!(table.is_held(&held, &id("rigidity")).unwrap());
+    assert!(!table.is_held(&free, &id("rigidity")).unwrap());
+    table.resolve(&Slab::default()).unwrap();
+    assert_eq!(value_at(&table, &held, "rigidity"), 99.0);
+    assert_eq!(value_at(&table, &free, "rigidity"), 0.125);
+    table.release_cells(&id("rigidity"), Some(&held)).unwrap();
     table.invalidate_row(&held).unwrap();
-    table.resolve(&Cask::default()).unwrap();
-    assert_eq!(value_at(&table, &held, "clarity"), 0.25);
+    table.resolve(&Slab::default()).unwrap();
+    assert_eq!(value_at(&table, &held, "rigidity"), 0.25);
 }
 
 #[test]
 fn a_text_index_suggests_its_spelling() {
-    // `tasting.score[lea]` was answered *'Ivo', 'Lea', 'Mia'   matched*: no
+    // `inspection.score[lea]` was answered *'Ivo', 'Lea', 'Mia'   matched*: no
     // nearest for a text, and a miss said matched.
     let mut table = Table::new(
-        id("tasting"),
-        vec![id("taster")],
-        columns(&["taster", "score"]),
+        id("inspection"),
+        vec![id("inspector")],
+        columns(&["inspector", "score"]),
         Vec::new(),
     )
     .unwrap();
-    for taster in ["Ivo", "Lea", "Mia"] {
+    for inspector in ["Ivo", "Lea", "Mia"] {
         table
             .add_row(vec![
-                (id("taster"), Property::stored(Value::text(taster))),
+                (id("inspector"), Property::stored(Value::text(inspector))),
                 (id("score"), Property::stored(number(40.0))),
             ])
             .unwrap();
@@ -1713,9 +1723,9 @@ fn a_text_index_suggests_its_spelling() {
 #[test]
 fn a_duplicate_row_is_named_counted_from_one() {
     // *at #7* read as the address `[#7]`, which is the eighth row.
-    let mut table = boil();
+    let mut table = soak();
     let said = table
-        .add_row(cells(&[("temperature", 65.0), ("wort", 1.0)]))
+        .add_row(cells(&[("temperature", 65.0), ("tension", 1.0)]))
         .unwrap_err()
         .to_string();
     assert!(
@@ -1727,13 +1737,13 @@ fn a_duplicate_row_is_named_counted_from_one() {
 
 // ---------------------------------------------------------- statistics
 
-/// A mouthfeel table whose `sweetness` column declares which statistic of a cell's
+/// A toughness table whose `stiffness` column declares which statistic of a cell's
 /// readings stands for each channel.
-fn mouthfeel(value: Option<Location>, uncertainty: Option<Convention>) -> Table {
-    let mut declared = columns(&["temperature", "sweetness"]);
-    declared[&id("sweetness")].statistics = DeclaredStatistics { value, uncertainty };
+fn toughness(value: Option<Location>, uncertainty: Option<Convention>) -> Table {
+    let mut declared = columns(&["temperature", "stiffness"]);
+    declared[&id("stiffness")].statistics = DeclaredStatistics { value, uncertainty };
     Table::new(
-        id("mouthfeel"),
+        id("toughness"),
         vec![id("temperature")],
         declared,
         Vec::new(),
@@ -1747,17 +1757,17 @@ fn measured(values: &[f64]) -> Property {
 
 #[test]
 fn a_column_gives_its_statistics_to_cells_with_readings() {
-    let mut table = mouthfeel(Some(Location::Mean), Some(Convention::StandardError));
+    let mut table = toughness(Some(Location::Mean), Some(Convention::StandardError));
     table
         .add_row(vec![
             (id("temperature"), Property::stored(number(40.0))),
-            (id("sweetness"), measured(&[1.0, 2.0, 3.0])),
+            (id("stiffness"), measured(&[1.0, 2.0, 3.0])),
         ])
         .unwrap();
     let at = by_index(&[40.0]);
-    assert_eq!(value_at(&table, &at, "sweetness"), 2.0);
+    assert_eq!(value_at(&table, &at, "stiffness"), 2.0);
     let spread = table
-        .at(&at, &id("sweetness"))
+        .at(&at, &id("stiffness"))
         .unwrap()
         .uncertainty()
         .unwrap();
@@ -1765,46 +1775,46 @@ fn a_column_gives_its_statistics_to_cells_with_readings() {
 
     // New readings, through an update, read theirs.
     table
-        .update_row(&at, vec![(id("sweetness"), measured(&[4.0, 6.0]))])
+        .update_row(&at, vec![(id("stiffness"), measured(&[4.0, 6.0]))])
         .unwrap();
-    assert_eq!(value_at(&table, &at, "sweetness"), 5.0);
+    assert_eq!(value_at(&table, &at, "stiffness"), 5.0);
 
     // A value written beside readings outranks the statistic.
     let mut written = measured(&[4.0, 6.0]);
     written.set_written_value(Some(number(4.5)));
     table
-        .update_row(&at, vec![(id("sweetness"), written)])
+        .update_row(&at, vec![(id("stiffness"), written)])
         .unwrap();
-    assert_eq!(value_at(&table, &at, "sweetness"), 4.5);
+    assert_eq!(value_at(&table, &at, "stiffness"), 4.5);
 
     // A column declaring none leaves readings with no value.
-    let mut bare = mouthfeel(None, None);
+    let mut bare = toughness(None, None);
     bare.add_row(vec![
         (id("temperature"), Property::stored(number(40.0))),
-        (id("sweetness"), measured(&[1.0, 2.0, 3.0])),
+        (id("stiffness"), measured(&[1.0, 2.0, 3.0])),
     ])
     .unwrap();
     assert_eq!(
-        bare.at(&at, &id("sweetness")).unwrap().value().unwrap(),
+        bare.at(&at, &id("stiffness")).unwrap().value().unwrap(),
         Value::Absent
     );
 }
 
 #[test]
 fn filling_keeps_the_declared_column_statistics() {
-    let mut declared = mouthfeel(Some(Location::Median), None);
-    let mut file = mouthfeel(Some(Location::Mean), Some(Convention::SampleStdev));
+    let mut declared = toughness(Some(Location::Median), None);
+    let mut file = toughness(Some(Location::Mean), Some(Convention::SampleStdev));
     file.add_row(vec![
         (id("temperature"), Property::stored(number(40.0))),
-        (id("sweetness"), measured(&[1.0, 2.0, 9.0])),
+        (id("stiffness"), measured(&[1.0, 2.0, 9.0])),
     ])
     .unwrap();
-    declared.fill_from(file, &Cask::default()).unwrap();
+    declared.fill_from(file, &Slab::default()).unwrap();
     let at = by_index(&[40.0]);
     // The declaration's median, not the file's mean.
-    assert_eq!(value_at(&declared, &at, "sweetness"), 2.0);
+    assert_eq!(value_at(&declared, &at, "stiffness"), 2.0);
     // The file's spread fills the channel the declaration left.
-    let column = declared.column(&id("sweetness")).unwrap();
+    let column = declared.column(&id("stiffness")).unwrap();
     assert_eq!(
         column.statistics(),
         DeclaredStatistics {
@@ -1814,10 +1824,61 @@ fn filling_keeps_the_declared_column_statistics() {
     );
     assert!(
         declared
-            .at(&at, &id("sweetness"))
+            .at(&at, &id("stiffness"))
             .unwrap()
             .uncertainty()
             .unwrap()
             .is_some()
     );
+}
+
+#[test]
+fn a_row_derivation_waits_for_a_cell_of_its_row_nobody_entered() {
+    // Run on a row whose `tension` was never entered, the formula raised on the
+    // absence and the cell said *failed*; a property waits for an input, and
+    // so does a row's cell.
+    let formula = Reciprocal::new();
+    let mut table = derived(
+        vec![formula.derivation()],
+        &["temperature", "tension", "rigidity"],
+    );
+    table.add_row(cells(&[("temperature", 90.0)])).unwrap();
+    table.resolve(&Slab::default()).unwrap();
+    assert_eq!(
+        formula.calls.get(),
+        3,
+        "the three rows with tension, not the fourth"
+    );
+    let waiting = table.at(&by_index(&[90.0]), &id("rigidity")).unwrap();
+    assert!(waiting.value().unwrap().is_absent());
+    assert!(waiting.records().failure.is_none());
+}
+
+#[test]
+fn text_is_refused_in_a_measured_column_where_it_is_written() {
+    let mut measured = ColumnMeta::default();
+    measured.presentation.unit = Some("°P".to_string());
+    let declared: IndexMap<Identifier, ColumnMeta> = [
+        (id("day"), ColumnMeta::default()),
+        (id("hardness"), measured),
+        (id("note"), ColumnMeta::default()),
+    ]
+    .into_iter()
+    .collect();
+    let table = Table::new(id("trial"), vec![id("day")], declared, Vec::new()).unwrap();
+    let text = vec![
+        (id("day"), Property::stored(Value::integer(1))),
+        (id("hardness"), Property::stored(Value::text("high"))),
+    ];
+    let refused = table.refuses_what_is_no_number(&text).unwrap_err();
+    assert!(
+        refused.to_string().contains("'hardness' is measured in °P"),
+        "{refused}"
+    );
+    // A column without a unit takes text; a number is taken anywhere.
+    let fine = vec![
+        (id("hardness"), Property::stored(number(12.0))),
+        (id("note"), Property::stored(Value::text("worn"))),
+    ];
+    assert!(table.refuses_what_is_no_number(&fine).is_ok());
 }

@@ -85,16 +85,141 @@ pub(super) fn zsh_quote(value: &str) -> String {
 
 pub(super) fn complete_environment() {
     let zsh = SamplekitZsh;
-    let completers: [&dyn EnvCompleter; 5] = [&Bash, &Elvish, &Fish, &Powershell, &zsh];
-    clap_complete::CompleteEnv::with_factory(Cli::command)
-        .shells(Shells(&completers))
-        .complete();
+    let powershell = SamplekitPowershell;
+    let completers: [&dyn EnvCompleter; 5] = [&Bash, &Elvish, &Fish, &powershell, &zsh];
+    let environment =
+        clap_complete::CompleteEnv::with_factory(Cli::command).shells(Shells(&completers));
+    // PowerShell's empty last word, which it cannot pass as an argument, put
+    // back where the bridge says it was.
+    if std::env::var_os("COMPLETE").is_some() && std::env::var_os(POWERSHELL_EMPTY_WORD).is_some() {
+        let mut arguments: Vec<std::ffi::OsString> = std::env::args_os().collect();
+        arguments.push(std::ffi::OsString::new());
+        let (arguments, index) = path_first_completion_of(arguments.clone()).unwrap_or_else(|| {
+            let index = arguments.len().saturating_sub(1);
+            (arguments, index)
+        });
+        unsafe { std::env::set_var("_CLAP_COMPLETE_INDEX", index.to_string()) };
+        let current = std::env::current_dir().ok();
+        if environment
+            .try_complete(arguments, current.as_deref())
+            .unwrap_or(false)
+        {
+            std::process::exit(0);
+        }
+        return;
+    }
+    // The path first, `samplekit pieces status -c <Tab>`: completed as the
+    // command takes it, `status pieces -c <Tab>`. Typed first to be completed
+    // from, it left the command's arguments uncompleted.
+    if let Some((arguments, index)) = path_first_completion() {
+        // Read by the shell's completer as the word being completed; set
+        // before anything else runs, in a process that is only completing.
+        unsafe { std::env::set_var("_CLAP_COMPLETE_INDEX", index.to_string()) };
+        let current = std::env::current_dir().ok();
+        if environment
+            .try_complete(arguments, current.as_deref())
+            .unwrap_or(false)
+        {
+            std::process::exit(0);
+        }
+        return;
+    }
+    environment.complete();
+}
+
+/// The completion's command line with its path moved after the command, and
+/// the index of the word being completed there: `None` where the path does
+/// not come first.
+fn path_first_completion() -> Option<(Vec<std::ffi::OsString>, usize)> {
+    std::env::var_os("COMPLETE")?;
+    path_first_completion_of(std::env::args_os().collect())
+}
+
+/// [`path_first_completion`] of `arguments`: the word completed is the one
+/// `_CLAP_COMPLETE_INDEX` names, or, where the shell names none, as
+/// PowerShell's, the last.
+fn path_first_completion_of(
+    arguments: Vec<std::ffi::OsString>,
+) -> Option<(Vec<std::ffi::OsString>, usize)> {
+    let separator = arguments.iter().position(|word| word == "--")?;
+    let index: usize = match std::env::var("_CLAP_COMPLETE_INDEX") {
+        Ok(index) => index.parse().ok()?,
+        Err(_) => arguments.len().checked_sub(separator + 2)?,
+    };
+    let words: Vec<String> = arguments[separator + 1..]
+        .iter()
+        .map(|word| word.to_string_lossy().into_owned())
+        .collect();
+    let (program, rest) = words.split_first()?;
+    let path = rest.first()?;
+    if path.starts_with('-') || is_command(path) || !Path::new(path).exists() {
+        return None;
+    }
+    // The paths written before the command: every word up to the first
+    // command, the one being typed left out.
+    let paths = rest
+        .iter()
+        .take(index.saturating_sub(1))
+        .take_while(|word| !word.starts_with('-') && !is_command(word))
+        .count();
+    let head: Vec<std::ffi::OsString> = arguments[..=separator].to_vec();
+    let rebuilt = |moved: Vec<String>| {
+        head.iter()
+            .cloned()
+            .chain(std::iter::once(program.into()))
+            .chain(moved.into_iter().map(Into::into))
+            .collect::<Vec<std::ffi::OsString>>()
+    };
+    // The command being typed after the paths: offered as the first word,
+    // the paths behind it.
+    if index == paths + 1 {
+        let current = rest.get(paths).cloned().unwrap_or_default();
+        let mut moved = vec![current];
+        moved.extend(rest.iter().take(paths).cloned());
+        moved.extend(rest.iter().skip(paths + 1).cloned());
+        return Some((rebuilt(moved), 1));
+    }
+    let (moved, at, count) = path_first(rest)?;
+    // The word being completed, among those after the command: before the
+    // paths' new place, as many words further left as there were paths;
+    // after them, where it was.
+    let index = match index.checked_sub(count + 2) {
+        Some(after) if after < at => index - count,
+        _ => index,
+    };
+    Some((rebuilt(moved), index))
 }
 
 pub(super) fn complete_list_kind_or_target(current: &OsStr) -> Vec<CompletionCandidate> {
     let mut candidates = completion_candidates(KINDS, current);
-    candidates.extend(PathCompleter::any().complete(current));
+    candidates.extend(complete_targets(current));
     candidates
+}
+
+/// After `explain`: a target, or the field explained.
+pub(super) fn complete_targets_or_fields(current: &OsStr) -> Vec<CompletionCandidate> {
+    let mut candidates = complete_fields(current);
+    candidates.extend(complete_targets(current));
+    candidates
+}
+
+/// After `open`: a target, or a pattern naming the sample's files.
+pub(super) fn complete_targets_or_sample_files(current: &OsStr) -> Vec<CompletionCandidate> {
+    let mut candidates = complete_sample_files(current);
+    candidates.extend(complete_targets(current));
+    candidates
+}
+
+/// After `set`: a target, or a change.
+pub(super) fn complete_targets_or_values(current: &OsStr) -> Vec<CompletionCandidate> {
+    let mut candidates = complete_values(current);
+    candidates.extend(complete_targets(current));
+    candidates
+}
+
+/// A target: a path, before the command or after it.
+pub(super) fn complete_targets(current: &OsStr) -> Vec<CompletionCandidate> {
+    PathCompleter::any().complete(current)
 }
 
 pub(super) fn completion_config() -> Option<ProjectConfig> {
@@ -229,6 +354,41 @@ pub(super) fn complete_figures(current: &OsStr) -> Vec<CompletionCandidate> {
     completion_candidates(names, current)
 }
 
+pub(super) fn complete_scripts(current: &OsStr) -> Vec<CompletionCandidate> {
+    let Some(config) = completion_config() else {
+        return Vec::new();
+    };
+    completion_candidates(
+        samplekit::config::model_runtime::model_scripts(&config),
+        current,
+    )
+}
+
+/// `--set`'s `NAME=`: the options of the scripts the model's description
+/// declares, each once.
+pub(super) fn complete_script_options(current: &OsStr) -> Vec<CompletionCandidate> {
+    let Some(config) = completion_config() else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = samplekit::config::model_runtime::current_description(&config)
+        .map(|description| {
+            description
+                .scripts
+                .iter()
+                .flat_map(|script| {
+                    script
+                        .options
+                        .iter()
+                        .map(|option| format!("{}=", option.name))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    names.dedup();
+    completion_candidates(names, current)
+}
+
 pub(super) fn complete_exports(current: &OsStr) -> Vec<CompletionCandidate> {
     completion_candidates(
         completion_config()
@@ -245,8 +405,8 @@ pub(super) fn complete_exports(current: &OsStr) -> Vec<CompletionCandidate> {
 }
 
 /// A half-typed filter expression. One subject answers for one sample; the
-/// collection's answer is their union, which is how `beer ==` comes to
-/// offer the beers the collection holds rather than one sample's.
+/// collection's answer is their union, which is how `alloy ==` comes to
+/// offer the alloys the collection holds rather than one sample's.
 pub(super) fn complete_filters(current: &OsStr) -> Vec<CompletionCandidate> {
     let Some(written) = current.to_str() else {
         return Vec::new();
@@ -363,6 +523,39 @@ pub(super) fn complete_values(current: &OsStr) -> Vec<CompletionCandidate> {
     let Some(written) = current.to_str() else {
         return Vec::new();
     };
+    // `reference=[[st`: a link being typed names a sample, by its file.
+    if written.contains('=')
+        && let Some(open) = written.rfind("[[")
+        && !written[open..].contains("]]")
+    {
+        let (before, typed) = written.split_at(open + 2);
+        let Ok(collection) = list::from_directory(&completion_root()) else {
+            return Vec::new();
+        };
+        let mut stems: Vec<String> = collection
+            .iter()
+            .filter_map(|entry| {
+                let stem = entry
+                    .path
+                    .as_ref()?
+                    .file_stem()?
+                    .to_string_lossy()
+                    .into_owned();
+                Some(
+                    stem.strip_suffix(".sample")
+                        .map(str::to_string)
+                        .unwrap_or(stem),
+                )
+            })
+            .filter(|stem| stem.starts_with(typed))
+            .collect();
+        stems.sort();
+        stems.dedup();
+        return stems
+            .into_iter()
+            .map(|stem| CompletionCandidate::new(format!("{before}{stem}]]")))
+            .collect();
+    }
     let start = written.rfind(',').map_or(0, |at| at + 1);
     let (prefix, segment) = written.split_at(start);
     let Ok(collection) = list::from_directory(&completion_root()) else {
@@ -476,11 +669,24 @@ pub(super) fn completion_step() -> String {
         "fish" => ("fish", "~/.config/fish/config.fish"),
         "elvish" => ("elvish", "~/.elvish/rc.elv"),
         "zsh" => ("zsh", "~/.zshrc"),
+        // PowerShell sets no SHELL, and its module path in every session.
+        "" if std::env::var_os("PSModulePath").is_some() => {
+            return "add to your PowerShell profile, $PROFILE:  samplekit completions powershell \
+                    | Out-String | Invoke-Expression"
+                .to_string();
+        }
         _ => {
             return "samplekit completions <shell> prints the bridge to source".to_string();
         }
     };
-    format!("add to {file}:  source <(samplekit completions {name})")
+    // Each shell sources the bridge in its own words: fish and elvish have no
+    // `<(…)`, and the line given them failed.
+    let line = match name {
+        "fish" => "samplekit completions fish | source".to_string(),
+        "elvish" => "eval (samplekit completions elvish | slurp)".to_string(),
+        name => format!("source <(samplekit completions {name})"),
+    };
+    format!("add to {file}:  {line}")
 }
 
 /// A sample's own files, by name: what `open`'s pattern names. Read from the

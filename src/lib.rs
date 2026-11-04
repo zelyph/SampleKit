@@ -12,7 +12,7 @@
 //! | --- | --- |
 //! | 0 · foundations | [`core::value`], [`core::statistics`], [`core::uncertainty`], [`core::formatting`], [`core::identifier`] |
 //! | 1 · data model | [`core::property`], [`core::dependency_graph`], [`core::table`], [`core::sample`] |
-//! | 2 · portable format | [`format::schema`], [`format::canonicalization`], [`format::fingerprint`], [`format::document`], [`format::migration`] |
+//! | 2 · portable format | [`format::schema`], [`format::canonicalization`], [`format::fingerprint`], [`format::document`] |
 //! | 3 · project | [`config::project_config`], [`config::discovery`], [`config::profiles`], [`config::version_control`], [`config::model_runtime`] |
 //! | 4 · query | [`query::field_addressing`], [`query::filter_language`], [`query::ordering`] |
 //! | 5 · collection | [`collection::sample_list`], [`collection::named_queries`], [`collection::validation`], [`collection::tagging`] |

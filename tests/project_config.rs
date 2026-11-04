@@ -62,36 +62,36 @@ exclude = ["draft-*"]
 plain = "g/L"
 math = "\\mathrm{g\\,L^{-1}}"
 
-[property.brix]
+[property.porosity]
 symbol = "Bx"
-symbol_math = "\\brix"
+symbol_math = "\\porosity"
 precision = ".4f"
 unit = "g/L"
 
-[property."fermentation.rate"]
+[property."ageing.rate"]
 symbol_math = "r_{\\mathrm{warm}}"
 
-[property."fermentation_cold.rate"]
+[property."ageing_cold.rate"]
 symbol_math = "r_{\\mathrm{cold}}"
 
 [style.math]
-separator = "\\pm"
+property = '{value} \pm {uncertainty} {unit}'
 
 [query.approved]
 filter = 'status == "approved"'
 directory = "transport/"
 
-[profile.platos]
-sort = ["beer", "-plato"]
+[profile.ductilities]
+sort = ["alloy", "-ductility"]
 columns = [
-  {field = "beer"},
-  {field = "plato", label = "Plato", precision = ".4f"},
+  {field = "alloy"},
+  {field = "ductility", label = "Ductility", precision = ".4f"},
 ]
 
-[export.approved_plato]
-profile = "platos"
+[export.approved_ductility]
+profile = "ductilities"
 format = "csv"
-output = "generated/approved-plato.tsv"
+output = "generated/approved-ductility.tsv"
 "#;
 
 // ------------------------------------------------------------------ lookup
@@ -101,8 +101,8 @@ fn finds_nearest_upward() {
     // A nested directory uses the closest configuration.
     let scratch = Scratch::new("nearest");
     scratch.config("", "schema_version = 1\n");
-    let inner = scratch.config("vintage", "schema_version = 1\n");
-    let deep = scratch.dir("vintage/runs");
+    let inner = scratch.config("casting", "schema_version = 1\n");
+    let deep = scratch.dir("casting/runs");
 
     assert_eq!(config::find(&deep).as_deref(), Some(inner.as_path()));
     let outer_only = scratch.dir("other");
@@ -122,13 +122,13 @@ fn does_not_merge_configurations() {
     let scratch = Scratch::new("no-merge");
     scratch.config(
         "",
-        "schema_version = 1\n[collection]\nrecursive = true\ninclude = [\"*.sample.md\"]\n",
+        "schema_version = 1\n[collection]\nrecursive = false\ninclude = [\"*.sample.md\"]\n",
     );
-    scratch.config("vintage", "schema_version = 1\n");
-    let inner = config::load_for(&scratch.dir("vintage")).unwrap().unwrap();
-    // The parent said recursive; the nearest one says nothing, so the default
-    // applies rather than the parent's value.
-    assert!(!inner.collection().recursive);
+    scratch.config("casting", "schema_version = 1\n");
+    let inner = config::load_for(&scratch.dir("casting")).unwrap().unwrap();
+    // The parent said not recursive; the nearest one says nothing, so the
+    // default applies rather than the parent's value.
+    assert!(inner.collection().recursive);
     assert_eq!(inner.collection().include, ["*.md", "*.MD", "*.markdown"]);
 }
 
@@ -227,7 +227,7 @@ fn all_profiles_are_validated_at_load() {
     let path = scratch.config(
         "",
         "schema_version = 1\n\
-         [profile.good]\ncolumns = [{field = \"malt\"}]\n\
+         [profile.good]\ncolumns = [{field = \"diameter\"}]\n\
          [export.broken]\nprofile = \"good\"\nformat = \"xml\"\noutput = \"out\"\n",
     );
     let error = config::load(&path).unwrap_err();
@@ -256,7 +256,7 @@ fn unknown_profile_suggests_nearest_name() {
     let scratch = Scratch::new("suggest");
     let path = scratch.config("", FULL);
     let loaded = config::load(&path).unwrap();
-    let error = loaded.profile("pltaos").unwrap_err();
+    let error = loaded.profile("ductilites").unwrap_err();
     let ConfigError::UnknownProfile {
         suggestion,
         available,
@@ -265,8 +265,8 @@ fn unknown_profile_suggests_nearest_name() {
     else {
         panic!("{error:?}");
     };
-    assert_eq!(suggestion.as_deref(), Some("platos"));
-    assert_eq!(available, &["platos"]);
+    assert_eq!(suggestion.as_deref(), Some("ductilities"));
+    assert_eq!(available, &["ductilities"]);
 }
 
 #[test]
@@ -276,13 +276,10 @@ fn duplicate_field_in_a_profile_is_refused() {
     let path = scratch.config(
         "",
         "schema_version = 1\n[profile.p]\n\
-         columns = [{field = \"malt\"}, {field = \"malt\", label = \"Again\"}]\n",
+         columns = [{field = \"diameter\"}, {field = \"diameter\", label = \"Again\"}]\n",
     );
-    let error = config::load(&path).unwrap_err();
-    let ConfigError::DuplicateField { profile, field } = &error else {
-        panic!("{error:?}");
-    };
-    assert_eq!((profile.as_str(), field.as_str()), ("p", "malt"));
+    let error = config::load(&path).unwrap_err().to_string();
+    assert!(error.contains("'p' declares 'diameter' twice"), "{error}");
 }
 
 #[test]
@@ -293,16 +290,15 @@ fn duplicate_header_is_refused() {
     let path = scratch.config(
         "",
         "schema_version = 1\n[profile.p]\n\
-         columns = [{field = \"malt\", header = \"m\"}, {field = \"plato\", header = \"m\"}]\n",
+         columns = [{field = \"diameter\", header = \"m\"}, {field = \"ductility\", header = \"m\"}]\n",
     );
-    let error = config::load(&path).unwrap_err();
-    let ConfigError::DuplicateHeader { header, fields, .. } = &error else {
-        panic!("{error:?}");
-    };
+    let error = config::load(&path).unwrap_err().to_string();
     // The emitted name, not the declared one: `m_value` is what would appear
     // twice in the exported file, and naming that is what a reader can act on.
-    assert_eq!(header, "m_value");
-    assert_eq!(fields, &["malt", "plato"]);
+    assert!(
+        error.contains("'p' would emit the header 'm_value' twice, from diameter and ductility"),
+        "{error}"
+    );
 }
 
 #[test]
@@ -312,12 +308,12 @@ fn empty_label_is_refused() {
     let scratch = Scratch::new("empty-label");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt\", label = \"\"}]\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter\", label = \"\"}]\n",
     );
-    let error = config::load(&path).unwrap_err();
+    let error = config::load(&path).unwrap_err().to_string();
     assert!(
-        matches!(error, ConfigError::EmptyHeader { .. }),
-        "{error:?}"
+        error.contains("'p' declares an empty name for 'diameter'"),
+        "{error}"
     );
 }
 
@@ -327,8 +323,8 @@ fn an_export_naming_an_undeclared_profile_is_refused() {
     let scratch = Scratch::new("export-profile");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[profile.platos]\ncolumns = [{field = \"malt\"}]\n\
-         [export.e]\nprofile = \"pltaos\"\nformat = \"csv\"\noutput = \"out.csv\"\n",
+        "schema_version = 1\n[profile.ductilities]\ncolumns = [{field = \"diameter\"}]\n\
+         [export.e]\nprofile = \"ductilites\"\nformat = \"csv\"\noutput = \"out.csv\"\n",
     );
     let error = config::load(&path).unwrap_err();
     let ConfigError::UnknownProfile {
@@ -339,8 +335,8 @@ fn an_export_naming_an_undeclared_profile_is_refused() {
     else {
         panic!("{error:?}");
     };
-    assert_eq!(suggestion.as_deref(), Some("platos"));
-    assert_eq!(available, &["platos"]);
+    assert_eq!(suggestion.as_deref(), Some("ductilities"));
+    assert_eq!(available, &["ductilities"]);
 }
 
 #[test]
@@ -349,17 +345,20 @@ fn an_export_may_name_a_query() {
     let scratch = Scratch::new("export-query");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[query.light]\nfilter = \"malt < 12\"\n\
-         [profile.platos]\ncolumns = [{field = \"malt\"}]\n\
-         [export.e]\nprofile = \"platos\"\nformat = \"csv\"\noutput = \"out.csv\"\nquery = \"light\"\n",
+        "schema_version = 1\n[query.light]\nfilter = \"diameter < 12\"\n\
+         [profile.ductilities]\ncolumns = [{field = \"diameter\"}]\n\
+         [export.e]\nprofile = \"ductilities\"\nformat = \"csv\"\noutput = \"out.csv\"\nquery = \"light\"\n",
     );
     let config = config::load(&path).unwrap();
-    assert_eq!(config.export("e").unwrap().query.as_deref(), Some("light"));
+    assert_eq!(
+        config.table_export("e").unwrap().query.as_deref(),
+        Some("light")
+    );
     let broken = scratch.config(
         "b",
-        "schema_version = 1\n[query.light]\nfilter = \"malt < 12\"\n\
-         [profile.platos]\ncolumns = [{field = \"malt\"}]\n\
-         [export.e]\nprofile = \"platos\"\nformat = \"csv\"\noutput = \"out.csv\"\nquery = \"lighr\"\n",
+        "schema_version = 1\n[query.light]\nfilter = \"diameter < 12\"\n\
+         [profile.ductilities]\ncolumns = [{field = \"diameter\"}]\n\
+         [export.e]\nprofile = \"ductilities\"\nformat = \"csv\"\noutput = \"out.csv\"\nquery = \"lighr\"\n",
     );
     let error = config::load(&broken).unwrap_err();
     let ConfigError::UnknownProfile {
@@ -372,37 +371,6 @@ fn an_export_may_name_a_query() {
     };
     assert_eq!(suggestion.as_deref(), Some("light"));
     assert_eq!(available, &["light"]);
-}
-
-#[test]
-fn a_query_base_is_refused_naming_directory() {
-    // The key was renamed to say what it is, and the old one is refused by name
-    // with the migration that rewrites it.
-    let scratch = Scratch::new("query-base");
-    let path = scratch.config(
-        "",
-        "schema_version = 1\n[query.approved]\nfilter = \"status == approved\"\nbase = \"transport/\"\n",
-    );
-    let error = config::load(&path).unwrap_err();
-    assert!(
-        matches!(&error, ConfigError::RenamedKey { section, old, new, .. } if section == "query.approved" && *old == "base" && *new == "directory"),
-        "{error:?}"
-    );
-    let message = error.to_string();
-    assert!(message.contains("'base' is now 'directory'"), "{message}");
-    assert!(
-        message.contains("no command rewrites a configuration"),
-        "{message}"
-    );
-    let renamed = scratch.config(
-        "r",
-        "schema_version = 1\n[query.approved]\nfilter = \"status == approved\"\ndirectory = \"transport/\"\n",
-    );
-    let config = config::load(&renamed).unwrap();
-    assert_eq!(
-        config.query("approved").unwrap().directory.as_deref(),
-        Some(std::path::Path::new("transport/"))
-    );
 }
 
 // ----------------------------------------------------------------- model
@@ -437,19 +405,22 @@ fn model_path_resolves_against_the_config_file() {
 
 #[test]
 fn a_property_is_declared_once_for_the_project() {
-    // `[property.brix]` supplies the symbol and precision no file repeats.
+    // `[property.porosity]` supplies the symbol and precision no file repeats.
     let scratch = Scratch::new("property");
     let path = scratch.config("", FULL);
     let loaded = config::load(&path).unwrap();
-    let brix = loaded.property("brix").unwrap();
-    assert_eq!(brix.symbol.as_deref(), Some("Bx"));
+    let porosity = loaded.property("porosity").unwrap();
+    assert_eq!(porosity.symbol.as_deref(), Some("Bx"));
     assert_eq!(
-        brix.symbol_variants.get("symbol_math").map(String::as_str),
-        Some("\\brix")
+        porosity
+            .symbol_variants
+            .get("symbol_math")
+            .map(String::as_str),
+        Some("\\porosity")
     );
-    assert_eq!(brix.unit.as_deref(), Some("g/L"));
+    assert_eq!(porosity.unit.as_deref(), Some("g/L"));
     assert_eq!(
-        brix.precision,
+        porosity.precision,
         Some(PrecisionSchema::Both(".4f".to_string()))
     );
 }
@@ -461,38 +432,89 @@ fn a_qualified_property_key_is_one_key() {
     let scratch = Scratch::new("qualified");
     let path = scratch.config("", FULL);
     let loaded = config::load(&path).unwrap();
-    let standard = loaded.property("fermentation.rate").unwrap();
-    let cold = loaded.property("fermentation_cold.rate").unwrap();
+    let standard = loaded.property("ageing.rate").unwrap();
+    let cold = loaded.property("ageing_cold.rate").unwrap();
     assert_ne!(
         standard.symbol_variants.get("symbol_math"),
         cold.symbol_variants.get("symbol_math")
     );
-    assert!(loaded.property("fermentation").is_none(), "the key nested");
+    assert!(loaded.property("ageing").is_none(), "the key nested");
 }
 
 #[test]
-fn a_table_style_is_carried_and_not_interpreted() {
-    // `[render] table` reaches the caller as written. Which names are valid is
-    // `terminal_rendering::Style`'s to say, and this module is Layer 3.
+fn a_table_style_naming_nothing_is_refused_as_the_file_loads() {
+    // `table = "fancy"` passed the load, stopped the first table drawn, naming
+    // the file importing it, and every other command used the configuration.
     let scratch = Scratch::new("table-style");
     let path = scratch.config("", FULL);
     let loaded = config::load(&path).unwrap();
     assert_eq!(loaded.render().table.as_deref(), Some("boxed"));
-    // A name this module never heard of is carried just the same: reporting it
-    // is the renderer's job, and it is the renderer that knows the list.
-    let odd = scratch.config(
-        "odd",
-        "schema_version = 1
-[render]
-table = \"carved\"\n",
+    let odd = scratch.config("odd", "schema_version = 1\n[render]\ntable = \"carved\"\n");
+    let error = config::load(&odd).unwrap_err().to_string();
+    assert!(
+        error.contains(".samplekitrc:3: [render] table is plain or boxed, not 'carved'"),
+        "{error}"
     );
-    assert_eq!(
-        config::load(&odd).unwrap().render().table.as_deref(),
-        Some("carved")
+    // Imported, it is the imported file's, named with its line.
+    let importing = scratch.config("odd/inner", "schema_version = 1\nimport = \"..\"\n");
+    let error = config::load(&importing).unwrap_err().to_string();
+    assert!(
+        error
+            .replace('\\', "/")
+            .contains("odd/.samplekitrc:3: [render] table"),
+        "{error}"
     );
     // And a project declaring nothing declares no style.
     let bare = scratch.config("bare-table", "schema_version = 1\n");
     assert!(config::load(&bare).unwrap().render().table.is_none());
+}
+
+#[test]
+fn an_error_of_a_declaration_names_its_file_and_line() {
+    // Without them, three levels of import left the reader to guess which
+    // file to correct.
+    let scratch = Scratch::new("error-lines");
+    for (name, body, said) in [
+        (
+            "identify",
+            "schema_version = 1\n\n[render]\nidentify = \"path\"\n",
+            ":4: [render] identify",
+        ),
+        (
+            "style",
+            "schema_version = 1\n[render]\nstyle = \"nope\"\n",
+            ":3: [render] style",
+        ),
+        (
+            "profile",
+            "schema_version = 1\n[profile.p]\ncolumns = [{field = \"radius\"},\n  {field = \"radius\"}]\n",
+            ":3: 'p' declares 'radius' twice",
+        ),
+        (
+            "sort",
+            "schema_version = 1\n[profile.p]\ncolumns = [{field = \"radius\"}]\nsort = [\"radius\", \"-radius\"]\n",
+            ":2: 'p': sort names 'radius' twice",
+        ),
+        (
+            "group",
+            "schema_version = 1\n[profile.p]\ncolumns = [{field = \"radius\"}]\ngroup = [\"s\", \"s\"]\n",
+            "group names 's' twice",
+        ),
+        (
+            "label",
+            "schema_version = 1\n[profile.p]\ncolumns = [{field = \"a\", label = \"x\"}, {field = \"b\", label = \"x\"}]\n",
+            "two columns are labelled 'x'",
+        ),
+    ] {
+        let path = scratch.config(name, body);
+        let error = config::load(&path).unwrap_err().to_string();
+        assert!(error.contains(said), "{name}: {error}");
+        assert!(error.contains(".samplekitrc"), "{name}: {error}");
+    }
+    // A file importing another still says its own version.
+    let versionless = scratch.config("versionless", "import = \"../identify\"\n");
+    let error = config::load(&versionless).unwrap_err().to_string();
+    assert!(error.contains("has no schema_version"), "{error}");
 }
 
 #[test]
@@ -535,8 +557,8 @@ fn a_declaration_fills_what_a_file_omits() {
         precision: None,
     };
     // FULL declares `style = "math"`, so the math variants are the literals.
-    let resolved = loaded.resolved(&bare, "brix").unwrap();
-    assert_eq!(resolved.symbol.as_deref(), Some("\\brix"));
+    let resolved = loaded.resolved(&bare, "porosity").unwrap();
+    assert_eq!(resolved.symbol.as_deref(), Some("\\porosity"));
     assert_eq!(
         resolved.precision.as_ref().map(|p| p.value().as_str()),
         Some(".4f")
@@ -548,7 +570,7 @@ fn a_declaration_fills_what_a_file_omits() {
         symbol: Some("r".to_string()),
         precision: Some(Precision::both(".1f").unwrap()),
     };
-    let file_wins = loaded.resolved(&written, "brix").unwrap();
+    let file_wins = loaded.resolved(&written, "porosity").unwrap();
     assert_eq!(
         file_wins.precision.as_ref().map(|p| p.value().as_str()),
         Some(".1f")
@@ -556,16 +578,16 @@ fn a_declaration_fills_what_a_file_omits() {
     // The symbol is the exception, and not a broken rule: under `math` the
     // declared `symbol_math` is the math literal for this quantity, and a file
     // writing a plain `r` says nothing about it.
-    assert_eq!(file_wins.symbol.as_deref(), Some("\\brix"));
+    assert_eq!(file_wins.symbol.as_deref(), Some("\\porosity"));
     // Under `plain` the file's own symbol wins, as it always did.
     let plain = scratch.config(
         "plain-symbol",
-        "schema_version = 1\n[property.brix]\nsymbol = \"Bx\"\n",
+        "schema_version = 1\n[property.porosity]\nsymbol = \"Bx\"\n",
     );
     assert_eq!(
         config::load(&plain)
             .unwrap()
-            .resolved(&written, "brix")
+            .resolved(&written, "porosity")
             .unwrap()
             .symbol
             .as_deref(),
@@ -593,21 +615,25 @@ fn the_plain_style_uses_the_declared_plain_form() {
         precision: None,
     };
     let loaded = config::load(&plain).unwrap();
-    let resolved = loaded.resolved(&presentation, "brix").unwrap();
+    let resolved = loaded.resolved(&presentation, "porosity").unwrap();
     assert_eq!(resolved.unit.as_deref(), Some("g/L"));
-    assert_eq!(resolved.separator, "\u{b1}");
+    assert!(resolved.property.is_none());
 
     let math = scratch.config(
         "math",
-        "schema_version = 1\n[render]\nstyle = \"math\"\n[style.math]\nseparator = \"\\\\pm\"\n\
+        "schema_version = 1\n[render]\nstyle = \"math\"\n[style.math]\nproperty = '{value} \\pm {uncertainty} {unit}'\n\
          [unit.\"g/L\"]\nplain = \"g/L\"\nmath = \"\\\\mathrm{g}\"\n",
     );
     let under_math = config::load(&math)
         .unwrap()
-        .resolved(&presentation, "brix")
+        .resolved(&presentation, "porosity")
         .unwrap();
     assert_eq!(under_math.unit.as_deref(), Some("\\mathrm{g}"));
-    assert_eq!(under_math.separator, "\\pm");
+    // The style's property.
+    assert_eq!(
+        under_math.property.as_deref(),
+        Some("{value} \\pm {uncertainty} {unit}")
+    );
 
     // An undeclared spelling renders as itself: it is already legible.
     let itself = Presentation {
@@ -616,7 +642,11 @@ fn the_plain_style_uses_the_declared_plain_form() {
         precision: None,
     };
     assert_eq!(
-        loaded.resolved(&itself, "brix").unwrap().unit.as_deref(),
+        loaded
+            .resolved(&itself, "porosity")
+            .unwrap()
+            .unit
+            .as_deref(),
         Some("kg/hL")
     );
 }
@@ -628,15 +658,15 @@ fn a_style_naming_nothing_declared_is_an_error() {
     let scratch = Scratch::new("unknown-style");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[style.math]\nseparator = \"\\\\pm\"\n",
+        "schema_version = 1\n[style.math]\nproperty = '{value} \\pm {uncertainty} {unit}'\n",
     );
     let loaded = config::load(&path).unwrap();
     let error = loaded
-        .resolved_as(&Presentation::default(), "brix", Some("mathh"))
+        .resolved_as(&Presentation::default(), "porosity", Some("mathh"))
         .unwrap_err();
     let message = error.to_string();
     assert!(message.contains("mathh"), "{message}");
-    assert!(message.contains("plain, math"), "{message}");
+    assert!(message.contains("math"), "{message}");
 }
 
 #[test]
@@ -645,7 +675,7 @@ fn an_explicit_render_style_overrides_without_mutating() {
     let path = scratch.config(
         "",
         "schema_version = 1\n[render]\nstyle = \"plain\"\n\
-         [style.math]\nseparator = \"\\\\pm\"\n\
+         [style.math]\nproperty = '{value} \\pm {uncertainty} {unit}'\n\
          [unit.lintner]\nplain = \"°L\"\nmath = \"\\\\Omega\"\n",
     );
     let loaded = config::load(&path).unwrap();
@@ -656,14 +686,17 @@ fn an_explicit_render_style_overrides_without_mutating() {
     };
 
     let math = loaded
-        .resolved_as(&presentation, "wort", Some("math"))
+        .resolved_as(&presentation, "tension", Some("math"))
         .unwrap();
     assert_eq!(math.unit.as_deref(), Some("\\Omega"));
-    assert_eq!(math.separator, "\\pm");
+    assert_eq!(
+        math.property.as_deref(),
+        Some("{value} \\pm {uncertainty} {unit}")
+    );
 
-    let stored = loaded.resolved(&presentation, "wort").unwrap();
+    let stored = loaded.resolved(&presentation, "tension").unwrap();
     assert_eq!(stored.unit.as_deref(), Some("°L"));
-    assert_eq!(stored.separator, "±");
+    assert!(stored.property.is_none());
     assert_eq!(loaded.render().style.as_deref(), Some("plain"));
 }
 
@@ -672,11 +705,15 @@ fn render_style_names_start_with_plain() {
     let scratch = Scratch::new("style-names");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[style.math]\nseparator = \"\\\\pm\"\n\
-         [style.ascii]\nseparator = \"+/-\"\n",
+        "schema_version = 1\n[style.math]\nproperty = '{value} \\pm {uncertainty} {unit}'\n\
+         [style.ascii]\nproperty = '{value} +/- {uncertainty} {unit}'\n",
     );
     let loaded = config::load(&path).unwrap();
-    assert_eq!(loaded.render_style_names(), ["plain", "math", "ascii"]);
+    // The given styles, then the project's in the order it writes them.
+    assert_eq!(
+        loaded.render_style_names(),
+        ["plain", "html", "latex", "markdown", "math", "ascii"]
+    );
 }
 
 #[test]
@@ -704,10 +741,10 @@ fn declared_quantities_are_listed_in_declaration_order() {
     let scratch = Scratch::new("property-names");
     let path = scratch.config(
         "",
-        "schema_version = 1\n\n[property.brix]\nunit = \"g/L\"\n\n[property.malt]\nunit = \"g\"\n\n[property.ebc]\nprecision = \".2f\"\n",
+        "schema_version = 1\n\n[property.porosity]\nunit = \"g/L\"\n\n[property.diameter]\nunit = \"g\"\n\n[property.hv]\nprecision = \".2f\"\n",
     );
     let loaded = config::load(&path).unwrap();
-    assert_eq!(loaded.property_names(), ["brix", "malt", "ebc"]);
+    assert_eq!(loaded.property_names(), ["porosity", "diameter", "hv"]);
 }
 
 #[test]
@@ -728,18 +765,30 @@ fn model_python_resolves_against_the_config_file() {
 }
 
 #[test]
+fn python_is_kept_without_a_model() {
+    let scratch = Scratch::new("python-alone");
+    let path = scratch.config(
+        "project",
+        "schema_version = 1\n[model]\npython = \".venv\"\n",
+    );
+    let loaded = config::load(&path).unwrap();
+    assert!(loaded.model().is_none());
+    assert_eq!(loaded.python(), Some(std::path::Path::new(".venv")));
+}
+
+#[test]
 fn a_render_style_naming_nothing_declared_is_refused_at_load() {
     let scratch = Scratch::new("render-style-at-load");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[render]\nstyle = \"fancy\"\n[style.math]\nseparator = \"\\\\pm\"\n",
+        "schema_version = 1\n[render]\nstyle = \"fancy\"\n[style.math]\nproperty = '{value} \\pm {uncertainty} {unit}'\n",
     );
     let Err(error) = config::load(&path) else {
         panic!("a render style naming nothing was accepted");
     };
     let message = error.to_string();
     assert!(message.contains("fancy"), "{message}");
-    assert!(message.contains("plain, math"), "{message}");
+    assert!(message.contains("math"), "{message}");
 }
 
 #[test]
@@ -757,6 +806,37 @@ fn an_invalid_property_precision_is_refused_at_load() {
 }
 
 #[test]
+fn the_render_precision_is_every_undeclared_numbers() {
+    // `[render] precision` was read and never applied, and a specifier that
+    // `[property.*]` refuses was accepted there in silence.
+    let scratch = Scratch::new("render-precision");
+    let path = scratch.config(
+        "",
+        "schema_version = 1\n[render]\nprecision = \".1e\"\n[property.porosity]\nprecision = \".2f\"\n",
+    );
+    let loaded = config::load(&path).unwrap();
+    let bare = Presentation {
+        unit: None,
+        symbol: None,
+        precision: None,
+    };
+    let of = |quantity: &str| {
+        loaded
+            .resolved(&bare, quantity)
+            .unwrap()
+            .precision
+            .map(|precision| precision.value().as_str().to_string())
+    };
+    assert_eq!(of("pressure").as_deref(), Some(".1e"));
+    assert_eq!(of("porosity").as_deref(), Some(".2f"));
+    let refused = scratch.config("", "schema_version = 1\n[render]\nprecision = \"3f\"\n");
+    let Err(error) = config::load(&refused) else {
+        panic!("an invalid [render] precision was accepted");
+    };
+    assert!(error.to_string().contains("render"), "{error}");
+}
+
+#[test]
 fn an_invalid_column_precision_is_refused_at_load() {
     // A profile's or a view's column, and a specifier inside a template, are
     // checked as a `[property.*]` precision is — accepted, each was dropped at
@@ -764,16 +844,16 @@ fn an_invalid_column_precision_is_refused_at_load() {
     let scratch = Scratch::new("column-precision");
     for (body, names) in [
         (
-            "[profile.latex]\ncolumns = [{ field = \"brix\", precision = \".3z\" }]\n",
-            ["profile.latex", "'brix'", ".3z"],
+            "[profile.latex]\ncolumns = [{ field = \"porosity\", precision = \".3z\" }]\n",
+            ["profile.latex", "'porosity'", ".3z"],
         ),
         (
-            "[profile.latex]\ncolumns = [{ field = \"brix\", template = \"\\\\num{{value:.3z}}\" }]\n",
-            ["profile.latex", "'brix'", "{value:.3z}"],
+            "[profile.latex]\ncolumns = [{ field = \"porosity\", template = \"\\\\num{{value:.3z}}\" }]\n",
+            ["profile.latex", "'porosity'", "{value:.3z}"],
         ),
         (
-            "[profile.latex]\ncolumns = [{ field = \"brix\", template = \"{unit:.3f}\" }]\n",
-            ["profile.latex", "'brix'", "takes no specifier"],
+            "[profile.latex]\ncolumns = [{ field = \"porosity\", template = \"{unit:.3f}\" }]\n",
+            ["profile.latex", "'porosity'", "takes no specifier"],
         ),
     ] {
         let path = scratch.config("", &format!("schema_version = 1\n{body}"));
@@ -788,7 +868,7 @@ fn an_invalid_column_precision_is_refused_at_load() {
     // A LaTeX brace, a channel without a specifier and a valid one all load.
     let path = scratch.config(
         "",
-        "schema_version = 1\n[profile.latex]\ncolumns = [{ field = \"brix\", \
+        "schema_version = 1\n[profile.latex]\ncolumns = [{ field = \"porosity\", \
          template = \"\\\\num{{value:.3f}} \\\\pm {u:.1e} \\\\si{{unit}} {symbol}\" }]\n",
     );
     config::load(&path).unwrap();
@@ -802,22 +882,22 @@ fn an_export_flag_is_named_after_the_field_it_adds() {
     let scratch = Scratch::new("export-flags");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[profile.malts]\ncolumns = [{ field = \"malt\" }]\n\
-         [export.malts]\nprofile = \"malts\"\nformat = \"csv\"\n\
-         output = \"out/malts.csv\"\nfilename = true\npath = true\n",
+        "schema_version = 1\n[profile.diameters]\ncolumns = [{ field = \"diameter\" }]\n\
+         [export.diameters]\nprofile = \"diameters\"\nformat = \"csv\"\n\
+         output = \"out/diameters.csv\"\nfilename = true\npath = true\n",
     );
     let config = config::load(&path).unwrap();
-    let target = config.export("malts").unwrap();
+    let target = config.table_export("diameters").unwrap();
     assert!(target.filename);
     assert!(target.path);
     // The destination is `output`, and the flag beside it names a column.
-    assert!(target.output.ends_with("malts.csv"));
+    assert!(target.output.ends_with("diameters.csv"));
 
     let refused = scratch.config(
         "",
-        "schema_version = 1\n[profile.malts]\ncolumns = [{ field = \"malt\" }]\n\
-         [export.malts]\nprofile = \"malts\"\nformat = \"csv\"\n\
-         output = \"out/malts.csv\"\ninclude_filename = true\n",
+        "schema_version = 1\n[profile.diameters]\ncolumns = [{ field = \"diameter\" }]\n\
+         [export.diameters]\nprofile = \"diameters\"\nformat = \"csv\"\n\
+         output = \"out/diameters.csv\"\ninclude_filename = true\n",
     );
     let Err(error) = config::load(&refused) else {
         panic!("the include_ spelling was accepted");
@@ -888,20 +968,6 @@ fn render_identify_is_name_filename_or_none() {
     assert!(error.contains("name, filename or none"), "{error}");
 }
 
-#[test]
-fn render_bounds_is_no_longer_a_key() {
-    // A declared precision rounds alike on every surface, so a screen has no
-    // second form to ask for.
-    let scratch = Scratch::new("bounds");
-    let asked = scratch.config(
-        "bounds-asked",
-        "schema_version = 1\n[render]\nbounds = true\n",
-    );
-    let error = config::load(&asked).unwrap_err().to_string();
-    assert!(error.contains("bounds was withdrawn"), "{error}");
-    assert!(error.contains("upgrading guide"), "{error}");
-}
-
 // ------------------------------------------------------------------ figures
 
 #[test]
@@ -911,16 +977,16 @@ fn a_figure_declares_its_kind_its_axes_its_group_and_its_query() {
     let scratch = Scratch::new("figure");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[query.light]\nfilter = \"malt < 12\"\n\
-         [figure.vfi]\nkind = \"line\"\nx = \"period\"\ny = \"vfi\"\ngroup = \"beer\"\nquery = \"light\"\n\
-         [figure.bare]\nx = \"malt\"\ny = \"brix\"\n",
+        "schema_version = 1\n[query.light]\nfilter = \"diameter < 12\"\n\
+         [figure.vfi]\nkind = \"line\"\nx = \"period\"\ny = \"vfi\"\ngroup = \"alloy\"\nquery = \"light\"\n\
+         [figure.bare]\nx = \"diameter\"\ny = \"porosity\"\n",
     );
     let config = config::load(&path).unwrap();
     assert_eq!(config.figure_names(), ["vfi", "bare"]);
     let vfi = config.figure("vfi").unwrap();
     assert_eq!(vfi.kind, FigureKind::Line);
     assert_eq!((vfi.x.as_str(), vfi.y.as_str()), ("period", "vfi"));
-    assert_eq!(vfi.group.as_deref(), Some("beer"));
+    assert_eq!(vfi.group.as_deref(), Some("alloy"));
     assert_eq!(vfi.query.as_deref(), Some("light"));
     let bare = config.figure("bare").unwrap();
     assert_eq!(bare.kind, FigureKind::Scatter);
@@ -961,7 +1027,7 @@ fn a_figure_naming_an_undeclared_query_is_refused() {
     let scratch = Scratch::new("figure-query");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[query.light]\nfilter = \"malt < 12\"\n\
+        "schema_version = 1\n[query.light]\nfilter = \"diameter < 12\"\n\
          [figure.f]\nx = \"a\"\ny = \"b\"\nquery = \"lighr\"\n",
     );
     let error = config::load(&path).unwrap_err();
@@ -1039,32 +1105,26 @@ fn a_matplotlib_section_is_read_by_matplotlibs_names() {
 #[test]
 fn the_workbench_colours_are_named_by_role() {
     // A role the project leaves out keeps the terminal's colour.
-    let scratch = Scratch::new("workbench-colors");
+    let scratch = Scratch::new("tui-colors");
     let path = scratch.config(
         "",
-        "schema_version = 1\n[workbench.colors]\noutdated = \"#ff8800\"\nmuted = \"grey\"\n\
+        "schema_version = 1\n[colors]\noutdated = \"#ff8800\"\nmuted = \"grey\"\n\
          table = \"dark-gray\"\n",
     );
     let config = config::load(&path).unwrap();
-    assert_eq!(config.workbench_color("outdated"), Some("#ff8800"));
+    assert_eq!(config.color("outdated"), Some("#ff8800"));
     // British and American spellings of grey are one colour.
-    assert_eq!(config.workbench_color("muted"), Some("grey"));
-    assert_eq!(config.workbench_color("table"), Some("dark-gray"));
-    assert_eq!(config.workbench_color("failed"), Some("red"));
+    assert_eq!(config.color("muted"), Some("grey"));
+    assert_eq!(config.color("table"), Some("dark-gray"));
+    assert_eq!(config.color("failed"), Some("red"));
     // A role nobody draws, and a colour nothing can, are refused at load.
-    let role = scratch.config(
-        "r",
-        "schema_version = 1\n[workbench.colors]\nstaled = \"red\"\n",
-    );
+    let role = scratch.config("r", "schema_version = 1\n[colors]\nstaled = \"red\"\n");
     let error = config::load(&role).unwrap_err().to_string();
     assert!(
         error.contains("no role 'staled'") && error.contains("outdated"),
         "{error}"
     );
-    let colour = scratch.config(
-        "c",
-        "schema_version = 1\n[workbench.colors]\noutdated = \"orange\"\n",
-    );
+    let colour = scratch.config("c", "schema_version = 1\n[colors]\noutdated = \"orange\"\n");
     let error = config::load(&colour).unwrap_err().to_string();
     assert!(
         error.contains("not a colour") && error.contains("#rrggbb"),
@@ -1072,32 +1132,14 @@ fn the_workbench_colours_are_named_by_role() {
     );
     let key = scratch.config("k", "schema_version = 1\n[workbench]\ncolours = {}\n");
     assert!(config::load(&key).is_err());
-}
-
-#[test]
-fn the_outdated_colour_is_still_read_under_its_former_name() {
-    // `stale` became `outdated`; a project's colour written under the former
-    // name keeps colouring what is outdated, and the new name wins where both
-    // are written.
-    let scratch = Scratch::new("workbench-stale");
-    let former = scratch.config(
-        "f",
-        "schema_version = 1\n[workbench.colors]\nstale = \"#ff8800\"\n",
+    // A value and a unit are roles too, and the TUI's own section is no more.
+    assert_eq!(config.color("value"), Some("default"));
+    assert_eq!(config.color("unit"), Some("cyan"));
+    let tui = scratch.config(
+        "t",
+        "schema_version = 1\n[tui.colors]\noutdated = \"red\"\n",
     );
-    let config = config::load(&former).unwrap();
-    assert_eq!(config.workbench_color("outdated"), Some("#ff8800"));
-    let both = scratch.config(
-        "b",
-        "schema_version = 1\n[workbench.colors]\nstale = \"red\"\noutdated = \"#ff8800\"\n",
-    );
-    let config = config::load(&both).unwrap();
-    assert_eq!(config.workbench_color("outdated"), Some("#ff8800"));
-    let colour = scratch.config(
-        "c",
-        "schema_version = 1\n[workbench.colors]\nstale = \"orange\"\n",
-    );
-    let error = config::load(&colour).unwrap_err().to_string();
-    assert!(error.contains("not a colour"), "{error}");
+    assert!(config::load(&tui).is_err());
 }
 
 #[test]
@@ -1174,13 +1216,13 @@ fn a_declared_profile_can_be_read_back() {
         loaded.query("approved").unwrap().directory,
         Some(PathBuf::from("transport/"))
     );
-    let profile = loaded.profile("platos").unwrap();
-    assert_eq!(profile.sort, ["beer", "-plato"]);
-    let export = loaded.export("approved_plato").unwrap();
+    let profile = loaded.profile("ductilities").unwrap();
+    assert_eq!(profile.sort, ["alloy", "-ductility"]);
+    let export = loaded.table_export("approved_ductility").unwrap();
     assert_eq!(export.format, Format::Csv);
     assert_eq!(
-        loaded.style("math").unwrap().separator.as_deref(),
-        Some("\\pm")
+        loaded.style("math").unwrap().property.as_deref(),
+        Some("{value} \\pm {uncertainty} {unit}")
     );
     assert_eq!(loaded.render().style.as_deref(), Some("math"));
 }
@@ -1192,55 +1234,11 @@ fn declaration_order_is_preserved() {
     let path = scratch.config(
         "",
         "schema_version = 1\n\
-         [profile.zulu]\ncolumns = [{field = \"malt\"}]\n\
-         [profile.alpha]\ncolumns = [{field = \"malt\"}]\n",
+         [profile.zulu]\ncolumns = [{field = \"diameter\"}]\n\
+         [profile.alpha]\ncolumns = [{field = \"diameter\"}]\n",
     );
     let loaded = config::load(&path).unwrap();
     assert_eq!(loaded.profile_names(), ["zulu", "alpha"]);
-}
-
-#[test]
-fn the_tui_colours_are_read_under_the_sections_former_name_too() {
-    // `[tui.colors]` is the section; `[workbench.colors]`, its name before, is
-    // read as it stands, and `[tui.colors]` wins a role both write.
-    let scratch = Scratch::new("tui-colours");
-    let new = scratch.config(
-        "n",
-        "schema_version = 1\n[tui.colors]\nfailed = \"#ff0000\"\n",
-    );
-    let config = config::load(&new).unwrap();
-    assert_eq!(config.workbench_color("failed"), Some("#ff0000"));
-    let former = scratch.config(
-        "f",
-        "schema_version = 1\n[workbench.colors]\nmuted = \"grey\"\n",
-    );
-    let config = config::load(&former).unwrap();
-    assert_eq!(config.workbench_color("muted"), Some("grey"));
-    let both = scratch.config(
-        "b",
-        "schema_version = 1\n[workbench.colors]\nfailed = \"red\"\nmuted = \"grey\"\n\
-         [tui.colors]\nfailed = \"#ff0000\"\n",
-    );
-    let config = config::load(&both).unwrap();
-    assert_eq!(config.workbench_color("failed"), Some("#ff0000"));
-    // A role only the former section writes keeps its colour.
-    assert_eq!(config.workbench_color("muted"), Some("grey"));
-    // A role written wrongly is named in the section it was written in.
-    let role = scratch.config("r", "schema_version = 1\n[tui.colors]\nstaled = \"red\"\n");
-    let error = config::load(&role).unwrap_err().to_string();
-    assert!(
-        error.contains("[tui.colors] has no role 'staled'"),
-        "{error}"
-    );
-    let role = scratch.config(
-        "w",
-        "schema_version = 1\n[workbench.colors]\nstaled = \"red\"\n",
-    );
-    let error = config::load(&role).unwrap_err().to_string();
-    assert!(
-        error.contains("[workbench.colors] has no role 'staled'"),
-        "{error}"
-    );
 }
 
 #[test]
@@ -1250,39 +1248,42 @@ fn a_profile_declares_its_groups() {
     let path = scratch.config(
         "",
         "schema_version = 1\n\
-         [profile.grouped]\ncolumns = [{field = \"malt\"}]\ngroup = [\"beer\", \"status\"]\n\
-         [profile.flat]\ncolumns = [{field = \"malt\"}]\n",
+         [profile.grouped]\ncolumns = [{field = \"diameter\"}]\ngroup = [\"alloy\", \"status\"]\n\
+         [profile.flat]\ncolumns = [{field = \"diameter\"}]\n",
     );
     let loaded = config::load(&path).unwrap();
-    assert_eq!(loaded.profile("grouped").unwrap().group, ["beer", "status"]);
+    assert_eq!(
+        loaded.profile("grouped").unwrap().group,
+        ["alloy", "status"]
+    );
     assert!(loaded.profile("flat").unwrap().group.is_empty());
     // One text is refused as `sort`'s is: a list is asked.
     let text = scratch.config(
         "t",
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt\"}]\ngroup = \"beer\"\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter\"}]\ngroup = \"alloy\"\n",
     );
     let error = config::load(&text).unwrap_err().to_string();
-    assert!(error.contains("sequence"), "{error}");
+    assert!(error.contains("where a list belongs"), "{error}");
     let sort = scratch.config(
         "s",
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt\"}]\nsort = \"beer\"\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter\"}]\nsort = \"alloy\"\n",
     );
     let sorted = config::load(&sort).unwrap_err().to_string();
-    assert!(sorted.contains("sequence"), "{sorted}");
+    assert!(sorted.contains("where a list belongs"), "{sorted}");
     // A field left empty groups by nothing anyone can name.
     let empty = scratch.config(
         "e",
-        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"malt\"}]\ngroup = [\"\"]\n",
+        "schema_version = 1\n[profile.p]\ncolumns = [{field = \"diameter\"}]\ngroup = [\"\"]\n",
     );
     let error = config::load(&empty).unwrap_err().to_string();
     assert!(error.contains("empty field"), "{error}");
     // A saved query is a filter, and takes no group.
     let query = scratch.config(
         "q",
-        "schema_version = 1\n[query.q]\nfilter = \"malt > 1\"\ngroup = [\"beer\"]\n",
+        "schema_version = 1\n[query.q]\nfilter = \"diameter > 1\"\ngroup = [\"alloy\"]\n",
     );
     let error = config::load(&query).unwrap_err().to_string();
-    assert!(error.contains("unknown field `group`"), "{error}");
+    assert!(error.contains("unknown key `group`"), "{error}");
 }
 
 // ------------------------------------------------------------ imports
@@ -1297,7 +1298,7 @@ class = "Root"
 python = "env/bin/python"
 
 [collection]
-files = ["images/{collection}/{name}*", "{collection}/photos/{name}*"]
+files = ["images/{project}/{name}*", "{project}/photos/{name}*"]
 exclude = ["draft-*"]
 
 [property.collar]
@@ -1316,7 +1317,7 @@ sort = ["collar"]
 [export.all]
 profile = "physical"
 format = "csv"
-output = "exports/{collection}/all.csv"
+output = "exports/{project}/all.csv"
 
 [figure.collars]
 x = "name"
@@ -1410,14 +1411,71 @@ fn an_import_not_found_is_refused() {
     let said = error.to_string().replace('\\', "/");
     assert!(said.contains("c1/.samplekitrc"), "{said}");
     assert!(said.contains("holds no .samplekitrc"), "{said}");
-    // A file, rather than the folder holding it.
-    scratch.config("", "schema_version = 1\n");
-    let file = scratch.config("c2", "schema_version = 1\nimport = \"../.samplekitrc\"\n");
-    let said = config::load(&file).unwrap_err().to_string();
-    assert!(said.contains("import = \"..\""), "{said}");
     let nothing = scratch.config("c3", "schema_version = 1\nimport = \"../nowhere\"\n");
     let said = config::load(&nothing).unwrap_err().to_string();
-    assert!(said.contains("is no folder"), "{said}");
+    assert!(said.contains("is no folder nor file"), "{said}");
+    let number = scratch.config("c4", "schema_version = 1\nimport = 3\n");
+    let said = config::load(&number).unwrap_err().to_string();
+    assert!(
+        said.contains("import names a folder or a file, or a list"),
+        "{said}"
+    );
+}
+
+#[test]
+fn an_import_takes_a_file_and_a_list() {
+    // A project's settings in files of their own, the main file importing the
+    // root and them; a later one wins over an earlier one, and the importing
+    // file over all.
+    let scratch = Scratch::new("import-list");
+    scratch.config(
+        "",
+        "schema_version = 1\n[render]\nprecision = \".1f\"\ntable = \"boxed\"\n\
+         [unit.\"g\"]\nplain = \"gram\"\n",
+    );
+    let project = scratch.dir("p");
+    fs::write(
+        project.join("figures.samplekitrc"),
+        "schema_version = 1\n[matplotlib]\n\"axes.grid\" = true\nstyle = \"look.mplstyle\"\n\
+         [render]\nprecision = \".2f\"\n",
+    )
+    .unwrap();
+    fs::write(
+        project.join("units.samplekitrc"),
+        "schema_version = 1\n[render]\nprecision = \".3f\"\n",
+    )
+    .unwrap();
+    let own = scratch.config(
+        "p",
+        "schema_version = 1\nimport = [\"..\", \"figures.samplekitrc\", \"units.samplekitrc\"]\n\
+         [render]\ntable = \"plain\"\n",
+    );
+    let config = config::load(&own).unwrap();
+    assert_eq!(config.matplotlib()["axes.grid"].as_bool(), Some(true));
+    let style = config.matplotlib()["style"].as_array().unwrap()[0]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        normal(Path::new(&style)),
+        normal(&project.join("look.mplstyle"))
+    );
+    // The last listed over the ones before; the importing file over all.
+    let precision = format!("{:?}", config.render().precision);
+    assert!(precision.contains(".3f"), "{precision}");
+    assert_eq!(config.render().table.as_deref(), Some("plain"));
+    let shown = config.imports();
+    let names: Vec<String> = shown
+        .iter()
+        .map(|file| file.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        names,
+        ["units.samplekitrc", "figures.samplekitrc", ".samplekitrc"]
+    );
+    // A file listed twice is merged once.
+    let twice = scratch.config("q", "schema_version = 1\nimport = [\"..\", \"..\"]\n");
+    assert_eq!(config::load(&twice).unwrap().imports().len(), 1);
 }
 
 #[test]
@@ -1461,7 +1519,7 @@ fn an_imported_path_reads_from_the_file_declaring_it() {
     scratch.config("", COMMON);
     let own = scratch.config("data/c1", "schema_version = 1\nimport = \"../..\"\n");
     let config = config::load(&own).unwrap();
-    let output = config.resolve(&config.export("all").unwrap().output.to_string_lossy());
+    let output = config.resolve(&config.table_export("all").unwrap().output.to_string_lossy());
     assert_eq!(
         normal(&output),
         normal(&scratch.0.join("exports/data/c1/all.csv"))
@@ -1490,7 +1548,7 @@ fn collection_stands_for_the_collection_folder() {
         ["images/{name}*", "photos/{name}*"]
     );
     assert_eq!(
-        config.export("all").unwrap().output,
+        config.table_export("all").unwrap().output,
         PathBuf::from("exports/all.csv")
     );
     // From the root, `data/c1`, then read from the collection.
@@ -1548,4 +1606,248 @@ fn a_copy_of_an_imported_declaration_is_kept_for_validate() {
     assert_eq!(keys, ["[property.collar]", "[query.tall] filter"]);
     let root = dunce::canonicalize(root).unwrap();
     assert!(config.copies().iter().all(|copy| copy.from == root));
+}
+
+#[test]
+fn a_configuration_error_says_what_to_write() {
+    // Messages that named no key (`duplicate key`), no near name (`imports`,
+    // `yelow`), a Rust type (`expected u32`), no declaration (`no profile
+    // named 'nope'`), or not what to write where the version is missing.
+    let scratch = Scratch::new("error-words");
+    for (body, expected) in [
+        ("imports = \"..\"\n", "did you mean `import`?"),
+        (
+            "[property.radius]\nsymbol = \"a\"\nsymbol = \"b\"\n",
+            "duplicate key, in `symbol = \"b\"`",
+        ),
+        (
+            "[collection]\nrecursive = \"yes\"\n",
+            "in `recursive = \"yes\"`",
+        ),
+        ("[colors]\noutdated = \"yelow\"\n", "did you mean 'yellow'?"),
+        ("[colors]\noutdate = \"red\"\n", "did you mean 'outdated'?"),
+        (
+            "[profile.overview]\ncolumns = [{ field = \"name\" }]\n[export.e]\nprofile = \"nope\"\nformat = \"csv\"\noutput = \"x.csv\"\n",
+            "'export.e': no profile named 'nope'",
+        ),
+    ] {
+        let path = scratch.config("", &format!("schema_version = 1\n{body}"));
+        let Err(error) = config::load(&path) else {
+            panic!("{body} was accepted");
+        };
+        let message = error.to_string();
+        assert!(message.contains(expected), "{expected}: {message}");
+        assert!(!message.contains("u32"), "{message}");
+    }
+    let path = scratch.config("", "[render]\n");
+    let Err(error) = config::load(&path) else {
+        panic!("a configuration without a version was accepted");
+    };
+    assert!(
+        error.to_string().contains("write schema_version = 1"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_shared_folder_may_declare_only_the_interpreter() {
+    // `[model] python` alone, in the folder above projects that import it,
+    // was refused as `missing field 'path'` — and said to be an earlier
+    // samplekit's — and every project importing it lost its configuration.
+    let scratch = Scratch::new("python-alone");
+    scratch.config(
+        "",
+        "schema_version = 1\n[model]\npython = \".venv/bin/python\"\n",
+    );
+    let bare = scratch.config("bare", "schema_version = 1\nimport = \"..\"\n");
+    let loaded = config::load(&bare).unwrap();
+    assert!(loaded.model().is_none());
+    let modelled = scratch.config(
+        "modelled",
+        "schema_version = 1\nimport = \"..\"\n[model]\npath = \"model.py\"\n",
+    );
+    let loaded = config::load(&modelled).unwrap();
+    let model = loaded.model().unwrap();
+    assert!(model.python.as_ref().unwrap().ends_with(".venv/bin/python"));
+}
+
+#[test]
+fn a_range_is_two_numbers_the_lower_first() {
+    let scratch = Scratch::new("range");
+    let path = scratch.config(
+        "project",
+        "schema_version = 1\n[property.volume]\nunit = \"L\"\nrange = [0, 50]\n\
+         [property.modulus]\nrange = [0.0, inf]\n",
+    );
+    let loaded = config::load(&path).unwrap();
+    assert_eq!(loaded.property("volume").unwrap().range, Some((0.0, 50.0)));
+    assert_eq!(
+        loaded.property("modulus").unwrap().range,
+        Some((0.0, f64::INFINITY))
+    );
+    for (written, said) in [("[50, 0]", "is above"), ("[1]", "takes two")] {
+        let path = scratch.config(
+            "project",
+            &format!("schema_version = 1\n[property.volume]\nrange = {written}\n"),
+        );
+        let refused = config::load(&path).unwrap_err().to_string();
+        assert!(
+            refused.contains("[property.volume] range") && refused.contains(said),
+            "{refused}"
+        );
+    }
+}
+
+#[test]
+fn a_text_format_is_declared_as_a_style_is() {
+    // A style says how a table is a document: what it does not say is the
+    // default; `latex`, `markdown` and `html` are given; a key it does not
+    // know is refused at load.
+    let scratch = Scratch::new("text-format");
+    let path = scratch.config(
+        "",
+        "schema_version = 1\n[style.paper]\n\
+         [style.list]\nrow = \"- {cells}\"\nheader = false\nproperty = \"{value} +- {uncertainty}\"\n",
+    );
+    let config = config::load(&path).unwrap();
+    let list = config.text_format("list").unwrap();
+    assert_eq!(list.row, "- {cells}");
+    assert_eq!(list.header, None);
+    assert_eq!(list.property.as_deref(), Some("{value} +- {uncertainty}"));
+    assert_eq!(list.extension, "list");
+    // A style of units and symbols alone writes no document.
+    assert!(config.text_format("paper").is_none());
+    assert_eq!(
+        config.text_format_names(),
+        ["html", "latex", "markdown", "list"]
+    );
+    assert_eq!(config.text_format("latex").unwrap().extension, "tex");
+    let broken = scratch.config(
+        "unknown-key",
+        "schema_version = 1\n[style.list]\nrows = \"x\"\n",
+    );
+    let error = config::load(&broken).unwrap_err().to_string();
+    assert!(error.contains("did you mean `row`"), "{error}");
+}
+
+#[test]
+fn a_precision_refused_is_said_with_its_line() {
+    // `[property.radius] precision: '.3x' …` named the section, never the line, as
+    // a parse error of the same file does.
+    let scratch = Scratch::new("precision-line");
+    let path = scratch.config(
+        "",
+        "schema_version = 1\n\n[property.radius]\nsymbol = \"RADIUS\"\nprecision = \".3x\"\n\
+         [property.notch]\nrange = [2, 1]\n",
+    );
+    let error = config::load(&path).unwrap_err().to_string();
+    assert!(
+        error.contains(".samplekitrc:5: [property.radius] precision"),
+        "{error}"
+    );
+    fs::write(
+        &path,
+        "schema_version = 1\n[property.notch]\n\nrange = [2, 1]\n",
+    )
+    .unwrap();
+    let error = config::load(&path).unwrap_err().to_string();
+    assert!(
+        error.contains(".samplekitrc:4: [property.notch] range"),
+        "{error}"
+    );
+}
+
+#[test]
+fn history_shared_is_read_and_imported() {
+    let scratch = Scratch::new("history-shared");
+    let root = scratch.config("", "schema_version = 1\n[history]\nshared = true\n");
+    assert_eq!(config::load(&root).unwrap().history_shared(), Some(true));
+    // Imported as any key: a project below shares as the root does.
+    let below = scratch.config("below", "schema_version = 1\nimport = \"..\"\n");
+    assert_eq!(config::load(&below).unwrap().history_shared(), Some(true));
+    let alone = scratch.config("alone", "schema_version = 1\n");
+    assert_eq!(config::load(&alone).unwrap().history_shared(), None);
+    let wrong = scratch.config("wrong", "schema_version = 1\n[history]\nshared = \"yes\"\n");
+    assert!(config::load(&wrong).is_err());
+}
+
+#[test]
+fn style_sheets_and_fonts_are_read_from_the_file_declaring_them() {
+    // A sheet's name stays a name; a .mplstyle file and a font are paths, from
+    // the file that declares them, an imported one's included.
+    let scratch = Scratch::new("matplotlib-sheets");
+    scratch.config(
+        "",
+        "schema_version = 1\n[matplotlib]\nstyle = [\"ggplot\", \"paper.mplstyle\"]\n\
+         fonts = \"fonts/*.otf\"\n",
+    );
+    let below = scratch.config("sub", "schema_version = 1\nimport = \"..\"\n");
+    let config = config::load(&below).unwrap();
+    let root = below.parent().unwrap().parent().unwrap();
+    let listed = |key: &str| -> Vec<String> {
+        config.matplotlib()[key]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item.as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(listed("style")[0], "ggplot");
+    assert_eq!(
+        std::path::Path::new(&listed("style")[1]),
+        root.join("paper.mplstyle")
+    );
+    assert_eq!(
+        std::path::Path::new(&listed("fonts")[0]),
+        root.join("fonts/*.otf")
+    );
+    let number = scratch.config("n", "schema_version = 1\n[matplotlib]\nstyle = 3\n");
+    let error = config::load(&number).unwrap_err().to_string();
+    assert!(
+        error.contains("[matplotlib] style: a style sheet's name"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_figure_carries_its_own_matplotlib_settings() {
+    let scratch = Scratch::new("figure-matplotlib");
+    let path = scratch.config(
+        "",
+        "schema_version = 1\n[figure.f]\nx = \"a\"\ny = \"b\"\n\
+         matplotlib = { \"lines.marker\" = \"s\", font.size = 9 }\n",
+    );
+    let config = config::load(&path).unwrap();
+    let own: Vec<&str> = config
+        .figure("f")
+        .unwrap()
+        .matplotlib
+        .keys()
+        .map(String::as_str)
+        .collect();
+    assert_eq!(own, ["lines.marker", "font.size"]);
+    // Style sheets and fonts are the project's.
+    let sheets = scratch.config(
+        "s",
+        "schema_version = 1\n[figure.f]\nx = \"a\"\ny = \"b\"\n\
+         matplotlib = { style = \"ggplot\" }\n",
+    );
+    let error = config::load(&sheets).unwrap_err().to_string();
+    assert!(error.contains("style is the project's"), "{error}");
+}
+
+#[test]
+fn the_projects_folder_is_written_project() {
+    // `{collection}` named the project's folder until 1.0.0-rc.2; kept, it
+    // would make a folder of that name.
+    let scratch = Scratch::new("old-placeholder");
+    let path = scratch.config(
+        "",
+        "schema_version = 1\n[collection]\nfiles = [\"{collection}/photos\"]\n",
+    );
+    let error = config::load(&path).unwrap_err().to_string();
+    assert!(
+        error.contains("{collection} is written {project} now"),
+        "{error}"
+    );
 }

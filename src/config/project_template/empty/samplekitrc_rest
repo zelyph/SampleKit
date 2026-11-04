@@ -1,15 +1,13 @@
 # ------------------------------------------------------------- the collection
 #
-# Which files here are samples: every *.md under samples/, sub-directories
-# included. A sub-directory with a .samplekitrc of its own is a project of its
-# own, and is left to it.
+# Which files here are samples: every *.md in this folder and the folders
+# below it, samples/ among them. A sub-directory with a .samplekitrc of its own
+# is a project of its own, and is left to it. Under [collection]:
 #
+#   recursive = false          read this folder alone, not the folders below
 #   include = ["*.md"]         which files to read, if not every *.md
 #   exclude = ["draft-*"]      which to leave alone, on disk and unread
 #   files   = ["images"]       where a sample's own files are, named after it
-
-[collection]
-recursive = true
 
 
 # ----------------------------------------------------- what else it may say
@@ -17,12 +15,12 @@ recursive = true
 # Each of these is a section of its own; `samplekit init --example` in an
 # empty directory writes an example project with one of each, to copy from.
 #
-#   [query.NAME]      filter = "abv > 6"              a selection, by name
+#   [query.NAME]      filter = "area > 20"            a selection, by name
 #   [profile.NAME]    columns = [...], sort, group    a table: columns, order, groups
 #   [export.NAME]     profile = "...", format = "csv", output = "out/x.csv"
 #   [figure.NAME]     x = "...", y = "...", kind = "scatter"
 #   [unit."degC"]    plain = "°C", math = '^\circ\mathrm{C}'
-#   [property.og]     symbol = "OG", precision = ".3f"
+#   [property.area]   symbol = "A", precision = ".3f"
 #   [render]          style, precision, table, identify
 #   [matplotlib]      what every figure's matplotlib is given
-#   [tui.colors]      a colour for each role the TUI shows
+#   [colors]          a colour for each role the TUI and the command line show

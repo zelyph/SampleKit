@@ -14,7 +14,7 @@ use ratatui::widgets::{
 use super::model::{
     Action, BINDINGS, EntryKind, Mode, NoteView, Place, Screen, Workbench, hinted, key_name, short,
 };
-use super::theme::{colors, is_key, key_style, keyed, selection_style};
+use super::theme::{colors, is_key, key_style, keyed, selection_style, value_spans, value_style};
 use super::typing::{Typed, Written};
 use crate::collection::editing;
 use crate::config::profiles;
@@ -94,11 +94,24 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
             .as_ref()
             .map(|workspace| workspace.edit.path().display().to_string())
             .unwrap_or_default(),
-        Screen::Sample { .. } | Screen::Table { .. } => match workbench.current() {
-            Some((path, sample)) => sample
-                .name()
-                .map(str::to_string)
-                .unwrap_or_else(|| path.display().to_string()),
+        Screen::Sample { .. }
+        | Screen::Table { .. }
+        | Screen::Property { .. }
+        | Screen::Items { .. } => match workbench.current() {
+            Some((path, sample)) => {
+                let name = sample
+                    .name()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| path.display().to_string());
+                // The way taken by links, each sample left, then this one.
+                workbench
+                    .trail
+                    .iter()
+                    .map(|step| step.name.as_str())
+                    .chain(std::iter::once(name.as_str()))
+                    .collect::<Vec<_>>()
+                    .join(" › ")
+            }
             None => String::new(),
         },
     };
@@ -133,6 +146,14 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
     // The computation, at the right of the title bar, whatever the screen:
     // its progress in values, then its outcome, until the next run.
     if let Some((said, finished)) = run {
+        // Cut where the bar ends, and said cut: `— C com` read as a word.
+        let room = (top.width as usize).saturating_sub(" SampleKit ".chars().count() + 1);
+        let said = if said.chars().count() > room {
+            let kept: String = said.chars().take(room.saturating_sub(1)).collect();
+            format!("{}…", kept.trim_end())
+        } else {
+            said
+        };
         let colour = match (finished, said.contains("failed")) {
             (false, _) => theme.accent,
             (true, false) => theme.current,
@@ -154,6 +175,19 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
             let furthest = collection(frame, workbench, main);
             workbench.hscroll = workbench.hscroll.min(furthest);
         }
+        // A table, a property or a list in a window over its sample.
+        Screen::Table { .. } | Screen::Property { .. } | Screen::Items { .. } => {
+            NOTE_SHOWN.with(|shown| shown.set(None));
+            NOTE_EDITED.with(|edited| edited.set(None));
+            workbench.note_view = sample(frame, workbench, main);
+            let window = window_area(main, table_extent(workbench));
+            frame.render_widget(Clear, window);
+            match workbench.screen {
+                Screen::Table { .. } => table(frame, workbench, window),
+                Screen::Property { .. } => property_window(frame, workbench, window),
+                _ => items_window(frame, workbench, window),
+            }
+        }
         Screen::Sample { .. } => {
             NOTE_SHOWN.with(|shown| shown.set(None));
             NOTE_EDITED.with(|edited| edited.set(None));
@@ -169,7 +203,6 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
                 workbench.note_scroll.1 = scroll;
             }
         }
-        Screen::Table { .. } => table(frame, workbench, main),
         Screen::Control { .. } => control(frame, workbench, main),
         // Scrolled no further than what it changed shows: held down past
         // it, going back up waited through the rows scrolled for nothing.
@@ -182,7 +215,7 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
         Screen::Setup { .. } => setup(frame, workbench, main),
         Screen::Configure => configure(frame, workbench, main),
     }
-    frame.render_widget(Paragraph::new(status_line(workbench)), status);
+    frame.render_widget(Paragraph::new(status_line(workbench, status.width)), status);
     // The note being edited has keys of its own, which the foot says: the
     // sample's said what its keys no longer did while it was typed in.
     let foot: Vec<Line<'static>> = foot.iter().map(|line| hint_spans(line)).collect();
@@ -233,8 +266,8 @@ fn modal_row(row: usize, from: u16) -> Option<Rect> {
 fn typed_lines(mode: &mut Mode) -> Vec<&mut Typed> {
     match mode {
         Mode::Filter { text, .. } | Mode::Prompt { text, .. } => vec![text],
+        Mode::Script { line } => vec![line],
         Mode::Picker { query, typing, .. } if *typing || !query.is_empty() => vec![query],
-        Mode::Quantity { slots, .. } => slots.iter_mut().map(|slot| &mut slot.text).collect(),
         _ => Vec::new(),
     }
 }
@@ -336,11 +369,9 @@ fn help_window(frame: &mut Frame, workbench: &Workbench, scroll: usize) {
                 framed()
                     .title(Line::from(" keys ").style(Style::new().add_modifier(Modifier::BOLD)))
                     .title_bottom({
-                        let mut line = hint_spans(if furthest > 0 {
-                            "j k scroll · any other key closes"
-                        } else {
-                            "any key closes"
-                        });
+                        // `j` and `k` scroll whether or not there is more to
+                        // see: said so, where *any key closes* was not true.
+                        let mut line = hint_spans("j k scroll · any other key closes");
                         line.spans.push(Span::raw(" "));
                         line.right_aligned()
                     }),
@@ -406,11 +437,15 @@ fn wrapped(text: &str, width: usize) -> Vec<String> {
         .collect()
 }
 
-/// The computation as the title bar says it: `⟳ [███░░░] 3/6 · B-01 · abv`
+/// The computation as the title bar says it: `⟳ [███░░░] 3/6 · B-01 · modulus`
 /// under way, then `✓ 12 computed, 1 failed`; and whether it is over.
 fn run_said(workbench: &Workbench) -> Option<(String, bool)> {
     let run = workbench.run.as_ref()?;
     Some(match &run.outcome {
+        // A tick for what was computed; nothing computed is no success.
+        Some(outcome) if outcome.starts_with("nothing") || outcome.contains(" failed") => {
+            (format!("· {outcome}"), true)
+        }
         Some(outcome) => (format!("✓ {outcome}"), true),
         None => {
             let width = 12;
@@ -435,7 +470,9 @@ fn run_said(workbench: &Workbench) -> Option<(String, bool)> {
     })
 }
 
-fn status_line(workbench: &Workbench) -> Line<'static> {
+/// What the collection shows, on the line under it: cut with an ellipsis
+/// where it is wider, `values: 1 s` read at 60 columns.
+fn status_line(workbench: &Workbench, width: u16) -> Line<'static> {
     let mut parts = vec![format!(
         "{} of {} {}",
         workbench.view.len(),
@@ -446,6 +483,27 @@ fn status_line(workbench: &Workbench) -> Line<'static> {
             "samples"
         }
     )];
+    // A file set aside unread shows on no line of the collection: counted
+    // here, where it was said nowhere but on `v`.
+    let unread = workbench
+        .collection
+        .skipped()
+        .iter()
+        .filter(|skipped| {
+            !matches!(
+                skipped.reason,
+                crate::config::discovery::SkipReason::Excluded { .. }
+                    | crate::config::discovery::SkipReason::NoFrontmatter
+                    | crate::config::discovery::SkipReason::NoVersion
+            )
+        })
+        .count();
+    if unread > 0 {
+        parts.push(format!(
+            "{unread} {} not read — v says why",
+            if unread == 1 { "file" } else { "files" }
+        ));
+    }
     if !workbench.filter.is_empty() {
         parts.push(format!("filter: {}", workbench.filter));
     }
@@ -481,7 +539,13 @@ fn status_line(workbench: &Workbench) -> Line<'static> {
     if !workbench.selected.is_empty() {
         parts.push(format!("values: {} selected", workbench.selected.len()));
     }
-    Line::raw(format!(" {}", parts.join(" · ")))
+    Line::raw(format!(
+        " {}",
+        ellipsized(
+            &parts.join(" · "),
+            (width as usize).saturating_sub(1).max(1)
+        )
+    ))
 }
 
 /// The keys of the note being edited, for the foot of the screen.
@@ -583,7 +647,7 @@ pub fn fit_hints(line: &str, width: usize) -> String {
 /// Hints on as few lines of `width` columns as hold them, `rows` at most, each
 /// line broken between two hints, never inside one. Where `rows` lines cannot
 /// hold them all, those that confirm or leave — `Enter`, `Esc`, `y`, `n` — and
-/// `? help` are kept to the last, the others given up from the end; those left
+/// `? all keys` are kept to the last, the others given up from the end; those left
 /// still too many for the rows are `fit_hints`'s, on one line. The first line
 /// is filled first: the foot's most wanted.
 pub fn wrap_hints(line: &str, width: usize, rows: usize) -> Vec<String> {
@@ -720,7 +784,7 @@ pub fn fitted(headers: &[String], values: &[usize], room: usize) -> Vec<String> 
         }
     }
     /// A header as three parts that give way in turn: a table cell's table
-    /// (`conditioning.` in `conditioning.carbonation[50]`), then the name, then the unit.
+    /// (`tempering.` in `tempering.nitridation[50]`), then the name, then the unit.
     struct Header {
         table: Option<Part>,
         name: Part,
@@ -753,7 +817,7 @@ pub fn fitted(headers: &[String], values: &[usize], room: usize) -> Vec<String> 
                 None => (header.as_str(), None),
             };
             // A table's name is what comes before the first dot, ahead of any
-            // bracket: `conditioning.carbonation[50]`, never `malt.u` alone.
+            // bracket: `tempering.nitridation[50]`, never `diameter.u` alone.
             let dot = name.find('.');
             let table = match dot {
                 Some(dot) if name[dot..].contains('[') && !name[..dot].contains('[') => Some(dot),
@@ -825,14 +889,14 @@ pub fn fitted(headers: &[String], values: &[usize], room: usize) -> Vec<String> 
 }
 
 /// As many hints as `width` holds, in the order they are most wanted, and
-/// `? help` always, so that a narrow terminal still says where the rest are.
+/// `? all keys` always, so that a narrow terminal still says where the rest are.
 pub fn hint_line(place: Place, filtered: bool, width: usize) -> String {
     hints_of(place, filtered, false, width)
 }
 
 /// The foot of a screen `width` wide: its hints on one line where it holds them
 /// all, on two where it does not, broken between whole hints; the two still too
-/// few, the least wanted given up from the end, `? help` kept. Each line begins
+/// few, the least wanted given up from the end, `? all keys` kept. Each line begins
 /// with a space, as `hints_of`'s does.
 pub fn foot_lines(place: Place, filtered: bool, from_start: bool, width: usize) -> Vec<String> {
     let all = hints_of(place, filtered, from_start, usize::MAX);
@@ -896,12 +960,26 @@ pub fn hints_of(place: Place, filtered: bool, from_start: bool, width: usize) ->
 fn summary(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     use crate::presentation::summaries;
     let theme = colors();
+    // Over several projects, a summary per project, as `--summary` writes
+    // one table per project: one pooled the projects' samples, their units
+    // and precisions declared apart.
+    let roots: std::collections::BTreeSet<std::path::PathBuf> = workbench
+        .view
+        .iter()
+        .filter_map(|entry| entry.path.as_deref())
+        .filter_map(|path| workbench.collection.config_for(path))
+        .map(|config| config.root().to_path_buf())
+        .collect();
+    let mut groups: Vec<String> = Vec::new();
+    if roots.len() > 1 {
+        groups.push("project".to_string());
+    }
+    groups.extend(workbench.group.iter().cloned());
     // Grouped, a summary per group, its values in first columns on its first
     // row, as `--summary --group` writes it: one module makes both.
-    let grouped = !workbench.group.is_empty();
+    let grouped = !groups.is_empty();
     let made = if grouped {
-        workbench
-            .group
+        groups
             .iter()
             .map(|field| {
                 crate::query::field_addressing::parse(field).map_err(|error| error.to_string())
@@ -932,6 +1010,7 @@ fn summary(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         Ok(made) => made,
         Err(error) => (Vec::new(), vec![error]),
     };
+    let mixed = summaries::weighting_mixed(parts.iter().flat_map(|(_, rows)| rows));
     let body: Vec<Vec<String>> = parts
         .iter()
         .flat_map(|(key, rows)| {
@@ -946,18 +1025,14 @@ fn summary(frame: &mut Frame, workbench: &Workbench, area: Rect) {
                     Some(unit) => format!("{} [{unit}]", row.label),
                     None => row.label.clone(),
                 });
-                cells.extend(summaries::written(row));
+                cells.extend(summaries::written(row, mixed));
                 cells
             })
         })
         .collect();
     // The mean's heading says how it was taken, as `--summary`'s does.
     let mean = summaries::mean_header(parts.iter().flat_map(|(_, rows)| rows));
-    let mut header: Vec<String> = if grouped {
-        workbench.group.clone()
-    } else {
-        Vec::new()
-    };
+    let mut header: Vec<String> = if grouped { groups.clone() } else { Vec::new() };
     header.extend(
         [
             "column",
@@ -972,21 +1047,54 @@ fn summary(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         .iter()
         .map(ToString::to_string),
     );
-    let labels = if grouped {
-        workbench.group.len() + 1
-    } else {
-        1
-    };
-    let widths: Vec<Constraint> = (0..header.len())
+    let labels = if grouped { groups.len() + 1 } else { 1 };
+    let mut body = body;
+    let mut widths: Vec<usize> = (0..header.len())
         .map(|at| {
-            let widest = body
-                .iter()
+            body.iter()
                 .map(|cells| cells[at].chars().count())
                 .max()
                 .unwrap_or(0)
-                .max(header[at].chars().count());
-            Constraint::Length(widest as u16)
+                .max(header[at].chars().count())
         })
+        .collect();
+    // **What does not fit is left out whole, never cut**: a count, a mean
+    // cut from the left read as another number — `2` for `11/12`, `053` for
+    // `1.053`. The labels give way first, cut with `…`; then the columns from
+    // the right, named in the title.
+    // Inside its borders and the padding `framed_saying` gives it, a column
+    // each side: counted without, the widths fitted two columns too many, and
+    // the terminal's layout cut `11/12` to `/12`.
+    let inside = usize::from(area.width).saturating_sub(4);
+    // Each rule between two columns takes three: itself and a space each side.
+    let needed =
+        |widths: &[usize]| widths.iter().sum::<usize>() + 3 * widths.len().saturating_sub(1);
+    if needed(&widths) > inside {
+        let label = labels - 1;
+        let over = needed(&widths) - inside;
+        widths[label] = widths[label].saturating_sub(over).max(8.min(widths[label]));
+    }
+    let mut hidden: Vec<String> = Vec::new();
+    while needed(&widths) > inside && widths.len() > labels + 1 {
+        widths.pop();
+        if let Some(name) = header.pop() {
+            hidden.insert(0, name);
+        }
+        for cells in &mut body {
+            cells.pop();
+        }
+    }
+    for cells in &mut body {
+        for (at, cell) in cells.iter_mut().enumerate().take(labels) {
+            if cell.chars().count() > widths[at] {
+                let kept: String = cell.chars().take(widths[at].saturating_sub(1)).collect();
+                *cell = format!("{kept}…");
+            }
+        }
+    }
+    let widths: Vec<Constraint> = widths
+        .iter()
+        .map(|width| Constraint::Length(*width as u16))
         .collect();
     let table_rows = body.into_iter().map(|cells| {
         let cells: Vec<Cell> = cells
@@ -1013,6 +1121,11 @@ fn summary(frame: &mut Frame, workbench: &Workbench, area: Rect) {
             "samples"
         }
     );
+    // What the width leaves out first: the text left out follows, and a long
+    // title is cut at its end.
+    if !hidden.is_empty() {
+        title = format!("{title}· {} past the edge ", hidden.join(", "));
+    }
     if !left_out.is_empty() {
         title = format!("{title}· left out, text: {} ", left_out.join(", "));
     }
@@ -1024,7 +1137,11 @@ fn summary(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         .block(
             framed_saying(workbench, area.width)
                 .title(Line::from(title).style(Style::new().fg(theme.selected)))
-                .title_bottom(hint_spans("S the samples again").right_aligned()),
+                .title_bottom({
+                    let mut line = hint_spans("S the samples again");
+                    line.spans.push(Span::raw(" "));
+                    line.right_aligned()
+                }),
         );
     frame.render_widget(table, area);
     say_inside(
@@ -1042,9 +1159,14 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
         summary(frame, workbench, area);
         return 0;
     }
-    // The names always in place, first: a profile's `name` column is that one,
-    // never a column scrolled away with the rest.
-    let named = true;
+    // The names in place, first, where the columns shown hold `name`: never a
+    // column scrolled away with the rest, and gone when the picker takes it
+    // away.
+    let named = workbench
+        .profile
+        .columns()
+        .iter()
+        .any(|column| column.field == "name");
     let data: Vec<usize> = workbench
         .profile
         .columns()
@@ -1070,8 +1192,8 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
             aligned(&cells)
         })
         .collect();
-    // The names headed as the profile heads them — `Brew` — as the summary
-    // says them: the collection said `name` where `S` said `Brew`.
+    // The names headed as the profile heads them — `Piece` — as the summary
+    // says them: the collection said `name` where `S` said `Piece`.
     let name_header = workbench
         .profile
         .columns()
@@ -1119,6 +1241,13 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
     }
     let first = workbench.hscroll.min(furthest);
     let columns: Vec<Vec<String>> = every[first..].to_vec();
+    // Each column in the style of what it holds, as the command line paints
+    // it: a property's values bold, an attribute's in its colour.
+    let styles: Vec<Style> = data[first.min(data.len())..]
+        .iter()
+        .zip(&columns)
+        .map(|(&at, cells)| column_style(workbench, at, cells))
+        .collect();
     let heads: Vec<String> = data[first.min(data.len())..]
         .iter()
         .map(|&at| workbench.header.get(at).cloned().unwrap_or_default())
@@ -1199,12 +1328,19 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
             if named {
                 cells.push(Cell::from(rendered.name.clone()));
             }
-            cells.extend(
-                columns
-                    .iter()
-                    .take(fits)
-                    .map(|column| Cell::from(column[row].clone())),
-            );
+            cells.extend(columns.iter().zip(&styles).take(fits).enumerate().map(
+                |(shown, (column, style))| {
+                    // A link in the link's style, the column's otherwise.
+                    let link = data
+                        .get(first + shown)
+                        .and_then(|at| rendered.links.get(*at).copied().flatten());
+                    let style = match link {
+                        Some(leads) => attribute_style(Some(leads)),
+                        None => *style,
+                    };
+                    Cell::from(column[row].clone()).style(style)
+                },
+            ));
             Row::new(separated(cells, separator(), 1))
         })
         .collect();
@@ -1343,11 +1479,11 @@ fn setup(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     let mut lines: Vec<Line> = Vec::new();
     let title;
     if let Some(question) = questions.get(setup.question) {
+        // No count of them: how many follow hangs on this one's answer.
         title = format!(
-            " setting {} up · question {} of {} ",
+            " setting {} up · question {} ",
             root.display(),
-            setup.question + 1,
-            questions.len()
+            setup.question + 1
         );
         lines.push(Line::raw(""));
         lines.extend(hanging(
@@ -1379,15 +1515,43 @@ fn setup(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         lines.push(Line::raw(""));
         for proposal in &plan.proposals {
             let name = super::model::step_name(&proposal.step, root);
+            // What a step is for goes on under itself, not under the file's
+            // name, where the screen is wide enough for the two columns.
+            let columned = |said: &str, style: Style| -> Vec<Line<'static>> {
+                let file = proposal.step.name(root);
+                let what = said.get(29..).filter(|_| said.is_char_boundary(29));
+                match what {
+                    Some(what) if file.chars().count() <= 28 && width >= 4 + 29 + 24 => {
+                        textwrap::wrap(what, width - 4 - 29)
+                            .into_iter()
+                            .enumerate()
+                            .map(|(at, part)| {
+                                // The indent a span of its own, which `+`
+                                // replaces.
+                                let head = if at == 0 {
+                                    vec![
+                                        Span::styled("    ", style),
+                                        Span::styled(format!("{file:<28} "), style),
+                                    ]
+                                } else {
+                                    vec![Span::styled(" ".repeat(4 + 29), style)]
+                                };
+                                let mut spans = head;
+                                spans.push(Span::styled(part.into_owned(), style));
+                                Line::from(spans)
+                            })
+                            .collect()
+                    }
+                    _ => hanging(said, 4, width, style),
+                }
+            };
             if proposal.present {
-                lines.extend(hanging(
+                lines.extend(columned(
                     &format!("{name}   already here, kept"),
-                    4,
-                    width,
                     Style::new().fg(theme.muted),
                 ));
             } else {
-                let mut named = hanging(&name, 4, width, Style::new());
+                let mut named = columned(&name, Style::new());
                 if let Some(first) = named.first_mut() {
                     first.spans[0] = Span::styled("  + ", Style::new().fg(theme.selected));
                 }
@@ -1454,8 +1618,10 @@ fn configure(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     let Some(workspace) = &workbench.workspace else {
         return;
     };
+    // Wide enough for its title once changed, ` sections · not written `,
+    // which was cut.
     let [left, right] =
-        Layout::horizontal([Constraint::Length(24), Constraint::Min(20)]).areas(area);
+        Layout::horizontal([Constraint::Length(26), Constraint::Min(20)]).areas(area);
     let sections: Vec<ListItem> = SECTIONS
         .iter()
         .map(|(label, _, _)| ListItem::new(Line::raw(label.to_string())))
@@ -1511,6 +1677,8 @@ fn configure(frame: &mut Frame, workbench: &Workbench, area: Rect) {
                     name.clone(),
                     Style::new().fg(theme.key).add_modifier(Modifier::BOLD),
                 )),
+                // Cut with an ellipsis at the pane's edge: at 40 columns
+                // `exclude = ["RE` read as the whole value.
                 ConfigRow::Key { name, key, value } => ListItem::new(Line::from(vec![
                     Span::raw(if name.is_some() { "  " } else { "" }),
                     Span::styled(
@@ -1518,7 +1686,12 @@ fn configure(frame: &mut Frame, workbench: &Workbench, area: Rect) {
                         Style::new().fg(theme.attribute),
                     ),
                     Span::styled(" = ", Style::new().fg(theme.muted)),
-                    Span::raw(value.clone()),
+                    Span::raw(ellipsized(
+                        value,
+                        (right.width as usize)
+                            .saturating_sub(4 + if name.is_some() { 2 } else { 0 } + key_width + 3)
+                            .max(1),
+                    )),
                 ])),
             })
             .collect()
@@ -1535,7 +1708,14 @@ fn configure(frame: &mut Frame, workbench: &Workbench, area: Rect) {
                     .border_style(focus(workspace.on_rows))
                     .title(format!(" {label} "))
                     .title_bottom(
-                        Line::from(format!(" keys: {keys} ")).style(Style::new().fg(theme.muted)),
+                        Line::from(format!(
+                            " {} ",
+                            ellipsized(
+                                &format!("keys: {keys}"),
+                                (right.width as usize).saturating_sub(4).max(1)
+                            )
+                        ))
+                        .style(Style::new().fg(theme.muted)),
                     ),
             ),
         right,
@@ -1636,12 +1816,18 @@ fn control(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         })
         .collect();
     // What the model owes counted as it is said: never computed, and waiting.
+    // By cells, as `status` counts them: a column's line counts its
+    // rows; a defect or a note counts once.
     let count = |kind: Concern, waits: bool| {
         workbench
             .control
             .iter()
             .filter(|item| item.kind == kind && (kind != Concern::Owed || waiting(item) == waits))
-            .count()
+            .map(|item| match item.kind {
+                Concern::Defect | Concern::Note => 1,
+                _ => crate::presentation::changes::cells_in(&item.said),
+            })
+            .sum::<usize>()
     };
     // Each mark beside its count, as the legend of the marks says it (the
     // help's `MARKS`), and only those there are: six counts ran past 80
@@ -1731,6 +1917,379 @@ fn control(frame: &mut Frame, workbench: &Workbench, area: Rect) {
 }
 
 /// A table of the sample unfolded: its index, then its columns, a row each.
+/// Where a window over the sample is drawn: most of the screen for a table,
+/// less for a property or a list, centred.
+fn window_area(main: Rect, wanted: Option<(u16, u16)>) -> Rect {
+    // Every window alike, a table's grown only as far as it needs: a table
+    // of two short columns was drawn over nearly the whole screen.
+    let (width, height) = (main.width * 70 / 100, main.height * 50 / 100);
+    let (width, height) = match wanted {
+        Some((wide, high)) => (
+            width.max(wide.min(main.width * 95 / 100)),
+            height.max(high.min(main.height * 85 / 100)),
+        ),
+        None => (width, height),
+    };
+    // Inside the main frame's borders, never on them.
+    let width = width
+        .max(40.min(main.width))
+        .min(main.width.saturating_sub(2));
+    let height = height
+        .max(8.min(main.height))
+        .min(main.height.saturating_sub(2));
+    Rect {
+        x: main.x + (main.width.saturating_sub(width)) / 2,
+        y: main.y + (main.height.saturating_sub(height)) / 2,
+        width,
+        height,
+    }
+}
+
+/// What a table's window needs to show it whole — its columns side by side,
+/// its rows, its header and its empty row — roughly, in cells; `None` for
+/// any other window.
+fn table_extent(workbench: &Workbench) -> Option<(u16, u16)> {
+    let Screen::Table { ref name, .. } = workbench.screen else {
+        return None;
+    };
+    let (path, sample) = workbench.current()?;
+    let Ok(held) = sample.table(name) else {
+        return Some((0, 0));
+    };
+    let config = workbench.collection.config_for(&path);
+    let vocabulary = workbench.collection.vocabulary();
+    let subject = Subject {
+        sample: &sample,
+        path: Some(&path),
+        vocabulary: &vocabulary,
+        states: None,
+    };
+    let columns: Vec<Identifier> = held.column_names().into_iter().cloned().collect();
+    let mut width = 4usize;
+    for column in &columns {
+        // As the window writes a cell: the digits a file holds,
+        // `15.999999999999794`, asked for a window twice as wide as `16.0`.
+        let widest = held
+            .rows()
+            .map(|row| {
+                let values: Vec<crate::core::value::Value> =
+                    row.index().into_iter().cloned().collect();
+                let field = super::model::cell_address(name, column, values);
+                let profile = profiles::anonymous(vec![ColumnSpec {
+                    field,
+                    label: None,
+                    header: None,
+                    precision: None,
+                    template: None,
+                }]);
+                render::bare_cell(
+                    &profile.columns()[0],
+                    &subject,
+                    render::Declaration::Profile(&profile),
+                    config,
+                    None,
+                )
+                .chars()
+                .count()
+            })
+            .max()
+            .unwrap_or(1);
+        // Its header with its unit, `temperature [°C]`, and a cell with its
+        // mark: what the window draws, where a margin of ten asked for a
+        // window wider than the table needed.
+        let unit = held
+            .column(column)
+            .ok()
+            .and_then(|meta| meta.presentation().unit.clone())
+            .filter(|unit| !unit.is_empty())
+            .map(|unit| {
+                config
+                    .and_then(|config| config.unit(&unit))
+                    .and_then(|variants| variants.get("plain").cloned())
+                    .unwrap_or(unit)
+            });
+        let header =
+            column.as_str().chars().count() + unit.map_or(0, |unit| unit.chars().count() + 3);
+        width += header.max(widest + 2) + 3;
+    }
+    let rows = held.rows().count() + 1;
+    Some((width as u16, (rows + 5) as u16))
+}
+
+/// A property in its window: what the model declares it to be, then a table
+/// of one row — value, uncertainty, readings — each cell in its state's
+/// colour, the one under the cursor reversed.
+fn property_window(frame: &mut Frame, workbench: &Workbench, area: Rect) {
+    let Screen::Property {
+        ref name, column, ..
+    } = workbench.screen
+    else {
+        return;
+    };
+    let Some((path, sample)) = workbench.current() else {
+        return;
+    };
+    let columns = workbench.property_columns(name);
+    let config = workbench.collection.config_for(&path);
+    let entry = workbench
+        .entries()
+        .into_iter()
+        .find(|entry| entry.field == *name);
+    // A cell's own state, as its table's window colours it: a cell is no
+    // entry of the sample, and its window said none.
+    let state = entry
+        .as_ref()
+        .map(|entry| entry.state.clone())
+        .or_else(|| super::model::cell_state(&sample, name, config, &path))
+        .unwrap_or_default();
+    let identifier = Identifier::new(name).ok();
+    let handle = identifier
+        .as_ref()
+        .and_then(|name| sample.property(name).ok());
+    // Its unit as the screen writes it, `pt/day`, where the file writes `pt/d`.
+    let unit = Some(workbench.window_unit()).filter(|unit| !unit.is_empty());
+    let shown = |field: &str| {
+        editing::value_at(&sample, field)
+            .map(|value| editing::previewed(&value, field, config))
+            .unwrap_or_else(|| "—".to_string())
+    };
+    // **The two numbers the sample's line shows**, `25.056 ± 0.053`, where
+    // there is one: written apart, each at its own precision, the window said
+    // `25.0559` and `0.052173` under that line.
+    let on_the_line: Option<(String, Option<String>)> = entry.as_ref().map(|entry| {
+        let line = entry.shown.trim();
+        // A value waiting for an input is bracketed on the line, `(25.056)`.
+        let line = line
+            .strip_prefix('(')
+            .and_then(|inner| inner.strip_suffix(')'))
+            .unwrap_or(line);
+        let line = unit
+            .as_deref()
+            .and_then(|unit| line.strip_suffix(unit))
+            .map(str::trim_end)
+            .unwrap_or(line);
+        match line.split_once(" \u{b1} ") {
+            Some((value, uncertainty)) => (value.to_string(), Some(uncertainty.to_string())),
+            None => (line.to_string(), None),
+        }
+    });
+    let cells: Vec<String> = columns
+        .iter()
+        .map(|which| match (*which, &on_the_line) {
+            ("value", Some((value, _))) if !value.is_empty() => value.clone(),
+            ("uncertainty", Some((_, Some(uncertainty)))) => uncertainty.clone(),
+            _ => match *which {
+                "value" => shown(name),
+                "uncertainty" => shown(&format!("{name}.u")),
+                _ => handle
+                    .as_ref()
+                    .and_then(|handle| handle.readings())
+                    .map(|readings| {
+                        // At the precision the quantity declares.
+                        readings
+                            .as_slice()
+                            .iter()
+                            .map(|reading| {
+                                crate::core::value::Value::number(*reading).map_or_else(
+                                    |_| reading.to_string(),
+                                    |value| editing::previewed(&value, name, config),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    })
+                    .unwrap_or_else(|| "—".to_string()),
+            },
+        })
+        .collect();
+    drop(sample);
+    // As wide as its header with its unit: `value [pt/day` was cut.
+    let titles: Vec<String> = columns
+        .iter()
+        .map(|which| match (*which, &unit) {
+            ("readings", _) => (*which).to_string(),
+            (_, Some(unit)) => format!("{which} [{unit}]"),
+            (_, None) => (*which).to_string(),
+        })
+        .collect();
+    let mut wanted: Vec<usize> = titles
+        .iter()
+        .zip(&cells)
+        .map(|(title, cell)| cell.chars().count().max(title.chars().count()) + 2)
+        .collect();
+    let headers: Vec<Cell> = titles.iter().cloned().map(Cell::from).collect();
+    // What does not fit is cut where it ends, and said cut: the readings read
+    // `1.055, 1.053, 1.0`, a third reading of one.
+    let room = usize::from(framed_saying(workbench, area.width).inner(area).width)
+        .saturating_sub(columns.len().saturating_sub(1));
+    let mut cells = cells;
+    if let Some(last) = wanted.len().checked_sub(1) {
+        let before: usize = wanted[..last].iter().sum();
+        let left = room.saturating_sub(before);
+        if wanted[last] > left {
+            wanted[last] = left;
+            let fits = left.saturating_sub(2);
+            if cells[last].chars().count() > fits {
+                let kept: String = cells[last].chars().take(fits.saturating_sub(1)).collect();
+                cells[last] = format!("{}…", kept.trim_end_matches([',', ' ']));
+            }
+        }
+    }
+    let widths: Vec<Constraint> = wanted
+        .iter()
+        .map(|width| Constraint::Length(*width as u16))
+        .collect();
+    let colour = state_colour(&state);
+    let row = Row::new(cells.into_iter().enumerate().map(|(at, cell)| {
+        let style = if columns[at] == "readings" {
+            Style::new().fg(colors().muted)
+        } else {
+            Style::new().fg(colour)
+        };
+        Cell::from(cell).style(style)
+    }));
+    let block = framed_saying(workbench, area.width)
+        .title(format!(" {name} "))
+        .title_bottom(element_line(workbench, area.width));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    // What the model declares, wrapped rather than cut.
+    let declared_text = workbench.declared_as(name);
+    let declared_rows = (declared_text.chars().count() as u16)
+        .div_ceil(inner.width.max(1))
+        .max(1);
+    let [declared, said, table_area] = Layout::vertical([
+        Constraint::Length(declared_rows),
+        Constraint::Length(1),
+        Constraint::Min(2),
+    ])
+    .areas(inner);
+    frame.render_widget(
+        Paragraph::new(Line::styled(declared_text, Style::new().fg(colors().muted)))
+            .wrap(Wrap { trim: true }),
+        declared,
+    );
+    if !state.is_empty() {
+        frame.render_widget(
+            Paragraph::new(Line::styled(state.clone(), Style::new().fg(colour))),
+            said,
+        );
+    }
+    let mut table_state = TableState::default()
+        .with_selected(Some(0))
+        .with_selected_column(Some(column));
+    frame.render_stateful_widget(
+        Table::new(vec![row], widths)
+            .header(Row::new(headers).style(Style::new().add_modifier(Modifier::BOLD)))
+            .cell_highlight_style(Style::new().reversed()),
+        table_area,
+        &mut table_state,
+    );
+}
+
+/// A list in its window: a table of one column, an item a row, the empty
+/// row at the foot adding one.
+fn items_window(frame: &mut Frame, workbench: &Workbench, area: Rect) {
+    let Screen::Items {
+        ref field,
+        readings,
+        cursor,
+        ..
+    } = workbench.screen
+    else {
+        return;
+    };
+    let Some((_, items, list)) = workbench.items() else {
+        return;
+    };
+    // Titled as a table is, `ageing · 8 rows`; headed as its column.
+    let what = if readings {
+        format!("{field} · readings · {}", items.len())
+    } else if list {
+        format!(
+            "{field} · {}",
+            if items.len() == 1 {
+                "1 item".to_string()
+            } else {
+                format!("{} items", items.len())
+            }
+        )
+    } else {
+        format!("{field} · one value")
+    };
+    let (path, sample) = match workbench.current() {
+        Some(current) => current,
+        None => return,
+    };
+    let config = workbench.collection.config_for(&path);
+    let header = if readings {
+        let unit = Identifier::new(field)
+            .ok()
+            .and_then(|name| sample.property(&name).ok())
+            .and_then(|handle| handle.presentation().unit)
+            .filter(|unit| !unit.is_empty())
+            .map(|unit| {
+                config
+                    .and_then(|config| config.unit(&unit))
+                    .and_then(|variants| variants.get("plain").cloned())
+                    .unwrap_or(unit)
+            });
+        match unit {
+            Some(unit) => format!("reading [{unit}]"),
+            None => "reading".to_string(),
+        }
+    } else if list {
+        "item".to_string()
+    } else {
+        "value".to_string()
+    };
+    drop(sample);
+    let known = workbench.known_samples();
+    let link = |item: &String| crate::presentation::links::shown(item, &path, &known);
+    // Readings at the precision their quantity declares; a link as Markdown
+    // shows it.
+    let shown = |item: &String| -> String {
+        if !readings {
+            return link(item).map_or_else(|| item.clone(), |link| link.text);
+        }
+        item.parse::<f64>()
+            .ok()
+            .and_then(|number| crate::core::value::Value::number(number).ok())
+            .map_or_else(
+                || item.clone(),
+                |value| editing::previewed(&value, field, config),
+            )
+    };
+    let mut rows: Vec<Row> = items
+        .iter()
+        .map(|item| {
+            let style = match link(item).filter(|_| !readings) {
+                Some(link) => attribute_style(Some(link.leads)),
+                None => Style::new(),
+            };
+            Row::new(vec![Cell::from(shown(item)).style(style)])
+        })
+        .collect();
+    rows.push(Row::new(vec![
+        Cell::from("+").style(Style::new().fg(colors().muted)),
+    ]));
+    let mut state = TableState::default().with_selected(Some(cursor));
+    frame.render_stateful_widget(
+        Table::new(rows, [Constraint::Min(10)])
+            .header(
+                Row::new(vec![Cell::from(header)]).style(Style::new().add_modifier(Modifier::BOLD)),
+            )
+            .row_highlight_style(Style::new().reversed())
+            .block(
+                framed_saying(workbench, area.width)
+                    .title(format!(" {what} "))
+                    .title_bottom(element_line(workbench, area.width)),
+            ),
+        area,
+        &mut state,
+    );
+}
+
 fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     let Screen::Table {
         name,
@@ -1744,8 +2303,46 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     let Some((path, sample)) = workbench.current() else {
         return;
     };
-    let Ok(held) = sample.table(name) else {
+    let config = workbench.collection.config_for(&path);
+    let Some(layout) = super::model::table_layout(&sample, name, config) else {
         return;
+    };
+    // A table the model declares and the file holds no row of: its columns,
+    // drawn from the declaration, with no row but the empty one to fill.
+    let stand_in;
+    let held = match sample.table(name) {
+        Ok(held) => held,
+        Err(_) => {
+            let described = config
+                .and_then(crate::config::model_runtime::current_description)
+                .and_then(|described| described.tables.get(name.as_str()).cloned());
+            let columns: indexmap::IndexMap<Identifier, crate::core::table::ColumnMeta> = layout
+                .cursor_columns()
+                .into_iter()
+                .map(|column| {
+                    let unit = described.as_ref().and_then(|table| {
+                        table
+                            .columns
+                            .iter()
+                            .find(|declared| declared.name == column.as_str())
+                            .and_then(|declared| declared.unit.clone())
+                    });
+                    let mut meta = crate::core::table::ColumnMeta::default();
+                    meta.presentation.unit = unit;
+                    (column, meta)
+                })
+                .collect();
+            let Ok(table) = crate::core::table::Table::new(
+                name.clone(),
+                layout.index.clone(),
+                columns,
+                Vec::new(),
+            ) else {
+                return;
+            };
+            stand_in = table;
+            &stand_in
+        }
     };
     let vocabulary = workbench.collection.vocabulary();
     let subject = Subject {
@@ -1754,7 +2351,6 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         vocabulary: &vocabulary,
         states: None,
     };
-    let config = workbench.collection.config_for(&path);
     let index: Vec<String> = held
         .index_columns()
         .iter()
@@ -1764,17 +2360,59 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         .iter()
         .map(ToString::to_string)
         .collect();
+    // Each column headed with its unit, as `view` heads it, its cells bare:
+    // the file's unit, or the one the project declares, in its plain form.
+    let headed = |column: &str| {
+        let written = Identifier::new(column)
+            .ok()
+            .and_then(|id| {
+                held.column(&id)
+                    .ok()
+                    .and_then(|meta| meta.presentation().unit.clone())
+            })
+            .or_else(|| {
+                config
+                    .and_then(|config| config.property(&format!("{name}.{column}")))
+                    .and_then(|declared| declared.unit.clone())
+            })
+            .filter(|unit| !unit.is_empty());
+        match written {
+            Some(unit) => {
+                let plain = config
+                    .and_then(|config| config.unit(&unit))
+                    .and_then(|variants| variants.get("plain").cloned())
+                    .unwrap_or(unit);
+                format!("{column} [{plain}]")
+            }
+            None => column.to_string(),
+        }
+    };
+    let index_titles: Vec<String> = index.iter().map(|column| headed(column)).collect();
     // A column selected for `c` is marked, as a value is.
     let marked: Vec<String> = columns
         .iter()
         .map(|column| {
             if workbench.selected.contains(&format!("{name}.{column}")) {
-                format!("● {column}")
+                format!("● {}", headed(column))
             } else {
-                column.clone()
+                headed(column)
             }
         })
         .collect();
+    // The columns the model derives: a cell of one nobody filled is owed,
+    // `∅`, where it was left unmarked.
+    let derived_by_model: Vec<String> = layout.derived.clone();
+    // A column whose formula changed is outdated in every cell, as `status`
+    // and `explain` say it: its cells read current here, their records
+    // matching their inputs.
+    let planned =
+        crate::collection::computation::planned_states(config, &path, &sample).unwrap_or_default();
+    let formula_changed = |column: &Identifier| {
+        planned
+            .get(&format!("{name}.{column}"))
+            .filter(|said| said.contains("formula changed"))
+            .cloned()
+    };
     // Each derived cell's state, for its colour.
     let mut states: Vec<Vec<String>> = Vec::new();
     let mut body: Vec<Vec<String>> = held
@@ -1790,11 +2428,31 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
                             .cell(column)
                             .is_ok_and(|cell| cell.records().computed.is_some());
                         if !derived {
-                            return String::new();
+                            if let Some(failure) = row
+                                .cell(column)
+                                .ok()
+                                .and_then(|cell| cell.records().failure.clone())
+                            {
+                                return format!("failed — {failure}");
+                            }
+                            let owed = derived_by_model.contains(&column.to_string())
+                                && row.cell(column).is_ok_and(|cell| {
+                                    cell.records().failure.is_none()
+                                        && cell.peek_value().is_none_or(|value| value.is_absent())
+                                });
+                            return if owed {
+                                "never computed".to_string()
+                            } else {
+                                String::new()
+                            };
                         }
-                        fingerprint::check_cell_among(&sample, name, column, &values)
-                            .map(|state| super::model::word(&state))
-                            .unwrap_or_default()
+                        let word = fingerprint::check_cell_among(&sample, name, column, &values)
+                            .map(|state| super::model::word_of(&sample, &state))
+                            .unwrap_or_default();
+                        match formula_changed(column) {
+                            Some(said) if word == "current" => format!("outdated — {said}"),
+                            _ => word,
+                        }
                     })
                     .collect(),
             );
@@ -1811,13 +2469,12 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
                     precision: None,
                     template: None,
                 }]);
-                let text = render::cell(
+                let text = render::bare_cell(
                     &profile.columns()[0],
                     &subject,
                     render::Declaration::Profile(&profile),
                     config,
                     None,
-                    true,
                 );
                 cells.push(if text.is_empty() {
                     "—".to_string()
@@ -1828,11 +2485,61 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
             cells
         })
         .collect();
+    // The empty row at the foot, where a row is typed cell by cell: what was
+    // typed kept in it, a column the model computes marked as owed.
+    let draft = workbench
+        .draft
+        .as_ref()
+        .filter(|draft| draft.path == path && draft.table == name.as_str());
+    let typed = |column: &str| draft.and_then(|draft| draft.at(column)).map(str::to_string);
+    let mut foot: Vec<String> = index
+        .iter()
+        .map(|column| typed(column).unwrap_or_default())
+        .collect();
+    if foot.iter().all(String::is_empty)
+        && let Some(first) = foot.first_mut()
+    {
+        *first = "+".to_string();
+    }
+    foot.extend(
+        columns
+            .iter()
+            .map(|column| typed(column).unwrap_or_default()),
+    );
+    body.push(foot);
+    states.push(
+        columns
+            .iter()
+            .map(|column| {
+                if derived_by_model.contains(column) {
+                    "never computed".to_string()
+                } else {
+                    String::new()
+                }
+            })
+            .collect(),
+    );
     // Each column's values lined up on their `±`.
     for at in index.len()..index.len() + columns.len() {
         let column: Vec<String> = body.iter().map(|cells| cells[at].clone()).collect();
         for (cells, cell) in body.iter_mut().zip(aligned(&column)) {
             cells[at] = cell;
+        }
+    }
+    // Each cell's mark before it, as a sample's lines carry theirs: a cell
+    // outdated or never computed was only a colour, which a reader of the
+    // table could not tell from a current one.
+    for column in 0..columns.len() {
+        let marks: Vec<&'static str> = states
+            .iter()
+            .map(|row| state_mark(row.get(column).map_or("", String::as_str)))
+            .collect();
+        if marks.iter().all(|mark| mark.is_empty()) {
+            continue;
+        }
+        for (cells, mark) in body.iter_mut().zip(&marks) {
+            let at = index.len() + column;
+            cells[at] = format!("{} {}", if mark.is_empty() { " " } else { mark }, cells[at]);
         }
     }
     let widest = |at: usize| {
@@ -1843,7 +2550,7 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     };
     // The index keeps its width; the columns' names give way as the
     // collection's headers do.
-    let index_widths: Vec<usize> = index
+    let index_widths: Vec<usize> = index_titles
         .iter()
         .enumerate()
         .map(|(at, title)| widest(at).max(title.chars().count()))
@@ -1854,7 +2561,13 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     // The columns shown follow the cursor: from the first that lets it be
     // seen, as many as fit, each at the narrowest its name may be cut to; the
     // index always in place. Their names are then fitted to the room they have.
-    let on = (*on).min(columns.len().saturating_sub(1));
+    // The cursor goes over the index too: a value column's place among the
+    // value columns, and whether it is on the index.
+    let on_index = *on < index.len();
+    let on_all = *on;
+    let on = on
+        .saturating_sub(index.len())
+        .min(columns.len().saturating_sub(1));
     let inner = (area.width as usize).saturating_sub(4);
     let base = index_widths.iter().map(|width| width + 3).sum::<usize>();
     let narrowest = |at: usize| values[at].max(marked[at].chars().count().min(4));
@@ -1873,7 +2586,7 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     let room = inner.saturating_sub(base + 3 * shown) + shown.saturating_sub(1);
     let titles = fitted(&marked[start..past], &values[start..past], room);
     let values = &values[start..past];
-    let mut header = index.clone();
+    let mut header = index_titles.clone();
     header.extend(titles.iter().cloned());
     let widths: Vec<Constraint> = index_widths
         .iter()
@@ -1897,8 +2610,13 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
                 if at < index.len() {
                     return Cell::from(cell).style(Style::new().fg(colors().index));
                 }
+                // A value bold, in its state's colour where it has one.
                 let state = states.get(at - index.len()).map_or("", String::as_str);
-                Cell::from(cell).style(Style::new().fg(state_colour(state)))
+                let style = match state_colour(state) {
+                    Color::Reset => value_style(&colors()),
+                    colour => Style::new().fg(colour).add_modifier(Modifier::BOLD),
+                };
+                Cell::from(cell).style(style)
             })
             .collect();
         Row::new(separated(cells, separator(), 0))
@@ -1920,14 +2638,21 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
         .cell_highlight_style(Style::new().reversed())
         .block(
             framed_saying(workbench, area.width)
-                .title(format!(" {name} · {count} rows {edges}"))
+                .title(format!(
+                    " {name} · {} {edges}",
+                    super::model::counted(count, "row", "rows")
+                ))
                 .title_bottom(element_line(workbench, area.width)),
         );
     let rows_shown = (area.height as usize).saturating_sub(3 + said_rows(workbench, area.width));
     let mut state = TableState::default()
         .with_selected(Some(*cursor))
         // Every column but the first has a separator before it.
-        .with_selected_column(Some(2 * (index.len() + on - start)))
+        .with_selected_column(Some(if on_index {
+            2 * on_all
+        } else {
+            2 * (index.len() + on - start)
+        }))
         .with_offset(offset_within(
             workbench,
             "table",
@@ -2047,8 +2772,13 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
     // Where the state does not fit, its mark alone stands for it, rather
     // than the state being cut off the line: at 80 columns an outdated value read
     // as current. The mark has a column of its own, before the name, so that
-    // no value too long for the pane pushes it out of sight.
-    let marked_only = needed > values_width;
+    // no value too long for the pane pushes it out of sight. Where some room
+    // is left, the state is cut there with an ellipsis: gone whole as soon as
+    // one state was long, at 120 columns no state was read at all, `current`
+    // included, just when a value was outdated.
+    let state_room =
+        (values_width as usize).saturating_sub(2 + 2 + 3 + widest + 2 + shown_width + 2);
+    let marked_only = needed > values_width && state_room < 8;
     let [left, right] = if hidden {
         [area, Rect::default()]
     } else if stacked {
@@ -2064,11 +2794,23 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
                 EntryKind::Quantity => Color::Reset,
                 EntryKind::Attribute => colors().attribute,
                 EntryKind::Table => colors().table,
+                EntryKind::Backlink => colors().link,
             };
             let state_colour = state_colour(&entry.state);
             let selected = workbench.selected.contains(&entry.field);
             let mark = state_mark(&entry.state);
-            ListItem::new(Line::from(vec![
+            // Cut with an ellipsis where the pane ends, never silently — its
+            // frame and padding, the selection, the mark and the name before
+            // it: `8.6 ± 1.5 pt/da` read as a unit. The value in its role's
+            // style, its unit apart; an attribute's in the attribute's colour.
+            let cut = ellipsized(
+                &entry.shown,
+                (left.width as usize)
+                    .saturating_sub(2 + 2 + 3 + widest + 2)
+                    .max(1),
+            );
+            let padding = shown_width.saturating_sub(cut.chars().count()) + 2;
+            let mut spans = vec![
                 Span::styled(
                     if selected { "●" } else { " " },
                     Style::new().fg(colors().selected),
@@ -2081,20 +2823,36 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
                     format!("{:<widest$}  ", entry.field),
                     Style::new().fg(colour),
                 ),
-                Span::raw(format!("{:<shown_width$}  ", entry.shown)),
-                Span::styled(
-                    if marked_only {
-                        String::new()
-                    } else {
-                        entry.state.clone()
-                    },
-                    Style::new().fg(state_colour),
-                ),
-            ]))
+            ];
+            spans.extend(match entry.kind {
+                EntryKind::Quantity => value_spans(&cut, Style::new()),
+                EntryKind::Attribute => vec![Span::styled(cut, attribute_style(entry.link))],
+                EntryKind::Table => vec![Span::raw(cut)],
+                EntryKind::Backlink => vec![Span::styled(cut, Style::new().fg(colors().muted))],
+            });
+            spans.push(Span::raw(" ".repeat(padding)));
+            spans.push(Span::styled(
+                if marked_only {
+                    String::new()
+                } else if needed > values_width {
+                    ellipsized(&entry.state, state_room)
+                } else {
+                    entry.state.clone()
+                },
+                Style::new().fg(state_colour),
+            ));
+            ListItem::new(Line::from(spans))
         })
         .collect();
-    let cursor = match workbench.screen {
-        Screen::Sample { cursor, .. } => cursor,
+    // Under a window, the line it was opened from.
+    let cursor = match &workbench.screen {
+        Screen::Sample { cursor, .. }
+        | Screen::Table { back: cursor, .. }
+        | Screen::Property { back: cursor, .. } => *cursor,
+        Screen::Items { up, .. } => match **up {
+            Screen::Sample { cursor, .. } | Screen::Property { back: cursor, .. } => cursor,
+            _ => 0,
+        },
         _ => 0,
     };
     let rows_shown = (left.height as usize).saturating_sub(2 + said_rows(workbench, left.width));
@@ -2194,7 +2952,8 @@ thread_local! {
 }
 
 /// The note being edited, drawn by its editor in `area`: the text as typed,
-/// unwrapped, its Markdown marked without changing a character as
+/// wrapped at words as it is shown out of editing — scrolled sideways, each
+/// line's beginning went out of sight — its Markdown marked without changing a character as
 /// `rat-markdown` reads it — a heading in the key colour and bold, a list's
 /// marker coloured, code muted, emphasis, strength and a link as they are — the
 /// selection reversed, the terminal's cursor at the editor's.
@@ -2203,6 +2962,7 @@ fn written(frame: &mut Frame, area: Rect, text: &mut Written) -> NoteView {
     let heading = Style::new().fg(theme.key).add_modifier(Modifier::BOLD);
     let muted = Style::new().fg(theme.muted);
     let widget = TextArea::new()
+        .text_wrap(rat_text::text_area::TextWrap::Word(8))
         .block(
             framed()
                 .border_style(Style::new().fg(theme.selected))
@@ -2290,23 +3050,140 @@ enum Focus {
 const FILTER_ROWS: usize = 16;
 
 /// A value's colour by its state, as the sample screen and a table give it.
+/// The style of a column of the samples table, by what it holds: a unit in
+/// the unit's colour, numbers as values, other text as an attribute's; a
+/// sample's name, path or state as they are.
+fn column_style(workbench: &Workbench, at: usize, cells: &[String]) -> Style {
+    use crate::query::field_addressing::{self as fields, Channel, Field};
+    let theme = colors();
+    let Some(column) = workbench.profile.columns().get(at) else {
+        return Style::new();
+    };
+    match fields::parse(&column.field) {
+        Ok(Field::Reserved(_)) | Err(_) => Style::new(),
+        Ok(
+            Field::Named {
+                channel: Channel::Unit,
+                ..
+            }
+            | Field::Cell {
+                channel: Channel::Unit,
+                ..
+            },
+        ) => Style::new().fg(theme.unit),
+        Ok(_) => {
+            let numeric = cells
+                .iter()
+                .filter(|cell| !matches!(cell.as_str(), "" | "—" | "-" | "n/a"))
+                .all(|cell| {
+                    cell.trim_start()
+                        .split(' ')
+                        .next()
+                        .is_some_and(|word| word.trim_start_matches('(').parse::<f64>().is_ok())
+                });
+            if numeric {
+                value_style(&theme)
+            } else {
+                Style::new().fg(theme.attribute)
+            }
+        }
+    }
+}
+
 fn state_colour(state: &str) -> Color {
     let theme = colors();
     if state.starts_with("failed") {
         theme.failed
-    } else if state.starts_with("outdated") || state == "not judged" || state == "broken" {
+    } else if state.starts_with("outdated")
+        || state.starts_with("not judged")
+        || state.starts_with("broken")
+    {
         theme.outdated
-    } else if state == "edited" || state == "record missing" {
+    } else if state.starts_with("edited") || state.starts_with("record missing") {
         theme.edited
     } else if state == "current" {
         theme.current
     } else if state == super::model::NO_STATISTIC {
         theme.muted
-    } else if state.contains("never computed") || state.starts_with("waiting") {
+    } else if (state.contains("never computed")
+        || state.contains(crate::collection::exports::NEVER_COMPUTED))
+        || state.starts_with("waiting")
+        || state.starts_with("waits for")
+    {
         theme.outdated
-    } else {
+    } else if state.is_empty() || state == "entered" {
         Color::Reset
+    } else {
+        // Its formula changed, a statistic to take again: a value to compute
+        // again, in the outdated colour whatever its words, as the command
+        // line says it.
+        theme.outdated
     }
+}
+
+/// `line` wrapped at `width`, its rest under where its text begins: past its
+/// leading spaces, and past a field's name where two spaces or more set the
+/// name apart from what follows it. Each character keeps its style; words
+/// are not cut unless one alone is wider than the room.
+fn hung(line: Line<'static>, width: usize) -> Vec<Line<'static>> {
+    let chars: Vec<(char, Style)> = line
+        .spans
+        .iter()
+        .flat_map(|span| span.content.chars().map(move |c| (c, span.style)))
+        .collect();
+    if chars.len() <= width || width < 8 {
+        return vec![line];
+    }
+    let text: String = chars.iter().map(|(c, _)| *c).collect();
+    let leading = text.chars().take_while(|c| *c == ' ').count();
+    // Past `name   ` where a gap of two spaces follows the first word.
+    let indent = text[leading..]
+        .find("  ")
+        .map(|gap| {
+            let after = leading + gap;
+            after + text[after..].chars().take_while(|c| *c == ' ').count()
+        })
+        .filter(|at| *at < width / 2)
+        .unwrap_or(leading)
+        .min(width / 2);
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    let mut at = 0;
+    let mut first = true;
+    while at < chars.len() {
+        let room = if first { width } else { width - indent };
+        let end = (at + room).min(chars.len());
+        // Break at the last space within the room, unless the line ends here.
+        let end = if end < chars.len() {
+            (at + 1..end)
+                .rev()
+                .find(|cut| chars[*cut].0 == ' ')
+                .map_or(end, |cut| cut + 1)
+        } else {
+            end
+        };
+        let mut spans: Vec<Span<'static>> = Vec::new();
+        if !first {
+            spans.push(Span::raw(" ".repeat(indent)));
+        }
+        let piece: Vec<(char, Style)> = chars[at..end]
+            .iter()
+            .copied()
+            .skip_while(|(c, _)| !first && *c == ' ')
+            .collect();
+        // The indent is a span of its own, never grown by the text after it.
+        let kept = usize::from(!first);
+        for (c, style) in piece {
+            let grows = spans.len() > kept;
+            match spans.last_mut() {
+                Some(last) if grows && last.style == style => last.content.to_mut().push(c),
+                _ => spans.push(Span::styled(c.to_string(), style)),
+            }
+        }
+        lines.push(Line::from(spans).style(line.style));
+        at = end;
+        first = false;
+    }
+    lines
 }
 
 /// A modal window: its title on the top border, the keys that act in it on
@@ -2342,6 +3219,17 @@ fn modal(
         .min(area.width.saturating_sub(4) as usize);
     // Border and padding: two columns each side.
     let inner = width.saturating_sub(4).max(1);
+    // Wrapped here, each line's rest under where its text begins — a change
+    // under its value, `→ 1.052, 1.054, 1.05, / 1.051` — where the terminal
+    // wrapped it at the window's left edge.
+    let lines: Vec<Line<'static>> = if list {
+        lines
+    } else {
+        lines
+            .into_iter()
+            .flat_map(|line| hung(line, inner))
+            .collect()
+    };
     let rows_of = |lines: &[Line]| -> usize {
         lines
             .iter()
@@ -2397,8 +3285,17 @@ fn modal(
                     bottom: (said + above) as u16,
                 })
                 .title(
-                    Line::from(format!(" {title} "))
-                        .style(Style::new().add_modifier(Modifier::BOLD)),
+                    // Cut with its mark where the border cannot hold it.
+                    Line::from(format!(
+                        " {} ",
+                        // Its middle cut, where a title ends on a path: the
+                        // file's name was what it lost.
+                        crate::presentation::terminal_rendering::truncate_middle(
+                            title,
+                            width.saturating_sub(4)
+                        )
+                    ))
+                    .style(Style::new().add_modifier(Modifier::BOLD)),
                 )
                 .title_bottom({
                     // As many of its keys as two rows hold, `Enter` and
@@ -2416,6 +3313,20 @@ fn modal(
         ),
         at,
     );
+    // More below than the window holds is marked on its last row, in the
+    // padding: at 40×16 the quantity's window lost its advice, cut with no
+    // sign that it went on.
+    if !list && wrapped > scroll + shown_rows && at.width > 2 {
+        frame.render_widget(
+            Paragraph::new(Span::styled("…", Style::new().fg(colors().muted))),
+            Rect {
+                x: at.x + at.width - 2,
+                y: at.y + shown_rows as u16,
+                width: 1,
+                height: 1,
+            },
+        );
+    }
     // Where its lines are, and how far scrolled: a line typed is drawn
     // there by its editor.
     MODAL_SHOWN.with(|shown| {
@@ -2529,8 +3440,22 @@ fn modal_list(
     rows: Option<usize>,
     status: &[Line<'static>],
 ) {
+    // As wide as `modal` makes a list's window: an item longer than its
+    // inside is cut with its mark, where the window cut it without one.
+    let main = MAIN_AREA.with(std::cell::Cell::get);
+    let area = if main.width > 0 && main.height >= 3 {
+        main
+    } else {
+        frame.area()
+    };
+    let inner = (area.width as usize * 2 / 3)
+        .clamp(60, 100)
+        .min(area.width.saturating_sub(4) as usize)
+        .saturating_sub(4)
+        .max(1);
     let lines = items
         .into_iter()
+        .map(|item| crate::presentation::terminal_rendering::truncate(&item, inner))
         .enumerate()
         .map(|(at, item)| {
             if at == cursor {
@@ -2613,12 +3538,37 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
         }
         Mode::Prompt { purpose, .. } => {
             let (title, actions) = match purpose {
+                // In a quantity's window, its unit and what is typed: the
+                // number alone.
+                super::model::Purpose::Edit { field, .. }
+                    if matches!(workbench.screen, Screen::Property { .. }) =>
+                {
+                    let unit = workbench.window_unit();
+                    let unit = if unit.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" in {unit}")
+                    };
+                    let said = if field.ends_with(".u") {
+                        "the number alone, a point for decimals; empty clears it"
+                    } else {
+                        "the number alone, a point for decimals"
+                    };
+                    (
+                        format!("{field}{unit} — {said}"),
+                        "Enter preview · Esc cancel",
+                    )
+                }
                 super::model::Purpose::Edit { field, .. } => {
                     (format!("{field} ="), "Enter preview · Esc cancel")
                 }
+                super::model::Purpose::Rename { .. } => (
+                    "rename to".to_string(),
+                    "its file's name · Enter preview · Esc cancel",
+                ),
                 super::model::Purpose::Tags { .. } => (
-                    "tags, by commas or spaces".to_string(),
-                    "Enter preview · Esc cancel",
+                    "tags =".to_string(),
+                    "by commas or spaces · Enter preview · Esc cancel",
                 ),
                 super::model::Purpose::Setting { key, .. } => (
                     format!("{key} ="),
@@ -2642,6 +3592,10 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                     ),
                     "Enter add · Esc cancel",
                 ),
+                super::model::Purpose::ScriptOptions { script, .. } => (
+                    format!("{}'s options, NAME=VALUE", script.name),
+                    "Enter run · Esc cancel",
+                ),
                 super::model::Purpose::DeclareName(_) => {
                     ("its name".to_string(), "Enter preview · Esc cancel")
                 }
@@ -2650,16 +3604,63 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                     "Enter keep · empty gives the field's · Esc back",
                 ),
                 super::model::Purpose::New { .. } => (
-                    "a new sample's name".to_string(),
+                    "a new sample: its name, then field=value … and keep:field,field from the one under the cursor".to_string(),
                     "Enter preview · Esc cancel",
                 ),
-                super::model::Purpose::Row { table, .. } => (
-                    format!("a row in {table}: column=value, …"),
-                    "Enter preview · Esc cancel",
+                super::model::Purpose::AttributeName { .. } => (
+                    "a new attribute's name".to_string(),
+                    "Enter then its value · Esc cancel",
+                ),
+                // A line typed is titled by its address, as a value's is.
+                super::model::Purpose::Item {
+                    field,
+                    at,
+                    readings,
+                    ..
+                } => {
+                    let list = if *readings {
+                        format!("{field}.readings")
+                    } else {
+                        field.clone()
+                    };
+                    match at {
+                        Some(at) => (
+                            format!("{list}[{}] =", at + 1),
+                            "Enter preview · empty takes it out · Esc cancel",
+                        ),
+                        None if *readings => (
+                            format!("{list}[new] ="),
+                            "several, 11, 13 · Enter preview · Esc cancel",
+                        ),
+                        None => (format!("{list}[new] ="), "Enter preview · Esc cancel"),
+                    }
+                }
+                super::model::Purpose::DraftCell { table, column, .. } => (
+                    format!("{table}.{column}[new] ="),
+                    "Enter keep · Esc cancel",
                 ),
                 super::model::Purpose::Tag => (
-                    "tag the basket with, or -tag to take it off".to_string(),
+                    "tag the basket with, -tag to take it off, or old=new to rename one"
+                        .to_string(),
                     "Enter preview · Esc cancel",
+                ),
+                super::model::Purpose::ShownFile { several } => (
+                    if *several {
+                        "the file, from the folder opened — what is shown spans several \
+                         projects: its extension says its format"
+                    } else {
+                        "the file, from the project's folder: its extension says its format"
+                    }
+                    .to_string(),
+                    "Enter preview · Esc cancel",
+                ),
+                super::model::Purpose::FigureFile(_) => (
+                    "the figure's file, from the project's folder: .pdf, .png or .svg".to_string(),
+                    "Enter write it · Esc cancel",
+                ),
+                super::model::Purpose::NameMachine { host, .. } => (
+                    format!("{host} wrote here, a computer this one does not know: its name"),
+                    "Enter keep this name · Esc keep the host's",
                 ),
                 // The setup's model one already has.
                 super::model::Purpose::ModelPath => (
@@ -2696,9 +3697,9 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                     "Space tick · ⇧↑↓ move · / narrow · Enter show · Esc cancel",
                     true,
                 ),
-                super::model::Choosing::Produce(_) => (
-                    "figures and exports",
-                    "/ narrow · Enter draw or preview · Esc cancel",
+                super::model::Choosing::Produce(_, title) => (
+                    title.as_str(),
+                    "Enter run · w a figure to a file · / narrow · Tab next group · Esc cancel",
                     false,
                 ),
                 // It applies to what is shown, and goes nowhere.
@@ -2879,58 +3880,31 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                 status,
             ));
         }
-        Mode::Note { .. } => {}
-        Mode::Quantity {
-            field, slots, on, ..
-        } => {
-            // Each label with its unit, `value (g)`, the texts lined up after
-            // the longest.
-            let labelled = |slot: &super::model::Slot| {
-                if slot.unit.is_empty() {
-                    slot.label.to_string()
-                } else {
-                    format!("{} ({})", slot.label, slot.unit)
-                }
-            };
-            let width = slots
-                .iter()
-                .map(|slot| labelled(slot).chars().count() + 1)
-                .max()
-                .unwrap_or(0)
-                .max(13);
-            let mut lines: Vec<Line<'static>> = slots
-                .iter()
-                .enumerate()
-                .map(|(at, slot)| {
-                    let active = at == *on;
-                    let style = if active {
-                        Style::new().fg(colors().selected)
-                    } else {
-                        Style::new().fg(colors().muted)
-                    };
-                    typed.push((at, width as u16));
-                    Line::styled(format!("{:<width$}", labelled(slot)), style)
-                })
-                .collect();
-            lines.push(Line::raw(""));
-            lines.push(Line::styled(
-                if slots.len() > 2 {
-                    "the number alone, a point for decimals · an empty uncertainty clears it · readings by commas"
-                } else {
-                    "the number alone, a point for decimals · an empty uncertainty clears it"
-                },
-                Style::new().fg(colors().muted),
-            ));
+        // A running script's window: what it printed, its last line the one
+        // being written, where what is typed for its `input()` goes on.
+        Mode::Script { .. } => {
+            let (name, printed) = workbench
+                .scripting
+                .as_ref()
+                .map(|running| (running.name.clone(), running.printed.clone()))
+                .unwrap_or_default();
+            let lines: Vec<String> = printed.split('\n').map(str::to_string).collect();
+            let last = lines.len().saturating_sub(1);
+            let from = lines.last().map_or(0, |line| {
+                unicode_width::UnicodeWidthStr::width(line.as_str())
+            }) as u16;
             modal(
                 frame,
-                field,
-                "Tab next · Shift+Tab back · Enter preview · Esc cancel",
-                lines,
-                Focus::Scroll(0),
+                &format!("run {name}"),
+                "Enter answers · Esc puts it away, the script runs on",
+                lines.into_iter().map(Line::raw).collect(),
+                Focus::Cursor(last),
                 None,
                 status,
             );
+            typed.push((last, from));
         }
+        Mode::Note { .. } => {}
         Mode::Help { scroll } => help_window(frame, workbench, *scroll),
         // The figure's window: what it draws, then how, a row each.
         Mode::Figure => {
@@ -2998,14 +3972,30 @@ fn framed() -> Block<'static> {
 
 /// A state as the one character a table marks it with, for a pane too narrow
 /// to say it in words.
-fn state_mark(state: &str) -> &'static str {
-    if state.is_empty() || state == "current" || state == "entered" {
+pub fn state_mark(state: &str) -> &'static str {
+    // The file's name standing for a name nobody wrote is a note, no state
+    // that needs attention: marked ⚠, every sample named by its file read
+    // outdated.
+    // A value or a table to fill in is nobody's omission yet: marked ⚠, a
+    // new sample read as outdated from its first line.
+    if state.is_empty()
+        || state == "current"
+        || state == "entered"
+        || state == "the file's name"
+        || state == super::model::TO_FILL
+    {
         ""
     } else if state == super::model::NO_STATISTIC {
         "·"
+    } else if state.starts_with("waits for") || state.contains("waiting") {
+        // Before failed: *waits for young_modulus, which failed* waits, as
+        // `v` says it, and was marked ✗.
+        "∅"
     } else if state.contains("failed") {
         "✗"
-    } else if state.contains("never computed") || state.contains("waiting") {
+    } else if state.contains("never computed")
+        || state.contains(crate::collection::exports::NEVER_COMPUTED)
+    {
         "∅"
     } else if state.contains("edited") || state.contains("record missing") {
         "✎"
@@ -3066,7 +4056,13 @@ fn history(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
         .iter()
         .map(|row| {
             let number = Span::styled(format!("{:>3}  ", row.number), Style::new().fg(theme.muted));
-            let when = Span::styled(format!("{}  ", row.when), Style::new().fg(theme.muted));
+            // The machine after *when*, as `log` writes it, once two have
+            // written in the history.
+            let when = match &row.machine {
+                Some(machine) => format!("{}  {machine}  ", row.when),
+                None => format!("{}  ", row.when),
+            };
+            let when = Span::styled(when, Style::new().fg(theme.muted));
             let lead = number.width() + when.width();
             if lead + row.message.chars().count() <= inside {
                 ListItem::new(Line::from(vec![
@@ -3171,4 +4167,15 @@ fn history(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
         right,
     );
     furthest
+}
+
+/// An attribute's value: in the attribute's colour, a link underlined in the
+/// link's, one leading nowhere in the error's.
+fn attribute_style(link: Option<crate::presentation::links::Leads>) -> Style {
+    use crate::presentation::links::Leads;
+    match link {
+        None => Style::new().fg(colors().attribute),
+        Some(Leads::Nowhere) => Style::new().fg(colors().error).underlined(),
+        Some(_) => Style::new().fg(colors().link).underlined(),
+    }
 }

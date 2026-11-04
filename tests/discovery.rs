@@ -12,7 +12,7 @@ impl Scratch {
     fn new(name: &str) -> Scratch {
         let path = dunce::canonicalize(std::env::temp_dir())
             .unwrap()
-            .join(format!("samplekit-keg-{name}-{}", std::process::id()));
+            .join(format!("samplekit-billet-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&path);
         fs::create_dir_all(&path).unwrap();
         Scratch(path)
@@ -28,7 +28,7 @@ impl Scratch {
     fn sample(&self, relative: &str) -> PathBuf {
         self.file(
             relative,
-            "---\nschema_version: 1\nproperties:\n  malt: 1.0\n---\nA note.\n",
+            "---\nschema_version: 1\nproperties:\n  diameter: 1.0\n---\nA note.\n",
         )
     }
 
@@ -75,14 +75,30 @@ fn discover(root: &Path, config: Option<&project_config::ProjectConfig>) -> disc
 // ------------------------------------------------------------------ rules
 
 #[test]
-fn default_is_non_recursive() {
-    // A sample directory commonly sits next to README.md and generated/, and a
-    // default that swept them would make the common case surprising.
+fn a_folder_outside_a_project_is_read_alone() {
+    // A folder no configuration describes may be anything, a home or a
+    // download folder: reading every folder below it is asked for.
     let scratch = Scratch::new("non-recursive");
     scratch.sample("a.md");
     scratch.sample("runs/b.md");
     let found = discover(&scratch.0, None);
     assert_eq!(names(&found), ["a.md"]);
+}
+
+#[test]
+fn a_project_reads_its_subfolders_by_default() {
+    // Its samples in `samples/`, a project's root read none of them.
+    let scratch = Scratch::new("project-recursive");
+    scratch.sample("samples/a.md");
+    let path = scratch.config("", "schema_version = 1\n");
+    let config = project_config::load(&path).unwrap();
+    assert_eq!(
+        names(&discover(&scratch.0, Some(&config))),
+        ["samples/a.md"]
+    );
+    let path = scratch.config("", "schema_version = 1\n[collection]\nrecursive = false\n");
+    let config = project_config::load(&path).unwrap();
+    assert!(names(&discover(&scratch.0, Some(&config))).is_empty());
 }
 
 #[test]
@@ -121,6 +137,48 @@ fn a_path_pattern_is_relative_to_its_configuration() {
                     pattern: "sub/*.md".to_string(),
                 }
     }));
+}
+
+#[test]
+fn a_projects_samples_are_the_same_from_the_folder_above() {
+    // A project inside the one read keeps its own `include`, `exclude` and
+    // `recursive`, from its own folder: its drafts were read as samples from
+    // above it, and the folder above's patterns reached into it.
+    let scratch = Scratch::new("inner-project");
+    scratch.config(
+        "",
+        "schema_version = 1\n[collection]\nrecursive = true\nexclude = [\"alpha/s2.md\"]\n",
+    );
+    scratch.config(
+        "alpha",
+        "schema_version = 1\n[collection]\nrecursive = true\ninclude = [\"s*.md\"]\n\
+         exclude = [\"sub/*\"]\n",
+    );
+    scratch.config(
+        "beta",
+        "schema_version = 1\n[collection]\nrecursive = false\n",
+    );
+    for sample in [
+        "top.md",
+        "alpha/s1.md",
+        "alpha/s2.md",
+        "alpha/draft.md",
+        "alpha/sub/s3.md",
+        "beta/b.md",
+        "beta/deep/c.md",
+    ] {
+        scratch.sample(sample);
+    }
+    let above = project_config::load(&scratch.0.join(".samplekitrc")).unwrap();
+    assert_eq!(
+        names(&discover(&scratch.0, Some(&above))),
+        ["alpha/s1.md", "alpha/s2.md", "beta/b.md", "top.md"]
+    );
+    let alpha = project_config::load(&scratch.0.join("alpha/.samplekitrc")).unwrap();
+    assert_eq!(
+        names(&discover(&scratch.0.join("alpha"), Some(&alpha))),
+        ["s1.md", "s2.md"]
+    );
 }
 
 #[test]
@@ -246,7 +304,7 @@ fn discovery_does_not_fully_parse() {
     let scratch = Scratch::new("shallow");
     scratch.file(
         "a.md",
-        "---\nschema_version: 1\ntables:\n  mashing:\n    index: nope\n    columns: {}\n    rows: []\n---\nnote\n",
+        "---\nschema_version: 1\ntables:\n  preheating:\n    index: nope\n    columns: {day: {}}\n    rows: []\n---\nnote\n",
     );
     let found = discover(&scratch.0, None);
     assert_eq!(names(&found), ["a.md"]);
@@ -293,20 +351,45 @@ fn order_does_not_depend_on_creation_sequence() {
 
 #[test]
 #[cfg(unix)]
-fn symlinked_directory_is_not_followed() {
-    // Including a link to an ancestor, which must terminate.
+fn a_linked_folder_is_scanned_as_the_projects() {
+    // Data on another disk, linked into the project: its samples are the
+    // project's, named by the path the link gives them.
+    let scratch = Scratch::new("linked");
+    scratch.sample("a.md");
+    let elsewhere = Scratch::new("linked-elsewhere");
+    elsewhere.sample("b.md");
+    std::os::unix::fs::symlink(&elsewhere.0, scratch.0.join("data")).unwrap();
+
+    let path = scratch.config("", "schema_version = 1\n[collection]\nrecursive = true\n");
+    let config = project_config::load(&path).unwrap();
+    let found = discover(&scratch.0, Some(&config));
+    assert_eq!(names(&found), ["a.md", "data/b.md"]);
+}
+
+#[test]
+#[cfg(unix)]
+fn a_link_back_into_the_scan_is_entered_once() {
+    // A link to an ancestor is said, not followed again: the scan ends, and
+    // no sample is read twice.
     let scratch = Scratch::new("symlink");
     scratch.sample("a.md");
     let inner = scratch.dir("inner");
     scratch.sample("inner/b.md");
-    // A link pointing at an ancestor: following it would never end.
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&scratch.0, inner.join("up")).unwrap();
 
     let path = scratch.config("", "schema_version = 1\n[collection]\nrecursive = true\n");
     let config = project_config::load(&path).unwrap();
     let found = discover(&scratch.0, Some(&config));
     assert_eq!(names(&found), ["a.md", "inner/b.md"]);
+    assert!(
+        found
+            .skipped
+            .iter()
+            .any(|skipped| skipped.path.ends_with("inner/up")
+                && skipped.reason == SkipReason::LinkBack),
+        "{:?}",
+        found.skipped
+    );
 }
 
 #[test]
@@ -327,13 +410,13 @@ fn missing_root_is_an_error() {
     assert!(error.to_string().contains("does not exist"), "{error}");
 }
 
-// ---------------------------------------------------- crossing vintages
+// ---------------------------------------------------- crossing projects
 
 #[test]
 fn crossing_into_another_configuration_warns() {
     // A subdirectory with its own `.samplekitrc` is reported, not silently
     // absorbed: there that is precisely where the template differs, so the
-    // collection holds casks described by different models.
+    // collection holds slabs described by different models.
     let scratch = Scratch::new("mixed");
     scratch.sample("a.md");
     scratch.sample("other/b.md");
@@ -495,12 +578,55 @@ fn classify_distinguishes_its_three_refusals() {
 }
 
 #[test]
-fn a_sample_without_its_version_is_discovered() {
-    // Read as the current version, and noted by validate.
+fn a_file_without_its_version_is_no_sample() {
+    // A sample says which shape it is: a frontmatter without `schema_version`
+    // is left out, as a README is, whatever fields it holds.
     let scratch = Scratch::new("versionless");
     let versionless =
         discovery::classify(&scratch.file("noversion.md", "---\nname: A\n---\nnote\n"));
-    assert!(versionless.is_ok(), "{versionless:?}");
+    assert_eq!(versionless, Err(discovery::SkipReason::NoVersion));
+    let earlier = discovery::classify(&scratch.file(
+        "old.md",
+        "---\nname: OLD\nproperties:\n  diameter: {v: 1.0, precision_unc: \".2f\"}\n---\n",
+    ));
+    assert_eq!(earlier, Err(discovery::SkipReason::NoVersion));
+    let spelt = discovery::classify(&scratch.file(
+        "spelt.md",
+        "---\nname: OLD\nproperties:\n  radius: {value: 1.05, uncertainty: 0.001}\n---\n",
+    ));
+    assert_eq!(spelt, Err(discovery::SkipReason::NoVersion));
+    let versioned =
+        discovery::classify(&scratch.file("a.md", "---\nschema_version: 1\nname: A\n---\n"));
+    assert!(versioned.is_ok(), "{versioned:?}");
+}
+
+#[test]
+fn a_sync_conflicts_copy_is_left_out_naming_its_original() {
+    // Syncthing's and Dropbox's copies, read as samples, were counted twice
+    // in every mean.
+    let scratch = Scratch::new("conflicts");
+    let body = "---\nschema_version: 1\n---\n";
+    for (copy, original) in [
+        ("raw.sync-conflict-20260929-101500-ABCDEF7.md", "raw.md"),
+        ("raw (conflicted copy 2026-09-29).md", "raw.md"),
+        ("raw (Tom's conflicted copy 2026-09-29).md", "raw.md"),
+        ("raw_conflict-20260929-101500.md", "raw.md"),
+    ] {
+        let path = scratch.file(copy, body);
+        assert_eq!(
+            discovery::classify(&path),
+            Err(discovery::SkipReason::SyncConflict {
+                original: path.with_file_name(original)
+            }),
+            "{copy}"
+        );
+    }
+    for plain in ["raw (2).md", "my_conflict-notes.md", "raw-LAPTOP.md"] {
+        assert!(
+            discovery::classify(&scratch.file(plain, body)).is_ok(),
+            "{plain}"
+        );
+    }
 }
 
 #[test]
@@ -620,7 +746,7 @@ fn an_imported_files_pattern_finds_each_collections_files() {
     scratch.config(
         "",
         "schema_version = 1\n[collection]\n\
-         files = [\"{collection}/photos/{name}*\", \"images/{collection}/{name}*\"]\n",
+         files = [\"{project}/photos/{name}*\", \"images/{project}/{name}*\"]\n",
     );
     for collection in ["c1", "c2"] {
         scratch.config(collection, "schema_version = 1\nimport = \"..\"\n");

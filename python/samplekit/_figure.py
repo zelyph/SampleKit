@@ -61,6 +61,8 @@ def _run(request):
     _figures.SAID = request.get("said")
     # A refusal names the command's options, `-o`, rather than `output=`.
     _figures.COMMAND_LINE = True
+    # From the workbench, `w` writes a file, not `-o`.
+    _figures.WORKBENCH = bool(request.get("workbench"))
     # Drawn from the project as it was: the snapshot it carries.
     _figures.CARRY = request.get("snapshot")
     overrides = {key: value for key, value in (request.get("overrides") or {}).items()
@@ -104,6 +106,13 @@ def _run(request):
             return refuse(str(error), code=FAILED)
         traceback.print_exc()
         return FAILED
+    # Drawn from values not current: written, and a failure all the same, as
+    # an export's, unless the command accepts them.
+    if _figures.STALE_SAID and not request.get("accept_outdated"):
+        return refuse(
+            "the figure is drawn from values not current — --accept outdated exits 0 for it",
+            code=FAILED,
+        )
     return 0
 
 
@@ -134,12 +143,30 @@ def _said(message, category, filename, lineno, file=None, line=None):
     """A warning as the command line says one: its words, without the source
     line of this package it was raised on."""
     text = str(message).replace("compute() runs it", "samplekit compute runs it")
-    print(f"warning: {text}", file=sys.stderr)
+    print(_painted("warning:", text), file=sys.stderr)
 
 
 def refuse(message, code=REFUSED):
-    print(f"error: {message}", file=sys.stderr)
+    print(_painted("error:", message), file=sys.stderr)
     return code
+
+def _painted(prefix, text):
+    """`prefix` and `text` as the command line paints them where it gave its
+    colours: the prefix in its own, advice at the end muted."""
+    import os
+    reset = os.environ.get("SAMPLEKIT_PAINT_RESET")
+    if not reset:
+        return f"{prefix} {text}"
+    style = os.environ.get(
+        "SAMPLEKIT_PAINT_WARNING" if prefix == "warning:" else "SAMPLEKIT_PAINT_ERROR", ""
+    )
+    muted = os.environ.get("SAMPLEKIT_PAINT_MUTED", "")
+    fact, mark, tip = text.rpartition(" — ")
+    if mark and ("samplekit " in tip or any(
+        word.startswith("--") and len(word) > 2 and word[2].isalpha() for word in tip.split()
+    )):
+        text = f"{fact} — {muted}{tip}{reset}"
+    return f"{style}{prefix}{reset} {text}"
 
 
 if __name__ == "__main__":

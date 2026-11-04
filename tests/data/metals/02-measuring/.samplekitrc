@@ -1,0 +1,44 @@
+# A home tester's notebook: each file in pieces/ is one piece. The data is
+# invented for SampleKit's documentation.
+
+schema_version = 1
+
+# The pieces are in pieces/: read from here too, so that `samplekit` in this
+# folder shows them. This README is no piece.
+[collection]
+recursive = true
+exclude = ["README.md"]
+
+# ----------------------------------------------------------------- units
+# The key is the unit as the files write it; `plain` is how a table shows it.
+
+[unit."degC"]
+plain = "°C"
+
+# ------------------------------------------------------------ quantities
+# Each quantity: its unit, which `samplekit set` and `samplekit new` write for
+# you; its precision (the value's, then the uncertainty's); and its symbol,
+# which labels a figure's axis.
+
+[property.radius]
+symbol = "RADIUS"
+precision = [".3f", ".4f"]
+
+[property.notch]
+symbol = "NOTCH"
+precision = [".3f", ".4f"]
+
+[property.volume]
+unit = "L"
+symbol = "V"
+precision = ".1f"
+
+[property.ore_mass]
+unit = "kg"
+symbol = "m_ore"
+precision = ".2f"
+
+[property.preheat_temperature]
+unit = "degC"
+symbol = "T_preheat"
+precision = ".0f"

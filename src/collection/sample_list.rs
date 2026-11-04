@@ -47,6 +47,25 @@ pub struct SampleList {
     /// narrowing keeps no configuration, and a value the model gives before
     /// any sample holds it stays a name that exists.
     declared: Vec<Identifier>,
+    /// The names every sample of the list's projects holds, read once where
+    /// the list is fewer than its projects — a file, a folder below the
+    /// project's: `-s style` on one sample without a style was refused as an
+    /// unknown field that twelve others hold.
+    project: std::sync::OnceLock<fields::Vocabulary>,
+    /// The configurations of the list this one was derived from, which a
+    /// derived list does not keep as its own: where those names are read.
+    origin: Vec<ProjectConfig>,
+}
+
+/// What a selection is about, by its samples' projects ([`SampleList::scope_of`]).
+#[derive(Debug)]
+pub enum Scope<'a> {
+    /// One project's samples.
+    One(&'a ProjectConfig),
+    /// Several projects whose models are one.
+    SameModel(Vec<&'a ProjectConfig>),
+    /// Projects of different models.
+    Mixed(Vec<&'a ProjectConfig>),
 }
 
 /// The samples of a list one configuration describes, from a list spanning
@@ -86,12 +105,21 @@ pub struct ColumnSummary {
     /// uncertainty above zero: the mean a measurement's own spread asks for.
     /// `None` where one has none, and the plain mean stands.
     pub weighted_mean: Option<f64>,
+    /// The standard error of the weighted mean, 1/√Σw, beside it: the
+    /// arithmetic one was shown beside a weighted mean.
+    pub weighted_error: Option<f64>,
 }
 
 impl ColumnSummary {
     /// The mean a summary shows: weighted where it could be.
     pub fn mean(&self) -> f64 {
         self.weighted_mean.unwrap_or(self.summary.mean)
+    }
+
+    /// The standard error of the mean shown: 1/√Σw beside a weighted one, the
+    /// sample deviation over √n beside the arithmetic one.
+    pub fn standard_error(&self) -> Option<f64> {
+        self.weighted_error.or(self.summary.standard_error)
     }
 }
 
@@ -209,8 +237,10 @@ fn load_directory(
             }
         }
     }
-    Ok(SampleList {
+    let list = SampleList {
         declared: Vec::new(),
+        project: std::sync::OnceLock::new(),
+        origin: Vec::new(),
         forced: !nearest,
         root: Some(found.root),
         entries,
@@ -224,7 +254,9 @@ fn load_directory(
         nearest: loaded,
         within: Vec::new(),
         warnings: if nearest { found.warnings } else { Vec::new() },
-    })
+    };
+    declare_table_units(&list);
+    Ok(list)
 }
 
 /// Lists read from several targets, as one: each sample keeps the configuration
@@ -290,6 +322,8 @@ pub fn merged(lists: Vec<SampleList>) -> SampleList {
     let spans = roots.len() > 1;
     SampleList {
         declared: Vec::new(),
+        project: std::sync::OnceLock::new(),
+        origin: Vec::new(),
         forced: false,
         root,
         entries,
@@ -321,6 +355,8 @@ pub fn from_paths(paths: &[PathBuf]) -> Result<SampleList, ListError> {
     }
     Ok(SampleList {
         declared: Vec::new(),
+        project: std::sync::OnceLock::new(),
+        origin: Vec::new(),
         forced: false,
         root: None,
         entries,
@@ -371,10 +407,8 @@ pub fn from_files_with(
     configuration: Option<ProjectConfig>,
 ) -> Result<SampleList, ListError> {
     let mut list = from_paths(paths)?;
-    let Some(first) = paths.first() else {
-        return Ok(list);
-    };
-    let _ = first;
+    // The configuration given describes the list, files or none: an empty
+    // list returned before it ignored `--rc`.
     list.config = configuration;
     list.forced = true;
     // **A list of named files has no root.** It is not a directory, and giving
@@ -384,6 +418,7 @@ pub fn from_files_with(
     // same command on the directory reports none. `--rc` still says "this
     // configuration describes every sample read" through `forced`.
     list.root = None;
+    declare_table_units(&list);
     Ok(list)
 }
 
@@ -404,6 +439,8 @@ fn directory_of(file: &Path) -> PathBuf {
 pub fn from_samples(samples: Vec<Sample>) -> SampleList {
     SampleList {
         declared: Vec::new(),
+        project: std::sync::OnceLock::new(),
+        origin: Vec::new(),
         forced: false,
         root: None,
         entries: samples
@@ -428,6 +465,8 @@ pub fn from_samples(samples: Vec<Sample>) -> SampleList {
 pub fn from_entries(entries: Vec<Entry>) -> SampleList {
     SampleList {
         declared: Vec::new(),
+        project: std::sync::OnceLock::new(),
+        origin: Vec::new(),
         forced: false,
         root: None,
         entries,
@@ -443,6 +482,8 @@ pub fn from_entries(entries: Vec<Entry>) -> SampleList {
 pub fn empty() -> SampleList {
     SampleList {
         declared: Vec::new(),
+        project: std::sync::OnceLock::new(),
+        origin: Vec::new(),
         forced: false,
         root: None,
         entries: Vec::new(),
@@ -462,6 +503,36 @@ impl SampleList {
     /// Correcting a value in a filtered subset corrects it in the parent,
     /// which is what a user means by *the approved samples*.
     pub fn filter(&self, predicate: &Filter) -> Result<SampleList, ListError> {
+        // `volume > 20` over litres and millilitres kept 21000 mL, compared
+        // with 20 of no unit, without a word.
+        for field in filter::numbers_compared(predicate) {
+            self.refuse_mixed_units(&field)?;
+        }
+        // A whole column, asked of any row: its unit is its first cell's.
+        let columns = filter::columns_compared(predicate);
+        let known = (!columns.is_empty()).then(|| self.vocabulary());
+        for (table, column) in columns {
+            if !known
+                .as_ref()
+                .is_some_and(|vocabulary| vocabulary.has_column(&table, &column))
+            {
+                continue;
+            }
+            let first = Field::Cell {
+                table: table.clone(),
+                column: column.clone(),
+                row: crate::core::table::RowAddress::Ordinal(0),
+                channel: fields::Channel::Value,
+            };
+            self.refuse_mixed_units(&first)
+                .map_err(|error| match error {
+                    ListError::MixedUnits { units, .. } => ListError::MixedUnits {
+                        field: format!("{table}.{column}"),
+                        units,
+                    },
+                    other => other,
+                })?;
+        }
         let vocabulary = self.vocabulary();
         let mut kept = Vec::new();
         for entry in &self.entries {
@@ -486,6 +557,55 @@ impl SampleList {
         Ok(self.derive(kept))
     }
 
+    /// Other samples under this list's configurations — versions of its own
+    /// the history kept — asked as it would be: its queries, its vocabulary.
+    pub fn holding(&self, entries: Vec<Entry>) -> SampleList {
+        SampleList {
+            root: self.root.clone(),
+            entries,
+            config: self.config.clone(),
+            skipped: Vec::new(),
+            configurations: self.configurations.clone(),
+            nearest: self.nearest.clone(),
+            warnings: Vec::new(),
+            forced: self.forced,
+            within: self.entries.clone(),
+            declared: self.declared.clone(),
+            project: self.project.clone(),
+            origin: self.origin.clone(),
+        }
+    }
+
+    /// The same list, `more`'s entries after its own: samples a reader went to
+    /// from it, shown with it while they are visited.
+    pub fn with_more(&self, more: Vec<Entry>) -> SampleList {
+        let mut entries = self.entries.clone();
+        entries.extend(more);
+        self.copied(entries)
+    }
+
+    /// The same list, only its first `len` entries.
+    pub fn truncated(&self, len: usize) -> SampleList {
+        self.copied(self.entries.iter().take(len).cloned().collect())
+    }
+
+    fn copied(&self, entries: Vec<Entry>) -> SampleList {
+        SampleList {
+            root: self.root.clone(),
+            entries,
+            config: self.config.clone(),
+            skipped: self.skipped.clone(),
+            configurations: self.configurations.clone(),
+            nearest: self.nearest.clone(),
+            warnings: self.warnings.clone(),
+            forced: self.forced,
+            within: self.within.clone(),
+            declared: self.declared.clone(),
+            project: self.project.clone(),
+            origin: self.origin.clone(),
+        }
+    }
+
     /// The same list, each sample carrying the states read of it, in the list's
     /// order. What was narrowed or sorted from it keeps them; a `state` asked
     /// of a list carrying none is `StatesNotRead`.
@@ -505,7 +625,44 @@ impl SampleList {
             forced: self.forced,
             within: self.within.clone(),
             declared: self.declared.clone(),
+            project: self.project.clone(),
+            origin: self.origin.clone(),
         }
+    }
+
+    /// `MixedUnits` where the samples' numbers for `field` are written in two
+    /// units: a statistic, a sort and a comparison over them compare numbers
+    /// that do not compare, and are refused, as a table and an export refuse
+    /// the column.
+    pub fn refuse_mixed_units(&self, field: &Field) -> Result<(), ListError> {
+        let Ok(values) = self.values(field) else {
+            return Ok(());
+        };
+        let Ok(units) = self.values(&fields::with_channel(field, fields::Channel::Unit)) else {
+            return Ok(());
+        };
+        let mut spellings: Vec<String> = Vec::new();
+        for (unit, value) in units.iter().zip(&values) {
+            if !value
+                .as_ref()
+                .is_some_and(|value| matches!(value, Value::Number(_) | Value::Integer(_)))
+            {
+                continue;
+            }
+            if let Some(Value::Text(unit)) = unit
+                && !unit.is_empty()
+                && !spellings.contains(unit)
+            {
+                spellings.push(unit.clone());
+            }
+        }
+        if spellings.len() > 1 {
+            return Err(ListError::MixedUnits {
+                field: fields::describe(field),
+                units: spellings,
+            });
+        }
+        Ok(())
     }
 
     /// The same, for a caller holding a closure rather than a parsed filter.
@@ -557,6 +714,10 @@ impl SampleList {
     /// A failed sort leaves the order unchanged, because the permutation is
     /// computed in full before a single handle moves.
     fn permutation(&self, spec: &SortSpec) -> Result<Vec<usize>, ListError> {
+        // Ordered by number, 21000 mL came after 20 L.
+        for key in spec.keys() {
+            self.refuse_mixed_units(&key.field)?;
+        }
         let vocabulary = self.vocabulary();
         let borrowed: Vec<_> = self.entries.iter().map(|e| e.sample.borrow()).collect();
         let subjects: Vec<Subject> = borrowed
@@ -574,6 +735,8 @@ impl SampleList {
 
     fn derive(&self, entries: Vec<Entry>) -> SampleList {
         SampleList {
+            project: self.project.clone(),
+            origin: self.configurations().chain(&self.origin).cloned().collect(),
             declared: {
                 let mut declared = self.declared.clone();
                 declared.extend(self.declared_by_models());
@@ -582,13 +745,16 @@ impl SampleList {
             forced: self.forced,
             root: self.root.clone(),
             entries,
-            // A derived collection keeps no configuration: a subset is not a
-            // project, and the one place a configuration is needed is where a
-            // named query is run, which holds its own.
+            // A derived collection keeps no configuration of its own: a subset
+            // is not a project, and the one place a configuration is needed is
+            // where a named query is run, which holds its own. Each sample's
+            // stays known: what the model owes it is planned under its own
+            // project's, where a selection over two planned the second's under
+            // the first's, and called a formula changed there current.
             config: None,
             skipped: Vec::new(),
-            configurations: Vec::new(),
-            nearest: Vec::new(),
+            configurations: self.configurations.clone(),
+            nearest: self.nearest.clone(),
             // What a narrowing was made from, so that *what exists* stays the
             // collection's answer.
             within: if self.within.is_empty() {
@@ -691,6 +857,72 @@ impl SampleList {
         }
     }
 
+    /// This list, its configuration kept, with `more`'s samples after its own:
+    /// a root's declarations judged against the projects importing it too.
+    pub fn joined(&self, more: &SampleList) -> SampleList {
+        let mut joined = SampleList {
+            declared: self.declared.clone(),
+            project: std::sync::OnceLock::new(),
+            origin: Vec::new(),
+            forced: self.forced,
+            root: self.root.clone(),
+            entries: self.entries.clone(),
+            config: self.config.clone(),
+            skipped: Vec::new(),
+            configurations: Vec::new(),
+            nearest: Vec::new(),
+            within: Vec::new(),
+            warnings: Vec::new(),
+        };
+        for entry in more.iter() {
+            if !joined.entries.iter().any(|held| held.path == entry.path) {
+                joined.entries.push(entry.clone());
+            }
+        }
+        joined
+    }
+
+    /// What `selection` is about, by the projects its samples belong to: one
+    /// project, several of one model — the same file and class — or several
+    /// of different models. `None` where no configuration describes them.
+    /// From a root above several projects, what a figure or an export offers
+    /// is the selection's, not the root's.
+    pub fn scope_of(&self, selection: &SampleList) -> Option<Scope<'_>> {
+        let mut configs: Vec<&ProjectConfig> = Vec::new();
+        for entry in selection.iter() {
+            let config = match entry.path.as_deref() {
+                Some(path) => self.config_for(path),
+                None => self.config.as_ref(),
+            };
+            if let Some(config) = config
+                && !configs.iter().any(|held| held.root() == config.root())
+            {
+                configs.push(config);
+            }
+        }
+        match configs.as_slice() {
+            [] => self.config.as_ref().map(Scope::One),
+            [one] => Some(Scope::One(one)),
+            _ => {
+                let model = |config: &ProjectConfig| {
+                    crate::config::model_runtime::template_of(config).map(|template| {
+                        (
+                            dunce::canonicalize(template.path())
+                                .unwrap_or_else(|_| template.path().to_path_buf()),
+                            template.class().map(str::to_string),
+                        )
+                    })
+                };
+                let first = model(configs[0]);
+                if first.is_some() && configs.iter().all(|config| model(config) == first) {
+                    Some(Scope::SameModel(configs))
+                } else {
+                    Some(Scope::Mixed(configs))
+                }
+            }
+        }
+    }
+
     /// A selection from this list by the configuration describing each sample,
     /// in the order the samples come: one part when one configuration describes
     /// them all. Each part is a list carrying its configuration, so whatever
@@ -723,6 +955,8 @@ impl SampleList {
                         config,
                         samples: SampleList {
                             declared: Vec::new(),
+                            project: std::sync::OnceLock::new(),
+                            origin: Vec::new(),
                             forced: self.forced,
                             root,
                             entries: Vec::new(),
@@ -768,6 +1002,49 @@ impl SampleList {
         fields::vocabulary_of(&samples)
             .with_names(self.declared.iter().cloned())
             .with_names(self.declared_by_models())
+            .with(self.project.get_or_init(|| self.projects_vocabulary()))
+    }
+
+    /// What the samples of the projects describing this list hold, where the
+    /// list was read from fewer than all of them; nothing for a list read
+    /// from a project's own folder, whose samples are its entries.
+    fn projects_vocabulary(&self) -> fields::Vocabulary {
+        let read_whole = |config: &ProjectConfig| {
+            self.root.as_deref().is_some_and(|root| {
+                dunce::canonicalize(root).ok() == dunce::canonicalize(config.root()).ok()
+            })
+        };
+        let mut vocabulary = fields::Vocabulary::default();
+        // A list of nothing has nothing a field is absent from: a folder
+        // holding no sample is said so, not exported empty.
+        if self.entries.is_empty() && self.within.is_empty() {
+            return vocabulary;
+        }
+        let mut read: Vec<PathBuf> = Vec::new();
+        for config in self.configurations().chain(&self.origin) {
+            if read.iter().any(|root| root == config.root()) {
+                continue;
+            }
+            read.push(config.root().to_path_buf());
+            if read_whole(config) {
+                continue;
+            }
+            let Ok(project) = from_directory(config.root()) else {
+                continue;
+            };
+            let borrowed: Vec<_> = project.entries.iter().map(|e| e.sample.borrow()).collect();
+            let samples: Vec<&Sample> = borrowed.iter().map(|s| &**s).collect();
+            vocabulary = vocabulary.with(&fields::vocabulary_of(&samples));
+        }
+        vocabulary
+    }
+
+    /// Every configuration describing this list, the nearest first, each
+    /// once.
+    pub fn configurations(&self) -> impl Iterator<Item = &ProjectConfig> {
+        self.config
+            .iter()
+            .chain(self.nearest.iter().map(|(_, config)| config))
     }
 
     /// The properties the models describing this list declare, read from
@@ -827,8 +1104,11 @@ impl SampleList {
     /// the selection held. Every renderer shows them together — **58 / 70**.
     pub fn summarize(&self, field: &Field) -> Result<Option<ColumnSummary>, ListError> {
         let values = self.values(field)?;
+        // **No statistic over two units**: a mean of litres and millilitres is
+        // a number that means nothing, given with no complaint.
+        self.refuse_mixed_units(field)?;
         // Each value's uncertainty, where the field is a value that has one:
-        // a channel named, `og.u`, has none of its own.
+        // a channel named, `radius.u`, has none of its own.
         let uncertainties: Option<Vec<Option<Value>>> = match field {
             Field::Named {
                 channel: fields::Channel::Value,
@@ -842,16 +1122,13 @@ impl SampleList {
                 .ok(),
             _ => None,
         };
-        // A value whose formula failed is the last one it gave, kept and marked.
-        // It leaves an export for that reason, and it leaves a summary for the
-        // same one: a mean, a minimum or a deviation computed over a number
-        // nothing produced is a confident wrong answer — and the summary is
-        // where it is least visible, since no mark can be put on a statistic.
+        // A value whose formula failed is the last one it gave, counted as
+        // the table shows it and the file writes it; the values not
+        // current are said beside the summary.
         let measured: Vec<(f64, Option<f64>)> = values
             .iter()
             .enumerate()
             .zip(self.entries.iter())
-            .filter(|(_, entry)| !failed_value(field, &entry.sample.borrow()))
             .filter_map(|((at, value), _)| {
                 let number = match value {
                     Some(Value::Number(number)) => *number,
@@ -872,7 +1149,7 @@ impl SampleList {
         let numbers: Vec<f64> = measured.iter().map(|(number, _)| *number).collect();
         // Weighted by 1/u² only where every value has an uncertainty above
         // zero: one without would weigh infinitely, or not at all.
-        let weighted_mean = measured
+        let weighted = measured
             .iter()
             .map(|(number, uncertainty)| {
                 uncertainty
@@ -880,15 +1157,18 @@ impl SampleList {
                     .map(|u| (*number, 1.0 / (u * u)))
             })
             .collect::<Option<Vec<(f64, f64)>>>()
-            .filter(|weighted| !weighted.is_empty())
-            .map(|weighted| {
-                let total: f64 = weighted.iter().map(|(_, weight)| weight).sum();
-                weighted
-                    .iter()
-                    .map(|(number, weight)| number * weight)
-                    .sum::<f64>()
-                    / total
-            });
+            .filter(|weighted| !weighted.is_empty());
+        let total = weighted
+            .as_ref()
+            .map(|weighted| weighted.iter().map(|(_, weight)| weight).sum::<f64>());
+        let weighted_mean = weighted.as_ref().zip(total).map(|(weighted, total)| {
+            weighted
+                .iter()
+                .map(|(number, weight)| number * weight)
+                .sum::<f64>()
+                / total
+        });
+        let weighted_error = total.map(|total| 1.0 / total.sqrt());
         // `None` for a column with no numeric values is distinct from a
         // summary of count zero, which cannot occur.
         let not_applicable = values
@@ -901,33 +1181,58 @@ impl SampleList {
                 considered: values.len() - not_applicable,
                 not_applicable,
                 weighted_mean,
+                weighted_error,
             }),
         )
     }
 }
 
-/// Whether a field reads a number of a value whose formula failed: in a session
-/// its cache says so, and in a file read without its model, its record.
-///
-/// The same criterion `exports` applies to keep a failed value out of a file.
-/// It is copied rather than shared because that module builds on this one, and
-/// a dependency the other way would be a cycle for eleven lines.
-fn failed_value(field: &Field, sample: &Sample) -> bool {
-    let Field::Named { name, channel } = field else {
-        return false;
+/// Whether a field reads a number of a value whose formula failed — a
+/// quantity, or a table's cell, which is written empty as a quantity is: in a
+/// session its cache says so, and in a file read without its model, its
+/// record.
+pub fn value_failed(field: &Field, sample: &Sample) -> bool {
+    let failed = |property: &crate::core::property::Property| {
+        if property.is_computed() || property.has_uncertainty_formula() {
+            property.has_failed()
+        } else {
+            property.records().failure.is_some()
+        }
     };
-    if matches!(channel, fields::Channel::Unit | fields::Channel::Symbol) {
-        return false;
+    match field {
+        Field::Named { name, channel } => {
+            !matches!(channel, fields::Channel::Unit | fields::Channel::Symbol)
+                && sample
+                    .property(name)
+                    .is_ok_and(|handle| handle.peek(|property| failed(property)))
+        }
+        Field::Cell {
+            table,
+            column,
+            row,
+            channel,
+        } => {
+            !matches!(channel, fields::Channel::Unit | fields::Channel::Symbol)
+                && sample
+                    .table(table)
+                    .ok()
+                    .and_then(|held| held.row(row).ok())
+                    .and_then(|view| view.cell(column).ok().map(failed))
+                    .unwrap_or(false)
+        }
+        _ => false,
     }
-    sample.property(name).is_ok_and(|handle| {
-        handle.peek(|property| {
-            if property.is_computed() || property.has_uncertainty_formula() {
-                property.has_failed()
-            } else {
-                property.records().failure.is_some()
-            }
-        })
-    })
+}
+
+/// A path as the file system tells files apart: its letters' case is no
+/// difference on macOS and Windows, whose usual file systems ignore it.
+pub fn file_key(path: &Path) -> String {
+    let shown = path.to_string_lossy();
+    if cfg!(any(target_os = "macos", target_os = "windows")) {
+        shown.to_lowercase()
+    } else {
+        shown.into_owned()
+    }
 }
 
 // --------------------------------------------------------------- grouping
@@ -947,7 +1252,7 @@ pub enum GroupOrder {
     /// By their values, as `ordering` sorts them: no sort is in force.
     Values,
     /// Where their first samples come in the list: a sort is in force, and
-    /// the groups follow it — sorted by `-og` and grouped by `og`, the
+    /// the groups follow it — sorted by `-radius` and grouped by `radius`, the
     /// highest first.
     Listed,
 }
@@ -1136,17 +1441,21 @@ impl SampleList {
         // Two samples of one file name, from two folders, would be one file:
         // the second written over the first, and a batch said written whole
         // missing a sample.
+        // Compared as the system compares them: `S1.md` and `s1.md` are one
+        // file on macOS and Windows.
+        let keys: Vec<String> = destinations.iter().map(|path| file_key(path)).collect();
         let mut shared: Vec<(PathBuf, Vec<PathBuf>)> = Vec::new();
         for (position, destination) in destinations.iter().enumerate() {
-            if destinations[..position].contains(destination)
-                || shared.iter().any(|(held, _)| held == destination)
+            let key = &keys[position];
+            if keys[..position].contains(key)
+                || shared.iter().any(|(held, _)| file_key(held) == *key)
             {
                 continue;
             }
-            let sources: Vec<PathBuf> = destinations
+            let sources: Vec<PathBuf> = keys
                 .iter()
                 .zip(&self.entries)
-                .filter(|(other, _)| *other == destination)
+                .filter(|(other, _)| *other == key)
                 .map(|(_, entry)| {
                     entry.path.clone().unwrap_or_else(|| {
                         PathBuf::from(entry.sample.borrow().name().unwrap_or("?"))
@@ -1237,7 +1546,7 @@ pub fn check_figure(
     let axes = [figure.x.as_str(), figure.y.as_str()]
         .into_iter()
         .filter(|field| !column(field));
-    // Several fields, `style,yeast`, each checked.
+    // Several fields, `style,process`, each checked.
     let group = figure
         .group
         .as_deref()
@@ -1256,7 +1565,10 @@ pub fn check_profile(list: &SampleList, profile: &Profile) -> Vec<FieldWarning> 
             .columns
             .iter()
             .map(|column| column.field.as_str())
-            .chain(profile.group.iter().map(String::as_str)),
+            .chain(profile.group.iter().map(String::as_str))
+            // A key of its sort, descending or not: `-stlye` refused at the
+            // first `--profile`, after `validate` said nothing.
+            .chain(profile.sort.iter().map(|key| key.trim_start_matches('-'))),
     )
 }
 
@@ -1318,7 +1630,7 @@ fn check_fields<'a>(
         }
         // A cell is checked as far as the collection can answer: its table and
         // column are vocabulary, and a row that no sample holds is a mistake
-        // rather than data, or `-c 'conditioning.carbonation[51]'` is a column of dashes.
+        // rather than data, or `-c 'tempering.nitridation[51]'` is a column of dashes.
         if let Field::Cell {
             table, column, row, ..
         } = &parsed
@@ -1390,6 +1702,12 @@ pub enum ListError {
     NonScalar {
         field: String,
     },
+    /// A field whose samples write it in two units: numbers that do not
+    /// compare, which no statistic is taken over.
+    MixedUnits {
+        field: String,
+        units: Vec<String>,
+    },
     Discovery(DiscoveryError),
     /// **With the file it happened to.** One failure among two hundred is
     /// otherwise a search, which is the same reasoning as `Compute`.
@@ -1427,6 +1745,13 @@ impl fmt::Display for ListError {
             ListError::NonScalar { field } => write!(
                 f,
                 "'{field}' is a list, not one value; address an item with [#n]"
+            ),
+            ListError::MixedUnits { field, units } => write!(
+                f,
+                "'{field}' is in {} across these samples: a statistic, a sort or a \
+                 comparison of both compares numbers that do not compare — narrow the \
+                 selection to one unit, or samplekit validate says which files disagree",
+                units.join(" and ")
             ),
             ListError::Discovery(error) => write!(f, "{error}"),
             // An I/O failure already names the file it happened to, so naming
@@ -1504,5 +1829,62 @@ impl fmt::Debug for SampleList {
             .field("configured", &self.config.is_some())
             .field("skipped", &self.skipped.len())
             .finish()
+    }
+}
+
+/// The units a model declares of its tables, given to each column a file
+/// wrote without one — a table written by hand, its rows alone — so that it
+/// reads as the model's before any write puts them in the file. From the
+/// model's description alone, where it is current: no Python starts.
+fn declare_table_units(list: &SampleList) {
+    for entry in &list.entries {
+        let Some(path) = &entry.path else {
+            continue;
+        };
+        if let Some(config) = list.config_for(path) {
+            declare_model_units(&mut entry.sample.borrow_mut(), config);
+        }
+    }
+}
+
+/// The units the model declares, for one sample of the project `config`: what a
+/// write does before it saves a sample it read alone, so that the columns it
+/// writes carry the model's units — a `set` wrote them without.
+pub fn declare_model_units(sample: &mut Sample, config: &ProjectConfig) {
+    let Some(description) = crate::config::model_runtime::current_description(config) else {
+        return;
+    };
+    // A value and its uncertainty given by two formulas, which a file records
+    // as one where they read the same inputs: each counted.
+    for (name, described) in &description.properties {
+        use crate::config::model_runtime::Origin;
+        let two = matches!(described.value, Origin::Formula { .. })
+            && matches!(described.uncertainty, Some(Origin::Formula { .. }));
+        if let Ok(name) = Identifier::new(name)
+            && let Ok(handle) = sample.property(&name)
+        {
+            handle.peek(|property| property.mark_two_formulas(two));
+        }
+    }
+    for (table, described) in &description.tables {
+        let Ok(name) = Identifier::new(table) else {
+            continue;
+        };
+        let units: Vec<(Identifier, String)> = described
+            .columns
+            .iter()
+            .filter_map(|column| Some((Identifier::new(&column.name).ok()?, column.unit.clone()?)))
+            .collect();
+        sample.declare_table_units(&name, &units);
+    }
+}
+
+/// [`declare_model_units`] under the project the file at `path` lies in.
+pub fn declare_model_units_at(sample: &mut Sample, path: &Path) {
+    let Some(folder) = path.parent() else {
+        return;
+    };
+    if let Ok(Some(config)) = config::load_for(folder) {
+        declare_model_units(sample, &config);
     }
 }

@@ -8,7 +8,9 @@ use std::path::{Path, PathBuf};
 
 use toml_edit::{DocumentMut, Item, Table, TableLike, Value};
 
-use crate::config::project_config::{self, ConfigError, ProjectConfig};
+use crate::config::project_config::{self, ColumnSpec, ConfigError, ProjectConfig};
+use crate::core::identifier::Identifier;
+use crate::format::schema::PrecisionSchema;
 
 /// A named section: `[query.approved]` is a `Query` named `approved`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,7 +191,7 @@ impl ConfigurationEdit {
     }
 
     /// `key = value` in a section of its own — `[render]`, `[collection]`,
-    /// `[model]`, `[matplotlib]`, `[workbench.colors]` — made where it is
+    /// `[model]`, `[matplotlib]`, `[colors]` — made where it is
     /// missing, a dotted name a section within a section.
     /// Refused, and false, where the file holds something other than a
     /// table there.
@@ -295,12 +297,112 @@ impl ConfigurationEdit {
         Ok(config)
     }
 
+    /// What a table shows, declared under `name`: the filter as a query, the
+    /// columns, sort and groups as a profile, or both and an export written to
+    /// `out/NAME.FORMAT`. A name the file already gives one of those kinds is
+    /// refused: another's declaration is not replaced from here.
+    pub fn declare_view(
+        &mut self,
+        saved: Saved,
+        name: &str,
+        view: &ShownView,
+    ) -> Result<(), String> {
+        if name.is_empty() {
+            return Err(format!(
+                "a {} needs a name, to be declared under it",
+                saved.kind().section()
+            ));
+        }
+        if let Err(error) = Identifier::new(name) {
+            return Err(format!("'{name}' is no name: {error}"));
+        }
+        let kinds: Vec<Kind> = match saved {
+            Saved::Query => vec![Kind::Query],
+            Saved::Profile => vec![Kind::Profile],
+            Saved::Export(_) if view.filter.is_empty() => vec![Kind::Profile, Kind::Export],
+            Saved::Export(_) => vec![Kind::Query, Kind::Profile, Kind::Export],
+        };
+        if let Some(kind) = kinds
+            .iter()
+            .find(|kind| self.names(**kind).iter().any(|held| held == name))
+        {
+            return Err(format!(
+                "a {} named {name} is declared already: another name",
+                kind.section()
+            ));
+        }
+        if matches!(saved, Saved::Query) && view.filter.is_empty() {
+            return Err(format!(
+                "query {name} would select every sample: a filter first"
+            ));
+        }
+        let text = |value: &str| Value::from(value.to_string());
+        if !view.filter.is_empty() && !matches!(saved, Saved::Profile) {
+            self.set(Kind::Query, name, "filter", text(view.filter));
+        }
+        if !matches!(saved, Saved::Query) {
+            let mut columns = toml_edit::Array::new();
+            for column in view.columns {
+                let mut entry = toml_edit::InlineTable::new();
+                entry.insert("field", text(&column.field));
+                if let Some(label) = &column.label {
+                    entry.insert("label", text(label));
+                }
+                // All that makes the column read as shown: without them, an
+                // export of the profile wrote `8.4 ± 0.2` for `8.44 ± 0.16`.
+                if let Some(header) = &column.header {
+                    entry.insert("header", text(header));
+                }
+                match &column.precision {
+                    Some(PrecisionSchema::Both(spec)) => {
+                        entry.insert("precision", text(spec));
+                    }
+                    Some(PrecisionSchema::Split(value, uncertainty)) => {
+                        let pair: toml_edit::Array = [value, uncertainty]
+                            .into_iter()
+                            .map(|spec| text(spec))
+                            .collect();
+                        entry.insert("precision", Value::Array(pair));
+                    }
+                    None => {}
+                }
+                if let Some(template) = &column.template {
+                    entry.insert("template", text(template));
+                }
+                columns.push(entry);
+            }
+            self.set(Kind::Profile, name, "columns", columns);
+            if !view.sort.is_empty() {
+                let keys: toml_edit::Array = view.sort.iter().cloned().collect();
+                self.set(Kind::Profile, name, "sort", keys);
+            }
+            if !view.group.is_empty() {
+                let fields: toml_edit::Array = view.group.iter().cloned().collect();
+                self.set(Kind::Profile, name, "group", fields);
+            }
+        }
+        if let Saved::Export(format) = saved {
+            if !view.filter.is_empty() {
+                self.set(Kind::Export, name, "query", text(name));
+            }
+            self.set(Kind::Export, name, "profile", text(name));
+            self.set(Kind::Export, name, "format", text(format));
+            self.set(
+                Kind::Export,
+                name,
+                "output",
+                text(&format!("out/{name}.{format}")),
+            );
+        }
+        Ok(())
+    }
+
     fn setting_table(&mut self, section: &str) -> Option<&mut Table> {
         let mut table = self.document.as_table_mut();
         for part in section.split('.') {
             table.entry(part).or_insert_with(|| {
                 let mut inner = Table::new();
-                // `[workbench.colors]`, never an empty `[workbench]` above.
+                // `[a.b]`, never an empty `[a]` above.
                 inner.set_implicit(true);
                 Item::Table(inner)
             });
@@ -322,12 +424,42 @@ impl ConfigurationEdit {
     }
 }
 
+/// What [`ConfigurationEdit::declare_view`] declares of a table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Saved<'a> {
+    Query,
+    Profile,
+    /// In this format: csv, tsv or json.
+    Export(&'a str),
+}
+
+impl Saved<'_> {
+    /// The kind declared under the name the command names.
+    pub fn kind(self) -> Kind {
+        match self {
+            Saved::Query => Kind::Query,
+            Saved::Profile => Kind::Profile,
+            Saved::Export(_) => Kind::Export,
+        }
+    }
+}
+
+/// What a table shows: its filter, columns, sort as it orders the rows (a
+/// reversed sort already turned) and groups.
+#[derive(Debug, Clone, Copy)]
+pub struct ShownView<'a> {
+    pub filter: &'a str,
+    pub columns: &'a [ColumnSpec],
+    pub sort: &'a [String],
+    pub group: &'a [String],
+}
+
 /// `key` of `parent` as a section to write in: a table, or an inline one made a table
-/// — `colors = { failed = "red" }` becomes `[workbench.colors]` once changed
+/// — `colors = { failed = "red" }` becomes `[colors]` once changed
 /// — and `None` for anything else, which is refused rather than overwritten.
 fn section_in<'a>(parent: &'a mut Table, key: &str) -> Option<&'a mut Table> {
     if let Some(inline) = parent.get(key).and_then(Item::as_inline_table) {
-        // The comment beside `malt = { … }  # why` goes above its section,
+        // The comment beside `diameter = { … }  # why` goes above its section,
         // and the space before `=` does not follow the name into `[… ]`.
         let comment = inline
             .decor()
@@ -403,7 +535,7 @@ fn written_keys(table: &dyn TableLike, prefix: &str) -> Vec<(String, String)> {
 }
 
 /// A value as someone types it: TOML where it reads as TOML — `12`, `true`,
-/// `"text"`, `[1, 2]`, `{ field = "malt" }` — and text otherwise, so that
+/// `"text"`, `[1, 2]`, `{ field = "diameter" }` — and text otherwise, so that
 /// `approved` needs no quotes. What begins as a list or a table and does not
 /// read as one, or carries a comment, is refused: written as text, `[7, 5`
 /// and `14 # bigger` passed every check and meant nothing.
