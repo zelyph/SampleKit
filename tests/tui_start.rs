@@ -7,10 +7,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use samplekit::tui::start::{DEMO_FILES, Effect, GUIDE, Mode, Outcome, Start};
-use workbench_fixtures::{Key, Scratch, Terminal, TestBackend, Workbench};
+use workbench_fixtures::{Key, Scratch, Terminal, TestBackend, Workbench, default_theme};
 
 /// A folder of folders: `project/` holding a `.samplekitrc`, `plain/` not.
 fn folders(name: &str) -> PathBuf {
+    workbench_fixtures::isolate();
     let root = dunce::canonicalize(std::env::temp_dir())
         .unwrap()
         .join(format!("samplekit-start-{name}-{}", std::process::id()));
@@ -396,7 +397,7 @@ fn the_demo_is_a_page_of_its_steps() {
     for said in [
         "The walkthrough",
         "Reset the demo",
-        "1…5 a step",
+        "1…6 a step",
         "Esc back",
     ] {
         assert!(drawn.contains(said), "{said}\n{drawn}");
@@ -436,11 +437,67 @@ fn the_demo_is_a_page_of_its_steps() {
     // The walkthrough, the home page, in the browser.
     let mut start = demo_page(&root, &data);
     assert_eq!(
-        press(&mut start, "gj\njjjjj\n"),
+        press(&mut start, "gj\njjjjjj\n"),
         Effect::Browse(samplekit::tui::start::TUTORIAL)
     );
     assert_eq!(press(&mut start, "q"), Effect::None);
     assert_eq!(start.mode, Mode::Menu);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn the_demos_sixth_step_links_and_opens() {
+    // The links of an attribute, in every form, had no step of the demo:
+    // one line of the fourth held one.
+    let _state = Scratch::new("demo-sixth-state");
+    let root = folders("demo-sixth");
+    let data = root.join("data");
+    let demo = data.join("demo");
+    let mut start = demo_page(&root, &data);
+    let Effect::Done(outcome) = press(&mut start, "gj\n") else {
+        panic!("written: {}", start.message);
+    };
+    opened_on_demo(&mut start, &outcome);
+    let mut start = demo_page(&root, &data);
+    press(&mut start, "gj\n");
+    // Offered as the sixth, named by its README and said in a line.
+    let steps = samplekit::tui::start::demo_steps();
+    assert_eq!(steps.len(), 6);
+    assert_eq!(steps[5].0, "06-links");
+    assert_eq!(steps[5].1, "Links");
+    let drawn = page_at(&mut start, 100, 30).join("\n");
+    assert!(drawn.contains("6  Links"), "{drawn}");
+    assert!(drawn.contains(steps[5].2), "{drawn}");
+    assert!(drawn.contains("1…6 a step"), "{drawn}");
+    // `6` opens it, and so does Enter on it; quitting it comes back to it.
+    let sixth = demo.join("06-links");
+    assert_eq!(
+        press(&mut start, "6"),
+        Effect::Done(Outcome::Step(sixth.clone()))
+    );
+    let mut start = demo_page(&root, &data);
+    press(&mut start, "gj\n");
+    assert_eq!(
+        press(&mut start, "jjjjj\n"),
+        Effect::Done(Outcome::Step(sixth.clone()))
+    );
+    let workbench = samplekit::tui::start::opened(&Outcome::Step(sixth.clone()))
+        .unwrap()
+        .unwrap();
+    assert_eq!(workbench.collection.len(), 3);
+    let mut start = demo_page(&root, &data);
+    start.returning(&Outcome::Step(sixth.clone()));
+    assert_eq!(start.mode, Mode::Demo { cursor: 5 });
+    // Its links written with it, the PDF they open at a page among them.
+    let steel = fs::read_to_string(sixth.join("samples/steel-01.md")).unwrap();
+    assert!(steel.contains("\"[[Copper-01]]\""), "{steel}");
+    let pdf = fs::read(sixth.join("docs/method.pdf")).unwrap();
+    assert!(pdf.starts_with(b"%PDF-"));
+    // A digit past the steps opens nothing.
+    let mut start = demo_page(&root, &data);
+    press(&mut start, "gj\n");
+    assert_eq!(press(&mut start, "7"), Effect::None);
+    assert_eq!(start.mode, Mode::Demo { cursor: 0 });
     let _ = fs::remove_dir_all(root);
 }
 
@@ -461,7 +518,7 @@ fn the_demos_folder_is_shown_from_its_page() {
     press(&mut start, "gj\n");
     let drawn = page_at(&mut start, 100, 30).join("\n");
     assert!(drawn.contains("The demo's folder"), "{drawn}");
-    assert_eq!(press(&mut start, "jjjjjj\n"), Effect::Show(demo));
+    assert_eq!(press(&mut start, "jjjjjjj\n"), Effect::Show(demo));
 }
 
 #[test]
@@ -485,7 +542,7 @@ fn resetting_the_demo_asks_then_writes_it_again() {
     // Asked first, from the demo's page, saying what is lost; nothing
     // changes on another key.
     let mut start = demo_page(&root, &data);
-    assert_eq!(press(&mut start, "gj\njjjjjjj\n"), Effect::None);
+    assert_eq!(press(&mut start, "gj\njjjjjjjj\n"), Effect::None);
     assert!(matches!(start.mode, Mode::Reset), "{:?}", start.mode);
     let drawn = page_at(&mut start, 100, 30).join("\n");
     for said in [
@@ -497,7 +554,7 @@ fn resetting_the_demo_asks_then_writes_it_again() {
         assert!(drawn.contains(said), "{said}\n{drawn}");
     }
     assert_eq!(press(&mut start, "n"), Effect::None);
-    assert_eq!(start.mode, Mode::Demo { cursor: 7 });
+    assert_eq!(start.mode, Mode::Demo { cursor: 8 });
     assert!(added.exists());
     // `y`: written again as it comes, and its environment made anew.
     press(&mut start, "\n");
@@ -1169,11 +1226,87 @@ fn page_key(buffer: &ratatui::buffer::Buffer, needle: &str, offset: usize) -> bo
             .position(|window| window == wanted.as_slice())
         {
             let cell = &buffer[((x + offset) as u16, y)];
-            let key = samplekit::tui::theme::Theme::default().key;
+            let key = default_theme().key;
             return cell.fg == key && cell.modifier.contains(ratatui::style::Modifier::BOLD);
         }
     }
     panic!("{needle} is not drawn");
+}
+
+#[test]
+fn t_chooses_the_theme_on_the_start_page() {
+    use samplekit::tui::theme::Themes;
+    let root = folders("themes");
+    let mut start = Start::with_recent(&root, Vec::new());
+    let last = root.join("last-theme");
+    start.last_theme = Some(last.clone());
+    let before = start.theme;
+    press(&mut start, "T");
+    let Mode::Themes { cursor, .. } = start.mode else {
+        panic!("no list of themes: {:?}", start.mode);
+    };
+    let names: Vec<String> = start
+        .themes
+        .names()
+        .iter()
+        .map(|name| name.to_string())
+        .collect();
+    assert_eq!(names[cursor], start.theme_name);
+    // The page drawn at once in the next, painted.
+    start.key(Key::Down);
+    let tried = start.themes.theme(&names[cursor + 1], None).unwrap();
+    assert_eq!(start.theme, tried);
+    let buffer = page_buffer(&mut start, 100, 40);
+    assert!(
+        buffer
+            .content
+            .iter()
+            .all(|cell| cell.bg != ratatui::style::Color::Reset
+                || tried.background == ratatui::style::Color::Reset)
+    );
+    assert!((0..40).any(|y| {
+        (0..100)
+            .map(|x| buffer[(x, y)].symbol())
+            .collect::<String>()
+            .contains("gruvbox-light")
+    }));
+    press(&mut start, "\u{1b}");
+    assert_eq!(start.mode, Mode::Menu);
+    assert_eq!(start.theme, before);
+    // Enter keeps it, as the person's last choice.
+    press(&mut start, "T");
+    while start.themes.names()[match start.mode {
+        Mode::Themes { cursor, .. } => cursor,
+        _ => unreachable!(),
+    }] != "gruvbox-light"
+    {
+        start.key(Key::Down);
+    }
+    press(&mut start, "\n");
+    assert_eq!(start.mode, Mode::Menu);
+    assert_eq!(start.theme_name, "gruvbox-light");
+    assert!(
+        start.message.contains("theme gruvbox-light, kept"),
+        "{}",
+        start.message
+    );
+    assert_eq!(fs::read_to_string(&last).unwrap(), "gruvbox-light\n");
+    // A page opened again is drawn in it.
+    let mut again = Start::with_recent(&root, Vec::new());
+    again.last_theme = Some(last.clone());
+    let again = again.themed(Themes::read(None));
+    assert_eq!(again.theme_name, "gruvbox-light");
+    assert_eq!(
+        again.theme,
+        Themes::read(None).theme("gruvbox-light", None).unwrap()
+    );
+    // A theme of one's own left out is said on the page.
+    let folder = root.join("own");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("broken.toml"), "[colors\n").unwrap();
+    let start = Start::with_recent(&root, Vec::new()).themed(Themes::read(Some(&folder)));
+    assert!(start.message.contains("broken.toml"), "{}", start.message);
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]

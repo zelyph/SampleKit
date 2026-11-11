@@ -299,6 +299,9 @@ fn freshness_of(
     findings
 }
 
+/// The samples a project's wikilinks may name, indexed and shared.
+type Linkable = std::rc::Rc<crate::core::link::Index>;
+
 /// Every check, over a whole collection.
 ///
 /// The collection is the unit because two of the checks are collection-wide: a
@@ -719,8 +722,8 @@ fn run_judging(list: &SampleList, declarations: bool) -> Report {
             Some((entry.path.clone()?, name))
         })
         .collect();
-    let mut projects_samples: BTreeMap<Option<PathBuf>, Vec<(PathBuf, Option<String>)>> =
-        BTreeMap::new();
+    // Each project's samples listed once, and shared by every link of it.
+    let mut projects_samples: BTreeMap<Option<PathBuf>, Linkable> = BTreeMap::new();
     for entry in list.iter() {
         let Some(from) = entry.path.as_deref() else {
             continue;
@@ -740,10 +743,14 @@ fn run_judging(list: &SampleList, declarations: bool) -> Report {
                 let Some(link) = crate::core::link::parse(text) else {
                     continue;
                 };
-                let leads = crate::config::discovery::destination(&link, from, || {
+                let leads = crate::config::discovery::destination_in(&link, from, || {
                     projects_samples
                         .entry(config.map(|config| config.root().to_path_buf()))
-                        .or_insert_with(|| crate::config::discovery::linkable(config, from, &known))
+                        .or_insert_with(|| {
+                            std::rc::Rc::new(crate::config::discovery::index_of(
+                                config, from, &known,
+                            ))
+                        })
                         .clone()
                 });
                 let (target, files) = match leads {

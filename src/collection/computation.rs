@@ -59,32 +59,43 @@ pub fn groups_of(
     forced: Option<&(PathBuf, ProjectConfig)>,
 ) -> Result<Vec<Group>, ConfigError> {
     let mut loaded: HashMap<PathBuf, ProjectConfig> = HashMap::new();
+    // The configuration a folder's samples answer to, looked for once per
+    // folder; copied once per group, not once per sample.
+    let mut found: HashMap<PathBuf, Option<PathBuf>> = HashMap::new();
     let mut groups: Vec<Group> = Vec::new();
     for (position, entry) in selected.iter().enumerate() {
         let Some(path) = entry.path.as_deref() else {
             continue;
         };
-        let (file, config) = match forced {
-            Some((file, config)) => (Some(file.clone()), Some(config.clone())),
-            None => match project_config::find(path) {
-                None => (None, None),
-                Some(file) => {
-                    if !loaded.contains_key(&file) {
-                        loaded.insert(file.clone(), project_config::load(&file)?);
-                    }
-                    let config = loaded[&file].clone();
-                    (Some(file), Some(config))
-                }
-            },
+        let file = match forced {
+            Some((file, _)) => Some(file.clone()),
+            None => {
+                let folder = path.parent().unwrap_or(Path::new("")).to_path_buf();
+                found
+                    .entry(folder)
+                    .or_insert_with(|| project_config::find(path))
+                    .clone()
+            }
         };
-        match groups.iter_mut().find(|group| group.file == file) {
-            Some(group) => group.entries.push(position),
-            None => groups.push(Group {
-                file,
-                config,
-                entries: vec![position],
-            }),
+        if let Some(group) = groups.iter_mut().find(|group| group.file == file) {
+            group.entries.push(position);
+            continue;
         }
+        let config = match (forced, &file) {
+            (Some((_, config)), _) => Some(config.clone()),
+            (None, None) => None,
+            (None, Some(file)) => {
+                if !loaded.contains_key(file) {
+                    loaded.insert(file.clone(), project_config::load(file)?);
+                }
+                Some(loaded[file].clone())
+            }
+        };
+        groups.push(Group {
+            file,
+            config,
+            entries: vec![position],
+        });
     }
     Ok(groups)
 }
@@ -634,9 +645,27 @@ pub fn planned_states(
     path: &Path,
     sample: &Sample,
 ) -> Option<BTreeMap<String, String>> {
+    planned_states_traced(config, path, sample, &mut Traced::default())
+}
+
+/// The traces a pass over many samples read, by project: each read once,
+/// where reading it opened the history for every sample.
+pub type Traced = HashMap<PathBuf, Option<Arc<Trace>>>;
+
+/// [`planned_states`], the trace of each project read once for all the
+/// samples of a pass: what a table and an export ask of every sample.
+pub fn planned_states_traced(
+    config: Option<&ProjectConfig>,
+    path: &Path,
+    sample: &Sample,
+    traced: &mut Traced,
+) -> Option<BTreeMap<String, String>> {
     let config = config?;
     let description = runtime::current_description(config)?;
-    let trace = trace_or_said(Some(config));
+    let trace = traced
+        .entry(config.root().to_path_buf())
+        .or_insert_with(|| trace_or_said(Some(config)))
+        .clone();
     let recorded = recorded_for(trace.as_deref(), sample);
     let plan = description.plan(path, &recorded).ok()?;
     Some(
@@ -729,7 +758,7 @@ pub fn orphans_in(description: &runtime::ModelDescription, sample: &Sample) -> V
         match name.split_once('.') {
             None => crate::core::identifier::Identifier::new(name)
                 .ok()
-                .and_then(|name| sample.property(&name).ok())
+                .and_then(|name| sample.property_if(&name))
                 .is_some_and(|handle| handle.peek(|property| property.readings().is_some())),
             Some((table, column)) => {
                 let (Ok(table), Ok(column)) = (

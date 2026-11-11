@@ -147,6 +147,7 @@ pub fn behind(selected: &SampleList, profile: &Profile, config: Option<&ProjectC
         })
     };
     let mut behind = Behind::default();
+    let mut traced = crate::collection::computation::Traced::default();
     for entry in selected.iter() {
         let sample = entry.sample.borrow();
         // A value waiting for an input emptied since is no outdated one: its
@@ -213,10 +214,11 @@ pub fn behind(selected: &SampleList, profile: &Profile, config: Option<&ProjectC
         let Some(path) = entry.path.as_deref() else {
             continue;
         };
-        let planned = crate::collection::computation::planned_states(
+        let planned = crate::collection::computation::planned_states_traced(
             selected.config_for(path).or(selected.config()).or(config),
             path,
             &sample,
+            &mut traced,
         )
         .unwrap_or_default();
         let mut owed = false;
@@ -234,7 +236,7 @@ pub fn behind(selected: &SampleList, profile: &Profile, config: Option<&ProjectC
                     behind.never += 1;
                     let entered = crate::core::identifier::Identifier::new(value)
                         .ok()
-                        .and_then(|name| sample.property(&name).ok())
+                        .and_then(|name| sample.property_if(&name))
                         // Readings alone are no value entered: their statistic
                         // is owed too, and the file writes both empty.
                         .is_some_and(|handle| {
@@ -666,6 +668,7 @@ fn build(
     }
     // Each quantity's state, which JSON writes beside it.
     let _pass = fingerprint::Pass::begin();
+    let mut traced = crate::collection::computation::Traced::default();
     for entry in list.iter() {
         let sample = entry.sample.borrow();
         let states = fingerprint::check(&sample).unwrap_or_default();
@@ -679,10 +682,9 @@ fn build(
             Some(path) if list.spans_configurations() => list.config_for(path).or(config),
             _ => config,
         };
-        let planned = entry
-            .path
-            .as_deref()
-            .and_then(|path| crate::collection::computation::planned_states(own, path, &sample));
+        let planned = entry.path.as_deref().and_then(|path| {
+            crate::collection::computation::planned_states_traced(own, path, &sample, &mut traced)
+        });
         for (quantity, field) in quantities.iter_mut().zip(&quantity_fields) {
             let state = match field {
                 fields::Field::Named { name, .. } => states.get(name).cloned(),

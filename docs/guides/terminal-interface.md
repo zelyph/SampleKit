@@ -5,6 +5,8 @@ keyboard rather than by commands: browse and filter them, open one, change a
 value, compute, draw, read the history. The terminal interface, the *TUI*,
 does what the commands do, and shows the same previews before it writes.
 
+![The terminal interface at work on the demo: a sample opened, a value typed with its uncertainty, what it feeds outdated, the value's card, the change previewed and written](../images/readme/at-work.svg)
+
 ## Open it
 
 `samplekit` alone, in a terminal, opens its **start page**. It offers the
@@ -12,7 +14,7 @@ project of the folder you are in first, then the projects you opened
 recently; `Enter` opens the one marked, `1` to `9` a recent one. From the
 start page, `n` sets up a new project by a few questions, `o` opens another
 folder, and `g` opens this documentation in the browser, or the demo: the
-[home page](../index.md)'s tensile test in five steps, each a project to try.
+[home page](../index.md)'s tensile test in six steps, each a project to try.
 
 `samplekit FOLDER tui` opens a folder directly, past the start page.
 
@@ -20,6 +22,10 @@ The foot of each screen names the keys used most, and ends with `? all keys`:
 `?` lists every key of the screen you are on, and `q` goes back to the screen
 you came from, until it quits. Every key is also listed in [the TUI's
 keys](../reference/tui.md).
+
+`T`, on the start page, the collection or a sample, chooses the TUI's
+**theme**: each is tried on the screen as the cursor reaches it, and `Enter`
+keeps it ([choose the colours](colours.md)).
 
 ## The list of samples
 
@@ -55,12 +61,13 @@ columns and the basket, and opens there next time; `x` empties the basket.
 
 ## A sample
 
-`Enter` on a sample opens it: its attributes, its values and their states,
-its tables, its note.
+`Enter` on a sample opens it: its attributes, its values and the marks of
+their states, its tables, its note.
 
 | Key | What it does |
 | --- | --- |
-| `e` | change the value under the cursor |
+| `e` | the typing mode, on the cell under the cursor: see [Typing](#typing) |
+| `i` | the value's card: see [A value's card](#a-values-card) |
 | `A` | add an attribute: its name, then its value |
 | `N` | write the note; `Esc` shows the change |
 | `→` | open the table under the cursor; there, `e` on the empty last row adds one |
@@ -88,21 +95,92 @@ leaves the TUI drawn, saying what it waits for; one in the terminal, `vim` or
 `nano`, takes the terminal while it runs. `n` on one of a sample's own files, after `o`, shows it
 in its folder, selected in Windows's Explorer.
 
-A value opens selected, so that what you type replaces it; an arrow or `End`
-keeps it, to change. Lines are edited as in a text editor: the mouse or
-`Shift` and the arrows select, `Ctrl` and the arrows move by word,
-`Ctrl+Z` undoes.
+## Typing
 
-## Writes, and taking them back
+`e` enters the **typing mode** on the cell under the cursor, as
+Vim's insert mode is entered: `TYPING` at the foot of the screen says so, and
+every other key keeps its meaning outside it. In the typing mode:
 
-Every change you type is shown before it is written, as a command's preview
-is, and `y` writes it. `C` shows what it would compute, as `compute` does,
-and `y` computes and writes; `c` computes the value under the cursor at once.
-A computation is kept in the history, as every change is, and `u` takes it
-back. `H` lists the history, each change and what it changed: there, `r`
-puts the files back as a change left them, previewed. `d` shows what one
-change changed, and marks it; `d` on another then compares the two, value by
-value, as `restore --at` and `diff` do ([the history](../concepts/history.md)).
+| Key | What it does |
+| --- | --- |
+| a letter, a digit | replaces the cell with what you type |
+| `Enter` | keeps the cell and goes down; on a cell not typed in, changes it without replacing it |
+| `Tab` | keeps the cell and goes right |
+| `↑` `↓` `←` `→` | go from cell to cell, keeping a cell typed in |
+| `F2` | changes the cell without replacing it |
+| `Delete` | takes out the attribute, or the table's row, under the cursor |
+| `Esc` | leaves the cell typed in, then the typing mode |
+
+A sample's line is its cells: an attribute's name and its value, a value
+with its uncertainty, its readings. Typing over a name renames the attribute;
+`A`, out of the typing mode, adds one. A value and its
+uncertainty are typed in one cell, with `+-`, which every keyboard has: `12.6
++- 0.02`, shown `12.6 ± 0.02`. `12.6` alone keeps the uncertainty, and `12.6
++-` takes it out; a value without one shows `± —`, where it can be given, and
+opens as `12.6 +- `. A value opens as it is shown, rounded:
+left as it is, it keeps every digit it has. A cell never widens as you type
+in it: its text scrolls inside it. The end of the status line shows the value
+under the cursor with every digit, `width = 12.513333333333334 ±
+0.010088497300281277 mm`.
+
+A table is typed cell by cell in the same way, and its empty row at the foot
+takes a new row, written once its index is given. The list of samples is
+typed in too, without opening a sample: `←` `→` choose the column, and
+`Shift+↑` `Shift+↓` take several rows in the typing mode, what you type then
+going to each; a sample in the basket takes it with the basket's others.
+
+Lines are edited as in a text editor: the mouse or `Shift` and the arrows
+select, `Ctrl` and the arrows move by word, `Ctrl+Z` undoes.
+
+## A value's card
+
+`i` on a value, or on a table's cell holding one, opens its **card**: its
+value with its uncertainty and its unit, its readings, its state in words and
+why, then what it **reads** and what **reads it**, each with its value and its
+state. A line of a sample shows only the mark of its value's state, `⚠`,
+`✎`, `✗` or `∅`; its words are the card's. `↑` `↓` go from line to line of
+the card, and `e` types over the line under the cursor, as the typing mode
+does: the value itself, one it reads, or one that reads it. The change waits,
+as every change does, and the card is drawn again as it makes it: what reads
+a value changed is seen outdated at once. `Esc` closes the card.
+
+## Changes wait until `w` writes them
+
+Nothing you change is written at once: a value, a row, an attribute, the
+note, tags, a sample made with `N`, removed with `D` or renamed with `R`, what
+a script changes, a state restored from the history, and what a computation
+gives. Each change **waits**, and the screens show the files as it makes
+them: what changed, and a sample made, in italics and in their own colour,
+the theme's `waiting`
+([choose the colours](colours.md));
+what is taken out is no longer shown, and the status line counts the files
+not written. The files themselves are untouched until you write them,
+so a computation can be tried and looked at before it counts: one that went
+wrong is dropped, and leaves the history as it was.
+
+| Key | What it does |
+| --- | --- |
+| `w` | one preview of everything waiting, file by file; `y` writes it all, one change of the history |
+| `u` | takes back the last change waiting; once nothing waits, the last change written |
+
+`C` shows what it would compute, as `compute` does, and `y` computes; `c`
+computes the value under the cursor at once. What they give waits with the
+rest. Leaving with changes waiting asks whether to write them (`w`), drop
+them (`d`) or keep them for next time (`k`); the terminal closed without the
+question keeps them. Opened again, the project offers what waits, how many
+files and since when.
+
+A file changed meanwhile by another hand, in an editor or on the command line,
+is not written over: what waits for it is laid again over the file as it now
+is, field by field, and where both changed the same field, `w` says so and
+writes nothing. An export and a figure are made from what is shown, changes
+waiting included.
+
+`H` lists the history, each change and what it changed: there, `r` puts the
+files back as a change left them, the change waiting as any other. `d` shows
+what one change changed, and marks it; `d` on another then compares the two,
+value by value, as `restore --at` and `diff` do ([the
+history](../concepts/history.md)).
 
 ## Scripts, figures and exports
 
@@ -126,5 +204,7 @@ of the project the samples shown belong to ([several projects](several-projects.
 ## See also
 
 - [The TUI's keys](../reference/tui.md), screen by screen.
+- [Choose the colours](colours.md): the themes SampleKit has, each drawn by
+  the TUI, and how to make your own.
 - The [home page](../index.md) does with commands what this guide does with
   keys.

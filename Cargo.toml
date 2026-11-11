@@ -1,6 +1,6 @@
 [package]
 name = "samplekit"
-version = "1.0.0-rc.2"
+version = "1.0.0-rc.3"
 edition = "2024"
 description = "Sample data in plain Markdown: computed, current, tracked"
 repository = "https://github.com/zelyph/SampleKit"
@@ -11,13 +11,15 @@ keywords = ["samples", "notebook", "markdown", "uncertainty", "cli"]
 categories = ["command-line-utilities", "science"]
 license = "MIT"
 authors = ["zelyph"]
-# What crates.io receives: the crate, and the demo its build embeds.
+# What crates.io receives: the crate, the demo its build embeds, and the
+# themes it embeds, the files of the documentation's colours page.
 include = [
     "/Cargo.toml",
     "/Cargo.lock",
     "/build.rs",
     "/src/",
     "/examples/tensile/",
+    "/docs/templates/colours/*.toml",
     "/README.md",
     "/CHANGELOG.md",
     "/LICENSE",
@@ -78,6 +80,7 @@ rat-text = "3.1.0"
 rat-markdown = "0.7.3"
 v_latexescape = "0.16"
 html-escape = "0.2"
+notify = "8"
 
 [lints.clippy]
 all = { level = "deny", priority = -1 }

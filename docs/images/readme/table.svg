@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="504" viewBox="0 0 900 504" font-family="'DejaVu Sans Mono', Menlo, Consolas, monospace" font-size="15" xml:space="preserve" style="white-space:pre">
+<rect width="900" height="504" fill="#11151c"/>
+<text x="18" y="13" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">SampleKit</text>
+<text x="108" y="13" textLength="90" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">· steel-01</text>
+<text x="27" y="31" textLength="54" lengthAdjust="spacing" fill="#d1d7e0">values</text>
+<text x="468" y="31" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 54H36M27 54V72M180 54H198M198 54H216M216 54H234M234 54H252M252 54H270M270 54H288M288 54H306M306 54H324M324 54H342M342 54H360M360 54H378M378 54H396M396 54H414M414 54H432M432 54H450M450 54H468M468 54H486M486 54H504M504 54H522M522 54H540M540 54H558M558 54H576M576 54H594M594 54H612M612 54H630M630 54H648M648 54H666M666 54H684M684 54H702M702 54H720M720 54H738M738 54H756M756 54H774M774 54H792M792 54H810M810 54H828M828 54H846M846 54H864M864 54H882M882 54H891M891 54V72M909 54H918M909 54V72M1026 54H1044M1044 54H1062M1062 54H1080M1080 54H1098M1098 54H1116M1116 54H1134M1134 54H1152M1152 54H1170M1170 54H1188M1188 54H1206M1206 54H1224M1224 54H1242M1242 54H1260M1260 54H1278M1278 54H1296M1296 54H1314M1314 54H1332M1332 54H1350M1350 54H1368M1368 54H1386M1386 54H1404M1404 54H1422M1422 54H1440M1440 54H1458M1458 54H1476M1476 54H1494M1494 54H1512M1512 54H1530M1530 54H1548M1548 54H1566M1566 54H1584M1584 54H1602M1602 54H1620M1620 54H1638M1638 54H1656M1656 54H1674M1674 54H1692M1692 54H1710M1710 54H1728M1728 54H1746M1746 54H1764M1764 54H1773M1773 54V72"/>
+<text x="54" y="49" textLength="36" lengthAdjust="spacing" fill="#60a5fa">name</text>
+<text x="216" y="49" textLength="72" lengthAdjust="spacing" fill="#60a5fa">steel-01</text>
+<text x="468" y="49" textLength="333" lengthAdjust="spacing" fill="#d1d7e0">Tested at 2 mm/min, along the rolling</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 72V108M891 72V108M909 72V108M1773 72V108"/>
+<text x="54" y="67" textLength="36" lengthAdjust="spacing" fill="#60a5fa">tags</text>
+<text x="216" y="67" textLength="9" lengthAdjust="spacing" fill="#60a5fa">—</text>
+<text x="468" y="67" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">direction.</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 108V144M891 108V144M909 108V144M1773 108V144"/>
+<text x="54" y="85" textLength="72" lengthAdjust="spacing" fill="#60a5fa">material</text>
+<text x="162" y="85" textLength="135" lengthAdjust="spacing" fill="#d1d7e0">curve · 13 rows</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 144V180M297 162H306M297 162V180M612 162H630M630 162H648M648 162H666M666 162H684M684 162H702M702 162H720M720 162H738M738 162H756M756 162H774M774 162H792M792 162H810M810 162H828M828 162H846M846 162H864M864 162H882M882 162H900M900 162H918M918 162H936M936 162H954M954 162H972M972 162H990M990 162H1008M1008 162H1026M1026 162H1044M1044 162H1062M1062 162H1080M1080 162H1098M1098 162H1116M1116 162H1134M1134 162H1152M1152 162H1170M1170 162H1188M1188 162H1206M1206 162H1224M1224 162H1242M1242 162H1260M1260 162H1278M1278 162H1296M1296 162H1314M1314 162H1332M1332 162H1350M1350 162H1368M1368 162H1386M1386 162H1404M1404 162H1422M1422 162H1440M1440 162H1458M1458 162H1476M1476 162H1494M1494 162H1503M1503 162V180M1773 144V180"/>
+<text x="54" y="103" textLength="45" lengthAdjust="spacing" fill="#60a5fa">grade</text>
+<text x="162" y="103" textLength="90" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">strain [%]</text>
+<text x="279" y="103" textLength="90" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">force [kN]</text>
+<text x="396" y="103" textLength="108" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">stress [MPa]</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 180V216M297 180V216M1503 180V216M1773 180V216"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 180V216M765 180V216"/>
+<rect x="162" y="108" width="90" height="18" fill="#f9a8d4"/>
+<rect x="252" y="108" width="486" height="18" fill="#232a36"/>
+<text x="54" y="121" textLength="81" lengthAdjust="spacing" fill="#60a5fa">direction</text>
+<text x="162" y="121" textLength="9" lengthAdjust="spacing" fill="#232a36">0</text>
+<text x="279" y="121" textLength="9" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">0</text>
+<text x="396" y="121" textLength="27" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">0.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 216V252M297 216V252M1503 216V252M1773 216V252"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 216V252M765 216V252"/>
+<text x="54" y="139" textLength="54" lengthAdjust="spacing" fill="#60a5fa">tested</text>
+<text x="162" y="139" textLength="45" lengthAdjust="spacing" fill="#f9a8d4">0.025</text>
+<text x="279" y="139" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">1.281</text>
+<text x="396" y="139" textLength="36" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">51.1</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 252V288M297 252V288M1503 252V288M1773 252V288"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 252V288M765 252V288"/>
+<text x="54" y="157" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="162" y="157" textLength="36" lengthAdjust="spacing" fill="#f9a8d4">0.05</text>
+<text x="279" y="157" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">2.585</text>
+<text x="396" y="157" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">103.2</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 288V324M297 288V324M1503 288V324M1773 288V324"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 288V324M765 288V324"/>
+<text x="54" y="175" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">thickness</text>
+<text x="162" y="175" textLength="27" lengthAdjust="spacing" fill="#f9a8d4">0.2</text>
+<text x="279" y="175" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">9.516</text>
+<text x="396" y="175" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">379.8</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M297 324V360M1503 324V360M1773 324V360"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 324V360M765 324V360"/>
+<text x="54" y="193" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">area</text>
+<text x="162" y="193" textLength="27" lengthAdjust="spacing" fill="#f9a8d4">0.3</text>
+<text x="279" y="193" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">9.57</text>
+<text x="396" y="193" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">381.9</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 360V396M297 360V396M1503 360V396M1773 360V396"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 360V396M765 360V396"/>
+<text x="54" y="211" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">young_modu</text>
+<text x="162" y="211" textLength="27" lengthAdjust="spacing" fill="#f9a8d4">0.4</text>
+<text x="279" y="211" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">9.716</text>
+<text x="396" y="211" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">387.8</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M297 396V432M1503 396V432M1773 396V432"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 396V432M765 396V432"/>
+<text x="54" y="229" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">yield_stre</text>
+<text x="162" y="229" textLength="27" lengthAdjust="spacing" fill="#f9a8d4">0.6</text>
+<text x="279" y="229" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">9.87</text>
+<text x="396" y="229" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">393.9</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 432V468M297 432V468M1503 432V468M1773 432V468"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 432V468M765 432V468"/>
+<text x="54" y="247" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">tensile_st</text>
+<text x="162" y="247" textLength="9" lengthAdjust="spacing" fill="#f9a8d4">1</text>
+<text x="279" y="247" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">10.128</text>
+<text x="396" y="247" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">404.2</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 468V504M297 468V504M1503 468V504M1773 468V504"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 468V504M765 468V504"/>
+<text x="54" y="265" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="162" y="265" textLength="9" lengthAdjust="spacing" fill="#f9a8d4">2</text>
+<text x="279" y="265" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">10.724</text>
+<text x="396" y="265" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">428.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 504V540M297 504V540M1503 504V540M1773 504V540"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 504V540M765 504V540"/>
+<rect x="27" y="270" width="117" height="18" fill="#232a36"/>
+<text x="54" y="283" textLength="45" lengthAdjust="spacing" fill="#818cf8">curve</text>
+<text x="162" y="283" textLength="9" lengthAdjust="spacing" fill="#f9a8d4">5</text>
+<text x="279" y="283" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">11.802</text>
+<text x="396" y="283" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">471.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 540V576M297 540V576M1503 540V576M1773 540V576"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 540V576M765 540V576"/>
+<text x="36" y="301" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="301" textLength="90" lengthAdjust="spacing" fill="#7dd3fc">← aluminiu</text>
+<text x="162" y="301" textLength="18" lengthAdjust="spacing" fill="#f9a8d4">10</text>
+<text x="279" y="301" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.636</text>
+<text x="396" y="301" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">504.3</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 576V612M297 576V612M1503 576V612M1773 576V612"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 576V612M765 576V612"/>
+<text x="36" y="319" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="319" textLength="90" lengthAdjust="spacing" fill="#7dd3fc">← copper-0</text>
+<text x="162" y="319" textLength="18" lengthAdjust="spacing" fill="#f9a8d4">20</text>
+<text x="279" y="319" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.975</text>
+<text x="396" y="319" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">517.8</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 612V648M297 612V648M1503 612V648M1773 612V648"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 612V648M765 612V648"/>
+<text x="162" y="337" textLength="18" lengthAdjust="spacing" fill="#f9a8d4">24</text>
+<text x="279" y="337" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">11.07</text>
+<text x="396" y="337" textLength="45" lengthAdjust="spacing" fill="#4ade80" font-weight="bold">441.8</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 648V684M297 648V684M1503 648V684M1773 648V684"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 648V684M765 648V684"/>
+<text x="162" y="355" textLength="9" lengthAdjust="spacing" fill="#f9a8d4">+</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 684V720M297 684V720M1503 684V720M1773 684V720"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M531 684V720M765 684V720"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 720V756M297 720V756M1503 720V756M1773 720V756"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 756V792M297 756V792M1503 756V792M1773 756V792"/>
+<text x="603" y="409" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">e</text>
+<text x="621" y="409" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="684" y="409" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">i</text>
+<text x="702" y="409" textLength="36" lengthAdjust="spacing" fill="#8b949e">card</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 792V828M297 810H306M297 792V810M306 810H324M324 810H342M342 810H360M360 810H378M378 810H396M396 810H414M414 810H432M432 810H450M450 810H468M468 810H486M486 810H504M504 810H522M522 810H540M540 810H558M558 810H576M576 810H594M594 810H612M612 810H630M630 810H648M648 810H666M666 810H684M684 810H702M702 810H720M720 810H738M738 810H756M756 810H774M774 810H792M792 810H810M810 810H828M828 810H846M846 810H864M864 810H882M882 810H900M900 810H918M918 810H936M936 810H954M954 810H972M972 810H990M990 810H1008M1008 810H1026M1026 810H1044M1044 810H1062M1062 810H1080M1080 810H1098M1098 810H1116M1116 810H1134M1134 810H1152M1152 810H1170M1170 810H1188M1494 810H1503M1503 792V810M1773 792V828"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 828V864M891 828V864M909 828V864M1773 828V864"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 864V900M891 864V900M909 864V900M1773 864V900"/>
+<text x="297" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">e</text>
+<text x="315" y="463" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="378" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">i</text>
+<text x="396" y="463" textLength="36" lengthAdjust="spacing" fill="#8b949e">card</text>
+<text x="693" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">N</text>
+<text x="711" y="463" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="774" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">n</text>
+<text x="792" y="463" textLength="81" lengthAdjust="spacing" fill="#8b949e">hide note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 918H36M27 900V918M36 918H54M54 918H72M72 918H90M90 918H108M108 918H126M126 918H144M144 918H162M162 918H180M180 918H198M198 918H216M216 918H234M234 918H252M252 918H270M270 918H288M288 918H306M306 918H324M324 918H342M342 918H360M360 918H378M378 918H396M396 918H414M414 918H432M432 918H450M450 918H468M468 918H486M486 918H504M504 918H522M522 918H540M540 918H558M558 918H576M882 918H891M891 900V918M909 918H918M909 900V918M918 918H936M936 918H954M954 918H972M972 918H990M990 918H1008M1008 918H1026M1026 918H1044M1044 918H1062M1062 918H1080M1080 918H1098M1098 918H1116M1116 918H1134M1134 918H1152M1152 918H1170M1170 918H1188M1188 918H1206M1206 918H1224M1224 918H1242M1242 918H1260M1260 918H1278M1278 918H1296M1296 918H1314M1314 918H1332M1332 918H1350M1350 918H1368M1764 918H1773M1773 900V918"/>
+<text x="18" y="481" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples</text>
+<text x="18" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">→</text>
+<text x="36" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">column ·</text>
+<text x="117" y="499" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Esc</text>
+<text x="153" y="499" textLength="54" lengthAdjust="spacing" fill="#8b949e">back ·</text>
+<text x="216" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">H</text>
+<text x="234" y="499" textLength="81" lengthAdjust="spacing" fill="#8b949e">history ·</text>
+<text x="324" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="342" y="499" textLength="54" lengthAdjust="spacing" fill="#8b949e">undo ·</text>
+<text x="405" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">C</text>
+<text x="423" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">update ·</text>
+<text x="504" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">x</text>
+<text x="522" y="499" textLength="63" lengthAdjust="spacing" fill="#8b949e">clear ·</text>
+<text x="594" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">o</text>
+<text x="612" y="499" textLength="63" lengthAdjust="spacing" fill="#8b949e">files ·</text>
+<text x="684" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">E</text>
+<text x="702" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">editor ·</text>
+<text x="783" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">?</text>
+<text x="801" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">all keys</text>
+</svg>

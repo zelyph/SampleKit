@@ -1,0 +1,740 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1261" height="532" viewBox="0 0 1261 532" font-family="'DejaVu Sans Mono', Menlo, Consolas, monospace" font-size="15" xml:space="preserve" style="white-space:pre">
+<rect width="1261" height="532" rx="10" fill="#11151c"/>
+<defs>
+<g id="r0">
+<text x="0" y="13" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="13" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="13" textLength="630" lengthAdjust="spacing" fill="#d1d7e0">samplekit -f 'elongation &gt; 20' -c material,elongation,tensile_strength</text>
+</g>
+<g id="r1">
+<text x="0" y="31" textLength="36" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">name</text>
+<text x="108" y="31" textLength="72" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">material</text>
+<text x="207" y="31" textLength="90" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">elongation</text>
+<text x="306" y="31" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">[%]</text>
+<text x="360" y="31" textLength="144" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">tensile_strength</text>
+<text x="513" y="31" textLength="45" lengthAdjust="spacing" fill="#2dd4bf">[MPa]</text>
+</g>
+<g id="r2">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 90H18M18 90H36M36 90H54M54 90H72M72 90H90M90 90H108M108 90H126M126 90H144M144 90H162M162 90H180M180 90H198M198 90H216M216 90H234M234 90H252M252 90H270M270 90H288M288 90H306M306 90H324M324 90H342M342 90H360M360 90H378M378 90H396M396 90H414M414 90H432M432 90H450M450 90H468M468 90H486M486 90H504M504 90H522M522 90H540M540 90H558M558 90H576M576 90H594M594 90H612M612 90H630M630 90H648M648 90H666M666 90H684M684 90H702M702 90H720M720 90H738M738 90H756M756 90H774M774 90H792M792 90H810M810 90H828M828 90H846M846 90H864M864 90H882M882 90H900M900 90H918M918 90H936M936 90H954M954 90H972M972 90H990M990 90H1008M1008 90H1026M1026 90H1044M1044 90H1062M1062 90H1080M1080 90H1098M1098 90H1116"/>
+</g>
+<g id="r3">
+<text x="0" y="67" textLength="81" lengthAdjust="spacing" fill="#8b949e">copper-01</text>
+<text x="108" y="67" textLength="54" lengthAdjust="spacing" fill="#60a5fa">copper</text>
+<text x="297" y="67" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="531" y="67" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">221</text>
+</g>
+<g id="r4">
+<text x="0" y="85" textLength="72" lengthAdjust="spacing" fill="#8b949e">steel-01</text>
+<text x="108" y="85" textLength="45" lengthAdjust="spacing" fill="#60a5fa">steel</text>
+<text x="297" y="85" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.0</text>
+<text x="531" y="85" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">518</text>
+</g>
+<g id="r5">
+<text x="0" y="121" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">2 of 3 samples</text>
+</g>
+<g id="r6">
+<text x="0" y="139" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="139" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="139" textLength="576" lengthAdjust="spacing" fill="#d1d7e0">samplekit samples/copper-01.md set 'curve.strain[44]=45' --write</text>
+</g>
+<g id="r7">
+<text x="0" y="157" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md · 1 change</text>
+</g>
+<g id="r8">
+<text x="18" y="193" textLength="144" lengthAdjust="spacing" fill="#d1d7e0">curve.strain[44]</text>
+<text x="189" y="193" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44</text>
+<text x="225" y="193" textLength="9" lengthAdjust="spacing" fill="#d1d7e0">→</text>
+<text x="252" y="193" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">45</text>
+</g>
+<g id="r9">
+<text x="18" y="229" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">this makes 3 values not current</text>
+</g>
+<g id="r10">
+<text x="36" y="247" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="189" y="247" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r11">
+<text x="36" y="265" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="189" y="265" textLength="531" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain, young_modulus (itself not current)</text>
+</g>
+<g id="r12">
+<text x="36" y="283" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="189" y="283" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r13">
+<text x="18" y="319" textLength="558" lengthAdjust="spacing" fill="#8b949e">samplekit samples/copper-01.md compute --write recomputes them</text>
+</g>
+<g id="r14">
+<text x="0" y="355" textLength="72" lengthAdjust="spacing" fill="#4ade80">written:</text>
+<text x="81" y="355" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+</g>
+<g id="r15">
+<text x="0" y="373" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="373" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="373" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">samplekit compute</text>
+</g>
+<g id="r16">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 18H18M18 18H36M36 18H54M54 18H72M72 18H90M90 18H108M108 18H126M126 18H144M144 18H162M162 18H180M180 18H198M198 18H216M216 18H234M234 18H252M252 18H270M270 18H288M288 18H306M306 18H324M324 18H342M342 18H360M360 18H378M378 18H396M396 18H414M414 18H432M432 18H450M450 18H468M468 18H486M486 18H504M504 18H522M522 18H540M540 18H558M558 18H576M576 18H594M594 18H612M612 18H630M630 18H648M648 18H666M666 18H684M684 18H702M702 18H720M720 18H738M738 18H756M756 18H774M774 18H792M792 18H810M810 18H828M828 18H846M846 18H864M864 18H882M882 18H900M900 18H918M918 18H936M936 18H954M954 18H972M972 18H990M990 18H1008M1008 18H1026M1026 18H1044M1044 18H1062M1062 18H1080M1080 18H1098M1098 18H1116"/>
+</g>
+<g id="r17">
+<text x="0" y="31" textLength="81" lengthAdjust="spacing" fill="#8b949e">copper-01</text>
+<text x="108" y="31" textLength="54" lengthAdjust="spacing" fill="#60a5fa">copper</text>
+<text x="297" y="31" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="531" y="31" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">221</text>
+</g>
+<g id="r18">
+<text x="0" y="49" textLength="72" lengthAdjust="spacing" fill="#8b949e">steel-01</text>
+<text x="108" y="49" textLength="45" lengthAdjust="spacing" fill="#60a5fa">steel</text>
+<text x="297" y="49" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.0</text>
+<text x="531" y="49" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">518</text>
+</g>
+<g id="r19">
+<text x="0" y="85" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">2 of 3 samples</text>
+</g>
+<g id="r20">
+<text x="0" y="103" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="103" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="103" textLength="576" lengthAdjust="spacing" fill="#d1d7e0">samplekit samples/copper-01.md set 'curve.strain[44]=45' --write</text>
+</g>
+<g id="r21">
+<text x="0" y="121" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md · 1 change</text>
+</g>
+<g id="r22">
+<text x="18" y="157" textLength="144" lengthAdjust="spacing" fill="#d1d7e0">curve.strain[44]</text>
+<text x="189" y="157" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44</text>
+<text x="225" y="157" textLength="9" lengthAdjust="spacing" fill="#d1d7e0">→</text>
+<text x="252" y="157" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">45</text>
+</g>
+<g id="r23">
+<text x="18" y="193" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">this makes 3 values not current</text>
+</g>
+<g id="r24">
+<text x="36" y="211" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="189" y="211" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r25">
+<text x="36" y="229" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="189" y="229" textLength="531" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain, young_modulus (itself not current)</text>
+</g>
+<g id="r26">
+<text x="36" y="247" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="189" y="247" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r27">
+<text x="18" y="283" textLength="558" lengthAdjust="spacing" fill="#8b949e">samplekit samples/copper-01.md compute --write recomputes them</text>
+</g>
+<g id="r28">
+<text x="0" y="319" textLength="72" lengthAdjust="spacing" fill="#4ade80">written:</text>
+<text x="81" y="319" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+</g>
+<g id="r29">
+<text x="0" y="337" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="337" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="337" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">samplekit compute</text>
+</g>
+<g id="r30">
+<text x="0" y="355" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">model</text>
+<text x="63" y="355" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">model/specimen.py</text>
+</g>
+<g id="r31">
+<text x="0" y="373" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">sample</text>
+<text x="108" y="373" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">value</text>
+<text x="261" y="373" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">state</text>
+</g>
+<g id="r32">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 774H18M18 774H36M36 774H54M54 774H72M72 774H90M90 774H108M108 774H126M126 774H144M144 774H162M162 774H180M180 774H198M198 774H216M216 774H234M234 774H252M252 774H270M270 774H288M288 774H306M306 774H324M324 774H342M342 774H360M360 774H378M378 774H396M396 774H414M414 774H432M432 774H450M450 774H468M468 774H486M486 774H504M504 774H522M522 774H540M540 774H558M558 774H576M576 774H594M594 774H612M612 774H630M630 774H648M648 774H666M666 774H684M684 774H702M702 774H720M720 774H738M738 774H756M756 774H774M774 774H792M792 774H810M810 774H828M828 774H846M846 774H864M864 774H882M882 774H900M900 774H918M918 774H936M936 774H954M954 774H972M972 774H990M990 774H1008M1008 774H1026M1026 774H1044M1044 774H1062M1062 774H1080M1080 774H1098M1098 774H1116M1116 774H1134M1134 774H1152M1152 774H1170M1170 774H1188M1188 774H1206M1206 774H1224M1224 774H1242M1242 774H1260M1260 774H1278M1278 774H1296M1296 774H1314M1314 774H1332M1332 774H1350M1350 774H1368M1368 774H1386M1386 774H1404M1404 774H1422M1422 774H1440M1440 774H1458M1458 774H1476M1476 774H1494M1494 774H1512M1512 774H1530M1530 774H1548M1548 774H1566M1566 774H1584"/>
+</g>
+<g id="r33">
+<text x="0" y="409" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="409" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="261" y="409" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r34">
+<text x="0" y="427" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="427" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="261" y="427" textLength="531" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain, young_modulus (itself not current)</text>
+</g>
+<g id="r35">
+<text x="0" y="445" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="445" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="261" y="445" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r36">
+<text x="0" y="481" textLength="360" lengthAdjust="spacing" fill="#d1d7e0">3 values in 1 sample would be computed —</text>
+<text x="369" y="481" textLength="378" lengthAdjust="spacing" fill="#8b949e">--write computes and writes without asking</text>
+</g>
+<g id="r37">
+<text x="0" y="499" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">compute these 3 values? [y/N] y</text>
+</g>
+<g id="r38">
+<text x="18" y="13" textLength="558" lengthAdjust="spacing" fill="#8b949e">samplekit samples/copper-01.md compute --write recomputes them</text>
+</g>
+<g id="r39">
+<text x="0" y="49" textLength="72" lengthAdjust="spacing" fill="#4ade80">written:</text>
+<text x="81" y="49" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+</g>
+<g id="r40">
+<text x="0" y="67" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="67" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="67" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">samplekit compute</text>
+</g>
+<g id="r41">
+<text x="0" y="85" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">model</text>
+<text x="63" y="85" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">model/specimen.py</text>
+</g>
+<g id="r42">
+<text x="0" y="103" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">sample</text>
+<text x="108" y="103" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">value</text>
+<text x="261" y="103" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">state</text>
+</g>
+<g id="r43">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 234H18M18 234H36M36 234H54M54 234H72M72 234H90M90 234H108M108 234H126M126 234H144M144 234H162M162 234H180M180 234H198M198 234H216M216 234H234M234 234H252M252 234H270M270 234H288M288 234H306M306 234H324M324 234H342M342 234H360M360 234H378M378 234H396M396 234H414M414 234H432M432 234H450M450 234H468M468 234H486M486 234H504M504 234H522M522 234H540M540 234H558M558 234H576M576 234H594M594 234H612M612 234H630M630 234H648M648 234H666M666 234H684M684 234H702M702 234H720M720 234H738M738 234H756M756 234H774M774 234H792M792 234H810M810 234H828M828 234H846M846 234H864M864 234H882M882 234H900M900 234H918M918 234H936M936 234H954M954 234H972M972 234H990M990 234H1008M1008 234H1026M1026 234H1044M1044 234H1062M1062 234H1080M1080 234H1098M1098 234H1116M1116 234H1134M1134 234H1152M1152 234H1170M1170 234H1188M1188 234H1206M1206 234H1224M1224 234H1242M1242 234H1260M1260 234H1278M1278 234H1296M1296 234H1314M1314 234H1332M1332 234H1350M1350 234H1368M1368 234H1386M1386 234H1404M1404 234H1422M1422 234H1440M1440 234H1458M1458 234H1476M1476 234H1494M1494 234H1512M1512 234H1530M1530 234H1548M1548 234H1566M1566 234H1584"/>
+</g>
+<g id="r44">
+<text x="0" y="139" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="139" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="261" y="139" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r45">
+<text x="0" y="157" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="157" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="261" y="157" textLength="531" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain, young_modulus (itself not current)</text>
+</g>
+<g id="r46">
+<text x="0" y="175" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="175" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="261" y="175" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r47">
+<text x="0" y="211" textLength="360" lengthAdjust="spacing" fill="#d1d7e0">3 values in 1 sample would be computed —</text>
+<text x="369" y="211" textLength="378" lengthAdjust="spacing" fill="#8b949e">--write computes and writes without asking</text>
+</g>
+<g id="r48">
+<text x="0" y="229" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">compute these 3 values? [y/N] y</text>
+</g>
+<g id="r49">
+<text x="18" y="265" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="265" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="265" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+</g>
+<g id="r50">
+<text x="18" y="283" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="283" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="283" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+</g>
+<g id="r51">
+<text x="18" y="301" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="301" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="301" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+</g>
+<g id="r52">
+<text x="0" y="337" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+</g>
+<g id="r53">
+<text x="0" y="355" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">value</text>
+<text x="252" y="355" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">before</text>
+<text x="333" y="355" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">after</text>
+</g>
+<g id="r54">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 738H18M18 738H36M36 738H54M54 738H72M72 738H90M90 738H108M108 738H126M126 738H144M144 738H162M162 738H180M180 738H198M198 738H216M216 738H234M234 738H252M252 738H270M270 738H288M288 738H306M306 738H324M324 738H342M342 738H360M360 738H378M378 738H396M396 738H414M414 738H432M432 738H450M450 738H468M468 738H486M486 738H504M504 738H522M522 738H540M540 738H558M558 738H576M576 738H594M594 738H612M612 738H630M630 738H648M648 738H666M666 738H684M684 738H702M702 738H720M720 738H738M738 738H756M756 738H774M774 738H792M792 738H810M810 738H828"/>
+</g>
+<g id="r55">
+<text x="0" y="391" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="153" y="391" textLength="117" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.19 ± 0.88</text>
+<text x="279" y="391" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">GPa</text>
+<text x="333" y="391" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r56">
+<text x="0" y="409" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="252" y="409" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="279" y="409" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<text x="333" y="409" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r57">
+<text x="0" y="427" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="252" y="427" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="297" y="427" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+<text x="333" y="427" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">45.0</text>
+<text x="378" y="427" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+</g>
+<g id="r58">
+<text x="0" y="463" textLength="378" lengthAdjust="spacing" fill="#d1d7e0">computed 3 values in 1 sample, 2 unchanged</text>
+</g>
+<g id="r59">
+<text x="0" y="499" textLength="252" lengthAdjust="spacing" fill="#d1d7e0">apply these changes? [y/N] y</text>
+</g>
+<g id="r60">
+<text x="0" y="13" textLength="72" lengthAdjust="spacing" fill="#4ade80">written:</text>
+<text x="81" y="13" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+</g>
+<g id="r61">
+<text x="0" y="31" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="31" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="31" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">samplekit compute</text>
+</g>
+<g id="r62">
+<text x="0" y="49" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">model</text>
+<text x="63" y="49" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">model/specimen.py</text>
+</g>
+<g id="r63">
+<text x="0" y="67" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">sample</text>
+<text x="108" y="67" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">value</text>
+<text x="261" y="67" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">state</text>
+</g>
+<g id="r64">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 162H18M18 162H36M36 162H54M54 162H72M72 162H90M90 162H108M108 162H126M126 162H144M144 162H162M162 162H180M180 162H198M198 162H216M216 162H234M234 162H252M252 162H270M270 162H288M288 162H306M306 162H324M324 162H342M342 162H360M360 162H378M378 162H396M396 162H414M414 162H432M432 162H450M450 162H468M468 162H486M486 162H504M504 162H522M522 162H540M540 162H558M558 162H576M576 162H594M594 162H612M612 162H630M630 162H648M648 162H666M666 162H684M684 162H702M702 162H720M720 162H738M738 162H756M756 162H774M774 162H792M792 162H810M810 162H828M828 162H846M846 162H864M864 162H882M882 162H900M900 162H918M918 162H936M936 162H954M954 162H972M972 162H990M990 162H1008M1008 162H1026M1026 162H1044M1044 162H1062M1062 162H1080M1080 162H1098M1098 162H1116M1116 162H1134M1134 162H1152M1152 162H1170M1170 162H1188M1188 162H1206M1206 162H1224M1224 162H1242M1242 162H1260M1260 162H1278M1278 162H1296M1296 162H1314M1314 162H1332M1332 162H1350M1350 162H1368M1368 162H1386M1386 162H1404M1404 162H1422M1422 162H1440M1440 162H1458M1458 162H1476M1476 162H1494M1494 162H1512M1512 162H1530M1530 162H1548M1548 162H1566M1566 162H1584"/>
+</g>
+<g id="r65">
+<text x="0" y="103" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="103" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="261" y="103" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r66">
+<text x="0" y="121" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="121" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="261" y="121" textLength="531" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain, young_modulus (itself not current)</text>
+</g>
+<g id="r67">
+<text x="0" y="139" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="139" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="261" y="139" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r68">
+<text x="0" y="175" textLength="360" lengthAdjust="spacing" fill="#d1d7e0">3 values in 1 sample would be computed —</text>
+<text x="369" y="175" textLength="378" lengthAdjust="spacing" fill="#8b949e">--write computes and writes without asking</text>
+</g>
+<g id="r69">
+<text x="0" y="193" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">compute these 3 values? [y/N] y</text>
+</g>
+<g id="r70">
+<text x="18" y="229" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="229" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="229" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+</g>
+<g id="r71">
+<text x="18" y="247" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="247" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="247" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+</g>
+<g id="r72">
+<text x="18" y="265" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="265" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="265" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+</g>
+<g id="r73">
+<text x="0" y="301" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+</g>
+<g id="r74">
+<text x="0" y="319" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">value</text>
+<text x="252" y="319" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">before</text>
+<text x="333" y="319" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">after</text>
+</g>
+<g id="r75">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 666H18M18 666H36M36 666H54M54 666H72M72 666H90M90 666H108M108 666H126M126 666H144M144 666H162M162 666H180M180 666H198M198 666H216M216 666H234M234 666H252M252 666H270M270 666H288M288 666H306M306 666H324M324 666H342M342 666H360M360 666H378M378 666H396M396 666H414M414 666H432M432 666H450M450 666H468M468 666H486M486 666H504M504 666H522M522 666H540M540 666H558M558 666H576M576 666H594M594 666H612M612 666H630M630 666H648M648 666H666M666 666H684M684 666H702M702 666H720M720 666H738M738 666H756M756 666H774M774 666H792M792 666H810M810 666H828"/>
+</g>
+<g id="r76">
+<text x="0" y="355" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="153" y="355" textLength="117" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.19 ± 0.88</text>
+<text x="279" y="355" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">GPa</text>
+<text x="333" y="355" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r77">
+<text x="0" y="373" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="252" y="373" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="279" y="373" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<text x="333" y="373" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r78">
+<text x="0" y="391" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="252" y="391" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="297" y="391" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+<text x="333" y="391" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">45.0</text>
+<text x="378" y="391" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+</g>
+<g id="r79">
+<text x="0" y="427" textLength="378" lengthAdjust="spacing" fill="#d1d7e0">computed 3 values in 1 sample, 2 unchanged</text>
+</g>
+<g id="r80">
+<text x="0" y="463" textLength="252" lengthAdjust="spacing" fill="#d1d7e0">apply these changes? [y/N] y</text>
+</g>
+<g id="r81">
+<text x="0" y="481" textLength="72" lengthAdjust="spacing" fill="#4ade80">written:</text>
+<text x="81" y="481" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+</g>
+<g id="r82">
+<text x="0" y="499" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="499" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="499" textLength="162" lengthAdjust="spacing" fill="#d1d7e0">samplekit validate</text>
+</g>
+<g id="r83">
+<text x="0" y="13" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="13" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="261" y="13" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r84">
+<text x="0" y="31" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="31" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="261" y="31" textLength="531" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain, young_modulus (itself not current)</text>
+</g>
+<g id="r85">
+<text x="0" y="49" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="108" y="49" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="261" y="49" textLength="207" lengthAdjust="spacing" fill="#fb923c">outdated — curve.strain</text>
+</g>
+<g id="r86">
+<text x="0" y="85" textLength="360" lengthAdjust="spacing" fill="#d1d7e0">3 values in 1 sample would be computed —</text>
+<text x="369" y="85" textLength="378" lengthAdjust="spacing" fill="#8b949e">--write computes and writes without asking</text>
+</g>
+<g id="r87">
+<text x="0" y="103" textLength="279" lengthAdjust="spacing" fill="#d1d7e0">compute these 3 values? [y/N] y</text>
+</g>
+<g id="r88">
+<text x="18" y="139" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="139" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="139" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+</g>
+<g id="r89">
+<text x="18" y="157" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="157" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="157" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+</g>
+<g id="r90">
+<text x="18" y="175" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="175" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="175" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+</g>
+<g id="r91">
+<text x="0" y="211" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+</g>
+<g id="r92">
+<text x="0" y="229" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">value</text>
+<text x="252" y="229" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">before</text>
+<text x="333" y="229" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">after</text>
+</g>
+<g id="r93">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 486H18M18 486H36M36 486H54M54 486H72M72 486H90M90 486H108M108 486H126M126 486H144M144 486H162M162 486H180M180 486H198M198 486H216M216 486H234M234 486H252M252 486H270M270 486H288M288 486H306M306 486H324M324 486H342M342 486H360M360 486H378M378 486H396M396 486H414M414 486H432M432 486H450M450 486H468M468 486H486M486 486H504M504 486H522M522 486H540M540 486H558M558 486H576M576 486H594M594 486H612M612 486H630M630 486H648M648 486H666M666 486H684M684 486H702M702 486H720M720 486H738M738 486H756M756 486H774M774 486H792M792 486H810M810 486H828"/>
+</g>
+<g id="r94">
+<text x="0" y="265" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="153" y="265" textLength="117" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.19 ± 0.88</text>
+<text x="279" y="265" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">GPa</text>
+<text x="333" y="265" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r95">
+<text x="0" y="283" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="252" y="283" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="279" y="283" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<text x="333" y="283" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r96">
+<text x="0" y="301" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="252" y="301" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="297" y="301" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+<text x="333" y="301" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">45.0</text>
+<text x="378" y="301" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+</g>
+<g id="r97">
+<text x="0" y="337" textLength="378" lengthAdjust="spacing" fill="#d1d7e0">computed 3 values in 1 sample, 2 unchanged</text>
+</g>
+<g id="r98">
+<text x="0" y="373" textLength="252" lengthAdjust="spacing" fill="#d1d7e0">apply these changes? [y/N] y</text>
+</g>
+<g id="r99">
+<text x="0" y="391" textLength="72" lengthAdjust="spacing" fill="#4ade80">written:</text>
+<text x="81" y="391" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+</g>
+<g id="r100">
+<text x="0" y="409" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="409" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="409" textLength="162" lengthAdjust="spacing" fill="#d1d7e0">samplekit validate</text>
+</g>
+<g id="r101">
+<text x="18" y="427" textLength="72" lengthAdjust="spacing" fill="#d1d7e0">steel-01</text>
+<text x="225" y="427" textLength="1008" lengthAdjust="spacing" fill="#d1d7e0">repeated_by: [[steel-02]] leads to no sample — no file of the project is named steel-02, and no sample's name is</text>
+</g>
+<g id="r102">
+<text x="0" y="463" textLength="270" lengthAdjust="spacing" fill="#d1d7e0">3 samples · 1 defect · 0 notes</text>
+</g>
+<g id="r103">
+<text x="0" y="481" textLength="54" lengthAdjust="spacing" fill="#fb7185">error:</text>
+<text x="63" y="481" textLength="162" lengthAdjust="spacing" fill="#d1d7e0">1 defect in 1 file</text>
+</g>
+<g id="r104">
+<text x="0" y="499" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="499" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="499" textLength="441" lengthAdjust="spacing" fill="#d1d7e0">samplekit -c name,elongation -s -elongation --csv</text>
+</g>
+<g id="r105">
+<text x="18" y="31" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="31" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="31" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+</g>
+<g id="r106">
+<text x="18" y="49" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="49" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="49" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+</g>
+<g id="r107">
+<text x="18" y="67" textLength="9" lengthAdjust="spacing" fill="#4ade80">✓</text>
+<text x="36" y="67" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="162" y="67" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+</g>
+<g id="r108">
+<text x="0" y="103" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+</g>
+<g id="r109">
+<text x="0" y="121" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">value</text>
+<text x="252" y="121" textLength="54" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">before</text>
+<text x="333" y="121" textLength="45" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">after</text>
+</g>
+<g id="r110">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M0 270H18M18 270H36M36 270H54M54 270H72M72 270H90M90 270H108M108 270H126M126 270H144M144 270H162M162 270H180M180 270H198M198 270H216M216 270H234M234 270H252M252 270H270M270 270H288M288 270H306M306 270H324M324 270H342M342 270H360M360 270H378M378 270H396M396 270H414M414 270H432M432 270H450M450 270H468M468 270H486M486 270H504M504 270H522M522 270H540M540 270H558M558 270H576M576 270H594M594 270H612M612 270H630M630 270H648M648 270H666M666 270H684M684 270H702M702 270H720M720 270H738M738 270H756M756 270H774M774 270H792M792 270H810M810 270H828"/>
+</g>
+<g id="r111">
+<text x="0" y="157" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="153" y="157" textLength="117" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.19 ± 0.88</text>
+<text x="279" y="157" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">GPa</text>
+<text x="333" y="157" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r112">
+<text x="0" y="175" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="252" y="175" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="279" y="175" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<text x="333" y="175" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">unchanged</text>
+</g>
+<g id="r113">
+<text x="0" y="193" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="252" y="193" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="297" y="193" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+<text x="333" y="193" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">45.0</text>
+<text x="378" y="193" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+</g>
+<g id="r114">
+<text x="0" y="229" textLength="378" lengthAdjust="spacing" fill="#d1d7e0">computed 3 values in 1 sample, 2 unchanged</text>
+</g>
+<g id="r115">
+<text x="0" y="265" textLength="252" lengthAdjust="spacing" fill="#d1d7e0">apply these changes? [y/N] y</text>
+</g>
+<g id="r116">
+<text x="0" y="283" textLength="72" lengthAdjust="spacing" fill="#4ade80">written:</text>
+<text x="81" y="283" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+</g>
+<g id="r117">
+<text x="0" y="301" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="301" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="301" textLength="162" lengthAdjust="spacing" fill="#d1d7e0">samplekit validate</text>
+</g>
+<g id="r118">
+<text x="18" y="319" textLength="72" lengthAdjust="spacing" fill="#d1d7e0">steel-01</text>
+<text x="225" y="319" textLength="1008" lengthAdjust="spacing" fill="#d1d7e0">repeated_by: [[steel-02]] leads to no sample — no file of the project is named steel-02, and no sample's name is</text>
+</g>
+<g id="r119">
+<text x="0" y="355" textLength="270" lengthAdjust="spacing" fill="#d1d7e0">3 samples · 1 defect · 0 notes</text>
+</g>
+<g id="r120">
+<text x="0" y="373" textLength="54" lengthAdjust="spacing" fill="#fb7185">error:</text>
+<text x="63" y="373" textLength="162" lengthAdjust="spacing" fill="#d1d7e0">1 defect in 1 file</text>
+</g>
+<g id="r121">
+<text x="0" y="391" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="391" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+<text x="108" y="391" textLength="441" lengthAdjust="spacing" fill="#d1d7e0">samplekit -c name,elongation -s -elongation --csv</text>
+</g>
+<g id="r122">
+<text x="0" y="409" textLength="630" lengthAdjust="spacing" fill="#8b949e">note: elongation_uncertainty is left out: it is empty for every sample</text>
+</g>
+<g id="r123">
+<text x="0" y="427" textLength="225" lengthAdjust="spacing" fill="#d1d7e0">name,elongation_value [%]</text>
+</g>
+<g id="r124">
+<text x="0" y="445" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">copper-01,45.0</text>
+</g>
+<g id="r125">
+<text x="0" y="463" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">steel-01,24.0</text>
+</g>
+<g id="r126">
+<text x="0" y="481" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">aluminium-01,12.0</text>
+</g>
+<g id="r127">
+<text x="0" y="499" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">~/tensile</text>
+<text x="90" y="499" textLength="9" lengthAdjust="spacing" fill="#8b949e">$</text>
+</g>
+</defs>
+<g transform="translate(14 14)">
+<g visibility="hidden">
+<animate attributeName="visibility" values="visible;hidden" keyTimes="0;0.12084" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r0"/>
+<rect x="108" y="0" width="630" height="18" fill="#11151c"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270;279;288;297;306;315;324;333;342;351;360;369;378;387;396;405;414;423;432;441;450;459;468;477;486;495;504;513;522;531;540;549;558;567;576;585;594;603;612;621;630;639;648;657;666;675;684;693;702;711;720;729;738" keyTimes="0;0.02466;0.02589;0.02713;0.02836;0.02959;0.03083;0.03206;0.03329;0.03453;0.03576;0.03699;0.03822;0.03946;0.04069;0.04192;0.04316;0.04439;0.04562;0.04686;0.04809;0.04932;0.05055;0.05179;0.05302;0.05425;0.05549;0.05672;0.05795;0.05919;0.06042;0.06165;0.06289;0.06412;0.06535;0.06658;0.06782;0.06905;0.07028;0.07152;0.07275;0.07398;0.07522;0.07645;0.07768;0.07891;0.08015;0.08138;0.08261;0.08385;0.08508;0.08631;0.08755;0.08878;0.09001;0.09125;0.09248;0.09371;0.09494;0.09618;0.09741;0.09864;0.09988;0.10111;0.10234;0.10358;0.10481;0.10604;0.10727;0.10851;0.10974" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+<rect x="108" y="0" width="9" height="18" fill="#22d3ee"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270;279;288;297;306;315;324;333;342;351;360;369;378;387;396;405;414;423;432;441;450;459;468;477;486;495;504;513;522;531;540;549;558;567;576;585;594;603;612;621;630;639;648;657;666;675;684;693;702;711;720;729;738" keyTimes="0;0.02466;0.02589;0.02713;0.02836;0.02959;0.03083;0.03206;0.03329;0.03453;0.03576;0.03699;0.03822;0.03946;0.04069;0.04192;0.04316;0.04439;0.04562;0.04686;0.04809;0.04932;0.05055;0.05179;0.05302;0.05425;0.05549;0.05672;0.05795;0.05919;0.06042;0.06165;0.06289;0.06412;0.06535;0.06658;0.06782;0.06905;0.07028;0.07152;0.07275;0.07398;0.07522;0.07645;0.07768;0.07891;0.08015;0.08138;0.08261;0.08385;0.08508;0.08631;0.08755;0.08878;0.09001;0.09125;0.09248;0.09371;0.09494;0.09618;0.09741;0.09864;0.09988;0.10111;0.10234;0.10358;0.10481;0.10604;0.10727;0.10851;0.10974" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+</g>
+<g visibility="visible">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.12084;0.28360" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r0"/>
+<use href="#r1"/>
+<use href="#r2"/>
+<use href="#r3"/>
+<use href="#r4"/>
+<use href="#r5"/>
+<use href="#r6"/>
+<rect x="108" y="126" width="576" height="18" fill="#11151c"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270;279;288;297;306;315;324;333;342;351;360;369;378;387;396;405;414;423;432;441;450;459;468;477;486;495;504;513;522;531;540;549;558;567;576;585;594;603;612;621;630;639;648;657;666;675;684" keyTimes="0;0.19482;0.19605;0.19729;0.19852;0.19975;0.20099;0.20222;0.20345;0.20469;0.20592;0.20715;0.20838;0.20962;0.21085;0.21208;0.21332;0.21455;0.21578;0.21702;0.21825;0.21948;0.22072;0.22195;0.22318;0.22441;0.22565;0.22688;0.22811;0.22935;0.23058;0.23181;0.23305;0.23428;0.23551;0.23674;0.23798;0.23921;0.24044;0.24168;0.24291;0.24414;0.24538;0.24661;0.24784;0.24908;0.25031;0.25154;0.25277;0.25401;0.25524;0.25647;0.25771;0.25894;0.26017;0.26141;0.26264;0.26387;0.26510;0.26634;0.26757;0.26880;0.27004;0.27127;0.27250" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+<rect x="108" y="126" width="9" height="18" fill="#22d3ee"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270;279;288;297;306;315;324;333;342;351;360;369;378;387;396;405;414;423;432;441;450;459;468;477;486;495;504;513;522;531;540;549;558;567;576;585;594;603;612;621;630;639;648;657;666;675;684" keyTimes="0;0.19482;0.19605;0.19729;0.19852;0.19975;0.20099;0.20222;0.20345;0.20469;0.20592;0.20715;0.20838;0.20962;0.21085;0.21208;0.21332;0.21455;0.21578;0.21702;0.21825;0.21948;0.22072;0.22195;0.22318;0.22441;0.22565;0.22688;0.22811;0.22935;0.23058;0.23181;0.23305;0.23428;0.23551;0.23674;0.23798;0.23921;0.24044;0.24168;0.24291;0.24414;0.24538;0.24661;0.24784;0.24908;0.25031;0.25154;0.25277;0.25401;0.25524;0.25647;0.25771;0.25894;0.26017;0.26141;0.26264;0.26387;0.26510;0.26634;0.26757;0.26880;0.27004;0.27127;0.27250" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.28360;0.42540" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r0"/>
+<use href="#r1"/>
+<use href="#r2"/>
+<use href="#r3"/>
+<use href="#r4"/>
+<use href="#r5"/>
+<use href="#r6"/>
+<use href="#r7"/>
+<use href="#r8"/>
+<use href="#r9"/>
+<use href="#r10"/>
+<use href="#r11"/>
+<use href="#r12"/>
+<use href="#r13"/>
+<use href="#r14"/>
+<use href="#r15"/>
+<rect x="108" y="360" width="153" height="18" fill="#11151c"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261" keyTimes="0;0.39457;0.39581;0.39704;0.39827;0.39951;0.40074;0.40197;0.40321;0.40444;0.40567;0.40691;0.40814;0.40937;0.41060;0.41184;0.41307;0.41430" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+<rect x="108" y="360" width="9" height="18" fill="#22d3ee"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261" keyTimes="0;0.39457;0.39581;0.39704;0.39827;0.39951;0.40074;0.40197;0.40321;0.40444;0.40567;0.40691;0.40814;0.40937;0.41060;0.41184;0.41307;0.41430" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.42540;0.52898" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r16"/>
+<use href="#r17"/>
+<use href="#r18"/>
+<use href="#r19"/>
+<use href="#r20"/>
+<use href="#r21"/>
+<use href="#r22"/>
+<use href="#r23"/>
+<use href="#r24"/>
+<use href="#r25"/>
+<use href="#r26"/>
+<use href="#r27"/>
+<use href="#r28"/>
+<use href="#r29"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r32"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<rect x="270" y="486" width="9" height="18" fill="#11151c"><animate attributeName="x" values="270;279" keyTimes="0;0.51788" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+<rect x="270" y="486" width="9" height="18" fill="#22d3ee"><animate attributeName="x" values="270;279" keyTimes="0;0.51788" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.52898;0.66954" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r38"/>
+<use href="#r39"/>
+<use href="#r40"/>
+<use href="#r41"/>
+<use href="#r42"/>
+<use href="#r43"/>
+<use href="#r44"/>
+<use href="#r45"/>
+<use href="#r46"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r52"/>
+<use href="#r53"/>
+<use href="#r54"/>
+<use href="#r55"/>
+<use href="#r56"/>
+<use href="#r57"/>
+<use href="#r58"/>
+<use href="#r59"/>
+<rect x="243" y="486" width="9" height="18" fill="#11151c"><animate attributeName="x" values="243;252" keyTimes="0;0.65845" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+<rect x="243" y="486" width="9" height="18" fill="#22d3ee"><animate attributeName="x" values="243;252" keyTimes="0;0.65845" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.66954;0.75092" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r60"/>
+<use href="#r61"/>
+<use href="#r62"/>
+<use href="#r63"/>
+<use href="#r64"/>
+<use href="#r65"/>
+<use href="#r66"/>
+<use href="#r67"/>
+<use href="#r68"/>
+<use href="#r69"/>
+<use href="#r70"/>
+<use href="#r71"/>
+<use href="#r72"/>
+<use href="#r73"/>
+<use href="#r74"/>
+<use href="#r75"/>
+<use href="#r76"/>
+<use href="#r77"/>
+<use href="#r78"/>
+<use href="#r79"/>
+<use href="#r80"/>
+<use href="#r81"/>
+<use href="#r82"/>
+<rect x="108" y="486" width="162" height="18" fill="#11151c"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270" keyTimes="0;0.71887;0.72010;0.72133;0.72256;0.72380;0.72503;0.72626;0.72750;0.72873;0.72996;0.73120;0.73243;0.73366;0.73490;0.73613;0.73736;0.73859;0.73983" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+<rect x="108" y="486" width="9" height="18" fill="#22d3ee"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270" keyTimes="0;0.71887;0.72010;0.72133;0.72256;0.72380;0.72503;0.72626;0.72750;0.72873;0.72996;0.73120;0.73243;0.73366;0.73490;0.73613;0.73736;0.73859;0.73983" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.75092;0.88286" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r83"/>
+<use href="#r84"/>
+<use href="#r85"/>
+<use href="#r86"/>
+<use href="#r87"/>
+<use href="#r88"/>
+<use href="#r89"/>
+<use href="#r90"/>
+<use href="#r91"/>
+<use href="#r92"/>
+<use href="#r93"/>
+<use href="#r94"/>
+<use href="#r95"/>
+<use href="#r96"/>
+<use href="#r97"/>
+<use href="#r98"/>
+<use href="#r99"/>
+<use href="#r100"/>
+<use href="#r101"/>
+<use href="#r102"/>
+<use href="#r103"/>
+<use href="#r104"/>
+<rect x="108" y="486" width="441" height="18" fill="#11151c"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270;279;288;297;306;315;324;333;342;351;360;369;378;387;396;405;414;423;432;441;450;459;468;477;486;495;504;513;522;531;540;549" keyTimes="0;0.81258;0.81381;0.81504;0.81628;0.81751;0.81874;0.81998;0.82121;0.82244;0.82367;0.82491;0.82614;0.82737;0.82861;0.82984;0.83107;0.83231;0.83354;0.83477;0.83600;0.83724;0.83847;0.83970;0.84094;0.84217;0.84340;0.84464;0.84587;0.84710;0.84834;0.84957;0.85080;0.85203;0.85327;0.85450;0.85573;0.85697;0.85820;0.85943;0.86067;0.86190;0.86313;0.86436;0.86560;0.86683;0.86806;0.86930;0.87053;0.87176" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+<rect x="108" y="486" width="9" height="18" fill="#22d3ee"><animate attributeName="x" values="108;117;126;135;144;153;162;171;180;189;198;207;216;225;234;243;252;261;270;279;288;297;306;315;324;333;342;351;360;369;378;387;396;405;414;423;432;441;450;459;468;477;486;495;504;513;522;531;540;549" keyTimes="0;0.81258;0.81381;0.81504;0.81628;0.81751;0.81874;0.81998;0.82121;0.82244;0.82367;0.82491;0.82614;0.82737;0.82861;0.82984;0.83107;0.83231;0.83354;0.83477;0.83600;0.83724;0.83847;0.83970;0.84094;0.84217;0.84340;0.84464;0.84587;0.84710;0.84834;0.84957;0.85080;0.85203;0.85327;0.85450;0.85573;0.85697;0.85820;0.85943;0.86067;0.86190;0.86313;0.86436;0.86560;0.86683;0.86806;0.86930;0.87053;0.87176" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/></rect>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible" keyTimes="0;0.88286" dur="40.55s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r105"/>
+<use href="#r106"/>
+<use href="#r107"/>
+<use href="#r108"/>
+<use href="#r109"/>
+<use href="#r110"/>
+<use href="#r111"/>
+<use href="#r112"/>
+<use href="#r113"/>
+<use href="#r114"/>
+<use href="#r115"/>
+<use href="#r116"/>
+<use href="#r117"/>
+<use href="#r118"/>
+<use href="#r119"/>
+<use href="#r120"/>
+<use href="#r121"/>
+<use href="#r122"/>
+<use href="#r123"/>
+<use href="#r124"/>
+<use href="#r125"/>
+<use href="#r126"/>
+<use href="#r127"/>
+<rect x="108" y="486" width="9" height="18" fill="#22d3ee"></rect>
+</g>
+</g>
+</svg>

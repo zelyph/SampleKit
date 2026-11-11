@@ -178,7 +178,82 @@ pub(crate) fn nested_too_deep(frontmatter: &str) -> Option<usize> {
     None
 }
 
+/// Documents parsed, by the text they were parsed from: a file read again
+/// unchanged, by the next command of the terminal interface or by a plan
+/// reading the sample a list already read, is not parsed again. Parsing is
+/// most of reading a sample.
+const PARSED_KEPT: usize = 50_000;
+
+/// Shared by every thread: the terminal interface plans what the model owes
+/// beside the screen, from the files the screen read.
+fn parsed() -> &'static std::sync::Mutex<std::collections::HashMap<String, Document>> {
+    static PARSED: std::sync::OnceLock<
+        std::sync::Mutex<std::collections::HashMap<String, Document>>,
+    > = std::sync::OnceLock::new();
+    PARSED.get_or_init(Default::default)
+}
+
+/// `work` done on each of `items` across the machine's cores, the answers in
+/// the order of the items: a project's files read and parsed at once, where
+/// one after another left all but one core idle. A few items are done here,
+/// where starting threads costs more than it gives.
+pub fn in_parallel<T: Sync, R: Send>(items: &[T], work: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    // The stack the command line's own thread has: a sample's YAML nests
+    // as deep there as here.
+    const STACK: usize = 16 << 20;
+    const ALONE_BELOW: usize = 64;
+    let cores = std::thread::available_parallelism().map_or(1, |cores| cores.get().min(8));
+    if cores < 2 || items.len() < ALONE_BELOW {
+        return items.iter().map(&work).collect();
+    }
+    let chunk = items.len().div_ceil(cores);
+    let work = &work;
+    // Writing through what waits, a thread started here reads through it too.
+    let through = super::stage::through_now();
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = items
+            .chunks(chunk)
+            .map(|part| {
+                std::thread::Builder::new()
+                    .stack_size(STACK)
+                    .spawn_scoped(scope, move || {
+                        let _through = through.then(super::stage::Through::new);
+                        part.iter().map(work).collect::<Vec<R>>()
+                    })
+            })
+            .collect();
+        let mut done = Vec::with_capacity(items.len());
+        for (handle, part) in handles.into_iter().zip(items.chunks(chunk)) {
+            match handle.ok().and_then(|handle| handle.join().ok()) {
+                Some(answers) => done.extend(answers),
+                // A thread the system would not start, or that panicked: its
+                // part done here, so that a panic is a panic of this thread.
+                None => done.extend(part.iter().map(work)),
+            }
+        }
+        done
+    })
+}
+
 pub fn parse(source: &str) -> Result<Document, DocumentError> {
+    if let Some(held) = parsed()
+        .lock()
+        .ok()
+        .and_then(|parsed| parsed.get(source).cloned())
+    {
+        return Ok(held);
+    }
+    let document = parse_text(source)?;
+    if let Ok(mut parsed) = parsed().lock() {
+        if parsed.len() >= PARSED_KEPT {
+            parsed.clear();
+        }
+        parsed.insert(source.to_string(), document.clone());
+    }
+    Ok(document)
+}
+
+fn parse_text(source: &str) -> Result<Document, DocumentError> {
     let bom = source.starts_with(BOM);
     let body = source.strip_prefix(BOM).unwrap_or(source);
     // The file's own convention, taken from its first line ending.
@@ -389,7 +464,7 @@ pub fn write(document: &Document) -> String {
 // ------------------------------------------------------------------- files
 
 pub fn load(path: &Path) -> Result<(Document, Origin), DocumentError> {
-    let source = fs::read_to_string(path).map_err(|source| {
+    let source = read_text(path).map_err(|source| {
         // What the file holds, not what the filesystem refused.
         if source.kind() == io::ErrorKind::InvalidData {
             DocumentError::NotText {
@@ -791,15 +866,52 @@ pub fn current_text(path: &Path) -> io::Result<String> {
     {
         return Ok(after.clone());
     }
-    fs::read_to_string(path)
+    read_text(path)
+}
+
+/// A file removed: at once, or waiting with the project's other changes.
+pub fn remove_file(path: &Path) -> io::Result<()> {
+    if super::stage::staging(path) {
+        return super::stage::remove(path).map_err(|error| io::Error::other(error.to_string()));
+    }
+    note_written(path);
+    fs::remove_file(path)
+}
+
+/// A file moved — a sample's own, renamed with it: at once, or waiting.
+pub fn move_file(from: &Path, to: &Path) -> io::Result<()> {
+    if super::stage::staging(from) {
+        return super::stage::moved(from, to).map_err(|error| io::Error::other(error.to_string()));
+    }
+    note_written(from);
+    note_written(to);
+    fs::rename(from, to)
+}
+
+/// What a file reads as: a change waiting for it, or the disk's.
+pub fn read_text(path: &Path) -> io::Result<String> {
+    match super::stage::text(path) {
+        Some(Some(text)) => Ok(text),
+        Some(None) => Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "removed, the removal not written yet",
+        )),
+        None => fs::read_to_string(path),
+    }
 }
 
 pub fn save(document: &Document, to: &Destination) -> Result<Origin, DocumentError> {
     let path = to.path().to_path_buf();
     refuse_link_out_of_project(&path)?;
+    let staging = super::stage::staging(&path) && !holding_saves();
     // Held across the check, the write and the rename: two syscalls with
-    // anything at all between them is not a check.
-    let _lock = Lock::acquire(&path)?;
+    // anything at all between them is not a check. A save that waits writes
+    // nothing beside the file.
+    let _lock = if staging {
+        None
+    } else {
+        Some(Lock::acquire(&path)?)
+    };
     // A write that would change nothing writes nothing: not the file, not its
     // time, not its permissions.
     if let Ok(current) = current_text(&path)
@@ -823,7 +935,9 @@ pub fn save(document: &Document, to: &Destination) -> Result<Origin, DocumentErr
     // Looked for again inside the lock: a file made there since the command
     // looked is another writer's, and is not replaced.
     if let Destination::New(path) = to
-        && (fs::symlink_metadata(path).is_ok() || current_text(path).is_ok())
+        && ((!staging && fs::symlink_metadata(path).is_ok())
+            || (staging && super::stage::exists(path))
+            || current_text(path).is_ok())
     {
         return Err(DocumentError::WrittenSince { path: path.clone() });
     }
@@ -889,6 +1003,8 @@ pub fn save(document: &Document, to: &Destination) -> Result<Origin, DocumentErr
         held.entry(path.clone())
             .or_insert((before, String::new()))
             .1 = rendered.clone();
+    } else if staging {
+        super::stage::save(&path, &rendered)?;
     } else {
         write_atomically(&path, rendered.as_bytes()).map_err(|source| DocumentError::Io {
             path: path.clone(),
@@ -906,7 +1022,15 @@ pub fn save(document: &Document, to: &Destination) -> Result<Origin, DocumentErr
 /// including a freshness check — which is the point of the records being in the
 /// file at all.
 pub fn load_sample(path: &Path) -> Result<(Sample, Origin), DocumentError> {
-    let (document, origin) = load(path)?;
+    sample_of(load(path)?, path)
+}
+
+/// The sample a document read from `path` holds: what [`load_sample`] makes
+/// of what [`load`] read, the reading done apart, on another thread.
+pub fn sample_of(
+    (document, origin): (Document, Origin),
+    path: &Path,
+) -> Result<(Sample, Origin), DocumentError> {
     let mut sample = schema::into_sample(document.schema).map_err(DocumentError::Schema)?;
     sample.set_note(document.note.as_str().to_string());
     // Named by its file where it writes no name.
@@ -1077,6 +1201,35 @@ pub fn load_into(path: &Path, sample: &mut Sample) -> Result<Origin, DocumentErr
 /// showed is what it replaces, and another writer's change since is refused,
 /// `ConcurrentEdit`, rather than lost.
 pub fn replace_if_unchanged(
+    path: &Path,
+    expected: Option<&[u8]>,
+    contents: Option<&[u8]>,
+) -> Result<(), DocumentError> {
+    if super::stage::staging(path) {
+        refuse_link_out_of_project(path)?;
+        let current = read_text(path).ok();
+        if current.as_deref().map(str::as_bytes) != expected {
+            return Err(match expected {
+                None => DocumentError::WrittenSince {
+                    path: path.to_path_buf(),
+                },
+                Some(_) => DocumentError::ConcurrentEdit {
+                    path: path.to_path_buf(),
+                },
+            });
+        }
+        return match contents {
+            Some(contents) => super::stage::save(path, &String::from_utf8_lossy(contents)),
+            None if current.is_some() => super::stage::remove(path),
+            None => Ok(()),
+        };
+    }
+    replace_on_disk(path, expected, contents)
+}
+
+/// [`replace_if_unchanged`] on the disk itself, whatever waits: what writes
+/// the changes waiting.
+pub(crate) fn replace_on_disk(
     path: &Path,
     expected: Option<&[u8]>,
     contents: Option<&[u8]>,

@@ -2,7 +2,154 @@
 
 mod workbench_fixtures;
 
+use samplekit::tui::model::CardGroup;
 use workbench_fixtures::*;
+
+/// The theme list's items and the cursor, where it is open.
+fn theme_list(workbench: &Workbench) -> (Vec<String>, usize) {
+    match &workbench.mode {
+        Mode::Picker {
+            purpose: samplekit::tui::model::Choosing::Theme { .. },
+            items,
+            cursor,
+            ..
+        } => (
+            items.iter().map(|(name, _)| name.clone()).collect(),
+            *cursor,
+        ),
+        other => panic!("no list of themes: {}", matches!(other, Mode::Normal)),
+    }
+}
+
+#[test]
+fn t_lists_the_themes_and_the_cursor_tries_each() {
+    use samplekit::tui::theme::Themes;
+    let scratch = Scratch::new("themes-list");
+    let folder = scratch.0.join("themes");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(
+        folder.join("mine.toml"),
+        "base = \"nord\"\n[colors]\naccent = \"#ff79c6\"\n",
+    )
+    .unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    workbench.themes = Themes::read(Some(&folder));
+    workbench.themed();
+    let before = workbench.theme;
+    keys(&mut workbench, "T");
+    let (items, cursor) = theme_list(&workbench);
+    assert_eq!(items.first().map(String::as_str), Some("samplekit-dark"));
+    assert_eq!(items.last().map(String::as_str), Some("mine"));
+    assert_eq!(items[cursor], workbench.theme_name);
+    // One's own said so, the whole list in sight.
+    let mut terminal = Terminal::new(TestBackend::new(100, 40)).unwrap();
+    terminal
+        .draw(|frame| samplekit::tui::view::draw(frame, &mut workbench))
+        .unwrap();
+    let drawn: String = terminal
+        .backend()
+        .buffer()
+        .content
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect();
+    assert!(drawn.contains("mine  yours"), "{drawn}");
+    // The cursor tries the next one at once.
+    workbench.key(Key::Down);
+    let (_, moved) = theme_list(&workbench);
+    let tried = workbench.themes.theme(&items[moved], None).unwrap();
+    assert_eq!(moved, cursor + 1);
+    assert_eq!(workbench.theme, tried);
+    assert_ne!(workbench.theme, before);
+    // Esc gives the one before back.
+    keys(&mut workbench, "\u{1b}");
+    assert!(matches!(workbench.mode, Mode::Normal));
+    assert_eq!(workbench.theme, before);
+    // On a sample, the same list.
+    keys(&mut workbench, "\nT");
+    assert_eq!(theme_list(&workbench).0, items);
+}
+
+#[test]
+fn enter_keeps_the_theme_for_the_folder_and_as_the_last_chosen() {
+    let scratch = Scratch::new("themes-kept");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let last = scratch.0.join("last-theme");
+    workbench.last_theme = Some(last.clone());
+    keys(&mut workbench, "T/nord\n");
+    assert!(
+        matches!(workbench.mode, Mode::Normal),
+        "{}",
+        workbench.message
+    );
+    assert_eq!(workbench.theme_name, "nord");
+    assert_eq!(
+        workbench.theme,
+        workbench.themes.theme("nord", None).unwrap()
+    );
+    assert!(
+        workbench.message.contains("theme nord, kept"),
+        "{}",
+        workbench.message
+    );
+    assert_eq!(fs::read_to_string(&last).unwrap(), "nord\n");
+    // The folder's choice, remembered with it.
+    samplekit::tui::model::remember(&workbench).unwrap();
+    let again = Workbench::open(&scratch.0).unwrap();
+    assert_eq!(again.theme_name, "nord");
+    // The last choice, read where the folder chose none, under a project's
+    // own theme.
+    let other = Scratch::new("themes-kept-other");
+    let mut elsewhere = Workbench::open(&other.0).unwrap();
+    elsewhere.last_theme = Some(last.clone());
+    elsewhere.themed();
+    assert_eq!(elsewhere.theme_name, "nord");
+    fs::write(
+        other.0.join(".samplekitrc"),
+        "schema_version = 1\n[colors]\ntheme = \"dracula\"\n",
+    )
+    .unwrap();
+    let mut named = Workbench::open(&other.0).unwrap();
+    named.last_theme = Some(last);
+    named.themed();
+    assert_eq!(named.theme_name, "dracula");
+}
+
+#[test]
+fn the_themes_list_says_the_theme_the_project_names() {
+    let scratch = Scratch::new("themes-named");
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        "schema_version = 1\n[colors]\ntheme = \"dracula\"\n",
+    )
+    .unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    workbench.last_theme = Some(scratch.0.join("last-theme"));
+    assert_eq!(workbench.theme_name, "dracula");
+    keys(&mut workbench, "T");
+    assert!(
+        screen(&mut workbench).contains("theme · this project names dracula"),
+        "{}",
+        screen(&mut workbench)
+    );
+    // Chosen over the project's, then the project's again: no choice kept.
+    keys(&mut workbench, "/nord\n");
+    assert_eq!(workbench.theme_chosen.as_deref(), Some("nord"));
+    samplekit::tui::model::remember(&workbench).unwrap();
+    keys(&mut workbench, "T/dracula\n");
+    assert_eq!(workbench.theme_name, "dracula");
+    assert_eq!(workbench.theme_chosen, None);
+    assert!(
+        workbench.message.contains("the project's own"),
+        "{}",
+        workbench.message
+    );
+    // The choice kept before is forgotten with the session's.
+    samplekit::tui::model::remember(&workbench).unwrap();
+    let again = Workbench::open(&scratch.0).unwrap();
+    assert_eq!(again.theme_chosen, None);
+    assert_eq!(again.theme_name, "dracula");
+}
 
 #[test]
 fn a_filter_narrows_the_collection_and_is_remembered() {
@@ -63,10 +210,11 @@ fn the_filter_is_edited_where_its_cursor_is() {
 fn every_line_typed_is_edited_where_its_cursor_is() {
     let scratch = rich("cursor-everywhere");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
-    // A value, typed in its window.
+    // A value, typed in its cell: F2 opens it with its text kept.
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
+    workbench.key(Key::F2);
     workbench.key(Key::End);
     for _ in 0..20 {
         workbench.key(Key::Backspace);
@@ -79,10 +227,10 @@ fn every_line_typed_is_edited_where_its_cursor_is() {
         panic!("the value's line");
     };
     assert_eq!(text.text(), "120.5");
-    // A prompt: the name, one value on its line.
+    // A prompt: the name, one value on its line, which Enter opens.
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "D1");
-    keys(&mut workbench, "e");
+    keys(&mut workbench, "\n");
     assert!(
         matches!(workbench.mode, Mode::Prompt { .. }),
         "the name's prompt"
@@ -275,6 +423,7 @@ fn the_note_is_edited_in_place_and_previewed() {
         "{lines:?}"
     );
     keys(&mut workbench, "y");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     assert!(
         written.ends_with("First line. Amended.\necond line.\n"),
@@ -325,68 +474,6 @@ fn the_selection_and_the_basket_are_remembered() {
     assert!(again.basket.is_empty());
     keys(&mut again, "\nx");
     assert!(again.selected.is_empty());
-}
-
-#[test]
-fn a_quantity_is_edited_in_its_window_a_cell_at_a_time() {
-    // `e` on a quantity opened a window of three slots of its own; it opens
-    // the property's window, as `Enter` does, its value typed first.
-    let scratch = rich("quantity");
-    let mut workbench = Workbench::open(&scratch.0).unwrap();
-    open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    assert!(matches!(workbench.screen, Screen::Property { .. }));
-    let Mode::Prompt { text, .. } = &workbench.mode else {
-        panic!("its value typed: {}", workbench.message);
-    };
-    assert_eq!(text.text(), "12");
-    // Selected whole: what is typed replaces it.
-    assert_eq!(text.selected(), "12");
-    keys(&mut workbench, "13\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("a preview: {}", workbench.message);
-    };
-    assert!(
-        lines
-            .iter()
-            .any(|line| line.contains("12.0 ± 0.1 g  →  13.0 ± 0.1 g")),
-        "{lines:?}"
-    );
-    keys(&mut workbench, "y");
-    // Its uncertainty, the next cell.
-    keys(&mut workbench, "le");
-    for _ in 0..3 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "0.2\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("a preview: {}", workbench.message);
-    };
-    assert!(
-        // The uncertainty changed, said as the quantity it is, whole.
-        lines
-            .iter()
-            .any(|line| line.contains("diameter   13.0 ± 0.1 g  →  13.0 ± 0.2 g")),
-        "{lines:?}"
-    );
-    keys(&mut workbench, "y");
-    let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
-    assert!(
-        written.contains("v: 13") && written.contains("u: 0.2"),
-        "{written}"
-    );
-    // An emptied uncertainty is cleared.
-    keys(&mut workbench, "e");
-    for _ in 0..3 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "\ny");
-    let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
-    assert!(!written.contains("u: 0.2"), "{written}");
-    // Back to the sample.
-    keys(&mut workbench, "\u{1b}");
-    assert!(matches!(workbench.screen, Screen::Sample { .. }));
 }
 
 #[test]
@@ -580,72 +667,6 @@ fn a_sort_takes_several_keys_each_reversible_and_in_order() {
 }
 
 #[test]
-fn a_tables_cell_is_opened_by_enter_and_changed_in_its_window() {
-    let scratch = rich("cells");
-    let mut workbench = Workbench::open(&scratch.0).unwrap();
-    open_named(&mut workbench, "D1");
-    move_to(&mut workbench, "runs");
-    workbench.key(Key::Right);
-    // The cursor starts on the index, and moves to the value beside it.
-    keys(&mut workbench, "l");
-    let (cell, column) = workbench.cell().expect("a cell under the cursor");
-    assert_eq!(
-        (cell.field.as_str(), column.as_str()),
-        ("runs.load[1]", "runs.load")
-    );
-    // `e` changes no value from the table: a row filled cell by cell sent the
-    // next number into the uncertainty of the cell before.
-    keys(&mut workbench, "e");
-    assert!(matches!(workbench.screen, Screen::Table { .. }));
-    assert!(
-        workbench.message.contains("Enter opens the cell"),
-        "{}",
-        workbench.message
-    );
-    // `Enter` opens the window a property has: its value, then its
-    // uncertainty, and no readings for a cell; `e` there changes it.
-    keys(&mut workbench, "\ne");
-    let Screen::Property { name, .. } = &workbench.screen else {
-        panic!("the cell's window: {}", workbench.message);
-    };
-    assert_eq!(name, "runs.load[1]");
-    assert_eq!(
-        workbench.property_columns("runs.load[1]"),
-        ["value", "uncertainty"]
-    );
-    let Mode::Prompt { text, .. } = &workbench.mode else {
-        panic!("its value typed: {}", workbench.message);
-    };
-    assert_eq!(text.text(), "3.5");
-    keys(&mut workbench, "3.6\nyle0.1\ny");
-    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
-    assert!(written.contains("load: {v: 3.6, u: 0.1"), "{written}");
-    keys(&mut workbench, "\n");
-    let Mode::Panel { title, .. } = &workbench.mode else {
-        panic!("explained");
-    };
-    assert!(title.starts_with("runs.load[1]"), "{title}");
-    // Back to the table it was opened from, on the cell.
-    keys(&mut workbench, "\u{1b}\u{1b}");
-    assert!(matches!(workbench.screen, Screen::Table { .. }));
-    assert_eq!(workbench.cell().unwrap().0.field, "runs.load[1]");
-    // Entered, so nothing computes it; selected, as a column.
-    keys(&mut workbench, "c");
-    // No column selected: the whole table, which nothing computes here.
-    assert!(
-        workbench.message.contains("nothing computes runs:"),
-        "{}",
-        workbench.message
-    );
-    keys(&mut workbench, " ");
-    assert!(workbench.selected.contains("runs.load"));
-    // ← from the first column, the index's, is the sample again.
-    workbench.key(Key::Left);
-    workbench.key(Key::Left);
-    assert!(matches!(workbench.screen, Screen::Sample { .. }));
-}
-
-#[test]
 fn the_project_colours_the_workbench() {
     let scratch = rich("colours");
     fs::write(
@@ -658,7 +679,12 @@ fn the_project_colours_the_workbench() {
         workbench.theme.outdated,
         ratatui::style::Color::Rgb(0xff, 0x88, 0x00)
     );
-    assert_eq!(workbench.theme.failed, ratatui::style::Color::Red);
+    // A role it leaves out is its theme's.
+    let theme = samplekit::tui::theme::Themes::read(None)
+        .theme(&workbench.theme_name, None)
+        .unwrap();
+    assert_eq!(workbench.theme.failed, theme.failed);
+    assert_ne!(workbench.theme.outdated, theme.outdated);
 }
 
 #[test]
@@ -736,21 +762,25 @@ fn readings_the_model_declares_no_statistic_of_are_said_to_give_no_value() {
     ] {
         let mut workbench = Workbench::open(&scratch.0).unwrap();
         open_named(&mut workbench, "G");
-        move_to(&mut workbench, "ore");
-        // The value emptied first, then a reading added in the readings'
-        // list.
+        go_to(&mut workbench, "ore");
+        // In the typing mode, the value emptied first in its cell, then
+        // readings typed in theirs.
+        keys(&mut workbench, "e");
         if emptied {
-            keys(&mut workbench, "e");
+            workbench.key(Key::F2);
             workbench.key(ctrl('a'));
             workbench.key(Key::Backspace);
-            keys(&mut workbench, "\ny\u{1b}");
+            keys(&mut workbench, "\n");
+            go_to(&mut workbench, "ore");
         }
-        keys(&mut workbench, "\nlle");
-        keys(&mut workbench, "e5.1, 5.2\n");
-        let Mode::Confirm { lines, .. } = &workbench.mode else {
-            panic!("a preview: {}", workbench.message);
-        };
-        assert!(lines.iter().any(|line| line.contains(said)), "{lines:?}");
+        workbench.key(Key::Right);
+        keys(&mut workbench, "5.1, 5.2\n");
+        assert!(workbench.message.contains(said), "{}", workbench.message);
+        // Taken back, for the next.
+        keys(&mut workbench, "\u{1b}");
+        while workbench.waiting_count() > 0 {
+            keys(&mut workbench, "u");
+        }
     }
 }
 
@@ -760,12 +790,19 @@ fn a_tag_comes_off_the_basket_with_a_minus() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     keys(&mut workbench, "a");
     keys(&mut workbench, "tchecked\ny");
+    write_waiting(&mut workbench);
+    assert!(
+        fs::read_to_string(scratch.0.join("C1.md"))
+            .unwrap()
+            .contains("checked")
+    );
     keys(&mut workbench, "t-checked\n");
     let Mode::Confirm { lines, .. } = &workbench.mode else {
         panic!("a preview: {}", workbench.message);
     };
     assert!(lines[0].starts_with("'checked' off 4"), "{lines:?}");
     keys(&mut workbench, "y");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
     assert!(!written.contains("checked"), "{written}");
 }
@@ -791,12 +828,13 @@ fn a_new_sample_is_written_beside_the_one_under_the_cursor() {
         "{lines:?}"
     );
     keys(&mut workbench, "y");
+    assert_eq!(workbench.collection.len(), 5);
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D2.md")).unwrap();
     assert!(
         !written.contains("chrome") && !written.contains("runs"),
         "{written}"
     );
-    assert_eq!(workbench.collection.len(), 5);
     // And u takes it away again.
     keys(&mut workbench, "uy");
     assert!(
@@ -814,7 +852,7 @@ fn a_row_is_added_to_an_unfolded_table() {
     move_to(&mut workbench, "runs");
     workbench.key(Key::Right);
     // The empty row at the foot, filled cell by cell: kept until its index
-    // is given, then previewed whole.
+    // is given, then waiting whole.
     keys(&mut workbench, "jjle5.5\n");
     assert!(
         matches!(workbench.mode, Mode::Normal),
@@ -826,13 +864,15 @@ fn a_row_is_added_to_an_unfolded_table() {
         "{}",
         workbench.message
     );
-    keys(&mut workbench, "he3\n");
+    // Its index given, it waits at once: `w` previews it.
+    workbench.key(Key::Left);
+    keys(&mut workbench, "3\n\u{1b}w");
     let Mode::Confirm { lines, .. } = &workbench.mode else {
         panic!("a preview: {}", workbench.message);
     };
     // Each cell a change from nothing, as `set --add-row` says it.
-    assert_eq!(lines[0], "  runs.run    —  →  3", "{lines:?}");
-    assert_eq!(lines[1], "  runs.load   —  →  5.5", "{lines:?}");
+    assert_eq!(lines[1], "  runs.run[3]    —  →  3", "{lines:?}");
+    assert_eq!(lines[2], "  runs.load[3]   —  →  5.5 N", "{lines:?}");
     keys(&mut workbench, "y");
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     assert!(written.contains("load: 5.5"), "{written}");
@@ -845,9 +885,8 @@ fn u_gives_the_last_change_back_and_n_keeps_it_for_later() {
     let before = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    workbench.key(Key::Backspace);
-    keys(&mut workbench, "9\ny");
+    keys(&mut workbench, "e9\n\u{1b}");
+    write_waiting(&mut workbench);
     assert_ne!(fs::read_to_string(scratch.0.join("C1.md")).unwrap(), before);
     keys(&mut workbench, "un");
     assert_eq!(workbench.undo.len(), 1, "declined, still there");
@@ -1129,9 +1168,7 @@ fn the_sample_open_stays_open_when_a_write_reorders_the_view() {
     // D1 (9) first by diameter: made the heaviest, it moves to the end.
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    workbench.key(Key::Backspace);
-    keys(&mut workbench, "99\ny");
+    keys(&mut workbench, "e99\n\u{1b}");
     let (_, sample) = workbench.current().expect("still a sample open");
     assert_eq!(sample.name(), Some("D1"));
 }
@@ -1170,9 +1207,8 @@ fn undo_takes_back_its_change_and_keeps_one_made_since() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    workbench.key(Key::Backspace);
-    keys(&mut workbench, "9\ny");
+    keys(&mut workbench, "e9\n\u{1b}");
+    write_waiting(&mut workbench);
     let path = scratch.0.join("C1.md");
     let edited = fs::read_to_string(&path)
         .unwrap()
@@ -1206,11 +1242,8 @@ fn undo_says_what_it_makes_not_current() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "A");
     move_to(&mut workbench, "x");
-    keys(&mut workbench, "e");
-    for _ in 0..3 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "2\ny");
+    keys(&mut workbench, "e2\n\u{1b}");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "u");
     let Mode::Confirm { lines, .. } = &workbench.mode else {
         panic!("asked: {}", workbench.message);
@@ -1230,7 +1263,8 @@ fn undo_says_a_value_changed_since_and_lets_it_go_when_asked_again() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e19\ny");
+    keys(&mut workbench, "e19\n\u{1b}");
+    write_waiting(&mut workbench);
     // The same value changed since, by someone else.
     let path = scratch.0.join("C1.md");
     let written = fs::read_to_string(&path).unwrap();
@@ -1303,6 +1337,91 @@ fn a_sample_gone_leaves_the_basket() {
     fs::remove_file(scratch.0.join("C2.md")).unwrap();
     workbench.reload();
     assert_eq!(workbench.basket.len(), 3);
+}
+
+/// The sample a collection holds under `name`.
+fn held_sample(
+    workbench: &Workbench,
+    name: &str,
+) -> std::rc::Rc<std::cell::RefCell<samplekit::core::sample::Sample>> {
+    workbench
+        .collection
+        .iter()
+        .find(|entry| entry.sample.borrow().name() == Some(name))
+        .map(|entry| entry.sample.clone())
+        .unwrap()
+}
+
+#[test]
+fn a_reload_reads_again_only_the_files_that_changed() {
+    let scratch = Scratch::new("reload-changed");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let (first, second) = (held_sample(&workbench, "C1"), held_sample(&workbench, "C2"));
+    // One character, the length kept: as a USB key keeps a time, the same.
+    let file = scratch.0.join("C2.md");
+    let text = fs::read_to_string(&file).unwrap();
+    fs::write(&file, text.replace("v: 10.0", "v: 10.5")).unwrap();
+    workbench.reload();
+    assert!(std::rc::Rc::ptr_eq(&first, &held_sample(&workbench, "C1")));
+    let read = held_sample(&workbench, "C2");
+    assert!(!std::rc::Rc::ptr_eq(&second, &read));
+    let diameter = samplekit::core::identifier::Identifier::new("diameter").unwrap();
+    let value = read.borrow().property(&diameter).unwrap().value().unwrap();
+    assert_eq!(value, samplekit::core::value::Value::Number(10.5));
+}
+
+#[test]
+fn a_sample_changed_in_memory_is_read_again_from_its_file() {
+    let scratch = Scratch::new("reload-memory");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let alloy = samplekit::core::identifier::Identifier::new("alloy").unwrap();
+    let first = held_sample(&workbench, "C1");
+    first.borrow_mut().remove_attribute(&alloy).unwrap();
+    workbench.reload();
+    let read = held_sample(&workbench, "C1");
+    assert!(!std::rc::Rc::ptr_eq(&first, &read));
+    assert!(read.borrow().attribute_if(&alloy).is_some());
+}
+
+#[test]
+fn a_changed_configuration_reads_every_sample_again() {
+    let scratch = Scratch::new("reload-settings");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let first = held_sample(&workbench, "C1");
+    let rc = scratch.0.join(".samplekitrc");
+    let text = fs::read_to_string(&rc).unwrap();
+    fs::write(&rc, text.replace(".1f", ".2f")).unwrap();
+    workbench.reload();
+    assert!(!std::rc::Rc::ptr_eq(&first, &held_sample(&workbench, "C1")));
+}
+
+#[test]
+fn a_file_changed_outside_is_read_again_on_the_systems_word() {
+    let scratch = Scratch::new("watched");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    if !workbench.watch_files() {
+        // A system with no watch to give looks at the files as before.
+        eprintln!("no watch on this system: the files are looked at instead");
+        return;
+    }
+    // Nothing changed, nothing told: the files are not looked at.
+    assert!(!workbench.catch_up());
+    let file = scratch.0.join("more.md");
+    fs::write(
+        &file,
+        "---\nschema_version: 1\nname: C4\nalloy: cobalt\n---\n",
+    )
+    .unwrap();
+    // The system's word comes from its own thread: a moment, at most.
+    let start = std::time::Instant::now();
+    while !workbench.catch_up() {
+        assert!(
+            start.elapsed() < std::time::Duration::from_secs(10),
+            "the system never told of the file written"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert_eq!(workbench.collection.len(), 4);
 }
 
 #[test]
@@ -1385,11 +1504,8 @@ fn an_attribute_typed_with_a_trailing_space_is_written_without_it() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "alloy");
-    keys(&mut workbench, "e");
-    for _ in 0..10 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "8 \ny");
+    keys(&mut workbench, "e8 \n\u{1b}");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
     assert!(written.contains("alloy: 8\n"), "{written}");
 }
@@ -1401,11 +1517,8 @@ fn an_attribute_holding_a_wikilink_is_edited() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "alloy");
-    keys(&mut workbench, "e");
-    for _ in 0..10 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "[[Piece log]] and [[Inspection]]\ny");
+    keys(&mut workbench, "e[[Piece log]] and [[Inspection]]\n\u{1b}");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
     assert!(
         written.contains("alloy: \"[[Piece log]] and [[Inspection]]\""),
@@ -1615,6 +1728,8 @@ fn a_sample_is_removed_asked_first_and_given_back_by_u() {
         "{lines:?}"
     );
     keys(&mut workbench, "y");
+    assert_eq!(workbench.view.len(), 2, "{}", workbench.message);
+    write_waiting(&mut workbench);
     assert!(!path.exists());
     assert_eq!(workbench.view.len(), 2, "{}", workbench.message);
     assert!(scratch.0.join("images/C1_sem.png").exists());
@@ -1689,6 +1804,7 @@ fn an_empty_project_is_the_default_and_its_first_sample_made() {
     );
     // The first sample, from nothing, into samples/.
     keys(&mut workbench, "NS-01\ny");
+    write_waiting(&mut workbench);
     assert!(
         root.join("samples/S-01.md").exists(),
         "{}",
@@ -1869,6 +1985,7 @@ fn n_makes_a_sample_with_values_and_fields_kept() {
         "{lines:?}"
     );
     keys(&mut workbench, "y");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("C9.md")).unwrap();
     assert!(
         written.contains("alloy:") && written.contains("14.5"),
@@ -1903,6 +2020,7 @@ fn t_renames_a_tag_over_what_is_shown() {
         "{lines:?}"
     );
     keys(&mut workbench, "y");
+    write_waiting(&mut workbench);
     for file in ["C1.md", "C2.md"] {
         let written = fs::read_to_string(scratch.0.join(file)).unwrap();
         assert!(
@@ -1984,6 +2102,8 @@ fn the_history_restores_a_snapshot_and_compares_two() {
         "{}",
         workbench.message
     );
+    keys(&mut workbench, "\u{1b}");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
     assert!(written.contains("12.5"), "{written}");
 }
@@ -1996,11 +2116,8 @@ fn a_change_the_tui_writes_is_a_snapshot_saying_tui() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     keys(&mut workbench, "\n");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "12.5\ny");
+    keys(&mut workbench, "e12.5\n\u{1b}");
+    write_waiting(&mut workbench);
     assert!(
         workbench.message.starts_with("written"),
         "{}",
@@ -2041,11 +2158,8 @@ fn an_undo_outlives_the_workbench() {
         let mut workbench = Workbench::open(&scratch.0).unwrap();
         keys(&mut workbench, "\n");
         move_to(&mut workbench, "diameter");
-        keys(&mut workbench, "e");
-        for _ in 0..8 {
-            workbench.key(Key::Backspace);
-        }
-        keys(&mut workbench, "12.5\ny");
+        keys(&mut workbench, "e12.5\n\u{1b}");
+        write_waiting(&mut workbench);
         assert!(
             workbench.message.starts_with("written"),
             "{}",
@@ -2083,11 +2197,8 @@ fn the_history_is_browsed_snapshot_by_snapshot() {
     );
     keys(&mut workbench, "\n");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "12.5\ny\u{1b}");
+    keys(&mut workbench, "e12.5\n\u{1b}");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "H");
     assert!(matches!(
         workbench.screen,
@@ -2317,10 +2428,21 @@ fn e_on_a_table_says_how_a_table_is_changed() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "runs");
+    // The typing mode, on a table's line, says where its cells are typed; a
+    // key typed there says it again.
     keys(&mut workbench, "e");
+    assert!(workbench.typing);
     assert!(matches!(workbench.mode, Mode::Normal));
     assert!(
-        workbench.message.contains("→ opens it") && workbench.message.contains("empty row"),
+        workbench.message.contains("→ or Enter opens it")
+            && workbench.message.contains("empty row"),
+        "{}",
+        workbench.message
+    );
+    keys(&mut workbench, "4");
+    assert!(matches!(workbench.mode, Mode::Normal));
+    assert!(
+        workbench.message.contains("→ or Enter opens it"),
         "{}",
         workbench.message
     );
@@ -2340,37 +2462,33 @@ fn a_decimal_comma_or_a_unit_typed_is_said() {
         "{}",
         workbench.message
     );
-    // A quantity's value: a decimal comma, then a unit.
+    // A quantity's value, in its cell: a decimal comma, then a unit, each
+    // refused with the number it means, the cell kept open.
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
+    workbench.key(Key::F2);
     assert!(matches!(workbench.mode, Mode::Prompt { .. }));
-    assert_eq!(workbench.window_unit(), "g");
-    workbench.key(Key::End);
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
+    workbench.key(ctrl('a'));
+    workbench.key(Key::Backspace);
     keys(&mut workbench, "21,5\n");
     assert!(
-        workbench
-            .message
-            .contains("use a point for decimals — 21.5"),
+        workbench.message.contains("decimal comma") && workbench.message.contains("21.5"),
         "{}",
         workbench.message
     );
     assert!(matches!(workbench.mode, Mode::Prompt { .. }));
-    for _ in 0..4 {
-        workbench.key(Key::Backspace);
-    }
+    workbench.key(ctrl('a'));
+    workbench.key(Key::Backspace);
     keys(&mut workbench, "21 g\n");
     assert!(
-        workbench
-            .message
-            .contains("write the number alone, 21: it is in g"),
+        workbench.message.contains("measured in g")
+            && workbench.message.contains("write the number alone, as 21"),
         "{}",
         workbench.message
     );
+    assert!(matches!(workbench.mode, Mode::Prompt { .. }));
 }
 
 #[test]
@@ -2402,15 +2520,18 @@ fn readings_beside_a_value_typed_say_it_stays() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    // The readings' list, from the value's window: one added at its foot.
-    keys(&mut workbench, "\nlle");
-    keys(&mut workbench, "e11, 13\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("a preview: {}", workbench.message);
-    };
-    let said = lines.join("\n");
+    // In the typing mode, the readings' cell beside the value's.
+    keys(&mut workbench, "e");
+    workbench.key(Key::Right);
+    keys(&mut workbench, "11, 13\n");
+    let said = &workbench.message;
     assert!(said.contains("the value 12.0 stays"), "{said}");
     assert!(!said.contains("their statistic is its value"), "{said}");
+    let waiting = read_waiting(&scratch.0.join("C1.md"));
+    assert!(
+        waiting.contains("v: 12.0") && waiting.contains("readings: [11.0, 13.0]"),
+        "{waiting}"
+    );
 }
 
 #[test]
@@ -2448,12 +2569,8 @@ fn an_undo_names_the_values_going_back_and_is_kept_as_the_tuis() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    workbench.key(Key::End);
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "12.5\ny");
+    keys(&mut workbench, "e12.5\n\u{1b}");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "u");
     let Mode::Confirm { lines, .. } = &workbench.mode else {
         panic!("an undo: {}", workbench.message);
@@ -2556,6 +2673,7 @@ fn what_the_model_owes_is_said_never_computed_or_waiting() {
             ),
         ],
         unread: Vec::new(),
+        ..Default::default()
     });
     // Marked in the collection, where the file says nothing worse.
     let mark = |workbench: &Workbench, name: &str| {
@@ -2650,12 +2768,8 @@ fn esc_from_the_history_returns_where_h_was_pressed() {
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "runs");
     workbench.key(Key::Right);
-    keys(&mut workbench, "e");
-    workbench.key(Key::End);
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "3.75\ny");
+    keys(&mut workbench, "e3.75\n\u{1b}");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "jl");
     let Screen::Table { cursor, column, .. } = &workbench.screen else {
         panic!("the table");
@@ -2713,8 +2827,8 @@ fn a_refused_line_keeps_its_prompt_and_its_text() {
         panic!("still the prompt");
     };
     assert!(text.text().ends_with('D'), "{text}");
-    // A name refused, the same.
-    keys(&mut workbench, "\u{1b}\u{1b}\u{1b}N../away\n");
+    // A name refused, the same: the typing mode left first.
+    keys(&mut workbench, "\u{1b}\u{1b}\u{1b}\u{1b}N../away\n");
     assert!(
         matches!(workbench.mode, Mode::Prompt { .. }),
         "{}",
@@ -2771,36 +2885,27 @@ fn numbers_are_said_at_their_precision_not_as_a_sum_left_them() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "S");
     move_to(&mut workbench, "modulus");
-    // The window holds what the file holds, its noise dropped.
-    let typed = |workbench: &Workbench| match &workbench.mode {
-        Mode::Prompt { text, .. } => text.text().to_string(),
-        _ => panic!("a value typed: {}", workbench.message),
-    };
+    // Its cell opens at the precision the screen shows it, the sum's noise
+    // dropped, and its card says it so.
     keys(&mut workbench, "e");
-    assert_eq!(typed(&workbench), "4.375");
-    keys(&mut workbench, "\u{1b}le");
-    assert_eq!(typed(&workbench), "0.288675134595");
-    keys(&mut workbench, "\u{1b}he");
-    assert_eq!(typed(&workbench), "4.375");
-    // The preview, at the precision the screen shows it.
-    workbench.key(Key::End);
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "5.5\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("a preview: {}", workbench.message);
+    workbench.key(Key::F2);
+    let Mode::Prompt { text, .. } = &workbench.mode else {
+        panic!("a value typed: {}", workbench.message);
     };
-    assert!(
-        lines
-            .iter()
-            .any(|line| line.contains("4.38 ± 0.29  →  5.50 ± 0.29")),
-        "{lines:?}"
-    );
-    keys(&mut workbench, "n");
+    assert_eq!(text.text(), "4.38 +- 0.29");
+    keys(&mut workbench, "\u{1b}\u{1b}i");
+    assert_eq!(workbench.card_lines()[0].shown, "4.38 ± 0.29");
+    // The mean of readings, at its own precision.
+    keys(&mut workbench, "\u{1b}");
+    go_to(&mut workbench, "diameter");
+    keys(&mut workbench, "i");
+    let lines = workbench.card_lines();
+    assert_eq!(lines[0].field, "diameter");
+    assert!(lines[0].shown.starts_with("9.0"), "{lines:?}");
+    keys(&mut workbench, "\u{1b}");
     // A completion compared by order, at the field's precision: from the
-    // value's window, the sample, then the collection.
-    keys(&mut workbench, "\u{1b}\u{1b}/modulus > ");
+    // sample, then the collection.
+    keys(&mut workbench, "\u{1b}/modulus > ");
     let Mode::Filter { candidates, .. } = &workbench.mode else {
         panic!("the filter");
     };
@@ -2832,7 +2937,14 @@ fn plurals_follow_their_count() {
             .any(|line| line == "u gives it back, as it was"),
         "{lines:?}"
     );
-    keys(&mut workbench, "yuy");
+    keys(&mut workbench, "y");
+    assert_eq!(
+        workbench.message,
+        "removed 1 sample — not written yet: 1 file waiting, w writes, u takes it back"
+    );
+    write_waiting(&mut workbench);
+    assert_eq!(workbench.message, "written: C1.md · u takes it back");
+    keys(&mut workbench, "uy");
     assert_eq!(
         workbench.message, "undone: 1 file as it was",
         "{}",
@@ -2847,7 +2959,10 @@ fn removing_the_sample_open_says_so_as_the_collection_does() {
     open_named(&mut workbench, "C2");
     keys(&mut workbench, "Dy");
     assert!(matches!(workbench.screen, Screen::Collection));
-    assert_eq!(workbench.message, "removed 1 sample · u gives it back");
+    assert_eq!(
+        workbench.message,
+        "removed 1 sample — not written yet: 1 file waiting, w writes, u takes it back"
+    );
 }
 
 #[test]
@@ -2856,13 +2971,15 @@ fn results_name_paths_from_the_workbenchs_folder() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "alloy");
-    keys(&mut workbench, "e");
-    workbench.key(Key::End);
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "cobalt\ny");
-    assert_eq!(workbench.message.replace('\\', "/"), "written: more/D1.md");
+    // A cell kept in the typing mode waits without a word: the write says
+    // its path.
+    keys(&mut workbench, "ecobalt\n\u{1b}");
+    assert_eq!(workbench.waiting_count(), 1, "{}", workbench.message);
+    write_waiting(&mut workbench);
+    assert_eq!(
+        workbench.message.replace('\\', "/"),
+        "written: more/D1.md · u takes it back"
+    );
     keys(&mut workbench, "\u{1b}NC9\n");
     let Mode::Confirm { lines, .. } = &workbench.mode else {
         panic!("a preview: {}", workbench.message);
@@ -2873,7 +2990,18 @@ fn results_name_paths_from_the_workbenchs_folder() {
     );
     keys(&mut workbench, "y");
     assert!(
-        workbench.message.starts_with("created: "),
+        workbench.message.starts_with("made "),
+        "{}",
+        workbench.message
+    );
+    assert!(
+        !workbench.message.contains(&scratch.0.display().to_string()),
+        "{}",
+        workbench.message
+    );
+    write_waiting(&mut workbench);
+    assert!(
+        workbench.message.starts_with("written: "),
         "{}",
         workbench.message
     );
@@ -3520,8 +3648,8 @@ fn the_reference_page_is_written_from_the_bindings() {
     );
 
     page.push_str(
-        "\n## Typing\n\nIn every line typed (the filter, a prompt, a value's window, \
-         a list's `/`, the start page's name and narrowing) and in the note. A \
+        "\n## Typing\n\nIn every line typed (the filter, a prompt, a cell of the typing \
+         mode, a list's `/`, the start page's name and narrowing) and in the note. A \
          window's `Enter`, `Esc` and `Tab` stay the window's.\n\n",
     );
     page.push_str(HEAD);
@@ -3581,15 +3709,9 @@ fn the_reference_page_is_written_from_the_bindings() {
             "One table of a sample, row by row.",
         ),
         (
-            Place::Property,
-            "A value's window",
-            "`Enter` on a value of a sample: its value, its uncertainty and its \
-             readings, a column each.",
-        ),
-        (
             Place::Items,
             "A list's window",
-            "A value's readings, or an attribute's items, one per row.",
+            "`Enter` on an attribute: its items, one per row.",
         ),
         (
             Place::Control,
@@ -3618,6 +3740,28 @@ fn the_reference_page_is_written_from_the_bindings() {
             page.push_str(&format!("\n**{}**\n\n{HEAD}", capitalised(section)));
             for (bound, said) in rows {
                 page.push_str(&format!("| {} | {} |\n", keys(&bound), text(said)));
+            }
+        }
+        // The card opens over a sample and a table, with keys of its own.
+        if place == Place::Table {
+            page.push_str(
+                "\n## A value's card\n\n`i` on a value of a sample, or on a table's cell \
+                 holding one: the value, its readings, what it reads and what reads it, each \
+                 with its value and its state.\n\n",
+            );
+            page.push_str(HEAD);
+            for (key, said) in [
+                ("j k ↓ ↑", "the next line, the line above"),
+                (
+                    "e Enter F2",
+                    "type over the line under the cursor: what is typed waits, and the card \
+                     is drawn again as it makes it",
+                ),
+                ("w", "the changes waiting, previewed, written by y"),
+                ("u", "take back the last change"),
+                ("Esc q i", "close the card"),
+            ] {
+                page.push_str(&format!("| {} | {} |\n", keys(key), text(said)));
             }
         }
     }
@@ -3689,14 +3833,15 @@ fn the_reference_page_is_written_from_the_bindings() {
 
 #[test]
 fn the_name_is_edited_as_an_attribute() {
-    // Its line first, `e` changes what the file writes and never the file's
-    // name; emptied, `name:` goes and the file's name stands for it.
+    // Its line first, opened by `Enter`, it changes what the file writes and
+    // never the file's name; emptied, `name:` goes and the file's name stands
+    // for it.
     let scratch = Scratch::new("name-edited");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     assert_eq!(workbench.entries()[0].field, "name");
     move_to(&mut workbench, "name");
-    keys(&mut workbench, "e");
+    keys(&mut workbench, "\n");
     for _ in 0..4 {
         workbench.key(Key::Backspace);
     }
@@ -3710,13 +3855,9 @@ fn the_name_is_edited_as_an_attribute() {
     );
     keys(&mut workbench, "y");
     let path = scratch.0.join("C1.md");
-    assert!(
-        fs::read_to_string(&path)
-            .unwrap()
-            .contains("name: Billet one")
-    );
+    assert!(read_waiting(&path).contains("name: Billet one"));
     move_to(&mut workbench, "name");
-    keys(&mut workbench, "e");
+    keys(&mut workbench, "\n");
     for _ in 0..12 {
         workbench.key(Key::Backspace);
     }
@@ -3734,6 +3875,7 @@ fn the_name_is_edited_as_an_attribute() {
         "{lines:?}"
     );
     keys(&mut workbench, "y");
+    write_waiting(&mut workbench);
     assert!(!fs::read_to_string(&path).unwrap().contains("name:"));
     let entries = workbench.entries();
     assert_eq!(entries[0].shown, "C1");
@@ -3931,20 +4073,22 @@ fn a_line_typed_moves_and_deletes_by_word_selects_and_undoes() {
         "{:?}",
         typed_line(&workbench)
     );
-    // A prompt: the name, a word taken back.
+    // A prompt: the name, opened by `Enter`, a word taken back.
     keys(&mut workbench, "\u{1b}");
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "name");
-    keys(&mut workbench, "e");
+    keys(&mut workbench, "\n");
     workbench.key(ctrl('a'));
     keys(&mut workbench, "reference checked");
     workbench.key(held(KeyCode::Backspace, KeyModifiers::CONTROL));
     assert_eq!(typed_line(&workbench).0, "reference ");
-    // The quantity's window: all selected, then typed over.
+    // A value's cell in the typing mode, its text kept: all selected, then
+    // typed over.
     keys(&mut workbench, "\u{1b}");
     workbench.key(Key::Home);
     move_to(&mut workbench, "diameter");
     keys(&mut workbench, "e");
+    workbench.key(Key::F2);
     assert!(matches!(workbench.mode, Mode::Prompt { .. }));
     workbench.key(ctrl('a'));
     keys(&mut workbench, "12.5");
@@ -4026,12 +4170,10 @@ fn a_chord_means_something_only_where_something_is_typed() {
     workbench.key(alt('D'));
     assert!(matches!(workbench.mode, Mode::Normal));
     assert_eq!(workbench.view.len(), before);
-    // Ctrl+Y on a confirmation writes nothing.
+    // Ctrl+Y on a confirmation does nothing: the sample's removal, asked
+    // first.
     open_named(&mut workbench, "D1");
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    workbench.key(ctrl('a'));
-    keys(&mut workbench, "7\n");
+    keys(&mut workbench, "D");
     assert!(
         matches!(workbench.mode, Mode::Confirm { .. }),
         "{}",
@@ -4039,10 +4181,10 @@ fn a_chord_means_something_only_where_something_is_typed() {
     );
     workbench.key(ctrl('y'));
     assert!(matches!(workbench.mode, Mode::Confirm { .. }));
-    let file = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
-    assert!(file.contains("v: 9.0"), "{file}");
-    // Declined, then back to the sample from the value's window.
-    keys(&mut workbench, "n\u{1b}");
+    assert_eq!(workbench.waiting_count(), 0, "{}", workbench.message);
+    // Declined: the sample stays open.
+    keys(&mut workbench, "n");
+    assert!(matches!(workbench.screen, Screen::Sample { .. }));
     // Shift+→ on a table's line is →: it unfolds.
     move_to(&mut workbench, "runs");
     workbench.key(held(KeyCode::Right, KeyModifiers::SHIFT));
@@ -4114,11 +4256,11 @@ fn a_value_previewed_is_the_one_written() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..4 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "13.25\n");
+    keys(&mut workbench, "e13.25\n\u{1b}");
+    let waiting = read_waiting(&scratch.0.join("C1.md"));
+    assert!(waiting.contains("v: 13.25"), "{waiting}");
+    // What waits is previewed as it will be written.
+    keys(&mut workbench, "w");
     let Mode::Confirm { lines, .. } = &workbench.mode else {
         panic!("a preview: {}", workbench.message);
     };
@@ -4230,6 +4372,7 @@ fn the_notes_last_line_takes_the_editors_line_keys() {
     keys(&mut workbench, "ABC");
     workbench.key(ctrl('d'));
     keys(&mut workbench, "\u{1b}y");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     assert!(
         written.ends_with("Second line.\nABC\nABC\n"),
@@ -4255,6 +4398,7 @@ fn a_table_typed_in_the_note_goes_from_cell_to_cell() {
     workbench.key(Key::BackTab);
     keys(&mut workbench, "x");
     keys(&mut workbench, "\u{1b}y");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     let table: Vec<&str> = written
         .lines()
@@ -4282,6 +4426,7 @@ fn enter_at_a_rows_end_begins_the_next_in_its_first_cell() {
     ));
     keys(&mut workbench, "\n| h1 | h2 | h3 |\na\tb\tc\nZ");
     keys(&mut workbench, "\u{1b}y");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     let table: Vec<&str> = written
         .lines()
@@ -4326,6 +4471,7 @@ fn a_line_typed_after_the_notes_end_takes_the_line_keys() {
     workbench.key(ctrl('d'));
     workbench.key(alt('2'));
     keys(&mut workbench, "\u{1b}y");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     assert!(
         written.contains("\nLast\n## Last\n"),
@@ -4343,11 +4489,7 @@ fn a_cells_refusal_is_said_in_its_windows_words() {
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "runs");
     workbench.key(Key::Right);
-    keys(&mut workbench, "e");
-    for _ in 0..4 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "abc\n");
+    keys(&mut workbench, "eabc\n");
     assert!(
         workbench.message.contains("write the number alone, as"),
         "{}",
@@ -4678,33 +4820,46 @@ fn a_figure_declared_without_a_name_is_said_as_a_figure() {
 #[test]
 fn an_index_is_changed_as_any_cell() {
     // Its own key, `i`, reached it: the cursor goes over the index as over
-    // any column, and `e` changes it, the row moving with it.
+    // any column, and the typing mode changes it, the row moving with it.
     let scratch = rich("index-edit");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "runs");
     keys(&mut workbench, "le");
+    workbench.key(Key::F2);
     let Mode::Prompt { text, .. } = &workbench.mode else {
         panic!("the index asked: {}", workbench.message);
     };
     assert_eq!(text.text(), "1");
     workbench.key(Key::Backspace);
+    // Kept at once, its preview confirmed: the change waits.
     keys(&mut workbench, "5\n");
     assert!(
-        matches!(workbench.mode, Mode::Confirm { .. }),
-        "previewed: {}",
+        matches!(workbench.mode, Mode::Normal),
+        "kept: {}",
         workbench.message
     );
-    keys(&mut workbench, "y");
+    assert!(read_waiting(&scratch.0.join("more/D1.md")).contains("run: 5"));
+    keys(&mut workbench, "\u{1b}");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     assert!(written.contains("run: 5"), "{written}");
     assert!(
         written.contains("load: 3.5"),
         "the row's cells kept: {written}"
     );
-    // `i` does nothing now.
+    // `i` is a value's card, and the index holds none: said, and the typing
+    // mode not entered.
     keys(&mut workbench, "i");
-    assert!(matches!(workbench.mode, Mode::Normal));
+    assert!(workbench.card.is_none());
+    assert!(!workbench.typing);
+    assert!(
+        workbench
+            .message
+            .contains("a cell holding a value has a card"),
+        "{}",
+        workbench.message
+    );
 }
 
 #[test]
@@ -4756,17 +4911,24 @@ fn a_table_with_no_row_unfolds_to_be_filled() {
         "{drawn}"
     );
     // A computed column is the model's, not typed.
-    keys(&mut workbench, "lle");
+    keys(&mut workbench, "llex");
     assert!(
         workbench.message.contains("computed by the model"),
         "{}",
         workbench.message
     );
-    keys(&mut workbench, "he1.050\nhe0\n");
-    let Mode::Confirm { .. } = &workbench.mode else {
-        panic!("previewed: {}", workbench.message);
-    };
-    keys(&mut workbench, "y");
+    // Its row typed cell by cell, kept once its index is given.
+    workbench.key(Key::Left);
+    keys(&mut workbench, "1.050\n");
+    workbench.key(Key::Left);
+    keys(&mut workbench, "0\n");
+    assert!(
+        read_waiting(&scratch.0.join("F.md")).contains("hardness: 1.05"),
+        "{}",
+        workbench.message
+    );
+    keys(&mut workbench, "\u{1b}");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("F.md")).unwrap();
     assert!(written.contains("hardness: 1.05"), "{written}");
 }
@@ -4796,19 +4958,21 @@ fn c_in_the_collection_computes_every_sample_shown() {
         .unwrap();
     }
     let mut workbench = Workbench::open(&scratch.0).unwrap();
-    keys(&mut workbench, "Cy");
-    // The samples it may write: every one shown.
+    keys(&mut workbench, "C");
+    // The samples it may write, as its preview holds them: every one shown.
+    // What it writes waits, so no file is held aside as it runs.
     let reached = |workbench: &Workbench| -> usize {
-        workbench
-            .running
-            .as_ref()
-            .and_then(|running| running.before.as_ref())
-            .map_or(0, |files| {
-                files
-                    .iter()
-                    .filter(|(path, _)| path.extension().is_some_and(|extension| extension == "md"))
-                    .count()
-            })
+        let Mode::Confirm { pending, .. } = &workbench.mode else {
+            return 0;
+        };
+        let samplekit::tui::model::Pending::Compute(computing) = pending.as_ref() else {
+            return 0;
+        };
+        computing
+            .paths
+            .iter()
+            .filter(|path| path.extension().is_some_and(|extension| extension == "md"))
+            .count()
     };
     assert!(workbench.view.len() > 1);
     assert_eq!(
@@ -4817,6 +4981,7 @@ fn c_in_the_collection_computes_every_sample_shown() {
         "{}",
         workbench.message
     );
+    keys(&mut workbench, "y");
     // The basket first, where it holds any.
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     keys(&mut workbench, " C");
@@ -4831,7 +4996,6 @@ fn c_in_the_collection_computes_every_sample_shown() {
             .any(|line| line.contains("the basket's 1 sample")),
         "{lines:?}"
     );
-    keys(&mut workbench, "y");
     assert_eq!(reached(&workbench), 1, "{}", workbench.message);
 }
 
@@ -4848,14 +5012,17 @@ fn readings_with_no_statistic_say_they_give_no_value() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C4");
     move_to(&mut workbench, "ore");
-    keys(&mut workbench, "\nlle");
-    keys(&mut workbench, "e4.1, 4.2\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("a preview: {}", workbench.message);
-    };
-    let said = lines.join("\n");
+    // In the typing mode, the readings' cell.
+    keys(&mut workbench, "e");
+    workbench.key(Key::Right);
+    keys(&mut workbench, "4.1, 4.2\n");
+    let said = &workbench.message;
     assert!(said.contains("no statistic of them is recorded"), "{said}");
     assert!(!said.contains("their statistic is its value"), "{said}");
+    assert!(
+        read_waiting(&scratch.0.join("C4.md")).contains("readings: [4.1, 4.2]"),
+        "kept, waiting"
+    );
 }
 
 #[test]
@@ -4865,7 +5032,7 @@ fn a_sample_renamed_to_another_samples_name_is_refused() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "name");
-    keys(&mut workbench, "e");
+    keys(&mut workbench, "\n");
     workbench.key(ctrl('d'));
     keys(&mut workbench, "C2\n");
     assert!(
@@ -4881,7 +5048,7 @@ fn a_sample_renamed_to_another_samples_name_is_refused() {
     // Its own name, or a new one, is not refused.
     keys(&mut workbench, "\u{1b}");
     move_to(&mut workbench, "name");
-    keys(&mut workbench, "e");
+    keys(&mut workbench, "\n");
     workbench.key(ctrl('d'));
     keys(&mut workbench, "C9\n");
     assert!(
@@ -5099,6 +5266,8 @@ fn c_says_the_edited_values_it_kept() {
         "{}",
         workbench.message
     );
+    // What it computed waits: written, so the file holds it.
+    write_waiting(&mut workbench);
     // `b` typed over by hand, in the file.
     let written = fs::read_to_string(&file).unwrap();
     let b = written.find("  b:").unwrap();
@@ -5222,6 +5391,8 @@ fn c_previews_what_it_computes() {
         }
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
+    // What it computed waits: written, so the file holds it.
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(&file).unwrap();
     fs::write(&file, written.replacen("v: 1.0", "v: 4.0", 1)).unwrap();
     let mut workbench = Workbench::open(&project).unwrap();
@@ -5292,6 +5463,8 @@ fn v_writes_each_state_whole() {
         }
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
+    // What it computed waits: written, so the file holds it.
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(&file).unwrap();
     fs::write(&file, written.replacen("v: 1.0", "v: 4.0", 1)).unwrap();
     let mut workbench = Workbench::open(&project).unwrap();
@@ -5312,7 +5485,7 @@ fn v_writes_each_state_whole() {
 #[test]
 fn a_computed_value_opens_without_readings() {
     // Readings say what was measured: a value a formula gives has none to
-    // enter, and its window leaves the column out.
+    // enter, and neither its cell nor its card offers them.
     let scratch = rich("computed-window");
     fs::write(
         scratch.0.join("C3.md"),
@@ -5323,76 +5496,52 @@ fn a_computed_value_opens_without_readings() {
     .unwrap();
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C3");
-    move_to(&mut workbench, "twice");
-    keys(&mut workbench, "\n");
+    go_to(&mut workbench, "twice");
+    // Its readings' cell, reached and opened: refused, said.
+    keys(&mut workbench, "e");
+    workbench.key(Key::Right);
+    workbench.key(Key::Right);
     assert!(
-        matches!(workbench.screen, Screen::Property { .. }),
+        workbench
+            .message
+            .contains("twice is a formula's: it holds no readings"),
         "{}",
         workbench.message
     );
-    assert_eq!(
-        workbench.property_columns("twice"),
-        ["value", "uncertainty"]
-    );
-    let drawn = drawn_at(&mut workbench, 100);
-    assert!(!drawn.contains("readings"), "{drawn}");
-    // A measured one keeps them.
-    keys(&mut workbench, "\u{1b}");
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "\n");
-    assert_eq!(
-        workbench.property_columns("diameter"),
-        ["value", "uncertainty", "readings"]
-    );
-}
-
-#[test]
-fn a_property_opens_in_its_window_as_a_row_of_cells() {
-    // Value, uncertainty and readings were three slots of one window, which
-    // said nothing of where each came from: `Enter` opens the property as a
-    // table of one row, `e` on a cell, its readings a list of their own.
-    let scratch = rich("property-window");
-    let mut workbench = Workbench::open(&scratch.0).unwrap();
-    open_named(&mut workbench, "D1");
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "\n");
+    workbench.key(Key::F2);
+    assert!(matches!(workbench.mode, Mode::Normal), "nothing opened");
+    // Its card: what it reads, and no readings.
+    keys(&mut workbench, "\u{1b}i");
+    let lines = workbench.card_lines();
     assert!(
-        matches!(workbench.screen, Screen::Property { .. }),
-        "{}",
-        workbench.message
-    );
-    assert_eq!(
-        workbench.property_columns("diameter"),
-        ["value", "uncertainty", "readings"]
-    );
-    let drawn = drawn_at(&mut workbench, 100);
-    assert!(
-        // At the precision diameter declares.
-        drawn.contains("readings") && drawn.contains("8.0, 10.0"),
-        "{drawn}"
-    );
-    // The readings, a list: a third one added at the foot.
-    keys(&mut workbench, "lle");
-    let Screen::Items { readings, .. } = &workbench.screen else {
-        panic!("the readings' window");
-    };
-    assert!(*readings);
-    keys(&mut workbench, "jje12\n");
-    let Mode::Confirm { lines, .. } = &workbench.mode else {
-        panic!("previewed: {}", workbench.message);
-    };
-    assert!(
-        lines[0].trim_start().starts_with("diameter.readings"),
+        !lines.iter().any(|line| line.group == CardGroup::Readings),
         "{lines:?}"
     );
-    keys(&mut workbench, "y");
-    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
-    assert!(written.contains("readings: [8.0, 10.0, 12.0]"), "{written}");
-    // Back to the property, then to the sample.
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.group == CardGroup::Reads && line.field == "diameter"),
+        "{lines:?}"
+    );
+    // A measured one takes them.
     keys(&mut workbench, "\u{1b}");
-    assert!(matches!(workbench.screen, Screen::Property { .. }));
-    keys(&mut workbench, "\u{1b}");
-    assert!(matches!(workbench.screen, Screen::Sample { .. }));
+    go_to(&mut workbench, "diameter");
+    keys(&mut workbench, "e");
+    workbench.key(Key::Right);
+    workbench.key(Key::Right);
+    assert!(
+        workbench
+            .message
+            .contains("diameter holds no readings: what you type gives them"),
+        "{}",
+        workbench.message
+    );
+    workbench.key(Key::F2);
+    assert!(
+        matches!(workbench.mode, Mode::Prompt { .. }),
+        "{}",
+        workbench.message
+    );
 }
 
 #[test]
@@ -5418,14 +5567,15 @@ fn an_attribute_opens_as_a_list_and_turns_single_and_back() {
         "{lines:?}"
     );
     keys(&mut workbench, "y");
-    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
+    // Each change waits, read as written until `w` writes them all.
+    let written = read_waiting(&scratch.0.join("more/D1.md"));
     assert!(written.contains("alloy: [chrome, superalloy]"), "{written}");
     // Moved up, then one taken out: a list of one stays a list.
     keys(&mut workbench, "Ky");
-    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
+    let written = read_waiting(&scratch.0.join("more/D1.md"));
     assert!(written.contains("alloy: [superalloy, chrome]"), "{written}");
     keys(&mut workbench, "jdy");
-    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
+    let written = read_waiting(&scratch.0.join("more/D1.md"));
     assert!(written.contains("alloy: [superalloy]"), "{written}");
     // `L` turns a list of one into its single value.
     // A list of one turned single says what it was: the list.
@@ -5439,7 +5589,9 @@ fn an_attribute_opens_as_a_list_and_turns_single_and_back() {
             .any(|line| line.contains("[superalloy]  →  superalloy")),
         "{lines:?}"
     );
-    keys(&mut workbench, "y");
+    keys(&mut workbench, "y\u{1b}");
+    assert!(matches!(workbench.screen, Screen::Sample { .. }));
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
     assert!(written.contains("alloy: superalloy"), "{written}");
 }
@@ -5472,37 +5624,16 @@ fn the_tags_are_a_list_and_the_name_one_value() {
     };
     assert_eq!(lines, &["  tags   +reference"]);
     keys(&mut workbench, "y");
-    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
+    let written = read_waiting(&scratch.0.join("more/D1.md"));
     assert!(written.contains("tags: [reference]"), "{written}");
     // A list they stay.
     keys(&mut workbench, "L");
     assert_eq!(workbench.message, "tags are a list, and stay one");
-}
-
-#[test]
-fn a_value_with_its_uncertainty_is_told_the_windows_cells() {
-    // `20±1` typed in a value's window was told `set`'s `diameter=20 diameter.u=1`.
-    let scratch = rich("value-with-uncertainty");
-    let mut workbench = Workbench::open(&scratch.0).unwrap();
-    open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "20±1\n");
-    assert!(
-        workbench
-            .message
-            .contains("its uncertainty has a cell of its own: 20 here, and 1 in the uncertainty"),
-        "{}",
-        workbench.message
-    );
-    assert!(
-        !workbench.message.contains("diameter.u="),
-        "{}",
-        workbench.message
-    );
+    keys(&mut workbench, "\u{1b}");
+    assert!(matches!(workbench.screen, Screen::Sample { .. }));
+    write_waiting(&mut workbench);
+    let written = fs::read_to_string(scratch.0.join("more/D1.md")).unwrap();
+    assert!(written.contains("tags: [reference]"), "{written}");
 }
 
 #[test]
@@ -6238,31 +6369,32 @@ fn capital_a_adds_an_attribute_its_name_then_its_value() {
     );
     workbench.key(Key::Esc);
     keys(&mut workbench, "Astyle\ntin\ny");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
     assert!(written.contains("style: tin\n"), "{written}");
 }
 
 #[test]
 fn a_value_opens_selected_and_what_is_typed_replaces_it() {
-    // Opened with the cursor at its end, `66` typed over `64` gave `6466`.
+    // Opened with the cursor at its end, `66` typed over `64` gave `6466`:
+    // in the typing mode, what is typed replaces the cell.
     let scratch = Scratch::new("value-selected");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "alloy");
-    keys(&mut workbench, "e");
+    keys(&mut workbench, "e66");
     let Mode::Prompt { text, .. } = &workbench.mode else {
         panic!("its value typed: {}", workbench.message);
     };
-    let before = text.text().to_string();
-    assert!(!before.is_empty());
-    assert_eq!(text.selected(), before);
-    keys(&mut workbench, "66\ny");
-    let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
+    assert_eq!(text.text(), "66");
+    keys(&mut workbench, "\n");
+    let written = read_waiting(&scratch.0.join("C1.md"));
     assert!(written.contains("alloy: 66\n"), "{written}");
-    // `End` keeps it, to edit.
-    keys(&mut workbench, "e");
-    workbench.key(Key::End);
-    keys(&mut workbench, "7\ny");
+    // `F2` keeps it, to edit, the cursor at its end.
+    go_to(&mut workbench, "alloy");
+    workbench.key(Key::F2);
+    keys(&mut workbench, "7\n\u{1b}");
+    write_waiting(&mut workbench);
     let written = fs::read_to_string(scratch.0.join("C1.md")).unwrap();
     assert!(written.contains("alloy: 667\n"), "{written}");
 }
@@ -6584,6 +6716,7 @@ fn a_link_is_shown_as_markdown_shows_it_and_typed_as_written() {
     // Typed, the text as written.
     move_to(&mut workbench, "twin");
     keys(&mut workbench, "e");
+    workbench.key(Key::F2);
     match &workbench.mode {
         Mode::Prompt { text, .. } => assert_eq!(text.text(), "[the twin](C2.md)"),
         _ => panic!("typing: {}", workbench.message),
@@ -6620,13 +6753,20 @@ fn r_renames_a_sample_and_the_links_leading_to_it() {
         "{}",
         workbench.message
     );
+    // Still on it, under its new name.
+    assert_eq!(
+        workbench
+            .current()
+            .map(|(_, sample)| sample.name().map(str::to_string)),
+        Some(Some("C7".to_string()))
+    );
+    write_waiting(&mut workbench);
     assert!(!scratch.0.join("C3.md").exists());
     assert!(
         fs::read_to_string(&file)
             .unwrap()
             .contains("reference: \"[[C7]]\"")
     );
-    // Still on it, under its new name.
     assert_eq!(
         workbench
             .current()
@@ -6648,11 +6788,11 @@ fn r_renames_a_sample_and_the_links_leading_to_it() {
 
 #[test]
 fn tab_completes_a_link_being_typed_with_a_samples_name() {
+    // An attribute's value asked by `A`, and one typed in the typing mode.
     let scratch = Scratch::new("link-tab");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     keys(&mut workbench, "\n");
-    move_to(&mut workbench, "alloy");
-    keys(&mut workbench, "e[[");
+    keys(&mut workbench, "Areference\n[[");
     workbench.key(Key::Tab);
     let typed = |workbench: &Workbench| match &workbench.mode {
         Mode::Prompt { text, .. } => text.text().to_string(),
@@ -6664,6 +6804,63 @@ fn tab_completes_a_link_being_typed_with_a_samples_name() {
     keys(&mut workbench, "3");
     workbench.key(Key::Tab);
     assert_eq!(typed(&workbench), "[[C3]]");
+    // In the typing mode's cell too: Tab completes a link being typed, and
+    // keeps the cell once it is whole.
+    keys(&mut workbench, "\ny");
+    move_to_line(&mut workbench, "alloy");
+    keys(&mut workbench, "e[[C");
+    workbench.key(Key::Tab);
+    assert_eq!(typed(&workbench), "[[C");
+    keys(&mut workbench, "2");
+    workbench.key(Key::Tab);
+    assert_eq!(typed(&workbench), "[[C2]]");
+}
+
+/// The cursor on `field`'s line, from the sample's first.
+fn move_to_line(workbench: &mut Workbench, field: &str) {
+    workbench.key(Key::Home);
+    move_to(workbench, field);
+}
+
+#[test]
+fn a_pdfs_page_and_a_file_by_its_name_are_opened_from_their_links() {
+    let scratch = Scratch::new("page-link");
+    fs::create_dir_all(scratch.0.join("papers")).unwrap();
+    fs::write(scratch.0.join("papers/method.pdf"), "%PDF-1.4\n").unwrap();
+    fs::create_dir_all(scratch.0.join("data/2024")).unwrap();
+    fs::write(scratch.0.join("data/2024/curve.csv"), "step,force\n").unwrap();
+    let file = scratch.0.join("C1.md");
+    let text = fs::read_to_string(&file).unwrap().replace(
+        "alloy: cobalt\n",
+        "alloy: cobalt\nmethod: \"[the method](papers/method.pdf#page=12)\"\n\
+         again: \"[[method.pdf#page=3]]\"\ncurve: \"[[curve.csv]]\"\ntwin: \"[[c2.md]]\"\n",
+    );
+    fs::write(&file, text).unwrap();
+    let follow = |field: &str| {
+        let mut workbench = Workbench::open(&scratch.0).unwrap();
+        keys(&mut workbench, "\n");
+        move_to(&mut workbench, field);
+        let effects = keys(&mut workbench, "\n");
+        (workbench, effects)
+    };
+    let (_, effects) = follow("method");
+    assert!(
+        matches!(effects.as_slice(), [Effect::OpenPage { file, page: 12 }] if file.ends_with("papers/method.pdf")),
+        "{effects:?}"
+    );
+    let (_, effects) = follow("again");
+    assert!(
+        matches!(effects.as_slice(), [Effect::OpenPage { file, page: 3 }] if file.ends_with("papers/method.pdf")),
+        "{effects:?}"
+    );
+    let (_, effects) = follow("curve");
+    assert!(
+        matches!(effects.as_slice(), [Effect::Open(path)] if path.ends_with("data/2024/curve.csv")),
+        "{effects:?}"
+    );
+    // A sample by its file's name in another case, its extension written.
+    let (workbench, _) = follow("twin");
+    assert_eq!(workbench.message, "[[c2.md]] → C2.md — Esc goes back to C1");
 }
 
 #[test]
@@ -6722,4 +6919,714 @@ fn a_markdown_link_opens_its_file_or_its_sample_and_a_list_its_items() {
         "{}",
         workbench.message
     );
+}
+
+// ------------------------------------------------------------ changes waiting
+
+/// The history's lines, newest first.
+fn history_lines(root: &std::path::Path) -> Vec<String> {
+    let output = std::process::Command::new("git")
+        .arg("--git-dir")
+        .arg(root.join(".samplekit/history"))
+        .args(["log", "--all", "--format=%s"])
+        .output()
+        .unwrap();
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::to_string)
+        .collect()
+}
+
+/// `A` on the sample open: an attribute, its value, confirmed.
+fn add_attribute(workbench: &mut Workbench, name: &str, value: &str) {
+    keys(workbench, &format!("A{name}\n{value}\ny"));
+}
+
+#[test]
+fn a_change_waits_until_w_writes_it_one_change_of_the_history() {
+    let scratch = Scratch::new("waiting-w");
+    let c1 = scratch.0.join("C1.md");
+    let c2 = scratch.0.join("C2.md");
+    let (was_c1, was_c2) = (fs::read(&c1).unwrap(), fs::read(&c2).unwrap());
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    add_attribute(&mut workbench, "style", "tin");
+    assert!(
+        workbench.message.contains("not written yet"),
+        "{}",
+        workbench.message
+    );
+    assert_eq!(fs::read(&c1).unwrap(), was_c1, "the file is untouched");
+    assert!(
+        screen(&mut workbench).contains("style"),
+        "the screen shows it"
+    );
+    keys(&mut workbench, "\u{1b}");
+    let at = workbench
+        .view
+        .iter()
+        .position(|entry| entry.sample.borrow().name() == Some("C2"))
+        .unwrap();
+    workbench.cursor = at;
+    keys(&mut workbench, "Dy");
+    assert_eq!(workbench.view.len(), 2, "C2 is no longer shown");
+    assert_eq!(fs::read(&c2).unwrap(), was_c2, "nor removed yet");
+    write_waiting(&mut workbench);
+    assert!(
+        workbench.message.starts_with("written: 2 files"),
+        "{}",
+        workbench.message
+    );
+    assert!(fs::read_to_string(&c1).unwrap().contains("style: tin"));
+    assert!(!c2.exists());
+    let lines = history_lines(&scratch.0);
+    assert_eq!(lines.len(), 2, "{lines:?}");
+    assert!(
+        lines[0].starts_with("tui · ") && lines[0].contains("; "),
+        "each change said: {lines:?}"
+    );
+    // One `u` gives both back.
+    keys(&mut workbench, "uy");
+    assert_eq!(fs::read(&c1).unwrap(), was_c1);
+    assert_eq!(fs::read(&c2).unwrap(), was_c2);
+}
+
+#[test]
+fn u_takes_back_a_change_waiting_then_a_write() {
+    let scratch = Scratch::new("waiting-u");
+    let c1 = scratch.0.join("C1.md");
+    let was = fs::read_to_string(&c1).unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    add_attribute(&mut workbench, "style", "tin");
+    add_attribute(&mut workbench, "finish", "matt");
+    keys(&mut workbench, "u");
+    assert!(
+        workbench.message.contains("still waiting"),
+        "{}",
+        workbench.message
+    );
+    assert!(read_waiting(&c1).contains("style: tin"));
+    assert!(!read_waiting(&c1).contains("finish"));
+    keys(&mut workbench, "u");
+    assert_eq!(
+        workbench.message, "taken back: nothing waits to be written",
+        "{}",
+        workbench.message
+    );
+    assert_eq!(fs::read_to_string(&c1).unwrap(), was);
+    add_attribute(&mut workbench, "style", "tin");
+    write_waiting(&mut workbench);
+    assert!(fs::read_to_string(&c1).unwrap().contains("style: tin"));
+    // Nothing waits: `u` undoes the write.
+    keys(&mut workbench, "uy");
+    assert_eq!(fs::read_to_string(&c1).unwrap(), was);
+}
+
+#[test]
+fn leaving_with_changes_waiting_asks_and_keeps_them_by_default() {
+    let scratch = Scratch::new("waiting-leave");
+    let c1 = scratch.0.join("C1.md");
+    let was = fs::read_to_string(&c1).unwrap();
+    {
+        let mut workbench = Workbench::open(&scratch.0).unwrap();
+        open_named(&mut workbench, "C1");
+        add_attribute(&mut workbench, "style", "tin");
+        keys(&mut workbench, "\u{1b}");
+        assert!(matches!(
+            keys(&mut workbench, "q").last(),
+            Some(Effect::None)
+        ));
+        assert!(matches!(workbench.mode, Mode::Confirm { .. }), "asked");
+        keys(&mut workbench, "n");
+        assert!(matches!(workbench.mode, Mode::Normal), "stays");
+        keys(&mut workbench, "q");
+        assert!(matches!(
+            keys(&mut workbench, "k").last(),
+            Some(Effect::Quit)
+        ));
+    }
+    assert_eq!(fs::read_to_string(&c1).unwrap(), was, "kept, not written");
+    {
+        let mut workbench = Workbench::open(&scratch.0).unwrap();
+        let Mode::Confirm { title, lines, .. } = &workbench.mode else {
+            panic!("the changes waiting are offered: {}", workbench.message);
+        };
+        assert_eq!(title, "changes waiting");
+        assert!(
+            lines[0].starts_with("1 file changed and not written, since"),
+            "{lines:?}"
+        );
+        keys(&mut workbench, "y");
+        assert!(screen(&mut workbench).contains("3 of 3") || workbench.view.len() == 3);
+        write_waiting(&mut workbench);
+        assert!(fs::read_to_string(&c1).unwrap().contains("style: tin"));
+        open_named(&mut workbench, "C1");
+        add_attribute(&mut workbench, "finish", "matt");
+        keys(&mut workbench, "\u{1b}q");
+        assert!(matches!(
+            keys(&mut workbench, "d").last(),
+            Some(Effect::Quit)
+        ));
+    }
+    let workbench = Workbench::open(&scratch.0).unwrap();
+    assert!(
+        matches!(workbench.mode, Mode::Normal),
+        "nothing waits: dropped"
+    );
+    let written = fs::read_to_string(&c1).unwrap();
+    assert!(
+        written.contains("style: tin") && !written.contains("finish"),
+        "{written}"
+    );
+}
+
+#[test]
+fn a_file_changed_by_another_hand_is_not_written_over() {
+    let scratch = Scratch::new("waiting-other-hand");
+    let c1 = scratch.0.join("C1.md");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    add_attribute(&mut workbench, "style", "tin");
+    // Another hand changes another field: laid again over it, both kept.
+    let other = fs::read_to_string(&c1)
+        .unwrap()
+        .replace("alloy: cobalt", "alloy: nickel");
+    fs::write(&c1, &other).unwrap();
+    write_waiting(&mut workbench);
+    let written = fs::read_to_string(&c1).unwrap();
+    assert!(
+        written.contains("style: tin") && written.contains("alloy: nickel"),
+        "{written}"
+    );
+    // The same field changed both here and there: nothing is written.
+    add_attribute(&mut workbench, "finish", "matt");
+    let theirs = fs::read_to_string(&c1)
+        .unwrap()
+        .replace("style: tin", "style: zinc\nfinish: gloss");
+    fs::write(&c1, &theirs).unwrap();
+    keys(&mut workbench, "w");
+    let Mode::Confirm { lines, .. } = &workbench.mode else {
+        panic!("{}", workbench.message)
+    };
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains("changed both here and since by another hand")),
+        "{lines:?}"
+    );
+    keys(&mut workbench, "y");
+    assert!(
+        workbench.message.contains("nothing written"),
+        "{}",
+        workbench.message
+    );
+    assert_eq!(fs::read_to_string(&c1).unwrap(), theirs);
+}
+
+#[test]
+#[cfg(unix)]
+fn a_computation_waits_and_is_dropped_leaving_the_history_as_it_was() {
+    let venv = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".venv");
+    assert!(venv.join("bin/python").is_file(), "the repository's .venv");
+    let scratch = Scratch::new("waiting-compute");
+    let project = scratch.0.join("p");
+    fs::create_dir(&project).unwrap();
+    std::os::unix::fs::symlink(&venv, project.join(".venv")).unwrap();
+    fs::write(
+        project.join("model.py"),
+        "import samplekit as sk\nclass M(sk.Sample):\n    def __init__(self, path=None, name=None):\n        \
+         super().__init__(path, name=name)\n        self.a = sk.Property()\n        \
+         self.b = sk.Property(compute_value=self._b, depends_on=[\"a\"])\n\n    \
+         def _b(self):\n        return 2 * self.a.value\n",
+    )
+    .unwrap();
+    fs::write(
+        project.join(".samplekitrc"),
+        "schema_version = 1\n[model]\npath = \"model.py\"\npython = \".venv\"\n",
+    )
+    .unwrap();
+    let file = project.join("s1.md");
+    let was = "---\nschema_version: 1\nname: s1\nproperties:\n  a: 1.0\n---\n";
+    fs::write(&file, was).unwrap();
+    let mut workbench = Workbench::open(&project).unwrap();
+    keys(&mut workbench, "Cy");
+    for _ in 0..600 {
+        workbench.tick();
+        if workbench
+            .run
+            .as_ref()
+            .is_some_and(|run| run.outcome.is_some())
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert_eq!(
+        fs::read_to_string(&file).unwrap(),
+        was,
+        "computed, not written"
+    );
+    assert!(
+        read_waiting(&file).contains("b:"),
+        "{}",
+        read_waiting(&file)
+    );
+    let history = history_lines(&project);
+    // Dropped, by `u`: nothing of it is left.
+    keys(&mut workbench, "u");
+    assert_eq!(read_waiting(&file), was);
+    assert_eq!(history_lines(&project), history, "no snapshot of it");
+}
+
+// ------------------------------------------------------------ the typing mode
+
+/// The cursor on `field`'s line, from the sample's first.
+fn go_to(workbench: &mut Workbench, field: &str) {
+    workbench.key(Key::Home);
+    move_to(workbench, field);
+}
+
+#[test]
+fn e_enters_the_typing_mode_where_what_is_typed_replaces_a_cell() {
+    let scratch = Scratch::new("typing");
+    let c1 = scratch.0.join("C1.md");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    go_to(&mut workbench, "alloy");
+    let on_alloy = workbench.screen.clone();
+    keys(&mut workbench, "e");
+    assert!(workbench.typing, "{}", workbench.message);
+    keys(&mut workbench, "nickel");
+    assert!(
+        matches!(workbench.mode, Mode::Prompt { .. }),
+        "a cell typed in"
+    );
+    keys(&mut workbench, "\n");
+    assert!(
+        read_waiting(&c1).contains("alloy: nickel"),
+        "{}",
+        read_waiting(&c1)
+    );
+    assert!(
+        !fs::read_to_string(&c1).unwrap().contains("nickel"),
+        "waiting"
+    );
+    assert!(matches!(workbench.mode, Mode::Normal));
+    let Screen::Sample { cursor: below, .. } = workbench.screen else {
+        panic!()
+    };
+    let Screen::Sample { cursor: alloy, .. } = on_alloy else {
+        panic!()
+    };
+    assert_eq!(below, alloy + 1, "Enter keeps it and goes down");
+    workbench.key(Key::Up);
+    workbench.key(Key::Left);
+    assert_eq!(workbench.cell, 0, "the name's cell");
+    workbench.key(Key::Right);
+    assert_eq!(workbench.cell, 1, "back to the value's");
+    // `j` is typed in the mode; out of it, it moves.
+    keys(&mut workbench, "\u{1b}");
+    assert!(!workbench.typing);
+    keys(&mut workbench, "j");
+    let Screen::Sample { cursor, .. } = workbench.screen else {
+        panic!()
+    };
+    assert_eq!(cursor, alloy + 1);
+}
+
+#[test]
+fn a_value_and_its_uncertainty_are_typed_in_one_cell() {
+    let scratch = Scratch::new("typing-value");
+    let c1 = scratch.0.join("C1.md");
+    fs::write(
+        &c1,
+        fs::read_to_string(&c1)
+            .unwrap()
+            .replace("v: 12.0", "v: 12.34"),
+    )
+    .unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    go_to(&mut workbench, "diameter");
+    // Opened as shown, rounded, and kept as it opened: left as it is.
+    keys(&mut workbench, "e");
+    workbench.key(Key::F2);
+    let Mode::Prompt { text, .. } = &workbench.mode else {
+        panic!("{}", workbench.message)
+    };
+    assert_eq!(text.text(), "12.3 +- 0.1");
+    keys(&mut workbench, "\n");
+    assert_eq!(workbench.waiting_count(), 0, "nothing changed");
+    go_to(&mut workbench, "diameter");
+    keys(&mut workbench, "12.5 +- 0.2\n");
+    let waiting = read_waiting(&c1);
+    assert!(
+        waiting.contains("v: 12.5") && waiting.contains("u: 0.2"),
+        "{waiting}"
+    );
+    go_to(&mut workbench, "diameter");
+    keys(&mut workbench, "13\n");
+    let waiting = read_waiting(&c1);
+    assert!(
+        waiting.contains("v: 13") && waiting.contains("u: 0.2"),
+        "kept: {waiting}"
+    );
+    // `±` typed, or pasted, is read as `+-` is.
+    go_to(&mut workbench, "diameter");
+    keys(&mut workbench, "13 ± 0.3\n");
+    let waiting = read_waiting(&c1);
+    assert!(
+        waiting.contains("v: 13") && waiting.contains("u: 0.3"),
+        "{waiting}"
+    );
+    go_to(&mut workbench, "diameter");
+    keys(&mut workbench, "13 +-\n");
+    let waiting = read_waiting(&c1);
+    assert!(
+        waiting.contains("v: 13") && !waiting.contains("u: 0.3"),
+        "taken out: {waiting}"
+    );
+}
+
+#[test]
+fn typing_over_a_name_renames_an_attribute_and_delete_takes_it_out() {
+    let scratch = Scratch::new("typing-name");
+    let c1 = scratch.0.join("C1.md");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    go_to(&mut workbench, "alloy");
+    keys(&mut workbench, "e");
+    workbench.key(Key::Left);
+    keys(&mut workbench, "style\n");
+    let waiting = read_waiting(&c1);
+    assert!(
+        waiting.contains("style: cobalt") && !waiting.contains("alloy:"),
+        "{waiting}"
+    );
+    go_to(&mut workbench, "style");
+    workbench.key(Key::Delete);
+    let waiting = read_waiting(&c1);
+    assert!(
+        !waiting.contains("style") && !waiting.contains("cobalt"),
+        "{waiting} {}",
+        workbench.message
+    );
+    assert!(
+        workbench.message.contains("not written yet"),
+        "{}",
+        workbench.message
+    );
+}
+
+#[test]
+fn a_table_is_typed_cell_by_cell_and_delete_takes_a_row_out() {
+    let scratch = rich("typing-table");
+    let d1 = scratch.0.join("more/D1.md");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "D1");
+    go_to(&mut workbench, "runs");
+    workbench.key(Key::Right);
+    assert!(matches!(workbench.screen, Screen::Table { .. }));
+    keys(&mut workbench, "e");
+    // The first row's load, with its uncertainty.
+    workbench.key(Key::Right);
+    keys(&mut workbench, "4.5 +- 0.1\n");
+    let waiting = read_waiting(&d1);
+    assert!(waiting.contains("load: {v: 4.5, u: 0.1"), "{waiting}");
+    // On the row of run 2 now: taken out.
+    workbench.key(Key::Delete);
+    let waiting = read_waiting(&d1);
+    assert!(!waiting.contains("run: 2"), "{waiting}");
+    assert!(
+        fs::read_to_string(&d1).unwrap().contains("run: 2"),
+        "not written yet"
+    );
+    // The empty row takes run 3 once its index is given.
+    workbench.key(Key::End);
+    workbench.key(Key::Left);
+    keys(&mut workbench, "3\n");
+    let waiting = read_waiting(&d1);
+    assert!(waiting.contains("run: 3"), "{waiting}");
+}
+
+#[test]
+fn the_collection_is_typed_in_a_column_for_the_rows_taken() {
+    let scratch = Scratch::new("typing-collection");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let column = |workbench: &Workbench, field: &str| {
+        workbench
+            .profile
+            .columns()
+            .iter()
+            .position(|column| column.field == field)
+            .unwrap()
+    };
+    keys(&mut workbench, "e");
+    let alloy = column(&workbench, "alloy");
+    for _ in 0..alloy {
+        workbench.key(Key::Right);
+    }
+    workbench.key(Key::MoveDown);
+    keys(&mut workbench, "tin\n");
+    let tin: Vec<String> = ["C1", "C2", "C3"]
+        .iter()
+        .filter(|name| read_waiting(&scratch.0.join(format!("{name}.md"))).contains("alloy: tin"))
+        .map(|name| name.to_string())
+        .collect();
+    assert_eq!(
+        tin.len(),
+        2,
+        "two rows taken: {tin:?} {}",
+        workbench.message
+    );
+    let diameter = column(&workbench, "diameter");
+    while workbench.column > diameter {
+        workbench.key(Key::Left);
+    }
+    while workbench.column < diameter {
+        workbench.key(Key::Right);
+    }
+    keys(&mut workbench, "12.5 ± 0.3\n");
+    assert!(
+        workbench.view.iter().any(|entry| {
+            let text = read_waiting(entry.path.as_deref().unwrap());
+            text.contains("v: 12.5") && text.contains("u: 0.3")
+        }),
+        "{}",
+        workbench.message
+    );
+    while workbench.column > 0 {
+        workbench.key(Key::Left);
+    }
+    keys(&mut workbench, "x");
+    assert!(workbench.message.contains("R"), "{}", workbench.message);
+}
+
+#[test]
+fn a_project_opened_again_while_open_keeps_its_changes_waiting() {
+    // The start page opens a project again while the workbench before it is
+    // still there: the first one's end leaves the second its changes waiting.
+    let scratch = Scratch::new("waiting-again");
+    let c1 = scratch.0.join("C1.md");
+    let was = fs::read_to_string(&c1).unwrap();
+    let first = Workbench::open(&scratch.0).unwrap();
+    let mut second = Workbench::open(&scratch.0).unwrap();
+    drop(first);
+    open_named(&mut second, "C1");
+    add_attribute(&mut second, "style", "tin");
+    assert_eq!(fs::read_to_string(&c1).unwrap(), was, "it waits");
+    assert_eq!(second.waiting_count(), 1);
+}
+
+// ------------------------------------------------------------ a value's card
+
+/// A copy of the tensile demo's last stage, `04-results`, in `scratch`: the
+/// workbench writes its state, and never into the repository's own copy.
+fn tensile(scratch: &Scratch) -> PathBuf {
+    fn copied(from: &std::path::Path, to: &std::path::Path) {
+        fs::create_dir_all(to).unwrap();
+        for entry in fs::read_dir(from).unwrap() {
+            let entry = entry.unwrap();
+            let target = to.join(entry.file_name());
+            if entry.file_type().unwrap().is_dir() {
+                copied(&entry.path(), &target);
+            } else {
+                fs::copy(entry.path(), target).unwrap();
+            }
+        }
+    }
+    let demo = scratch.0.join("tensile");
+    copied(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/tensile/04-results"),
+        &demo,
+    );
+    demo
+}
+
+/// The card's line of `field`, in `group`.
+fn card_line(
+    workbench: &Workbench,
+    group: CardGroup,
+    field: &str,
+) -> samplekit::tui::model::CardLine {
+    let lines = workbench.card_lines();
+    lines
+        .iter()
+        .find(|line| line.group == group && line.field == field)
+        .cloned()
+        .unwrap_or_else(|| panic!("{group:?} {field} on the card: {lines:?}"))
+}
+
+#[test]
+fn i_opens_a_values_card_with_what_it_reads_and_what_reads_it() {
+    // Read from the records the files keep: no Python is asked.
+    let scratch = Scratch::new("card");
+    let demo = tensile(&scratch);
+    let mut workbench = Workbench::open(&demo).unwrap();
+    open_named(&mut workbench, "steel-01");
+    move_to(&mut workbench, "area");
+    keys(&mut workbench, "i");
+    let area = card_line(&workbench, CardGroup::Itself, "area");
+    assert_eq!(area.shown, "25.056 ± 0.053 mm²");
+    assert_eq!(workbench.card_lines()[0], area, "the value first");
+    for read in ["thickness", "width"] {
+        card_line(&workbench, CardGroup::Reads, read);
+    }
+    let stress = card_line(&workbench, CardGroup::ReadBy, "curve.stress");
+    assert_eq!(stress.shown, "13 rows");
+    keys(&mut workbench, "\u{1b}");
+    assert!(workbench.card.is_none());
+    // A cell of `curve.stress`: its row's `force`, and `area`.
+    workbench.key(Key::Home);
+    move_to(&mut workbench, "curve");
+    workbench.key(Key::Right);
+    keys(&mut workbench, "llj");
+    assert_eq!(workbench.cell().unwrap().0.field, "curve.stress[0.025]");
+    keys(&mut workbench, "i");
+    card_line(&workbench, CardGroup::Itself, "curve.stress[0.025]");
+    let force = card_line(&workbench, CardGroup::Reads, "curve.force[0.025]");
+    assert_eq!(force.shown, "1.281");
+    card_line(&workbench, CardGroup::Reads, "area");
+    keys(&mut workbench, "\u{1b}");
+    assert!(workbench.card.is_none());
+    assert!(matches!(workbench.screen, Screen::Table { .. }));
+}
+
+#[test]
+fn a_line_typed_in_a_card_waits_and_shows_what_it_made_outdated() {
+    let scratch = Scratch::new("card-typed");
+    let demo = tensile(&scratch);
+    let steel = demo.join("samples/steel-01.md");
+    let was = fs::read_to_string(&steel).unwrap();
+    let mut workbench = Workbench::open(&demo).unwrap();
+    open_named(&mut workbench, "steel-01");
+    move_to(&mut workbench, "area");
+    keys(&mut workbench, "i");
+    assert_eq!(
+        card_line(&workbench, CardGroup::Itself, "area").state,
+        "current"
+    );
+    // `width`, under the cursor: its value with its uncertainty.
+    let at = workbench
+        .card_lines()
+        .iter()
+        .position(|line| line.field == "width")
+        .unwrap();
+    for _ in 0..at {
+        workbench.key(Key::Down);
+    }
+    keys(&mut workbench, "e");
+    let Mode::Prompt { text, .. } = &workbench.mode else {
+        panic!("width typed: {}", workbench.message);
+    };
+    assert_eq!(text.text(), "12.513 +- 0.011");
+    keys(&mut workbench, "12.6\n");
+    assert!(
+        matches!(workbench.mode, Mode::Normal),
+        "{}",
+        workbench.message
+    );
+    assert!(workbench.card.is_some(), "the card stays open");
+    // It waits, the file untouched.
+    assert_eq!(fs::read_to_string(&steel).unwrap(), was);
+    let waiting = read_waiting(&steel);
+    assert!(waiting.contains("v: 12.6"), "{waiting}");
+    assert!(
+        waiting.contains("u: 0.01008849730028156"),
+        "the uncertainty kept"
+    );
+    // Drawn again as it made it: what reads `width` is outdated at once.
+    assert!(
+        card_line(&workbench, CardGroup::Reads, "width")
+            .shown
+            .starts_with("12.600"),
+        "{:?}",
+        workbench.card_lines()
+    );
+    let area = card_line(&workbench, CardGroup::Itself, "area");
+    assert!(area.state.starts_with("outdated"), "{area:?}");
+    // A whole column is typed in its table: said, nothing opened.
+    let at = workbench
+        .card_lines()
+        .iter()
+        .position(|line| line.field == "curve.stress")
+        .unwrap();
+    for _ in 0..at {
+        workbench.key(Key::Down);
+    }
+    keys(&mut workbench, "e");
+    assert!(matches!(workbench.mode, Mode::Normal));
+    assert!(
+        workbench
+            .message
+            .contains("curve.stress is a whole column: its cells are typed in its table"),
+        "{}",
+        workbench.message
+    );
+    assert_eq!(workbench.waiting_count(), 1);
+}
+
+#[test]
+fn enter_on_a_value_does_nothing_and_a_line_shows_its_mark_alone() {
+    let scratch = Scratch::new("enter-on-a-value");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    move_to(&mut workbench, "diameter");
+    let before = screen(&mut workbench);
+    keys(&mut workbench, "\n");
+    assert!(
+        matches!(workbench.screen, Screen::Sample { .. }) && matches!(workbench.mode, Mode::Normal),
+        "{}",
+        workbench.message
+    );
+    assert!(workbench.card.is_none() && !workbench.typing);
+    assert_eq!(screen(&mut workbench), before, "the screen as it was");
+    // A value outdated by a change waiting: its mark, never its word.
+    let demo = tensile(&scratch);
+    let mut workbench = Workbench::open(&demo).unwrap();
+    open_named(&mut workbench, "steel-01");
+    move_to(&mut workbench, "width");
+    keys(&mut workbench, "e12.6\n\u{1b}");
+    let area = workbench
+        .entries()
+        .into_iter()
+        .find(|entry| entry.field == "area")
+        .unwrap();
+    assert!(area.state.starts_with("outdated"), "{}", area.state);
+    let drawn = screen(&mut workbench);
+    let line = drawn
+        .lines()
+        .find(|line| line.contains(" area "))
+        .unwrap_or_default();
+    assert!(line.contains("⚠ area"), "{drawn}");
+    assert!(!drawn.contains("outdated"), "{drawn}");
+}
+
+#[test]
+fn enter_on_a_cards_readings_opens_them_as_a_list() {
+    let scratch = rich("card-readings");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "D1");
+    move_to(&mut workbench, "diameter");
+    keys(&mut workbench, "i");
+    let readings = workbench
+        .card_lines()
+        .iter()
+        .position(|line| line.group == samplekit::tui::model::CardGroup::Readings)
+        .expect("the card has its readings");
+    for _ in 0..readings {
+        workbench.key(Key::Down);
+    }
+    workbench.key(Key::Enter);
+    assert!(workbench.card.is_none(), "the card closes for the list");
+    let Screen::Items {
+        readings, field, ..
+    } = &workbench.screen
+    else {
+        panic!("the readings' window: {}", workbench.message)
+    };
+    assert!(*readings && field == "diameter");
+    let (_, items, _) = workbench.items().unwrap();
+    assert_eq!(items.len(), 2, "{items:?}");
 }

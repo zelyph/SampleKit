@@ -1018,7 +1018,12 @@ fn resolve_named(
             other => Err(attribute_has_no_channel(name, other)),
         };
     }
-    if let Ok(value) = subject.sample.attribute(name) {
+    // Asked whether it holds the name before it is read: a name a sample
+    // lacks made an error, its nearest name searched among all of them, for
+    // every cell of a column most samples leave empty.
+    if subject.sample.has_attribute(name)
+        && let Ok(value) = subject.sample.attribute(name)
+    {
         return match channel {
             Channel::Value => Ok(match value {
                 AttributeValue::Scalar(Value::Absent) => Resolution::Scalar(None),
@@ -1028,7 +1033,9 @@ fn resolve_named(
             other => Err(attribute_has_no_channel(name, other)),
         };
     }
-    if let Ok(handle) = subject.sample.property(name) {
+    if subject.sample.has_property(name)
+        && let Ok(handle) = subject.sample.property(name)
+    {
         return handle.with(|property| channel_of_property(property, channel, name.as_str()));
     }
     // Absent here, or absent everywhere: only the collection can say which.

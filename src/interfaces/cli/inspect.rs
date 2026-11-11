@@ -1809,7 +1809,7 @@ pub(super) fn explain(options: &Options) -> Outcome {
             // `-c name,notch.readings`.
             let said = Identifier::new(field_name)
                 .ok()
-                .and_then(|name| sample.property(&name).ok())
+                .and_then(|name| sample.property_if(&name))
                 .and_then(|handle| {
                     handle.peek(|property| {
                         let readings = property.readings()?;

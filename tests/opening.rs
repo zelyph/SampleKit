@@ -165,3 +165,54 @@ fn an_editor_of_its_own_window_is_told_from_one_in_the_terminal() {
         })
     );
 }
+
+#[test]
+fn a_pdfs_page_is_an_address_a_browser_opens() {
+    assert_eq!(
+        opening::file_url(Path::new("/data/papers/the paper é.pdf"), Some(12)),
+        "file:///data/papers/the%20paper%20%C3%A9.pdf#page=12"
+    );
+    assert_eq!(
+        opening::file_url(Path::new(r"C:\Users\lab\paper.pdf"), Some(3)),
+        "file:///C:/Users/lab/paper.pdf#page=3"
+    );
+    // A desktop file's line: the address where it says, its other codes
+    // dropped; put last where it says nowhere.
+    let url = "file:///a.pdf#page=2";
+    assert_eq!(
+        opening::exec_line("brave %U", url),
+        Some(vec!["brave".to_string(), url.to_string()])
+    );
+    assert_eq!(
+        opening::exec_line("/usr/lib/firefox/firefox --name firefox %u %i", url),
+        Some(vec![
+            "/usr/lib/firefox/firefox".to_string(),
+            "--name".to_string(),
+            "firefox".to_string(),
+            url.to_string()
+        ])
+    );
+    assert_eq!(
+        opening::exec_line("epiphany", url),
+        Some(vec!["epiphany".to_string(), url.to_string()])
+    );
+    // Windows's registry line: the program, and the rest with the address
+    // quoted in place of `%1`.
+    assert_eq!(
+        opening::windows_line(
+            r#""C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --single-argument %1"#,
+            url
+        ),
+        vec![
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe".to_string(),
+            format!("--single-argument \"{url}\"")
+        ]
+    );
+    assert_eq!(
+        opening::windows_line(r#""C:\Firefox\firefox.exe" -osint -url "%1""#, url),
+        vec![
+            r"C:\Firefox\firefox.exe".to_string(),
+            format!("-osint -url \"{url}\"")
+        ]
+    );
+}

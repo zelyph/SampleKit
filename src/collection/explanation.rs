@@ -498,7 +498,7 @@ pub fn failure_trace(
 pub fn readings_held(sample: &crate::core::sample::Sample, name: &str) -> usize {
     crate::core::identifier::Identifier::new(name)
         .ok()
-        .and_then(|name| sample.property(&name).ok())
+        .and_then(|name| sample.property_if(&name))
         .and_then(|handle| handle.readings())
         .map_or(0, |readings| readings.as_slice().len())
 }
@@ -621,7 +621,7 @@ pub fn owed_lines(
                 .filter(|input| {
                     crate::core::identifier::Identifier::new(input.as_str())
                         .ok()
-                        .and_then(|input| sample.property(&input).ok())
+                        .and_then(|input| sample.property_if(&input))
                         .is_some_and(|handle| {
                             handle.has_failed() || handle.records().failure.is_some()
                         })

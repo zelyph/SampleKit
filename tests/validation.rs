@@ -1940,6 +1940,34 @@ fn an_imported_query_one_project_cannot_answer_is_a_note_of_its_file() {
 }
 
 #[test]
+fn a_wikilink_leads_where_obsidian_finds_it() {
+    let scratch = Scratch::new("links-obsidian");
+    scratch.write(".samplekitrc", "schema_version = 1\n");
+    scratch.write("papers/method.pdf", "%PDF-1.4\n");
+    scratch.write("data/curve.csv", "step,force\n");
+    scratch.write(
+        "bars/bar-01.md",
+        "---\nschema_version: 1\nname: bar-01\ntwin: \"[[Bar-02.md]]\"\n\
+         here: \"[[bars/bar-02]]\"\nmethod: \"[[method.pdf#page=4]]\"\n\
+         curve: \"[[curve.csv]]\"\nreference: \"zotero://select/library/items/AB12\"\n\
+         lost: \"[[absent.pdf]]\"\n---\n",
+    );
+    scratch.write(
+        "bars/bar-02.md",
+        "---\nschema_version: 1\nname: bar-02\n---\n",
+    );
+    let report = validate::run(&list::from_directory(&scratch.0).unwrap());
+    let links: Vec<String> = report
+        .findings
+        .iter()
+        .filter(|finding| matches!(finding.detail, Detail::LinkLeadsNowhere { .. }))
+        .map(validate::described)
+        .collect();
+    assert_eq!(links.len(), 1, "{links:#?}");
+    assert!(links[0].starts_with("lost: [[absent.pdf]]"), "{links:?}");
+}
+
+#[test]
 fn a_link_that_leads_to_no_sample_or_to_several_is_a_defect() {
     let scratch = Scratch::new("links");
     scratch.write(".samplekitrc", "schema_version = 1\n");

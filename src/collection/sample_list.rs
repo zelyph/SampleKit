@@ -146,6 +146,19 @@ pub enum FieldWarning {
 /// **Loading never executes project Python.** A directory with a `[model]`
 /// declaration loads as plain data.
 pub fn from_directory(path: &Path) -> Result<SampleList, ListError> {
+    from_directory_reusing(path, &mut |_| None)
+}
+
+/// A sample kept from an earlier reading in place of its file read again:
+/// what `reuse` gives back for a path, where it knows the file unchanged.
+pub type Reuse<'a> = &'a mut dyn FnMut(&Path) -> Option<Rc<RefCell<Sample>>>;
+
+/// [`from_directory`], each sample `reuse` gives back taken as it is: the
+/// terminal interface reads its project again after each write, and reading
+/// every file again was a pause after each.
+pub fn from_directory_reusing(path: &Path, reuse: Reuse) -> Result<SampleList, ListError> {
+    crate::config::model_runtime::forget_walks();
+    discovery::forget_files();
     // A configuration that will not read is set aside like an unreadable file,
     // and the samples it describes are read without it — the target's own as
     // much as a nested one. `load_directory` records it as skipped, since it
@@ -162,7 +175,7 @@ pub fn from_directory(path: &Path) -> Result<SampleList, ListError> {
             }),
         ),
     };
-    let mut list = load_directory(path, configuration, true)?;
+    let mut list = load_directory(path, configuration, true, reuse)?;
     if let Some(unread) = unread
         && !list
             .skipped
@@ -181,31 +194,64 @@ pub fn from_directory_with(
     path: &Path,
     configuration: Option<ProjectConfig>,
 ) -> Result<SampleList, ListError> {
-    load_directory(path, configuration, false)
+    crate::config::model_runtime::forget_walks();
+    discovery::forget_files();
+    load_directory(path, configuration, false, &mut |_| None)
 }
 
 fn load_directory(
     path: &Path,
     configuration: Option<ProjectConfig>,
     nearest: bool,
+    reuse: Reuse,
 ) -> Result<SampleList, ListError> {
     let found = discovery::discover(path, configuration.as_ref()).map_err(ListError::Discovery)?;
     let mut entries = Vec::with_capacity(found.paths.len());
     let mut skipped = found.skipped;
-    for path in &found.paths {
+    // Each file kept from the last reading, or read and parsed: on every
+    // core at once, the samples then made one by one, as they hold what
+    // only one thread may.
+    let kept: Vec<Option<Rc<RefCell<Sample>>>> =
+        found.paths.iter().map(|path| reuse(path)).collect();
+    let unread: Vec<&PathBuf> = found
+        .paths
+        .iter()
+        .zip(&kept)
+        .filter(|(_, kept)| kept.is_none())
+        .map(|(path, _)| path)
+        .collect();
+    let mut read = document::in_parallel(&unread, |path| {
+        // Its error said in words: an error may hold what one thread alone holds.
+        document::load(path).map_err(|error| error.to_string())
+    })
+    .into_iter();
+    for (path, kept) in found.paths.iter().zip(kept) {
+        if let Some(sample) = kept {
+            entries.push(Entry {
+                path: Some(path.clone()),
+                sample,
+                states: None,
+            });
+            continue;
+        }
+        let loaded = match read.next() {
+            Some(Ok(loaded)) => {
+                document::sample_of(loaded, path).map_err(|error| error.to_string())
+            }
+            Some(Err(said)) => Err(said),
+            None => document::load_sample(path).map_err(|error| error.to_string()),
+        };
         // A file that will not load is set aside with its reason, never a stop:
         // one file must not hide the collection, and it is said.
-        match document::load_sample(path) {
+        match loaded {
             Ok((sample, _)) => entries.push(Entry {
                 path: Some(path.clone()),
                 sample: Rc::new(RefCell::new(sample)),
                 states: None,
             }),
-            Err(error) => skipped.push(Skipped {
+            Err(message) => skipped.push(Skipped {
                 path: path.clone(),
-                reason: SkipReason::Malformed {
-                    message: error.to_string(),
-                },
+                reason: SkipReason::Malformed { message },
             }),
         }
     }

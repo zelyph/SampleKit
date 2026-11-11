@@ -281,13 +281,19 @@ next command that writes.
 
 ## In the terminal interface
 
-On a sample's screen, `e` edits the value under the cursor, `A` adds an
-attribute, `N` edits the note, and `→` unfolds the table under the cursor,
-where `e` on the empty row adds one. On the list of samples, `N` makes a new
-sample, `t` tags the samples `Space` put in the basket, or renames a tag,
-`old=new`, `R` renames a sample and `D` removes one. Each change is shown, and `y` writes
-it; `u` takes back the last change written ([work in the terminal
-interface](terminal-interface.md), [the TUI's keys](../reference/tui.md)).
+On a sample's screen, `e` enters the typing mode, where what you type
+replaces the cell under the cursor, as in a spreadsheet: a value with its
+uncertainty, `12.6 +- 0.02`, an attribute's name or value, a table's cell; the
+arrows go from cell to cell and `Esc` leaves. `i` opens a value's card: what
+it reads and what reads it, each typed in there too. `A` adds an attribute, `N` edits
+the note, and `→` unfolds the table under the cursor, where the empty row
+adds one. The list of samples is typed in the same way, a column for several
+samples at once. There, `N` makes a new sample, `t` tags the samples `Space`
+put in the basket, or renames a tag, `old=new`, `R` renames a sample and `D`
+removes one. Nothing is written at once: every change waits, shown as it will
+be, until `w` writes them all, one change of the history; `u` takes back the
+last change waiting ([work in the terminal interface](terminal-interface.md),
+[the TUI's keys](../reference/tui.md)).
 
 ## From Python
 

@@ -304,7 +304,15 @@ fn spawn(
     };
     let mut command = Command::new(python);
     command
+        // What waits to be written is what the script reads.
+        .env(
+            crate::format::stage::STAGE_GIVEN,
+            crate::format::stage::given_for(&request.samples),
+        )
         .env("PYTHONDONTWRITEBYTECODE", "1")
+        // What Python reads and prints is UTF-8, as it is read here: on
+        // Windows it took its code page, and "Thèse" came back garbled.
+        .env("PYTHONIOENCODING", "utf-8")
         .env(REQUEST_VARIABLE, &asked)
         // Its warnings in the command line's colours, where its stderr is.
         .envs(crate::presentation::terminal_rendering::child_colours())

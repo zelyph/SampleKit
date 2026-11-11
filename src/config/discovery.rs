@@ -308,13 +308,35 @@ fn scan(
     };
     let mut candidates = Vec::new();
     walk(root, offset, rules, own, &mut candidates, &mut collection)?;
+    // What waits to be written counts: a sample made is found before its
+    // file is, one removed is no longer.
+    if crate::format::stage::staging(root) {
+        candidates.retain(|candidate| crate::format::stage::exists(candidate));
+        for made in crate::format::stage::made_under(root) {
+            if made.extension().is_some_and(|extension| extension == "md")
+                && matches_below(&made, root, offset, rules)
+                && !candidates.contains(&made)
+            {
+                candidates.push(made);
+            }
+        }
+    }
     // Explicit sort, never filesystem order: that varies by platform, by
     // filesystem and by the history of a directory, and a collection reporting
     // its samples in a different order on two machines makes an export
     // irreproducible.
     candidates.sort();
-    for candidate in candidates {
-        admit(&candidate, &mut collection);
+    // Each candidate classified on every core at once, kept in their order.
+    let verdicts =
+        crate::format::document::in_parallel(&candidates, |candidate| classify(candidate));
+    for (candidate, verdict) in candidates.into_iter().zip(verdicts) {
+        match verdict {
+            Ok(()) => collection.paths.push(candidate),
+            Err(reason) => collection.skipped.push(Skipped {
+                path: candidate,
+                reason,
+            }),
+        }
     }
     note_configurations(root, &mut collection);
     Ok(collection)
@@ -365,7 +387,7 @@ pub fn classify(path: &Path) -> Result<(), SkipReason> {
     if std::fs::metadata(path).is_ok_and(|meta| !meta.is_file()) {
         return Err(SkipReason::NotAFile);
     }
-    let text = std::fs::read_to_string(path).map_err(|error| {
+    let text = crate::format::document::read_text(path).map_err(|error| {
         if error.kind() == std::io::ErrorKind::InvalidData {
             SkipReason::Malformed {
                 message: NOT_TEXT.to_string(),
@@ -404,6 +426,41 @@ pub fn classify(path: &Path) -> Result<(), SkipReason> {
             message: "the frontmatter is never closed".to_string(),
         });
     }
+    verdict_of(frontmatter)
+}
+
+/// The verdicts on the frontmatters read already, by their text: a terminal
+/// interface reads its project again after each write, and four thousand
+/// files classified again were a pause after each. Kept by the text, never by
+/// a file's time, which a USB key keeps to two seconds.
+type Verdicts = std::sync::Mutex<std::collections::HashMap<String, Result<(), SkipReason>>>;
+
+/// Verdicts kept before the store is emptied: the frontmatters of several
+/// projects of thousands of samples.
+const VERDICTS_KEPT: usize = 50_000;
+
+fn verdict_of(frontmatter: String) -> Result<(), SkipReason> {
+    static VERDICTS: std::sync::OnceLock<Verdicts> = std::sync::OnceLock::new();
+    let verdicts = VERDICTS.get_or_init(Default::default);
+    if let Some(verdict) = verdicts
+        .lock()
+        .ok()
+        .and_then(|held| held.get(&frontmatter).cloned())
+    {
+        return verdict;
+    }
+    let verdict = judge(&frontmatter);
+    if let Ok(mut held) = verdicts.lock() {
+        if held.len() >= VERDICTS_KEPT {
+            held.clear();
+        }
+        held.insert(frontmatter, verdict.clone());
+    }
+    verdict
+}
+
+/// A closed frontmatter's verdict: its version, read alone.
+fn judge(frontmatter: &str) -> Result<(), SkipReason> {
     // Only the version is read. A sample with an unreadable property or a table
     // that violates its own declaration **is discovered**, and fails where it
     // is used — dropping it here would remove a real sample from a query for a
@@ -414,7 +471,7 @@ pub fn classify(path: &Path) -> Result<(), SkipReason> {
     }
     // Refused before the parser reads it, which took a time growing as its
     // square over brackets nested deep.
-    if crate::format::document::nested_too_deep(&frontmatter).is_some() {
+    if crate::format::document::nested_too_deep(frontmatter).is_some() {
         return Err(SkipReason::Malformed {
             message: format!(
                 "brackets or braces nest deeper than {}, as no sample's fields do",
@@ -424,14 +481,14 @@ pub fn classify(path: &Path) -> Result<(), SkipReason> {
     }
     // A link written unquoted, said where it is: YAML stopped at it as a
     // key it did not find.
-    if let Some((line, said)) = crate::format::document::unquoted_link_said(&frontmatter) {
+    if let Some((line, said)) = crate::format::document::unquoted_link_said(frontmatter) {
         return Err(SkipReason::Malformed {
             message: format!("line {line}: {said}"),
         });
     }
     let parsed: JustTheVersion =
-        serde_yaml_ng::from_str(&frontmatter).map_err(|error| SkipReason::Malformed {
-            message: crate::format::document::frontmatter_refused(&frontmatter, &error.to_string()),
+        serde_yaml_ng::from_str(frontmatter).map_err(|error| SkipReason::Malformed {
+            message: crate::format::document::frontmatter_refused(frontmatter, &error.to_string()),
         })?;
     match parsed.schema_version {
         // No sample, as a README with a frontmatter is none.
@@ -886,6 +943,9 @@ fn walk(
     let scanned = dunce::canonicalize(at).unwrap_or_else(|_| at.to_path_buf());
     // The projects inside the scan, each with its rules: loaded once.
     let mut inner: Vec<(PathBuf, CollectionRules)> = Vec::new();
+    // The configuration each folder's files answer to.
+    let mut found_in: std::collections::HashMap<PathBuf, Option<PathBuf>> =
+        std::collections::HashMap::new();
     // By `walkdir`. **A folder linked into the project is the project's**:
     // data on another disk, linked in, is read, computed and written under
     // the path the link gives it. Each folder is entered once, by what it
@@ -955,7 +1015,17 @@ fn walk(
         // The project the file is a sample of, where it is another than the
         // rules' own and lies inside the scan.
         let project = own.as_ref().and_then(|own| {
-            let folder = config::find(&path)?.parent()?.to_path_buf();
+            // Searched once per folder: upward from each file, the search
+            // was the same for every file of a folder. A file that is a link
+            // is searched for itself, from wherever it leads.
+            let found = match path.parent().filter(|_| !entry.path_is_symlink()) {
+                Some(folder) => found_in
+                    .entry(folder.to_path_buf())
+                    .or_insert_with(|| config::find(&path))
+                    .clone(),
+                None => config::find(&path),
+            };
+            let folder = found?.parent()?.to_path_buf();
             (Some(&folder) != own.as_ref() && folder.starts_with(&scanned) && folder != scanned)
                 .then_some(folder)
         });
@@ -1126,6 +1196,8 @@ pub enum Destination {
     Sample(PathBuf),
     /// Any other file, or a folder: opened with the system's application.
     File(PathBuf),
+    /// A PDF at a page, `#page=12`: opened where it can open there.
+    Page { file: PathBuf, page: u32 },
     /// A web page.
     Address(String),
     /// Nothing: no file at that path, or no sample answering to the name —
@@ -1150,27 +1222,30 @@ pub fn linkable(
     }
     .map(|found| found.paths)
     .unwrap_or_default();
+    // Each file known by what it resolves to, once: searched along the list,
+    // a file was resolved again for each it was compared with.
+    let names: std::collections::HashMap<PathBuf, &Option<String>> = known
+        .iter()
+        .map(|(held, name)| (canonical(held), name))
+        .collect();
+    let mut listed = std::collections::HashSet::new();
     let mut samples: Vec<(PathBuf, Option<String>)> = found
         .into_iter()
         .map(|path| {
+            let resolved = canonical(&path);
             // A file not read yet is read for its name alone.
-            let name = match known
-                .iter()
-                .find(|(held, _)| canonical(held) == canonical(&path))
-            {
-                Some((_, name)) => name.clone(),
+            let name = match names.get(&resolved) {
+                Some(name) => (*name).clone(),
                 None => crate::format::document::load_sample(&path)
                     .ok()
                     .and_then(|(sample, _)| sample.name().map(str::to_string)),
             };
+            listed.insert(resolved);
             (path, name)
         })
         .collect();
     for (path, name) in known {
-        if !samples
-            .iter()
-            .any(|(held, _)| canonical(held) == canonical(path))
-        {
+        if listed.insert(canonical(path)) {
             samples.push((path.clone(), name.clone()));
         }
     }
@@ -1178,31 +1253,125 @@ pub fn linkable(
 }
 
 /// Where `link`, held by the sample file `from`, leads: a wikilink to the
-/// sample of `linkable` answering to it, asked only for one; a Markdown path
-/// read from `from`'s folder, a sample where it is a `.md` file that reads as
-/// one.
+/// sample, or the file, of the project answering to it, the project's index
+/// made only for one; a Markdown path read from `from`'s folder, a sample
+/// where it is a `.md` file that reads as one. `known` are the samples read
+/// already, as [`linkable`] takes them.
 pub fn destination(
     link: &crate::core::link::Link,
     from: &Path,
-    linkable: impl FnOnce() -> Vec<(PathBuf, Option<String>)>,
+    config: Option<&ProjectConfig>,
+    known: &[(PathBuf, Option<String>)],
+) -> Destination {
+    destination_in(link, from, || index_of(config, from, known))
+}
+
+/// What a wikilink of the sample `from` may name, indexed: its project's
+/// samples, as [`linkable`] lists them, and its project's other files.
+pub fn index_of(
+    config: Option<&ProjectConfig>,
+    from: &Path,
+    known: &[(PathBuf, Option<String>)],
+) -> crate::core::link::Index {
+    let samples = linkable(config, from, known);
+    let root = match config {
+        Some(config) => config.root().to_path_buf(),
+        None => from.parent().unwrap_or(Path::new(".")).to_path_buf(),
+    };
+    crate::core::link::Index::new(
+        samples
+            .iter()
+            .map(|(path, name)| (path.as_path(), name.as_deref())),
+    )
+    .with_files(project_files(&root))
+}
+
+/// Every file under `root` a project's link may name, a hidden folder and a
+/// virtual environment left out, as the scan leaves them.
+pub fn project_files(root: &Path) -> Vec<PathBuf> {
+    walkdir::WalkDir::new(root)
+        .follow_links(true)
+        .into_iter()
+        .filter_entry(|entry| {
+            entry.depth() == 0
+                || !entry.file_type().is_dir()
+                || !(entry.file_name().to_string_lossy().starts_with('.')
+                    || entry.path().join("pyvenv.cfg").is_file())
+        })
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file())
+        .map(walkdir::DirEntry::into_path)
+        .collect()
+}
+
+thread_local! {
+    /// Each project's other files, by its root, indexed: until the project
+    /// is read again.
+    static FILES: std::cell::RefCell<std::collections::HashMap<PathBuf, std::rc::Rc<crate::core::link::Index>>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Whether `target`, a wikilink of the sample `from`, names a file of its
+/// project that is no sample: what a table shows without a mark. The files
+/// are listed once until the project is read again.
+pub fn names_a_file(from: &Path, target: &str) -> bool {
+    let root = match config::find(from).and_then(|file| file.parent().map(Path::to_path_buf)) {
+        Some(root) => root,
+        None => from.parent().unwrap_or(Path::new(".")).to_path_buf(),
+    };
+    let index = FILES.with(|files| {
+        files
+            .borrow_mut()
+            .entry(root.clone())
+            .or_insert_with(|| {
+                std::rc::Rc::new(
+                    crate::core::link::Index::default().with_files(project_files(&root)),
+                )
+            })
+            .clone()
+    });
+    matches!(index.resolve(target), crate::core::link::Resolved::File(_))
+}
+
+/// The projects' files listed again at the next asking: what each reading of
+/// a project does first.
+pub fn forget_files() {
+    FILES.with(|files| files.borrow_mut().clear());
+}
+
+/// A file at the place its fragment names, where it is a PDF's page.
+fn placed(file: PathBuf, fragment: Option<&String>) -> Destination {
+    let pdf = file
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("pdf"));
+    match fragment.and_then(|fragment| crate::core::link::page_of(fragment)) {
+        Some(page) if pdf => Destination::Page { file, page },
+        _ => Destination::File(file),
+    }
+}
+
+/// [`destination`], the samples a wikilink may name given as their index:
+/// made once for every link of a project.
+pub fn destination_in<Samples: AsRef<crate::core::link::Index>>(
+    link: &crate::core::link::Link,
+    from: &Path,
+    linkable: impl FnOnce() -> Samples,
 ) -> Destination {
     use crate::core::link::{self, Link, Resolved};
     match link {
         Link::Url { address, .. } => Destination::Address(address.clone()),
-        Link::Sample { target, .. } => {
-            let samples = linkable();
-            match link::resolve(
-                target,
-                samples
-                    .iter()
-                    .map(|(path, name)| (path.as_path(), name.as_deref())),
-            ) {
-                Resolved::One(path) => Destination::Sample(path),
-                Resolved::Nowhere => Destination::Nowhere(target.clone()),
-                Resolved::Several(paths) => Destination::Several(paths),
-            }
-        }
-        Link::Path { path, .. } => {
+        Link::Sample {
+            target, fragment, ..
+        } => match linkable().as_ref().resolve(target) {
+            Resolved::One(path) => Destination::Sample(path),
+            Resolved::File(file) => placed(
+                dunce::canonicalize(&file).unwrap_or(file),
+                fragment.as_ref(),
+            ),
+            Resolved::Nowhere => Destination::Nowhere(target.clone()),
+            Resolved::Several(paths) => Destination::Several(paths),
+        },
+        Link::Path { path, fragment, .. } => {
             let folder = from.parent().unwrap_or(Path::new("."));
             let found = link::path_from(folder, path);
             if !found.exists() {
@@ -1220,7 +1389,7 @@ pub fn destination(
             if found.is_file() && markdown && crate::format::document::load_sample(&found).is_ok() {
                 Destination::Sample(found)
             } else {
-                Destination::File(found)
+                placed(found, fragment.as_ref())
             }
         }
     }

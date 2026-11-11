@@ -19,16 +19,7 @@ impl Scratch {
             .join(format!("samplekit-workbench-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&path);
         fs::create_dir_all(&path).unwrap();
-        // The workbench remembers each directory in a file of its own, so one
-        // state directory serves every test: set once, since the tests run
-        // together and a variable set per test raced.
-        static STATE: std::sync::Once = std::sync::Once::new();
-        STATE.call_once(|| {
-            let state = dunce::canonicalize(std::env::temp_dir())
-                .unwrap()
-                .join(format!("samplekit-workbench-state-{}", std::process::id()));
-            unsafe { std::env::set_var("SAMPLEKIT_STATE_DIR", &state) };
-        });
+        isolate();
         fs::write(
             path.join(".samplekitrc"),
             "schema_version = 1\n[collection]\nfiles = [\"images\"]\n\
@@ -55,6 +46,24 @@ impl Scratch {
     }
 }
 
+/// The machine's own state and configuration kept out of the tests: the
+/// workbench remembers each directory in a file of its own, so one state
+/// directory serves every test, and one's own themes are read from an empty
+/// configuration folder. Set once, since the tests run together and a
+/// variable set per test raced.
+pub fn isolate() {
+    static STATE: std::sync::Once = std::sync::Once::new();
+    STATE.call_once(|| {
+        let scratch = dunce::canonicalize(std::env::temp_dir()).unwrap();
+        let state = scratch.join(format!("samplekit-workbench-state-{}", std::process::id()));
+        let config = scratch.join(format!("samplekit-workbench-config-{}", std::process::id()));
+        unsafe {
+            std::env::set_var("SAMPLEKIT_STATE_DIR", &state);
+            std::env::set_var("SAMPLEKIT_CONFIG_DIR", &config);
+        }
+    });
+}
+
 impl Drop for Scratch {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.0);
@@ -73,6 +82,22 @@ pub fn keys(workbench: &mut Workbench, written: &str) -> Vec<Effect> {
             })
         })
         .collect()
+}
+
+/// The changes waiting written: `w`, then `y` on its preview of them all.
+pub fn write_waiting(workbench: &mut Workbench) {
+    keys(workbench, "w");
+    assert!(
+        matches!(workbench.mode, samplekit::tui::model::Mode::Confirm { .. }),
+        "w previews what waits: {}",
+        workbench.message
+    );
+    keys(workbench, "y");
+}
+
+/// What a file reads as for the workbench: its change waiting, or the disk's.
+pub fn read_waiting(path: &std::path::Path) -> String {
+    samplekit::format::document::read_text(path).unwrap()
 }
 
 pub fn screen(workbench: &mut Workbench) -> String {
@@ -216,4 +241,12 @@ pub fn pointer(kind: crossterm::event::MouseEventKind, x: u16, y: u16) -> Key {
         row: y,
         modifiers: crossterm::event::KeyModifiers::NONE,
     })
+}
+
+/// The theme a workbench opens in where nothing chooses one: SampleKit's
+/// own, dark or light as this terminal's `COLORFGBG` says.
+pub fn default_theme() -> samplekit::tui::theme::Theme {
+    samplekit::tui::theme::Themes::read(None)
+        .theme(samplekit::tui::theme::terminal_default(), None)
+        .unwrap()
 }

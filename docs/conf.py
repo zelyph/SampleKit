@@ -50,6 +50,8 @@ root_doc = "index"
 exclude_patterns = [
     ".obsidian",
     "_build",
+    # Files to download, shown by the guides: sample.md is a sample, not a page.
+    "templates",
 ]
 
 # Written as typed: `--write` outside a code span is an option, never an
@@ -69,10 +71,15 @@ napoleon_numpy_docstring = True
 html_theme = "furo"
 html_title = f"SampleKit {release}"
 templates_path = ["_templates"]
-html_static_path = ["_static"]
+# The logo is the TUI's own drawing of its name (docs/images/), on its dark
+# background, copied beside the static files for Furo to show on either side.
+html_static_path = ["_static", "images/logo.svg"]
 html_css_files = ["versions.css", "samplekit.css"]
-# The TUI's cyan as the brand colour; code coloured as on GitHub.
+# The TUI's accent as the brand colour, samplekit-light's and samplekit-dark's;
+# code coloured as on GitHub.
 html_theme_options = {
+    "light_logo": "logo.svg",
+    "dark_logo": "logo.svg",
     "light_css_variables": {
         "color-brand-primary": "#0e7490",
         "color-brand-content": "#0e7490",

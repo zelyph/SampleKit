@@ -17,18 +17,17 @@ fn a_value_is_changed_after_its_preview() {
     let screen_text = screen(&mut workbench);
     assert!(screen_text.contains("diameter"), "{screen_text}");
     assert!(screen_text.contains("A note on C1"), "{screen_text}");
-    // On diameter: e, a new number, Enter previews, y writes.
+    // On diameter: e, a new number typed over its cell, Enter keeps it
+    // waiting; w previews what waits, y writes it.
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "12.5\n");
+    keys(&mut workbench, "e12.5\n\u{1b}");
+    assert!(!workbench.typing, "{}", workbench.message);
+    keys(&mut workbench, "w");
     let Mode::Confirm { lines, .. } = &workbench.mode else {
         panic!("a preview: {}", workbench.message);
     };
     assert!(
-        lines[0].contains("12  →  12.5") || lines[0].contains("→  12.5"),
+        lines.iter().any(|line| line.contains("→  12.5")),
         "{lines:?}"
     );
     keys(&mut workbench, "y");
@@ -255,7 +254,8 @@ fn what_an_action_says_is_said_inside_its_window() {
 #[test]
 fn a_state_too_long_for_the_pane_is_its_mark() {
     // At 80 columns the state was cut off the line: a stale value read as
-    // current. (Read without a model, this value's record says edited.) Where the words do not fit, the table's mark stands for them.
+    // current. (Read without a model, this value's record says edited.) The
+    // mark stands for it, at every width: its words are the card's.
     let scratch = Scratch::new("state-mark");
     fs::write(
         scratch.0.join("S.md"),
@@ -272,7 +272,7 @@ fn a_state_too_long_for_the_pane_is_its_mark() {
         "{narrow}"
     );
     let wide = drawn_at(&mut workbench, 200);
-    assert!(wide.contains("edited"), "{wide}");
+    assert!(wide.contains('✎') && !wide.contains("edite"), "{wide}");
 }
 
 #[test]
@@ -285,6 +285,7 @@ fn a_confirmation_says_what_y_does() {
     assert!(removing.contains("y delete"), "{removing}");
     assert!(removing.contains("to delete:"), "{removing}");
     keys(&mut workbench, "y");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "u");
     let undoing = screen(&mut workbench);
     assert!(undoing.contains("y restore"), "{undoing}");
@@ -497,27 +498,9 @@ fn a_narrow_summary_leaves_columns_out_whole() {
 }
 
 #[test]
-fn a_long_state_is_cut_not_every_state_dropped() {
-    // Where one state did not fit, every state went, `current` included: at
-    // 120 columns none was read just when a value was outdated.
-    let scratch = rich("long-state");
-    let mut workbench = Workbench::open(&scratch.0).unwrap();
-    open_named(&mut workbench, "D1");
-    let drawn = drawn_sized(&mut workbench, 90, 20).join("\n");
-    let diameter = drawn
-        .lines()
-        .find(|line| line.contains("diameter"))
-        .unwrap_or_default();
-    assert!(
-        diameter.contains("no stat") && diameter.contains('…'),
-        "{drawn}"
-    );
-}
-
-#[test]
 fn what_a_small_screen_cuts_is_marked() {
-    // At 40×16 the quantity's window lost its advice, and the configuration
-    // its values and its keys, all without a sign.
+    // At 40×16 a value's window lost its advice, and the configuration its
+    // values and its keys, all without a sign.
     let scratch = rich("small-cut");
     let rc = fs::read_to_string(scratch.0.join(".samplekitrc")).unwrap();
     fs::write(
@@ -531,10 +514,15 @@ fn what_a_small_screen_cuts_is_marked() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "D1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
+    // A value's card: the state it cannot hold, `no statistic`, cut.
+    keys(&mut workbench, "i");
     let drawn = drawn_sized(&mut workbench, 40, 16).join("\n");
-    assert!(drawn.contains('…'), "{drawn}");
-    keys(&mut workbench, "\u{1b}\u{1b}\u{1b}P\n");
+    let state = drawn
+        .lines()
+        .find(|line| line.contains("diameter  9.0"))
+        .unwrap_or_default();
+    assert!(state.contains("· no s") && state.contains('…'), "{drawn}");
+    keys(&mut workbench, "\u{1b}\u{1b}P\n");
     let drawn = drawn_sized(&mut workbench, 40, 16).join("\n");
     let exclude = drawn
         .lines()
@@ -625,15 +613,13 @@ fn a_short_confirmation_does_not_scroll_and_d_keeps_the_cursor_on_a_row() {
     let scratch = rich("bounds");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    workbench.key(Key::Backspace);
-    keys(&mut workbench, "9\n");
+    // The sample's removal, asked first: a short question.
+    keys(&mut workbench, "D");
     assert!(matches!(workbench.mode, Mode::Confirm { .. }));
     keys(&mut workbench, "jjjjj");
     screen(&mut workbench);
     assert_eq!(workbench.confirm_scroll, 0);
-    keys(&mut workbench, "n\u{1b}\u{1b}");
+    keys(&mut workbench, "n\u{1b}");
     // The last row of a section removed: the cursor on the one before.
     keys(&mut workbench, "P");
     workbench.key(Key::Right);
@@ -816,6 +802,10 @@ fn the_title_bar_is_on_the_terminals_background_its_name_in_the_accent() {
     use samplekit::tui::model::RunStatus;
     let scratch = Scratch::new("titlebar");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
+    // The terminal's own colours, which `terminal` leaves it.
+    workbench.theme = samplekit::tui::theme::Themes::read(None)
+        .theme("terminal", None)
+        .unwrap();
     workbench.run = Some(RunStatus {
         done: 1,
         total: 2,
@@ -855,12 +845,8 @@ fn the_history_shows_what_a_snapshot_changed_beside_it() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     keys(&mut workbench, "\n");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "12.5\ny");
-    workbench.key(Key::Esc);
+    keys(&mut workbench, "e12.5\n\u{1b}");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "H");
     let drawn = screen(&mut workbench);
     assert!(drawn.contains("its history"), "{drawn}");
@@ -912,24 +898,6 @@ fn the_help_lies_within_the_main_frame() {
         "{}",
         drawn.join("\n")
     );
-}
-
-#[test]
-fn the_quantitys_window_names_its_unit() {
-    let scratch = Scratch::new("quantity-unit");
-    let mut workbench = Workbench::open(&scratch.0).unwrap();
-    open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    let drawn = screen(&mut workbench);
-    // The line typed says it, over the window whose column says it too.
-    assert!(
-        drawn.contains("diameter in g — the number alone"),
-        "{drawn}"
-    );
-    keys(&mut workbench, "\u{1b}");
-    let drawn = screen(&mut workbench);
-    assert!(drawn.contains("value [g]"), "{drawn}");
 }
 
 #[test]
@@ -1050,12 +1018,8 @@ fn the_history_wraps_and_its_hints_read_from_their_start() {
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "12.5\ny");
-    workbench.key(Key::Esc);
+    keys(&mut workbench, "e12.5\n\u{1b}");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "H");
     let narrow = drawn_sized(&mut workbench, 40, 12).join("\n");
     assert!(!narrow.contains("└ll"), "{narrow}");
@@ -1249,11 +1213,7 @@ fn several_projects_are_headed_each_by_its_title() {
         .unwrap();
     let buffer = terminal.backend().buffer().clone();
     let marked: Vec<String> = (0..20)
-        .filter(|y| {
-            buffer[(10, *y)]
-                .modifier
-                .contains(ratatui::style::Modifier::REVERSED)
-        })
+        .filter(|y| buffer[(10, *y)].bg == workbench.theme.line)
         .map(|y| (0..100).map(|x| buffer[(x, y)].symbol()).collect())
         .collect();
     assert_eq!(marked.len(), 1, "{marked:?}");
@@ -1418,22 +1378,7 @@ fn prose_is_shown_at_a_reading_width() {
     assert!(note <= 84, "{note}\n{}", lines.join("\n"));
     // The values take the rest.
     assert!(at > note, "{at}\n{}", lines.join("\n"));
-    // Where a value came from.
-    workbench.key(Key::Esc);
-    open_named(&mut workbench, "C1");
-    move_to(&mut workbench, "diameter");
-    // Its window, then where it came from.
-    keys(&mut workbench, "\n\n");
-    let Mode::Panel { title, .. } = &workbench.mode else {
-        panic!("where the value came from");
-    };
-    let title = format!(" {title} ");
-    let lines = drawn_sized(&mut workbench, 300, 50);
-    let (explained, _) = framed_width(&lines, &title);
-    assert!(explained <= 84, "{explained}\n{}", lines.join("\n"));
     // A list keeps its width.
-    workbench.key(Key::Esc);
-    workbench.key(Key::Esc);
     workbench.key(Key::Esc);
     keys(&mut workbench, "s");
     let lines = drawn_sized(&mut workbench, 300, 50);
@@ -1443,12 +1388,8 @@ fn prose_is_shown_at_a_reading_width() {
     workbench.key(Key::Esc);
     open_named(&mut workbench, "C1");
     move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "e");
-    for _ in 0..8 {
-        workbench.key(Key::Backspace);
-    }
-    keys(&mut workbench, "12.5\ny");
-    workbench.key(Key::Esc);
+    keys(&mut workbench, "e12.5\n\u{1b}");
+    write_waiting(&mut workbench);
     keys(&mut workbench, "H");
     let lines = drawn_sized(&mut workbench, 300, 50);
     let (changed, at) = framed_width(&lines, " what it changed ");
@@ -1538,7 +1479,7 @@ fn found(buffer: &ratatui::buffer::Buffer, needle: &str) -> (u16, u16) {
 fn drawn_as_key(buffer: &ratatui::buffer::Buffer, needle: &str, offset: u16) -> bool {
     let (x, y) = found(buffer, needle);
     let cell = &buffer[(x + offset, y)];
-    let key = samplekit::tui::theme::Theme::default().key;
+    let key = default_theme().key;
     cell.fg == key && cell.modifier.contains(ratatui::style::Modifier::BOLD)
 }
 
@@ -1550,10 +1491,7 @@ fn the_foots_keys_are_coloured_and_what_they_do_muted() {
     assert!(drawn_as_key(&buffer, "/ filter", 0));
     assert!(!drawn_as_key(&buffer, "/ filter", 2));
     let (x, y) = found(&buffer, "/ filter");
-    assert_eq!(
-        buffer[(x + 2, y)].fg,
-        samplekit::tui::theme::Theme::default().muted
-    );
+    assert_eq!(buffer[(x + 2, y)].fg, default_theme().muted);
     assert!(drawn_as_key(&buffer, "N new", 0));
     assert!(drawn_as_key(&buffer, "? all keys", 0));
     // A frame's keys too: a sample's `e edit`.
@@ -1620,10 +1558,7 @@ fn a_message_and_the_setup_colour_the_keys_they_name() {
     assert!(drawn_as_key(&buffer, "w writes", 0));
     assert!(drawn_as_key(&buffer, "r lets", 0));
     let (x, y) = found(&buffer, "changes not written");
-    assert_eq!(
-        buffer[(x, y)].fg,
-        samplekit::tui::theme::Theme::default().message
-    );
+    assert_eq!(buffer[(x, y)].fg, default_theme().message);
     // The setup's lines of keys.
     let root = dunce::canonicalize(std::env::temp_dir())
         .unwrap()
@@ -1720,11 +1655,10 @@ fn a_window_stays_inside_the_main_frame() {
                 "{typed} at {width}×{height}: {top}..{bottom} in {frame_top}..{frame_bottom}"
             );
         }
-        // Where a value came from, and a quantity's window, over a sample.
-        // Its window first, then where it came from.
+        // A value's card, and a list's window, over a sample.
         for (typed, title) in [
-            ("\njjj\n\n", "┌ diameter — where"),
-            ("\njjj\n", "┌ diameter "),
+            ("\njjji", "┌ diameter · its card"),
+            ("\njj\n", "┌ alloy · "),
         ] {
             let mut workbench = Workbench::open(&scratch.0).unwrap();
             open_named(&mut workbench, "C1");
@@ -1912,38 +1846,43 @@ fn a_tables_unit_heads_its_column_and_a_list_window_is_headed() {
     let drawn = screen(&mut workbench);
     assert!(drawn.contains("load [N]"), "{drawn}");
     assert!(!drawn.contains("3.5 N"), "{drawn}");
-    // The readings' window: a column headed `reading [g]`, titled as a table.
+    // An attribute's window: a column headed `value`, titled as a table.
     workbench.key(Key::Esc);
     workbench.key(Key::Home);
-    move_to(&mut workbench, "diameter");
-    keys(&mut workbench, "\nlle");
+    move_to(&mut workbench, "alloy");
+    keys(&mut workbench, "\n");
     let drawn = screen(&mut workbench);
-    assert!(drawn.contains("reading [g]"), "{drawn}");
-    assert!(drawn.contains("diameter · readings · 2"), "{drawn}");
+    assert!(drawn.contains("│ value "), "{drawn}");
+    assert!(drawn.contains("alloy · one value"), "{drawn}");
     // A line typed there is titled by its address.
     keys(&mut workbench, "e");
     let drawn = screen(&mut workbench);
-    assert!(drawn.contains("diameter.readings[1] ="), "{drawn}");
+    assert!(drawn.contains("alloy[1] ="), "{drawn}");
 }
 
 #[test]
 fn a_tables_window_is_as_large_as_it_needs() {
-    // A table's window took nearly the whole screen, where a value's took
-    // half: a table of two short columns is no larger than a value's window.
+    // A table's window took nearly the whole screen: a table of two short
+    // rows is no taller than a list's window of one item.
     let scratch = rich("table-size");
     let mut workbench = Workbench::open(&scratch.0).unwrap();
     open_named(&mut workbench, "D1");
-    move_to(&mut workbench, "diameter");
+    move_to(&mut workbench, "alloy");
     keys(&mut workbench, "\n");
     let buffer = buffer_of(&mut workbench, 120, 40);
-    let (top, bottom, _, _) = window_in_frame(&buffer, "┌ diameter ");
-    let value_height = bottom - top;
+    let (top, bottom, frame_top, frame_bottom) = window_in_frame(&buffer, "┌ alloy ");
+    let list_height = bottom - top;
+    assert!(
+        list_height < (frame_bottom - frame_top) / 2,
+        "{list_height}"
+    );
     keys(&mut workbench, "\u{1b}");
+    workbench.key(Key::Home);
     move_to(&mut workbench, "runs");
     workbench.key(Key::Right);
     let buffer = buffer_of(&mut workbench, 120, 40);
     let (top, bottom, _, _) = window_in_frame(&buffer, "┌ runs");
-    assert_eq!(bottom - top, value_height);
+    assert_eq!(bottom - top, list_height);
 }
 
 #[test]
@@ -2000,4 +1939,1960 @@ fn a_menu_item_too_long_for_its_window_is_cut_with_its_mark() {
         .expect("the item drawn");
     assert!(row.contains('…'), "{drawn}");
     assert!(!row.contains(&long), "{drawn}");
+}
+
+// ------------------------------------------------------------ typing and what waits
+
+/// The screen drawn, and its buffer, at `width` by 24.
+fn drawn_buffer(workbench: &mut Workbench, width: u16) -> ratatui::buffer::Buffer {
+    let mut terminal = ratatui::Terminal::new(TestBackend::new(width, 24)).unwrap();
+    terminal
+        .draw(|frame| samplekit::tui::view::draw(frame, workbench))
+        .unwrap();
+    terminal.backend().buffer().clone()
+}
+
+fn row_of(buffer: &ratatui::buffer::Buffer, y: u16) -> String {
+    (0..buffer.area.width)
+        .map(|x| buffer[(x, y)].symbol())
+        .collect()
+}
+
+fn line_holding(buffer: &ratatui::buffer::Buffer, text: &str) -> u16 {
+    (0..buffer.area.height)
+        .find(|y| row_of(buffer, *y).contains(text))
+        .unwrap_or_else(|| panic!("no line holds {text}"))
+}
+
+#[test]
+fn a_cell_typed_in_never_widens_its_text_scrolling_inside() {
+    let scratch = Scratch::new("view-typing-wide");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    move_to(&mut workbench, "diameter");
+    let before = drawn_buffer(&mut workbench, 100);
+    let y = line_holding(&before, "diameter");
+    let pane_edge = |buffer: &ratatui::buffer::Buffer| {
+        (1..buffer.area.width)
+            .find(|x| buffer[(*x, y)].symbol() == "│" && buffer[(*x + 1, y)].symbol() == "│")
+    };
+    let edge = pane_edge(&before);
+    keys(&mut workbench, "e");
+    keys(&mut workbench, &"9".repeat(80));
+    let typing = drawn_buffer(&mut workbench, 100);
+    let line = row_of(&typing, y);
+    assert_eq!(
+        pane_edge(&typing),
+        edge,
+        "the panes stay where they were: {line}"
+    );
+    assert!(line.contains("diameter"), "the name stays: {line}");
+    assert!(line.matches('9').count() < 80, "it scrolls inside: {line}");
+}
+
+#[test]
+fn the_status_line_ends_with_the_value_under_the_cursor_unrounded() {
+    let scratch = rich("view-raw");
+    let c1 = scratch.0.join("C1.md");
+    fs::write(
+        &c1,
+        fs::read_to_string(&c1)
+            .unwrap()
+            .replace("v: 12.0", "v: 12.345678"),
+    )
+    .unwrap();
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    move_to(&mut workbench, "diameter");
+    let shown = drawn_buffer(&mut workbench, 120);
+    let status = row_of(&shown, 22);
+    assert!(
+        status.trim_end().ends_with("diameter = 12.345678 ± 0.1 g"),
+        "{status}"
+    );
+    keys(&mut workbench, "\u{1b}");
+    open_named(&mut workbench, "D1");
+    move_to(&mut workbench, "runs");
+    workbench.key(Key::Right);
+    workbench.key(Key::Right);
+    let status = row_of(&drawn_buffer(&mut workbench, 120), 22);
+    assert!(status.trim_end().ends_with("= 3.5"), "{status}");
+    assert!(status.contains("runs.load"), "{status}");
+    keys(&mut workbench, "\u{1b}\u{1b}");
+    open_named(&mut workbench, "C1");
+    move_to(&mut workbench, "alloy");
+    let status = row_of(&drawn_buffer(&mut workbench, 120), 22);
+    assert!(!status.contains(" = "), "{status}");
+}
+
+#[test]
+fn the_cursors_line_is_lit_across_the_pane_and_the_typing_mode_said() {
+    let scratch = Scratch::new("view-lit");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    move_to(&mut workbench, "tags");
+    let shown = drawn_buffer(&mut workbench, 100);
+    let y = line_holding(&shown, "tags");
+    let edge = (1..shown.area.width)
+        .find(|x| shown[(*x, y)].symbol() == "│" && shown[(*x + 1, y)].symbol() == "│")
+        .unwrap();
+    assert!(
+        shown[(edge - 2, y)].bg == workbench.theme.line,
+        "the pane's last column is lit"
+    );
+    workbench.key(Key::Home);
+    move_to(&mut workbench, "alloy");
+    keys(&mut workbench, "e");
+    let typing = drawn_buffer(&mut workbench, 100);
+    assert!(row_of(&typing, 22).contains("TYPING") || row_of(&typing, 23).contains("TYPING"));
+    let y = line_holding(&typing, "cobalt");
+    let x = (0..typing.area.width)
+        .find(|x| typing[(*x, y)].symbol() == "c" && typing[(*x + 1, y)].symbol() == "o")
+        .unwrap();
+    assert!(
+        typing[(x, y)]
+            .modifier
+            .contains(ratatui::style::Modifier::REVERSED),
+        "the cell under the cursor stands out: {}",
+        row_of(&typing, y)
+    );
+    // Its line on the `line` colour, not reversed: the cell is what stands out.
+    let edge = (1..typing.area.width)
+        .find(|x| typing[(*x, y)].symbol() == "│" && typing[(*x + 1, y)].symbol() == "│")
+        .unwrap();
+    assert_eq!(typing[(edge - 2, y)].bg, workbench.theme.line);
+    assert!(
+        !typing[(edge - 2, y)]
+            .modifier
+            .contains(ratatui::style::Modifier::REVERSED)
+    );
+}
+
+#[test]
+fn a_value_without_uncertainty_shows_its_place() {
+    let scratch = rich("view-place");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "D1");
+    let shown = drawn_buffer(&mut workbench, 100);
+    let line = row_of(&shown, line_holding(&shown, "diameter"));
+    assert!(line.contains("9.0 ± — g"), "{line}");
+}
+
+#[test]
+fn what_waits_is_marked_and_counted() {
+    let scratch = Scratch::new("view-waits");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    open_named(&mut workbench, "C1");
+    move_to(&mut workbench, "alloy");
+    keys(&mut workbench, "enickel\n\u{1b}");
+    let shown = drawn_buffer(&mut workbench, 100);
+    let y = line_holding(&shown, "nickel");
+    let x = (0..shown.area.width)
+        .find(|x| shown[(*x, y)].symbol() == "n" && shown[(*x + 1, y)].symbol() == "i")
+        .unwrap();
+    assert!(
+        shown[(x, y)]
+            .modifier
+            .contains(ratatui::style::Modifier::ITALIC)
+    );
+    assert!(
+        row_of(&shown, 22).contains("1 file not written"),
+        "{}",
+        row_of(&shown, 22)
+    );
+    keys(&mut workbench, "\u{1b}");
+    let listed = drawn_buffer(&mut workbench, 100);
+    let y = line_holding(&listed, "C1");
+    let x = (0..listed.area.width)
+        .find(|x| listed[(*x, y)].symbol() == "C" && listed[(*x + 1, y)].symbol() == "1")
+        .unwrap();
+    assert!(
+        listed[(x, y)]
+            .modifier
+            .contains(ratatui::style::Modifier::ITALIC),
+        "named as changed"
+    );
+}
+
+/// Every cell of a frame drawn under `theme`: its colours.
+fn cells_under(
+    workbench: &mut Workbench,
+    theme: &str,
+) -> Vec<(String, ratatui::style::Color, ratatui::style::Color)> {
+    workbench.theme_chosen = Some(theme.to_string());
+    assert!(workbench.themed().is_empty());
+    let buffer = buffer_of(workbench, 100, 30);
+    buffer
+        .content
+        .iter()
+        .map(|cell| (cell.symbol().to_string(), cell.fg, cell.bg))
+        .collect()
+}
+
+#[test]
+fn a_theme_paints_the_background_and_the_text_of_every_cell() {
+    use ratatui::style::Color;
+    let scratch = Scratch::new("painted");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    let nord = samplekit::tui::theme::Themes::read(None)
+        .theme("nord", None)
+        .unwrap();
+    let left = |cells: &[(String, Color, Color)]| {
+        cells
+            .iter()
+            .filter(|(_, fg, bg)| *fg == Color::Reset || *bg == Color::Reset)
+            .count()
+    };
+    // The collection, a sample and its note, a window over it, the typing
+    // mode's badge.
+    let collection = cells_under(&mut workbench, "nord");
+    assert_eq!(left(&collection), 0);
+    assert!(
+        collection.iter().any(|(symbol, fg, bg)| symbol == "C"
+            && *fg == nord.foreground
+            && *bg == nord.background)
+    );
+    assert!(left(&cells_under(&mut workbench, "terminal")) > 0);
+    keys(&mut workbench, "\n");
+    let sample = cells_under(&mut workbench, "nord");
+    assert_eq!(left(&sample), 0);
+    let note = buffer_of(&mut workbench, 100, 30);
+    let (x, y) = found(&note, "A note on C1.");
+    assert_eq!(
+        (note[(x, y)].fg, note[(x, y)].bg),
+        (nord.foreground, nord.background)
+    );
+    keys(&mut workbench, "D");
+    assert!(matches!(workbench.mode, Mode::Confirm { .. }));
+    assert_eq!(left(&cells_under(&mut workbench, "nord")), 0);
+    assert!(left(&cells_under(&mut workbench, "terminal")) > 0);
+    keys(&mut workbench, "n");
+    move_to(&mut workbench, "alloy");
+    keys(&mut workbench, "e");
+    let typing = cells_under(&mut workbench, "nord");
+    assert_eq!(left(&typing), 0);
+    let badge = buffer_of(&mut workbench, 100, 30);
+    let (x, y) = found(&badge, " TYPING ");
+    assert_eq!(
+        (badge[(x + 1, y)].fg, badge[(x + 1, y)].bg),
+        (nord.background, nord.accent)
+    );
+}
+
+#[test]
+fn the_built_in_themes_are_the_colours_pages_files() {
+    use samplekit::config::project_config::COLOR_ROLES;
+    use samplekit::tui::theme::{BUILT_IN, Theme, Themes, color};
+    assert_eq!(
+        BUILT_IN[..3],
+        ["samplekit-dark", "samplekit-light", "terminal"]
+    );
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut files: Vec<String> = fs::read_dir(root.join("docs/templates/colours"))
+        .unwrap()
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            (path.extension()? == "toml").then(|| path.file_stem()?.to_str().map(String::from))?
+        })
+        .collect();
+    files.sort();
+    let mut built: Vec<String> = BUILT_IN
+        .iter()
+        .filter(|name| **name != "terminal")
+        .map(|name| name.to_string())
+        .collect();
+    built.sort();
+    assert_eq!(
+        files, built,
+        "every theme file is one SampleKit has, and no other"
+    );
+    let themes = Themes::read(None);
+    assert_eq!(themes.names(), BUILT_IN);
+    // Each theme its file, every role in #rrggbb.
+    for name in BUILT_IN.iter().filter(|name| **name != "terminal") {
+        let table: toml::Table =
+            fs::read_to_string(root.join(format!("docs/templates/colours/{name}.toml")))
+                .unwrap()
+                .parse()
+                .unwrap();
+        let colors = table["colors"].as_table().unwrap();
+        assert_eq!(colors.len(), COLOR_ROLES.len(), "{name}");
+        let theme = themes.theme(name, None).unwrap();
+        assert_eq!(
+            theme.accent,
+            color(colors["accent"].as_str().unwrap()),
+            "{name}"
+        );
+        assert_eq!(
+            theme.background,
+            color(colors["background"].as_str().unwrap()),
+            "{name}"
+        );
+        for (role, written) in colors {
+            let written = written.as_str().unwrap();
+            assert!(
+                written.len() == 7 && written.starts_with('#'),
+                "{name}: {role}"
+            );
+        }
+    }
+    // `terminal` is the sixteen colours, painting nothing.
+    assert_eq!(themes.theme("terminal", None).unwrap(), Theme::of(None));
+    assert_eq!(
+        themes.theme("terminal", None).unwrap().background,
+        ratatui::style::Color::Reset
+    );
+}
+
+/// WCAG's relative luminance of a colour drawn in `#rrggbb`.
+fn luminance(color: ratatui::style::Color) -> f64 {
+    let ratatui::style::Color::Rgb(red, green, blue) = color else {
+        panic!("{color:?} is no #rrggbb");
+    };
+    let linear = |channel: u8| {
+        let channel = f64::from(channel) / 255.0;
+        if channel <= 0.03928 {
+            channel / 12.92
+        } else {
+            ((channel + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+}
+
+/// WCAG's contrast between two colours, 1 to 21.
+fn contrast(one: ratatui::style::Color, other: ratatui::style::Color) -> f64 {
+    let (one, other) = (luminance(one), luminance(other));
+    (one.max(other) + 0.05) / (one.min(other) + 0.05)
+}
+
+#[test]
+fn samplekit_themes_meet_their_contrasts() {
+    use samplekit::config::project_config::COLOR_ROLES;
+    use samplekit::tui::theme::{Themes, color};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let themes = Themes::read(None);
+    let mut failing = Vec::new();
+    for name in ["samplekit-dark", "samplekit-light"] {
+        let table: toml::Table =
+            fs::read_to_string(root.join(format!("docs/templates/colours/{name}.toml")))
+                .unwrap()
+                .parse()
+                .unwrap();
+        let colors = table["colors"].as_table().unwrap();
+        let role = |role: &str| color(colors[role].as_str().unwrap());
+        let (background, line) = (role("background"), role("line"));
+        assert_eq!(themes.theme(name, None).unwrap().background, background);
+        println!("{name}: role, colour, against the background, against the line");
+        for (each, _) in COLOR_ROLES {
+            if *each == "background" {
+                continue;
+            }
+            let on_background = contrast(role(each), background);
+            let on_line = contrast(role(each), line);
+            println!(
+                "  {each:<10} {}  {on_background:5.2}  {on_line:5.2}",
+                colors[*each].as_str().unwrap()
+            );
+            // The text and the values read at 7:1, on the cursor's line too;
+            // every other role at 4.5:1, the muted at 3:1.
+            let (wanted, on) = match *each {
+                "foreground" | "value" => (7.0, on_background.min(on_line)),
+                "muted" => (3.0, on_background),
+                "line" => continue,
+                _ => (4.5, on_background),
+            };
+            if on < wanted {
+                failing.push(format!("{name}: {each} at {on:.2}, under {wanted}"));
+            }
+        }
+        // No two roles one colour: where roles meet on a screen, each is told
+        // apart.
+        let mut seen: Vec<(&str, &str)> = Vec::new();
+        for (each, written) in colors {
+            let written = written.as_str().unwrap();
+            if let Some((other, _)) = seen.iter().find(|(_, held)| *held == written) {
+                failing.push(format!("{name}: {each} and {other} are both {written}"));
+            }
+            seen.push((each, written));
+        }
+    }
+    assert!(failing.is_empty(), "{}", failing.join("\n"));
+    // What waits is told by its italics too, whatever the theme.
+    let scratch = Scratch::new("contrast-italics");
+    let mut workbench = Workbench::open(&scratch.0).unwrap();
+    workbench.theme_chosen = Some("samplekit-dark".to_string());
+    workbench.themed();
+    open_named(&mut workbench, "C1");
+    move_to(&mut workbench, "alloy");
+    keys(&mut workbench, "enickel\n\u{1b}");
+    let buffer = buffer_of(&mut workbench, 100, 30);
+    let (x, y) = found(&buffer, "nickel");
+    assert_eq!(buffer[(x, y)].fg, workbench.theme.waiting);
+    assert!(
+        buffer[(x, y)]
+            .modifier
+            .contains(ratatui::style::Modifier::ITALIC)
+    );
+}
+
+#[test]
+fn a_terminal_drawing_sixteen_colours_defaults_to_them() {
+    use samplekit::tui::theme::draws_every_colour;
+    for every in ["truecolor", "24bit", "TrueColor", " truecolor "] {
+        assert!(draws_every_colour(Some(every), false), "{every}");
+    }
+    // Windows Terminal draws every colour and does not say it.
+    assert!(draws_every_colour(None, true));
+    for sixteen in [Some("256color"), Some(""), Some("yes"), None] {
+        assert!(!draws_every_colour(sixteen, false), "{sixteen:?}");
+    }
+}
+
+#[test]
+fn the_default_theme_is_dark_unless_colorfgbg_says_light() {
+    use samplekit::tui::theme::default_theme;
+    for light in ["0;15", "0;7", "12;9", "0;default;15"] {
+        assert_eq!(default_theme(Some(light)), "samplekit-light", "{light}");
+    }
+    for dark in ["15;0", "7;8", "default", ""] {
+        assert_eq!(default_theme(Some(dark)), "samplekit-dark", "{dark}");
+    }
+    assert_eq!(default_theme(None), "samplekit-dark");
+}
+
+#[test]
+fn ones_own_themes_are_read_from_the_themes_folder() {
+    use samplekit::tui::theme::{BUILT_IN, Themes};
+    let scratch = Scratch::new("own-themes");
+    let folder = scratch.0.join("themes");
+    fs::create_dir_all(&folder).unwrap();
+    for (name, text) in [
+        ("mine", "base = \"nord\"\n[colors]\naccent = \"#ff79c6\"\n"),
+        ("plain", "[colors]\nforeground = \"#eeeeee\"\n"),
+        ("above", "base = \"mine\"\n[colors]\nkey = \"#00ff00\"\n"),
+        ("broken", "[colors\n"),
+        ("stray", "base = \"nrod\"\n"),
+        ("nord", "[colors]\naccent = \"#000000\"\n"),
+        ("one", "base = \"two\"\n"),
+        ("two", "base = \"one\"\n"),
+    ] {
+        fs::write(folder.join(format!("{name}.toml")), text).unwrap();
+    }
+    fs::write(folder.join("notes.txt"), "not a theme").unwrap();
+    let themes = Themes::read(Some(&folder));
+    let names = themes.names();
+    assert_eq!(names[..BUILT_IN.len()], *BUILT_IN);
+    assert_eq!(names[BUILT_IN.len()..], ["above", "mine", "plain"]);
+    assert!(themes.own("mine") && !themes.own("nord"));
+    let nord = themes.theme("nord", None).unwrap();
+    let mine = themes.theme("mine", None).unwrap();
+    assert_eq!(mine.accent, ratatui::style::Color::Rgb(0xff, 0x79, 0xc6));
+    assert_eq!(
+        (mine.background, mine.failed),
+        (nord.background, nord.failed)
+    );
+    // A base of one's own is followed.
+    let above = themes.theme("above", None).unwrap();
+    assert_eq!(
+        (above.accent, above.background),
+        (mine.accent, nord.background)
+    );
+    // No base: SampleKit's dark.
+    let dark = themes.theme("samplekit-dark", None).unwrap();
+    let plain = themes.theme("plain", None).unwrap();
+    assert_eq!(plain.background, dark.background);
+    assert_ne!(plain.foreground, dark.foreground);
+    // Each left out, said.
+    let said = themes.said().join("\n");
+    assert_eq!(themes.said().len(), 5, "{said}");
+    for (name, why) in [
+        ("broken.toml", ""),
+        ("stray", "did you mean nord?"),
+        ("nord.toml", "a theme SampleKit has"),
+        ("one", "lead back to it"),
+        ("two", "lead back to it"),
+    ] {
+        assert!(
+            themes
+                .said()
+                .iter()
+                .any(|line| line.contains(name) && line.contains(why)),
+            "{name}: {said}"
+        );
+    }
+    // A folder that is not there is no theme, and nothing to say.
+    assert!(
+        Themes::read(Some(&scratch.0.join("none")))
+            .said()
+            .is_empty()
+    );
+    // The colours page's example, a theme as one writes it.
+    let example = Themes::read(Some(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/templates/themes"),
+    ));
+    assert!(example.said().is_empty(), "{:?}", example.said());
+    let mine = example.theme("my-nord", None).unwrap();
+    assert_eq!(mine.background, nord.background);
+    assert_ne!(mine.accent, nord.accent);
+}
+
+#[test]
+fn the_theme_in_force_is_the_folders_then_the_projects_then_the_last_then_the_default() {
+    use samplekit::tui::theme::{Choices, Themes};
+    let scratch = Scratch::new("theme-order");
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        "schema_version = 1\n[colors]\ntheme = \"dracula\"\naccent = \"#123456\"\n",
+    )
+    .unwrap();
+    let named = samplekit::config::project_config::load(&scratch.0.join(".samplekitrc")).unwrap();
+    fs::write(
+        scratch.0.join(".samplekitrc"),
+        "schema_version = 1\n[colors]\naccent = \"#123456\"\n",
+    )
+    .unwrap();
+    let unnamed = samplekit::config::project_config::load(&scratch.0.join(".samplekitrc")).unwrap();
+    let themes = Themes::read(None);
+    let accent = ratatui::style::Color::Rgb(0x12, 0x34, 0x56);
+    let resolved = |folder: Option<&str>, config, last: Option<&str>| {
+        let (name, theme, said) = themes.resolve(
+            Choices {
+                folder,
+                last,
+                default: "samplekit-light",
+            },
+            Some(config),
+        );
+        // The project's roles over each.
+        assert_eq!(theme.accent, accent, "{name}");
+        assert_eq!(
+            theme.background,
+            themes.theme(&name, None).unwrap().background
+        );
+        (name, said)
+    };
+    let last = Some("gruvbox-dark");
+    assert_eq!(resolved(Some("nord"), &named, last).0, "nord");
+    assert_eq!(resolved(None, &named, last).0, "dracula");
+    assert_eq!(resolved(None, &unnamed, last).0, "gruvbox-dark");
+    assert_eq!(resolved(None, &unnamed, None).0, "samplekit-light");
+    // A name no theme bears, said, and the next taken.
+    let (name, said) = resolved(Some("nordic"), &named, last);
+    assert_eq!(name, "dracula");
+    assert!(
+        said.len() == 1
+            && said[0].contains("chosen in this folder, nordic")
+            && said[0].contains("did you mean nord?")
+            && said[0].ends_with("dracula instead"),
+        "{said:?}"
+    );
+}
+
+/// A cell's width and height in a picture, and the baseline of its text.
+const CELL: (u16, u16, u16) = (9, 18, 13);
+
+/// A colour as a picture writes it: `#rrggbb`, or `default` for one left to
+/// the terminal.
+fn hex(color: ratatui::style::Color) -> String {
+    match color {
+        ratatui::style::Color::Rgb(red, green, blue) => format!("#{red:02x}{green:02x}{blue:02x}"),
+        _ => panic!("{color:?} is no #rrggbb"),
+    }
+}
+
+/// A frame as an SVG picture: its rows on the theme's background.
+fn picture(buffer: &ratatui::buffer::Buffer, background: &str, foreground: &str) -> String {
+    let (columns, rows) = (buffer.area.width, buffer.area.height);
+    let mut svg = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
+         viewBox=\"0 0 {w} {h}\" {FONT}>\n<rect width=\"{w}\" height=\"{h}\" \
+         fill=\"{background}\"/>\n",
+        w = columns * CELL.0,
+        h = rows * CELL.1,
+    );
+    for row in picture_rows(buffer, background, foreground) {
+        svg.push_str(&row);
+    }
+    svg.push_str("</svg>\n");
+    svg
+}
+
+/// The font of every picture, and the spaces of its text kept: a browser
+/// collapses them otherwise.
+const FONT: &str = "font-family=\"'DejaVu Sans Mono', Menlo, Consolas, monospace\" \
+                    font-size=\"15\" xml:space=\"preserve\" style=\"white-space:pre\"";
+
+/// A frame's rows as SVG, each at its place: a rectangle per run of cells
+/// sharing a background other than the theme's, a text per run sharing a
+/// style, and the frames' lines; each colour as the terminal would draw it,
+/// the theme's own background and text for one left to it. One row's
+/// elements are one string, so that frames sharing a row share it.
+fn picture_rows(
+    buffer: &ratatui::buffer::Buffer,
+    background: &str,
+    foreground: &str,
+) -> Vec<String> {
+    use ratatui::style::{Color, Modifier};
+    let (width, height, baseline) = CELL;
+    let resolve = |color: Color, default: &str| -> String {
+        match color {
+            Color::Rgb(red, green, blue) => format!("#{red:02x}{green:02x}{blue:02x}"),
+            Color::Reset => default.to_string(),
+            // The typing badge's text, on the accent: the theme's background.
+            Color::Black => background.to_string(),
+            other => panic!(
+                "the view draws {other:?} literally: give it a colour of the theme in picture()"
+            ),
+        }
+    };
+    let escaped = |text: &str| {
+        text.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+    };
+    let drawn = Modifier::BOLD | Modifier::ITALIC | Modifier::UNDERLINED | Modifier::REVERSED;
+    // Each cell's colours and the style its text is drawn in.
+    let cell = |x: u16, y: u16| {
+        let cell = &buffer[(x, y)];
+        assert!(
+            drawn.contains(cell.modifier),
+            "the view draws {:?}: give it a form in picture()",
+            cell.modifier
+        );
+        let (mut fg, mut bg) = (resolve(cell.fg, foreground), resolve(cell.bg, background));
+        if cell.modifier.contains(Modifier::REVERSED) {
+            std::mem::swap(&mut fg, &mut bg);
+        }
+        let mut attributes = format!(" fill=\"{fg}\"");
+        if cell.modifier.contains(Modifier::BOLD) {
+            attributes.push_str(" font-weight=\"bold\"");
+        }
+        if cell.modifier.contains(Modifier::ITALIC) {
+            attributes.push_str(" font-style=\"italic\"");
+        }
+        if cell.modifier.contains(Modifier::UNDERLINED) {
+            attributes.push_str(" text-decoration=\"underline\"");
+        }
+        // A frame's line is drawn as a line, not a glyph: no font joins
+        // them from one row to the next.
+        let blank = (cell.symbol() == " " && !cell.modifier.contains(Modifier::UNDERLINED))
+            || arms(cell.symbol()).is_some();
+        (bg, attributes, blank, cell.symbol().to_string(), fg)
+    };
+    // The arms of a frame's character: left, right, up, down.
+    fn arms(symbol: &str) -> Option<[bool; 4]> {
+        Some(match symbol {
+            "─" => [true, true, false, false],
+            "│" => [false, false, true, true],
+            "┌" => [false, true, false, true],
+            "┐" => [true, false, false, true],
+            "└" => [false, true, true, false],
+            "┘" => [true, false, true, false],
+            "├" => [false, true, true, true],
+            "┤" => [true, false, true, true],
+            "┬" => [true, true, false, true],
+            "┴" => [true, true, true, false],
+            "┼" => [true, true, true, true],
+            _ => return None,
+        })
+    }
+    let (columns, rows) = (buffer.area.width, buffer.area.height);
+    let mut drawn_rows = Vec::new();
+    for y in 0..rows {
+        let mut svg = String::new();
+        // The backgrounds first, so that the text is drawn over them.
+        let mut x = 0;
+        while x < columns {
+            let (bg, ..) = cell(x, y);
+            let mut end = x + 1;
+            while end < columns && cell(end, y).0 == bg {
+                end += 1;
+            }
+            if bg != background {
+                svg.push_str(&format!(
+                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{height}\" fill=\"{bg}\"/>\n",
+                    x * width,
+                    y * height,
+                    (end - x) * width
+                ));
+            }
+            x = end;
+        }
+        // A run of text: the cells from one drawn to the last drawn in its
+        // style, the blanks between them its spaces.
+        let mut x = 0;
+        while x < columns {
+            let (_, style, blank, ..) = cell(x, y);
+            if blank {
+                x += 1;
+                continue;
+            }
+            // Two blanks end it: a browser collapses spaces, and a run
+            // spanning a gap was stretched over it, its letters huge.
+            let mut last = x;
+            let mut next = x + 1;
+            while next < columns {
+                let (_, other, blank, ..) = cell(next, y);
+                if !blank && other != style {
+                    break;
+                }
+                if blank && next > last + 1 {
+                    break;
+                }
+                if !blank {
+                    last = next;
+                }
+                next += 1;
+            }
+            let text: String = (x..=last)
+                .map(|at| match cell(at, y) {
+                    (_, _, true, symbol, _) if symbol != " " => " ".to_string(),
+                    (_, _, _, symbol, _) => symbol,
+                })
+                .collect();
+            svg.push_str(&format!(
+                "<text x=\"{}\" y=\"{}\" textLength=\"{}\" lengthAdjust=\"spacing\"{style}>{}</text>\n",
+                x * width,
+                y * height + baseline,
+                (last - x + 1) * width,
+                escaped(&text)
+            ));
+            x = last + 1;
+        }
+        // The frames' lines, one path per colour, each a half cell from the
+        // middle of its cell: a horizontal run of them drawn as one segment.
+        let mut paths: Vec<(String, String)> = Vec::new();
+        for x in 0..columns {
+            let (_, _, _, symbol, fg) = cell(x, y);
+            let Some([left, right, up, down]) = arms(&symbol) else {
+                continue;
+            };
+            let (middle_x, middle_y) = (x * width * 2 + width, y * height * 2 + height);
+            let mut segments = String::new();
+            // Coordinates doubled, so that a half cell is a whole number:
+            // halved again by the path's transform.
+            if left || right {
+                let from = if left { x * width * 2 } else { middle_x };
+                let to = if right { (x + 1) * width * 2 } else { middle_x };
+                segments.push_str(&format!("M{from} {middle_y}H{to}"));
+            }
+            if up || down {
+                let from = if up { y * height * 2 } else { middle_y };
+                let to = if down { (y + 1) * height * 2 } else { middle_y };
+                segments.push_str(&format!("M{middle_x} {from}V{to}"));
+            }
+            match paths.iter_mut().find(|(colour, _)| *colour == fg) {
+                Some((_, held)) => held.push_str(&segments),
+                None => paths.push((fg, segments)),
+            }
+        }
+        for (colour, segments) in paths {
+            svg.push_str(&format!(
+                "<path transform=\"scale(0.5)\" stroke=\"{colour}\" stroke-width=\"2\" fill=\"none\" d=\"{segments}\"/>\n"
+            ));
+        }
+        drawn_rows.push(svg);
+    }
+    drawn_rows
+}
+
+/// A folder copied, what a run leaves beside the demo left out.
+fn copied(from: &std::path::Path, to: &std::path::Path) {
+    fs::create_dir_all(to).unwrap();
+    for entry in fs::read_dir(from).unwrap().flatten() {
+        let name = entry.file_name();
+        if [".samplekit", ".venv", "__pycache__", "out"]
+            .iter()
+            .any(|left| name == *left)
+        {
+            continue;
+        }
+        if entry.file_type().unwrap().is_dir() {
+            copied(&entry.path(), &to.join(&name));
+        } else {
+            fs::copy(entry.path(), to.join(&name)).unwrap();
+        }
+    }
+}
+
+#[test]
+fn the_colours_pages_pictures_are_drawn_by_the_tui() {
+    use samplekit::config::project_config::COLOR_ROLES;
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let pictures = root.join("docs/images/colours");
+    let mut themes: Vec<PathBuf> = fs::read_dir(root.join("docs/templates/colours"))
+        .unwrap()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "toml")
+        })
+        .collect();
+    themes.sort();
+    assert!(!themes.is_empty());
+    let writing = std::env::var_os("SAMPLEKIT_WRITE_REFERENCE").is_some();
+    let mut differing = Vec::new();
+    for theme in &themes {
+        let stem = theme.file_stem().unwrap().to_str().unwrap();
+        let written = fs::read_to_string(theme).unwrap();
+        // Every role, in the theme's own colours, its background and its text
+        // among them.
+        let table: toml::Table = written.parse().unwrap();
+        let colors = table["colors"].as_table().unwrap();
+        for (role, _) in COLOR_ROLES {
+            let colour = colors
+                .get(*role)
+                .and_then(toml::Value::as_str)
+                .unwrap_or_else(|| panic!("{stem} sets no {role}"));
+            assert!(
+                colour.len() == 7 && colour.starts_with('#'),
+                "{stem}: {role} = {colour}"
+            );
+        }
+        assert_eq!(colors.len(), COLOR_ROLES.len(), "{stem}: {colors:?}");
+        let background = colors["background"].as_str().unwrap().to_string();
+        let foreground = colors["foreground"].as_str().unwrap().to_string();
+
+        // The demo's last step, in a folder of its own, the theme chosen by
+        // its name: the built-in one, the file embedded.
+        let scratch = Scratch::new(&format!("colours-{stem}"));
+        let project = scratch.0.join("tensile");
+        copied(&root.join("examples/tensile/04-results"), &project);
+        let mut workbench = Workbench::open(&project).unwrap();
+        workbench.theme_chosen = Some(stem.to_string());
+        assert!(
+            workbench.themed().is_empty(),
+            "{stem} is a theme SampleKit has"
+        );
+        assert_eq!(
+            workbench.theme.accent,
+            samplekit::tui::theme::color(colors["accent"].as_str().unwrap()),
+            "{stem}: {}",
+            workbench.message
+        );
+        // On steel-01, its width typed again: the values it feeds outdated,
+        // the change waiting, said in the message.
+        open_named(&mut workbench, "steel-01");
+        move_to(&mut workbench, "width");
+        keys(&mut workbench, "e12.6\n\u{1b}");
+        let mut terminal = Terminal::new(TestBackend::new(100, 28)).unwrap();
+        terminal
+            .draw(|frame| samplekit::tui::view::draw(frame, &mut workbench))
+            .unwrap();
+        let svg = picture(terminal.backend().buffer(), &background, &foreground);
+        assert!(svg.contains("steel-01"), "{stem}");
+        assert!(
+            !svg.contains(&*scratch.0.to_string_lossy()) && !svg.contains("samplekit-workbench"),
+            "{stem}: the picture names the folder drawn"
+        );
+        let path = pictures.join(format!("{stem}.svg"));
+        if writing {
+            fs::create_dir_all(&pictures).unwrap();
+            fs::write(&path, &svg).unwrap();
+        } else if fs::read_to_string(&path).unwrap_or_default() != svg {
+            differing.push(format!("docs/images/colours/{stem}.svg"));
+        }
+    }
+    // A picture whose theme is gone goes with it.
+    for picture in fs::read_dir(&pictures).into_iter().flatten().flatten() {
+        let stem = picture.path().file_stem().unwrap().to_owned();
+        assert!(
+            themes.iter().any(|theme| theme.file_stem() == Some(&stem)),
+            "{} has no theme in docs/templates/colours",
+            picture.path().display()
+        );
+    }
+    assert!(
+        differing.is_empty(),
+        "{} not what the TUI draws: run\n  \
+         SAMPLEKIT_WRITE_REFERENCE=1 cargo test --test tui_view the_colours_pages_pictures\n\
+         and commit them",
+        differing.join(", ")
+    );
+}
+
+/// The demo's results step, copied into `scratch`, opened in `theme`.
+fn demo_in(scratch: &Scratch, theme: &str) -> Workbench {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let project = scratch.0.join("tensile");
+    copied(&root.join("examples/tensile/04-results"), &project);
+    let mut workbench = Workbench::open(&project).unwrap();
+    workbench.theme_chosen = Some(theme.to_string());
+    assert!(workbench.themed().is_empty(), "{theme}");
+    workbench
+}
+
+/// The project's folder where a screen says it — the collection's title —
+/// written as the reader's own would be, `~/tensile`, not the scratch folder
+/// it was drawn in: its cells written over, the same style kept, the rest
+/// of the folder's room left blank.
+fn at_home(buffer: &mut ratatui::buffer::Buffer, folder: &std::path::Path) {
+    let whole: Vec<String> = folder
+        .display()
+        .to_string()
+        .chars()
+        .map(String::from)
+        .collect();
+    // The folder as a line shows it: whole, or its end after `…` where the
+    // line is too narrow for it, as a long temporary folder is.
+    let shown: Vec<Vec<String>> = std::iter::once(whole.clone())
+        .chain((1..whole.len().saturating_sub(8)).map(|from| {
+            std::iter::once("…".to_string())
+                .chain(whole[from..].iter().cloned())
+                .collect()
+        }))
+        .collect();
+    let (width, height) = (buffer.area.width as usize, buffer.area.height);
+    for y in 0..height {
+        let Some((at, folder)) = shown.iter().find_map(|folder| {
+            (0..=width.saturating_sub(folder.len()))
+                .find(|&x| {
+                    (0..folder.len()).all(|i| buffer[((x + i) as u16, y)].symbol() == folder[i])
+                })
+                .map(|at| (at, folder))
+        }) else {
+            continue;
+        };
+        for (offset, character) in format!("{:<1$}", "~/tensile", folder.len())
+            .chars()
+            .enumerate()
+        {
+            buffer[((at + offset) as u16, y)].set_char(character);
+        }
+    }
+}
+
+/// The screen drawn at `width` × `height`, as a picture in its theme.
+fn drawn_picture(workbench: &mut Workbench, width: u16, height: u16) -> String {
+    let mut buffer = buffer_of(workbench, width, height);
+    at_home(&mut buffer, &workbench.root);
+    picture(
+        &buffer,
+        &hex(workbench.theme.background),
+        &hex(workbench.theme.foreground),
+    )
+}
+
+/// `svg` checked against the file committed at `path`, under the code's
+/// folder, or written there with `SAMPLEKIT_WRITE_REFERENCE`: what differs
+/// is added to `differing`. A picture names no folder it was drawn in.
+fn committed(path: &str, svg: &str, differing: &mut Vec<String>) {
+    assert!(
+        !svg.contains("samplekit-workbench")
+            && !svg.contains(&*std::env::temp_dir().to_string_lossy()),
+        "{path} names the folder it was drawn in:\n{}",
+        svg.lines()
+            .filter(|line| line.contains("samplekit-workbench") || line.contains("/tmp"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let file = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(path);
+    if std::env::var_os("SAMPLEKIT_WRITE_REFERENCE").is_some() {
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(&file, svg).unwrap();
+    } else if fs::read_to_string(&file).unwrap_or_default() != svg {
+        differing.push(path.to_string());
+    }
+}
+
+fn none_differ(differing: &[String], test: &str) {
+    assert!(
+        differing.is_empty(),
+        "{} not what the TUI draws: run\n  \
+         SAMPLEKIT_WRITE_REFERENCE=1 cargo test --test tui_view {test}\n\
+         and commit them",
+        differing.join(", ")
+    );
+}
+
+/// Pictures side by side, two to a row, each under its title: one SVG.
+fn tiled(tiles: &[(&str, String)], background: &str, title: &str) -> String {
+    let size = |svg: &str, attribute: &str| -> u32 {
+        let at = svg.find(&format!(" {attribute}=\"")).unwrap() + attribute.len() + 3;
+        svg[at..at + svg[at..].find('"').unwrap()].parse().unwrap()
+    };
+    let (width, height) = (size(&tiles[0].1, "width"), size(&tiles[0].1, "height"));
+    let (gap, head) = (18, 28);
+    let across = 2;
+    let down = tiles.len().div_ceil(across) as u32;
+    let total = (
+        across as u32 * width + gap,
+        down * (height + head) + gap / 2,
+    );
+    let mut svg = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" \
+         viewBox=\"0 0 {w} {h}\" {FONT}>\n<rect width=\"{w}\" height=\"{h}\" \
+         fill=\"{background}\"/>\n",
+        w = total.0,
+        h = total.1,
+    );
+    for (at, (name, tile)) in tiles.iter().enumerate() {
+        let (x, y) = (
+            (at % across) as u32 * (width + gap),
+            (at / across) as u32 * (height + head),
+        );
+        let body = &tile[tile.find("<rect").unwrap()..tile.rfind("</svg>").unwrap()];
+        svg.push_str(&format!(
+            "<text x=\"{}\" y=\"{}\" fill=\"{title}\" font-weight=\"bold\">{name}</text>\n\
+             <svg x=\"{x}\" y=\"{}\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\">\n{body}</svg>\n",
+            x + 2,
+            y + 19,
+            y + head,
+        ));
+    }
+    svg.push_str("</svg>\n");
+    svg
+}
+
+#[test]
+fn the_readmes_pictures_are_drawn_by_the_tui() {
+    let mut differing = Vec::new();
+    // The sample the README shows, the very file its yaml block holds, read
+    // from the README: in the demo's second step, whose model takes each
+    // size's mean, computed, what it gives waiting to be written.
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let readme = fs::read_to_string(root.join("README.md")).unwrap();
+    let file = readme
+        .split("```yaml\n")
+        .nth(1)
+        .and_then(|after| after.split("```").next())
+        .expect("the README shows a sample's file");
+    let scratch = Scratch::new("readme-copper");
+    let project = scratch.0.join("tensile/02-readings");
+    copied(&root.join("examples/tensile/02-readings"), &project);
+    // The model runs in the repository's environment, named by its path.
+    let settings = project.join(".samplekitrc");
+    let named = fs::read_to_string(&settings).unwrap().replace(
+        "python = \"../.venv\"",
+        &format!("python = '{}'", root.join(".venv").display()),
+    );
+    assert!(named.contains(".venv'"), "{named}");
+    fs::write(&settings, named).unwrap();
+    fs::write(project.join("samples/copper-01.md"), file).unwrap();
+    let mut workbench = Workbench::open(&project).unwrap();
+    workbench.theme_chosen = Some("samplekit-dark".to_string());
+    open_named(&mut workbench, "copper-01");
+    keys(&mut workbench, "Cy");
+    for _ in 0..600 {
+        workbench.tick();
+        if workbench
+            .run
+            .as_ref()
+            .is_some_and(|run| run.outcome.is_some())
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    // The outcome's sentence counts what ran, as any run says it: the
+    // status line keeps to what is shown.
+    workbench.run = None;
+    workbench.message.clear();
+    let svg = drawn_picture(&mut workbench, 100, 18);
+    assert!(
+        svg.contains("copper-01") && svg.contains("12.5043"),
+        "{svg}"
+    );
+    assert!(svg.contains(&hex(workbench.theme.waiting)));
+    committed("docs/images/readme/copper-01.svg", &svg, &mut differing);
+
+    // The collection.
+    let scratch = Scratch::new("readme-collection");
+    let mut workbench = demo_in(&scratch, "samplekit-dark");
+    let svg = drawn_picture(&mut workbench, 100, 12);
+    assert!(svg.contains("aluminium-01") && svg.contains("steel-01"));
+    committed("docs/images/readme/collection.svg", &svg, &mut differing);
+
+    // A value's card.
+    let scratch = Scratch::new("readme-card");
+    let mut workbench = demo_in(&scratch, "samplekit-dark");
+    open_named(&mut workbench, "steel-01");
+    move_to(&mut workbench, "area");
+    keys(&mut workbench, "i");
+    let svg = drawn_picture(&mut workbench, 100, 28);
+    assert!(svg.contains("area · its card"), "{svg}");
+    committed("docs/images/readme/card.svg", &svg, &mut differing);
+
+    // A table.
+    let scratch = Scratch::new("readme-table");
+    let mut workbench = demo_in(&scratch, "samplekit-dark");
+    open_named(&mut workbench, "steel-01");
+    move_to(&mut workbench, "curve");
+    keys(&mut workbench, "\n");
+    let svg = drawn_picture(&mut workbench, 100, 28);
+    assert!(svg.contains("strain"), "{svg}");
+    committed("docs/images/readme/table.svg", &svg, &mut differing);
+
+    // The typing mode on the collection: a column typed for a sample.
+    let scratch = Scratch::new("readme-typing");
+    let mut workbench = demo_in(&scratch, "samplekit-dark");
+    keys(&mut workbench, "e");
+    workbench.key(Key::Right);
+    keys(&mut workbench, "bronz");
+    let svg = drawn_picture(&mut workbench, 100, 12);
+    assert!(svg.contains("TYPING"), "{svg}");
+    committed("docs/images/readme/typing.svg", &svg, &mut differing);
+
+    // A few of the themes, on the same screen.
+    let mut tiles = Vec::new();
+    for theme in [
+        "samplekit-dark",
+        "samplekit-light",
+        "nord",
+        "catppuccin-latte",
+    ] {
+        let scratch = Scratch::new(&format!("readme-theme-{theme}"));
+        let mut workbench = demo_in(&scratch, theme);
+        open_named(&mut workbench, "steel-01");
+        tiles.push((theme, drawn_picture(&mut workbench, 96, 20)));
+    }
+    let svg = tiled(&tiles, "#ffffff00", "#808890");
+    committed("docs/images/readme/themes.svg", &svg, &mut differing);
+    none_differ(&differing, "the_readmes_pictures");
+}
+
+/// Frames shown in turn, one SVG: each row drawn once and used by every
+/// frame showing it at its place; each frame a group, visible for its
+/// `ticks` of `TICK` seconds by one `animate` of its visibility, looping,
+/// the first visible where nothing animates. Under each, a caption: the key
+/// pressed, then what it did.
+fn animation(
+    frames: &[(ratatui::buffer::Buffer, &str, &str, u32)],
+    theme: &samplekit::tui::theme::Theme,
+) -> String {
+    const TICK: f64 = 1.2;
+    const CAPTION: u16 = 26;
+    let (background, foreground) = (hex(theme.background), hex(theme.foreground));
+    let (columns, rows) = (frames[0].0.area.width, frames[0].0.area.height);
+    let (width, height) = (columns * CELL.0, rows * CELL.1 + CAPTION);
+    let mut defined: Vec<String> = Vec::new();
+    let mut shown: Vec<Vec<usize>> = Vec::new();
+    for (buffer, ..) in frames {
+        let mut uses = Vec::new();
+        for row in picture_rows(buffer, &background, &foreground) {
+            if row.is_empty() {
+                continue;
+            }
+            let at = match defined.iter().position(|held| *held == row) {
+                Some(at) => at,
+                None => {
+                    defined.push(row);
+                    defined.len() - 1
+                }
+            };
+            uses.push(at);
+        }
+        shown.push(uses);
+    }
+    let mut svg = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" \
+         viewBox=\"0 0 {width} {height}\" {FONT}>\n<rect width=\"{width}\" height=\"{height}\" \
+         fill=\"{background}\"/>\n<defs>\n"
+    );
+    for (at, row) in defined.iter().enumerate() {
+        svg.push_str(&format!("<g id=\"r{at}\">\n{row}</g>\n"));
+    }
+    svg.push_str("</defs>\n");
+    let total: u32 = frames.iter().map(|(.., ticks)| ticks).sum();
+    let mut begun = 0;
+    let line = rows * CELL.1;
+    for (at, ((_, key, said, ticks), uses)) in frames.iter().zip(&shown).enumerate() {
+        let (from, to) = (
+            f64::from(begun) / f64::from(total),
+            f64::from(begun + ticks) / f64::from(total),
+        );
+        begun += ticks;
+        // Discrete: hidden until its time, visible through it, hidden after.
+        let (values, times) = if at == 0 {
+            ("visible;hidden".to_string(), format!("0;{to:.4}"))
+        } else if at == frames.len() - 1 {
+            ("hidden;visible".to_string(), format!("0;{from:.4}"))
+        } else {
+            (
+                "hidden;visible;hidden".to_string(),
+                format!("0;{from:.4};{to:.4}"),
+            )
+        };
+        svg.push_str(&format!(
+            "<g visibility=\"{}\">\n<animate attributeName=\"visibility\" values=\"{values}\" \
+             keyTimes=\"{times}\" dur=\"{:.1}s\" calcMode=\"discrete\" repeatCount=\"indefinite\"/>\n",
+            if at == 0 { "visible" } else { "hidden" },
+            f64::from(total) * TICK,
+        ));
+        for used in uses {
+            svg.push_str(&format!("<use href=\"#r{used}\"/>\n"));
+        }
+        svg.push_str(&format!(
+            "<line x1=\"0\" y1=\"{y}\" x2=\"{width}\" y2=\"{y}\" stroke=\"{muted}\"/>\n\
+             <text x=\"{x}\" y=\"{baseline}\"><tspan fill=\"{key_colour}\" font-weight=\"bold\">{key}</tspan>\
+             <tspan fill=\"{foreground}\">  {said}</tspan></text>\n</g>\n",
+            y = line + 1,
+            muted = hex(theme.muted),
+            x = CELL.0,
+            baseline = line + 19,
+            key_colour = hex(theme.key),
+        ));
+    }
+    svg.push_str("</svg>\n");
+    svg
+}
+
+// Drawn as on Linux and macOS: Windows shows a written file's path with its
+// own separator, which the committed picture does not.
+#[test]
+#[cfg(unix)]
+fn the_animation_is_drawn_frame_by_frame_by_the_tui() {
+    let scratch = Scratch::new("at-work");
+    let mut workbench = demo_in(&scratch, "samplekit-dark");
+    let mut frames: Vec<(ratatui::buffer::Buffer, &str, &str, u32)> = Vec::new();
+    let mut frame = |workbench: &mut Workbench, key, said, ticks| {
+        let mut buffer = buffer_of(workbench, 100, 28);
+        at_home(&mut buffer, &workbench.root.clone());
+        frames.push((buffer, key, said, ticks));
+    };
+    frame(
+        &mut workbench,
+        "samplekit",
+        "the terminal interface, on the demo's specimens",
+        3,
+    );
+    keys(&mut workbench, "j");
+    frame(&mut workbench, "j", "down to copper-01", 1);
+    keys(&mut workbench, "\n");
+    frame(&mut workbench, "Enter", "opens it: its values, its note", 2);
+    move_to(&mut workbench, "width");
+    frame(&mut workbench, "j", "down to its width", 1);
+    keys(&mut workbench, "e");
+    frame(
+        &mut workbench,
+        "e",
+        "the typing mode: what is typed replaces the cell",
+        2,
+    );
+    keys(&mut workbench, "12.6 +- 0.02");
+    frame(
+        &mut workbench,
+        "12.6 +- 0.02",
+        "a value and its uncertainty, in one cell",
+        2,
+    );
+    keys(&mut workbench, "\n");
+    frame(
+        &mut workbench,
+        "Enter",
+        "kept, waiting to be written: what it feeds is outdated at once",
+        3,
+    );
+    keys(&mut workbench, "\u{1b}");
+    workbench.key(Key::Down);
+    keys(&mut workbench, "i");
+    frame(
+        &mut workbench,
+        "i",
+        "area's card: what it reads, and what reads it",
+        3,
+    );
+    keys(&mut workbench, "\u{1b}w");
+    frame(
+        &mut workbench,
+        "w",
+        "every change waiting, previewed before it is written",
+        3,
+    );
+    keys(&mut workbench, "y");
+    frame(
+        &mut workbench,
+        "y",
+        "written: one change of the project's history, u takes it back",
+        3,
+    );
+    let svg = animation(&frames, &workbench.theme);
+    // Each frame is one the TUI drew.
+    assert!(svg.contains("12.6 +- 0.02") && svg.contains("area · its card"));
+    assert_eq!(svg.matches("<animate ").count(), frames.len());
+    assert!(svg.len() < 500_000, "{} bytes", svg.len());
+    let mut differing = Vec::new();
+    committed("docs/images/readme/at-work.svg", &svg, &mut differing);
+    none_differ(&differing, "the_animation_is_drawn");
+}
+
+/// The terminal the command line is drawn at work in: its columns, which
+/// the commands are told, as wide as the widest line they print so that
+/// none wraps, and its rows.
+#[cfg(target_os = "linux")]
+const TERMINAL: (u16, u16) = (137, 28);
+
+/// A character on a terminal's screen, in the style it is drawn in.
+#[cfg(target_os = "linux")]
+type Drawn = (char, ratatui::style::Style);
+
+/// What a command printed to a terminal, as the terminal shows it: a line per
+/// line, each character in its style. The terminal's sixteen colours are
+/// drawn as `theme` draws the role the command line paints in each by
+/// default; its own colour is `foreground`, bold in `value`'s, faint in
+/// `muted`'s. A carriage return goes back to the line's start and an erase
+/// clears it, as a computation draws its progress then clears it. A line
+/// not ended yet, a question waiting for its answer, is the last.
+#[cfg(target_os = "linux")]
+fn on_screen(printed: &str, theme: &samplekit::tui::theme::Theme) -> Vec<Vec<Drawn>> {
+    use ratatui::style::{Modifier, Style};
+    use unicode_width::UnicodeWidthChar;
+    let mut lines = Vec::new();
+    let mut line: Vec<Drawn> = Vec::new();
+    let mut column = 0;
+    let (mut bold, mut faint, mut underlined) = (false, false, false);
+    let mut colour = None;
+    let mut characters = printed.chars();
+    while let Some(character) = characters.next() {
+        match character {
+            '\u{1b}' => {
+                assert_eq!(characters.next(), Some('['), "an escape no picture draws");
+                let mut parameters = String::new();
+                let command = loop {
+                    match characters.next() {
+                        Some(digit) if digit.is_ascii_digit() || digit == ';' => {
+                            parameters.push(digit)
+                        }
+                        Some(command) => break command,
+                        None => panic!("an escape cut short"),
+                    }
+                };
+                match command {
+                    'm' => {
+                        for code in parameters.split(';') {
+                            match code {
+                                "" | "0" => {
+                                    (bold, faint, underlined, colour) = (false, false, false, None)
+                                }
+                                "1" => bold = true,
+                                "2" => faint = true,
+                                "4" => underlined = true,
+                                "22" => (bold, faint) = (false, false),
+                                "24" => underlined = false,
+                                "39" => colour = None,
+                                // The roles the command line paints in each
+                                // colour when the project's `[colors]` names
+                                // none: `error:`, a value current or written,
+                                // outdated, an attribute, edited, a unit,
+                                // what is muted.
+                                "31" => colour = Some(theme.error),
+                                "32" => colour = Some(theme.current),
+                                "33" => colour = Some(theme.outdated),
+                                "34" => colour = Some(theme.attribute),
+                                "35" => colour = Some(theme.edited),
+                                "36" => colour = Some(theme.unit),
+                                "90" => colour = Some(theme.muted),
+                                other => panic!(
+                                    "the command line paints {other}: give it a colour in on_screen()"
+                                ),
+                            }
+                        }
+                    }
+                    'K' if parameters == "2" => {
+                        line.clear();
+                        column = 0;
+                    }
+                    'K' if parameters.is_empty() || parameters == "0" => line.truncate(column),
+                    other => panic!("an escape no picture draws: {parameters}{other}"),
+                }
+            }
+            '\r' => column = 0,
+            '\n' => {
+                lines.push(std::mem::take(&mut line));
+                column = 0;
+            }
+            _ => {
+                assert_eq!(
+                    character.width(),
+                    Some(1),
+                    "{character:?} is not one cell wide: place it in on_screen()"
+                );
+                let own = if faint {
+                    theme.muted
+                } else if bold {
+                    theme.value
+                } else {
+                    theme.foreground
+                };
+                let mut style = Style::default().fg(colour.unwrap_or(own));
+                if bold {
+                    style = style.add_modifier(Modifier::BOLD);
+                }
+                if underlined {
+                    style = style.add_modifier(Modifier::UNDERLINED);
+                }
+                match line.get_mut(column) {
+                    Some(held) => *held = (character, style),
+                    None => line.push((character, style)),
+                }
+                column += 1;
+            }
+        }
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    lines
+}
+
+/// A command typed in `folder` at a terminal [`TERMINAL`] columns wide, its
+/// colours on, read by the shell as it is written, the binary in place of
+/// `samplekit`; each of `answers` typed once its question is asked, a line
+/// ending `[y/N] `, as a person types it. What the terminal was sent, the
+/// answers echoed in it, where each answer was typed in it, and the
+/// command's exit code.
+#[cfg(target_os = "linux")]
+fn at_a_terminal(
+    folder: &std::path::Path,
+    typed: &str,
+    answers: &[&str],
+) -> (String, Vec<usize>, i32) {
+    use std::io::{Read, Write};
+    let words = typed
+        .strip_prefix("samplekit ")
+        .expect("a samplekit command");
+    let command = format!(
+        "stty cols {} rows 60; exec '{}' {words}",
+        TERMINAL.0,
+        env!("CARGO_BIN_EXE_samplekit")
+    );
+    let mut child = std::process::Command::new("script")
+        .args(["--quiet", "--return", "--command", &command, "/dev/null"])
+        .current_dir(folder)
+        .env("SHELL", "/bin/sh")
+        .env("TERM", "xterm-256color")
+        .env("COLUMNS", TERMINAL.0.to_string())
+        .env("PYTHONDONTWRITEBYTECODE", "1")
+        .env_remove("NO_COLOR")
+        .env_remove("CLICOLOR")
+        .env_remove("CLICOLOR_FORCE")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("script creates a pseudoterminal");
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let reader = {
+        let seen = std::sync::Arc::clone(&seen);
+        let mut stream = child.stdout.take().unwrap();
+        std::thread::spawn(move || {
+            let mut buffer = [0u8; 4096];
+            while let Ok(read) = stream.read(&mut buffer) {
+                if read == 0 {
+                    break;
+                }
+                seen.lock().unwrap().extend_from_slice(&buffer[..read]);
+            }
+        })
+    };
+    let mut stdin = child.stdin.take().unwrap();
+    let mut asked = Vec::new();
+    for answer in answers {
+        // The question asked, and nothing typed before it: typed sooner,
+        // the terminal would echo the answer wherever the output stood.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+        // A question after the last one answered, not that one again.
+        let after = asked.last().map_or(0, |last| last + answer.len());
+        let at = loop {
+            let printed = seen.lock().unwrap();
+            if printed.len() > after && printed.ends_with(b"[y/N] ") {
+                break printed.len();
+            }
+            drop(printed);
+            assert!(
+                std::time::Instant::now() < deadline,
+                "{typed} asks nothing for {answer:?} to answer:\n{}",
+                String::from_utf8_lossy(&seen.lock().unwrap())
+            );
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        };
+        asked.push(at);
+        stdin.write_all(format!("{answer}\n").as_bytes()).unwrap();
+    }
+    drop(stdin);
+    let status = child.wait().unwrap();
+    reader.join().unwrap();
+    let printed = String::from_utf8(seen.lock().unwrap().clone()).unwrap();
+    (
+        printed,
+        asked,
+        status.code().expect("an exit code, not a signal"),
+    )
+}
+
+/// A terminal window, its frames shown in turn: each frame the screen, its
+/// rows drawn once and used by every frame showing them at their place, and
+/// at its foot the prompt or a question, where the next command or the
+/// answer is typed a letter a tick after its frame has been held for its
+/// ticks. Every `animate` runs on one
+/// loop of `TICK`s, each frame visible for its time; where nothing animates,
+/// the frame `STILL`, a command and what it printed.
+#[cfg(target_os = "linux")]
+fn terminal_animation(
+    frames: &[(ratatui::buffer::Buffer, (u16, u16, u16), u32)],
+    theme: &samplekit::tui::theme::Theme,
+) -> String {
+    const TICK: f64 = 0.05;
+    // The ticks between a command typed and what it prints.
+    const ENTER: u32 = 8;
+    const STILL: usize = 1;
+    // A terminal's window and nothing over it: the prompt says the folder.
+    let (pad, corner) = (14u16, 10u16);
+    let (background, foreground) = (hex(theme.background), hex(theme.foreground));
+    let (columns, rows) = (frames[0].0.area.width, frames[0].0.area.height);
+    let (width, height) = (columns * CELL.0 + 2 * pad, rows * CELL.1 + 2 * pad);
+    let mut defined: Vec<String> = Vec::new();
+    let mut shown: Vec<Vec<usize>> = Vec::new();
+    for (buffer, ..) in frames {
+        let mut uses = Vec::new();
+        for row in picture_rows(buffer, &background, &foreground) {
+            if row.is_empty() {
+                continue;
+            }
+            let at = match defined.iter().position(|held| *held == row) {
+                Some(at) => at,
+                None => {
+                    defined.push(row);
+                    defined.len() - 1
+                }
+            };
+            uses.push(at);
+        }
+        shown.push(uses);
+    }
+    let lasting = |frame: &(ratatui::buffer::Buffer, (u16, u16, u16), u32)| {
+        let typed = u32::from(frame.1.2);
+        frame.2 + typed + if typed > 0 { ENTER } else { 0 }
+    };
+    let total: u32 = frames.iter().map(lasting).sum();
+    let dur = format!("{:.2}s", f64::from(total) * TICK);
+    let at_tick = |tick: u32| format!("{:.5}", f64::from(tick) / f64::from(total));
+    let mut svg = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" \
+         viewBox=\"0 0 {width} {height}\" {FONT}>\n\
+         <rect width=\"{width}\" height=\"{height}\" rx=\"{corner}\" fill=\"{background}\"/>\n\
+         <defs>\n",
+    );
+    for (at, row) in defined.iter().enumerate() {
+        svg.push_str(&format!("<g id=\"r{at}\">\n{row}</g>\n"));
+    }
+    svg.push_str(&format!(
+        "</defs>\n<g transform=\"translate({pad} {pad})\">\n"
+    ));
+    let mut begun = 0;
+    for (at, (frame, uses)) in frames.iter().zip(&shown).enumerate() {
+        let (_, (row, prompt, typed), hold) = frame;
+        let (from, to) = (begun, begun + lasting(frame));
+        // Discrete: hidden until its time, visible through it, hidden after.
+        let (values, times) = if at == 0 {
+            ("visible;hidden", format!("0;{}", at_tick(to)))
+        } else if at == frames.len() - 1 {
+            ("hidden;visible", format!("0;{}", at_tick(from)))
+        } else {
+            (
+                "hidden;visible;hidden",
+                format!("0;{};{}", at_tick(from), at_tick(to)),
+            )
+        };
+        svg.push_str(&format!(
+            "<g visibility=\"{}\">\n<animate attributeName=\"visibility\" values=\"{values}\" \
+             keyTimes=\"{times}\" dur=\"{dur}\" calcMode=\"discrete\" repeatCount=\"indefinite\"/>\n",
+            if at == STILL { "visible" } else { "hidden" },
+        ));
+        for used in uses {
+            svg.push_str(&format!("<use href=\"#r{used}\"/>\n"));
+        }
+        // The command not yet typed hidden, the cursor after what is: both
+        // a cell further at each letter.
+        let (x, y) = (prompt * CELL.0, row * CELL.1);
+        let stepping = if *typed == 0 {
+            String::new()
+        } else {
+            let places: Vec<String> = (0..=*typed)
+                .map(|letters| (x + letters * CELL.0).to_string())
+                .collect();
+            let times: Vec<String> = std::iter::once("0".to_string())
+                .chain((0..u32::from(*typed)).map(|letter| at_tick(from + hold + letter)))
+                .collect();
+            format!(
+                "<animate attributeName=\"x\" values=\"{}\" keyTimes=\"{}\" dur=\"{dur}\" \
+                 calcMode=\"discrete\" repeatCount=\"indefinite\"/>",
+                places.join(";"),
+                times.join(";"),
+            )
+        };
+        if *typed > 0 {
+            svg.push_str(&format!(
+                "<rect x=\"{x}\" y=\"{y}\" width=\"{}\" height=\"{}\" fill=\"{background}\">{stepping}</rect>\n",
+                typed * CELL.0,
+                CELL.1,
+            ));
+        }
+        svg.push_str(&format!(
+            "<rect x=\"{x}\" y=\"{y}\" width=\"{}\" height=\"{}\" fill=\"{}\">{stepping}</rect>\n</g>\n",
+            CELL.0,
+            CELL.1,
+            hex(theme.accent),
+        ));
+        begun = to;
+    }
+    svg.push_str("</g>\n</svg>\n");
+    svg
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn the_command_line_at_work_is_drawn_from_what_it_prints() {
+    use ratatui::style::{Modifier, Style};
+    let theme = samplekit::tui::theme::Themes::read(None)
+        .theme("samplekit-dark", None)
+        .unwrap();
+    // The demo's last step, a project of its own as the reader's would be,
+    // `~/tensile`, the environment its model names beside it.
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    isolate();
+    let scratch = Scratch(
+        dunce::canonicalize(std::env::temp_dir())
+            .unwrap()
+            .join(format!(
+                "samplekit-workbench-cli-at-work-{}",
+                std::process::id()
+            )),
+    );
+    let _ = fs::remove_dir_all(&scratch.0);
+    let project = scratch.0.join("tensile");
+    copied(&root.join("examples/tensile/06-links"), &project);
+    std::os::unix::fs::symlink(root.join(".venv"), scratch.0.join(".venv")).unwrap();
+    // Its history begun, as a project in use has it: a copy's first write
+    // says otherwise that it takes its values as computed.
+    let begun = std::process::Command::new(env!("CARGO_BIN_EXE_samplekit"))
+        .args(["samples", "compute", "--write"])
+        .current_dir(&project)
+        .env("NO_COLOR", "1")
+        .env("PYTHONDONTWRITEBYTECODE", "1")
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        begun.status.success(),
+        "{}",
+        String::from_utf8_lossy(&begun.stderr)
+    );
+    // Each command, what its questions are answered, the code it exits
+    // with, and a line of what it prints.
+    let commands: [(&str, &[&str], i32, &str); 5] = [
+        (
+            "samplekit -f 'elongation > 20' -c material,elongation,tensile_strength",
+            &[],
+            0,
+            "2 of 3 samples",
+        ),
+        (
+            "samplekit samples/copper-01.md set 'curve.strain[44]=45' --write",
+            &[],
+            0,
+            "this makes 3 values not current",
+        ),
+        // Previewed, asked, computed, shown, asked again, written.
+        ("samplekit compute", &["y", "y"], 0, "44.0 %   45.0 %"),
+        ("samplekit validate", &[], 2, "error: 1 defect in 1 file"),
+        (
+            "samplekit -c name,elongation -s -elongation --csv",
+            &[],
+            0,
+            "copper-01,45.0",
+        ),
+    ];
+    let (columns, rows) = TERMINAL;
+    let prompt: Vec<Drawn> = "~/tensile"
+        .chars()
+        .map(|character| {
+            (
+                character,
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            )
+        })
+        .chain(
+            " $ "
+                .chars()
+                .map(|character| (character, Style::default().fg(theme.muted))),
+        )
+        .collect();
+    let text = |lines: &[Vec<Drawn>]| -> Vec<String> {
+        lines
+            .iter()
+            .map(|line| line.iter().map(|(character, _)| character).collect())
+            .collect()
+    };
+    // No line wraps: one wider than the terminal fails here, rather than
+    // being cut where the terminal would wrap it.
+    let fits = |lines: &[Vec<Drawn>], typed: &str| {
+        for (line, said) in lines.iter().zip(text(lines)) {
+            assert!(
+                line.len() <= usize::from(columns),
+                "{typed} prints a line of {} characters, wider than the terminal's {columns}: \
+                 widen TERMINAL\n{said}",
+                line.len()
+            );
+        }
+    };
+    let mut frames: Vec<(ratatui::buffer::Buffer, (u16, u16, u16), u32)> = Vec::new();
+    // A frame of the rows a terminal of `rows` shows, the last once they
+    // fill it, `typed` typed at the end of the last from its column `from`;
+    // held longer the more there is to read above it.
+    let mut frame = |screen: &[Vec<Drawn>], from: usize, typed: usize, hold: u32| {
+        let mut buffer =
+            ratatui::buffer::Buffer::empty(ratatui::layout::Rect::new(0, 0, columns, rows));
+        let top = screen.len().saturating_sub(usize::from(rows));
+        for (y, row) in screen[top..].iter().enumerate() {
+            for (x, (character, style)) in row.iter().enumerate() {
+                buffer[(x as u16, y as u16)]
+                    .set_char(*character)
+                    .set_style(*style);
+            }
+        }
+        frames.push((
+            buffer,
+            ((screen.len() - top - 1) as u16, from as u16, typed as u16),
+            hold,
+        ));
+    };
+    let mut screen: Vec<Vec<Drawn>> = Vec::new();
+    let mut new_rows = 0;
+    for at in 0..=commands.len() {
+        let typed = commands.get(at).map_or("", |(typed, ..)| *typed);
+        let mut line = prompt.clone();
+        line.extend(
+            typed
+                .chars()
+                .map(|character| (character, Style::default().fg(theme.foreground))),
+        );
+        screen.push(line);
+        fits(&screen[screen.len() - 1..], typed);
+        let hold = if at == 0 { 20 } else { 30 + 5 * new_rows }
+            + if at == commands.len() { 40 } else { 0 };
+        frame(&screen, prompt.len(), typed.chars().count(), hold);
+        let Some((typed, answers, code, says)) = commands.get(at) else {
+            break;
+        };
+        let (printed, asked, exited) = at_a_terminal(&project, typed, answers);
+        // Each answer, as the terminal echoed it after its question.
+        let mut shown = 0;
+        for (answer, at) in answers.iter().zip(&asked) {
+            assert!(
+                printed[*at..].starts_with(&format!("{answer}\r\n")),
+                "{typed}: {answer:?} is not echoed after its question"
+            );
+            let lines = on_screen(&printed[..at + answer.len()], &theme);
+            fits(&lines, typed);
+            let question = lines.last().unwrap().len() - answer.chars().count();
+            let mut asking = screen.clone();
+            asking.extend(lines.iter().cloned());
+            frame(
+                &asking,
+                question,
+                answer.chars().count(),
+                30 + 5 * (lines.len() - shown) as u32,
+            );
+            shown = lines.len();
+        }
+        assert!(printed.ends_with('\n'), "{typed} ends its last line");
+        let lines = on_screen(&printed, &theme);
+        let said = text(&lines);
+        assert_eq!(exited, *code, "{typed}:\n{}", said.join("\n"));
+        assert!(
+            said.iter()
+                .any(|line| line.trim_end() == *says || line.ends_with(says)),
+            "{typed} says no {says:?}:\n{}",
+            said.join("\n")
+        );
+        assert!(
+            !said.iter().any(|line| line.contains("warning:")),
+            "{typed}:\n{}",
+            said.join("\n")
+        );
+        fits(&lines, typed);
+        new_rows = (lines.len() + 1 - shown.max(1)) as u32;
+        screen.extend(lines);
+    }
+    let svg = terminal_animation(&frames, &theme);
+    // Each frame a visibility shown in turn, every animation on one loop.
+    assert_eq!(
+        svg.matches("<animate attributeName=\"visibility\"").count(),
+        frames.len()
+    );
+    let mut loops: Vec<&str> = svg
+        .split(" dur=\"")
+        .skip(1)
+        .map(|after| &after[..after.find('"').unwrap()])
+        .collect();
+    loops.dedup();
+    assert_eq!(loops.len(), 1, "{loops:?}");
+    assert!(svg.len() < 500_000, "{} bytes", svg.len());
+    let mut differing = Vec::new();
+    committed("docs/images/readme/cli-at-work.svg", &svg, &mut differing);
+    none_differ(&differing, "the_command_line_at_work");
+}
+
+/// The start page's name as a picture: each `█` a square, a run of them one
+/// rectangle; each of the shadow's double lines two strokes, from the edge of
+/// its cell to the middle of its turn. In `colour`, on nothing.
+fn logo(art: &[&str], colour: &str) -> String {
+    const WIDTH: f64 = 10.0;
+    const HEIGHT: f64 = 20.0;
+    // The two strokes, either side of the cell's middle.
+    const APART: f64 = 2.5;
+    let columns = art.iter().map(|line| line.chars().count()).max().unwrap();
+    let (width, height) = (columns as f64 * WIDTH, art.len() as f64 * HEIGHT);
+    let mut blocks = String::new();
+    let mut strokes = String::new();
+    for (y, line) in art.iter().enumerate() {
+        let characters: Vec<char> = line.chars().collect();
+        let top = y as f64 * HEIGHT;
+        let mut x = 0;
+        while x < characters.len() {
+            if characters[x] == '█' {
+                let from = x;
+                while x < characters.len() && characters[x] == '█' {
+                    x += 1;
+                }
+                blocks.push_str(&format!(
+                    "M{} {top}h{}v{HEIGHT}h-{}z",
+                    from as f64 * WIDTH,
+                    (x - from) as f64 * WIDTH,
+                    (x - from) as f64 * WIDTH
+                ));
+                continue;
+            }
+            let left = x as f64 * WIDTH;
+            let (middle, centre, right, bottom) = (
+                left + WIDTH / 2.0,
+                top + HEIGHT / 2.0,
+                left + WIDTH,
+                top + HEIGHT,
+            );
+            let (near, far) = (APART, -APART);
+            // Each stroke: where it starts, where it turns, where it ends.
+            let lines: Vec<[(f64, f64); 3]> = match characters[x] {
+                '═' => vec![
+                    [
+                        (left, centre - near),
+                        (middle, centre - near),
+                        (right, centre - near),
+                    ],
+                    [
+                        (left, centre + near),
+                        (middle, centre + near),
+                        (right, centre + near),
+                    ],
+                ],
+                '║' => vec![
+                    [
+                        (middle - near, top),
+                        (middle - near, centre),
+                        (middle - near, bottom),
+                    ],
+                    [
+                        (middle + near, top),
+                        (middle + near, centre),
+                        (middle + near, bottom),
+                    ],
+                ],
+                // Down and to the left: the outer stroke the longer.
+                '╗' => vec![
+                    [
+                        (left, centre + far),
+                        (middle - far, centre + far),
+                        (middle - far, bottom),
+                    ],
+                    [
+                        (left, centre + near),
+                        (middle - near, centre + near),
+                        (middle - near, bottom),
+                    ],
+                ],
+                '╔' => vec![
+                    [
+                        (right, centre + far),
+                        (middle + far, centre + far),
+                        (middle + far, bottom),
+                    ],
+                    [
+                        (right, centre + near),
+                        (middle + near, centre + near),
+                        (middle + near, bottom),
+                    ],
+                ],
+                '╝' => vec![
+                    [
+                        (left, centre - far),
+                        (middle - far, centre - far),
+                        (middle - far, top),
+                    ],
+                    [
+                        (left, centre - near),
+                        (middle - near, centre - near),
+                        (middle - near, top),
+                    ],
+                ],
+                '╚' => vec![
+                    [
+                        (right, centre - far),
+                        (middle + far, centre - far),
+                        (middle + far, top),
+                    ],
+                    [
+                        (right, centre - near),
+                        (middle + near, centre - near),
+                        (middle + near, top),
+                    ],
+                ],
+                ' ' => Vec::new(),
+                other => panic!("the logo has no shape for {other:?}"),
+            };
+            for [(x1, y1), (x2, y2), (x3, y3)] in lines {
+                strokes.push_str(&format!("M{x1} {y1}L{x2} {y2}L{x3} {y3}"));
+            }
+            x += 1;
+        }
+    }
+    format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" \
+         viewBox=\"0 0 {width} {height}\">\n<title>SampleKit</title>\n\
+         <path fill=\"{colour}\" shape-rendering=\"crispEdges\" d=\"{blocks}\"/>\n\
+         <path fill=\"none\" stroke=\"{colour}\" stroke-width=\"1.5\" d=\"{strokes}\"/>\n</svg>\n"
+    )
+}
+
+#[test]
+fn the_logo_is_drawn_from_the_start_pages_art() {
+    use samplekit::tui::start::LOGO;
+    use samplekit::tui::theme::Themes;
+    let themes = Themes::read(None);
+    let mut differing = Vec::new();
+    // The colour the start page draws it in, SampleKit's own dark theme's
+    // accent, on nothing: one logo, the same on a light page and a dark one.
+    let accent = hex(themes.theme("samplekit-dark", None).unwrap().accent);
+    {
+        let file = "docs/images/logo.svg";
+        let svg = logo(&LOGO, &accent);
+        // A rectangle for each run of blocks, nothing behind them.
+        let runs: usize = LOGO
+            .iter()
+            .map(|line| {
+                line.split(|character| character != '█')
+                    .filter(|run| !run.is_empty())
+                    .count()
+            })
+            .sum();
+        assert_eq!(svg.matches('z').count(), runs);
+        assert!(!svg.contains("<rect"), "{svg}");
+        assert_eq!(svg.matches(&format!("\"{accent}\"")).count(), 2);
+        committed(file, &svg, &mut differing);
+    }
+    none_differ(&differing, "the_logo_is_drawn");
 }

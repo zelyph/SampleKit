@@ -1,7 +1,8 @@
 # SampleKit's demo: a tensile test
 
-Three metal specimens pulled until they break, in five steps: from their
-sizes written by hand to their results, tables, figures and two projects. It
+Three metal specimens pulled until they break, in six steps: from their
+sizes written by hand to their results, tables, figures, two projects and the
+links between them. It
 is the example SampleKit's home page walks through, a step a folder: each
 folder works on its own, and its `README.md` says what it holds, the commands
 to try, and where the home page explains them.
@@ -13,6 +14,7 @@ to try, and where the home page explains them.
 | [3 · Curve](03-curve/README.md) | the test itself: a curve of force against strain, the stress |
 | [4 · Results](04-results/README.md) | what the curve gives, tables for a paper, figures, scripts |
 | [5 · Projects](05-projects/README.md) | rolled and cast specimens, two projects read together |
+| [6 · Links](06-links/README.md) | the results again, each specimen linking to the others, its curve, a PDF, a web page |
 
 Run each step's commands from its folder. Reading, selecting and exporting
 need nothing but `samplekit`. Computing, figures and scripts, from step 2 on,

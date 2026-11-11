@@ -29,6 +29,12 @@ use rat_text::text_input::TextInput;
 
 pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
     super::theme::set(workbench.theme);
+    drawn(frame, workbench);
+    // What was left to the terminal's colours, the theme's.
+    super::theme::paint(frame.buffer_mut(), &workbench.theme);
+}
+
+fn drawn(frame: &mut Frame, workbench: &mut Workbench) {
     // A short terminal gives its rows to the samples: the title, the status
     // and the hints go first, `?` still there — at six rows the collection
     // drew its header and no sample.
@@ -37,7 +43,17 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
     // The keys at the foot, on a second line where one cannot hold them, the
     // main frame a line shorter: cut to one, they lost their end.
     let room = frame.area().width.saturating_sub(2) as usize;
-    let foot = if matches!(workbench.mode, Mode::Note { .. }) {
+    let typing_here = workbench.typing
+        && matches!(
+            workbench.screen,
+            Screen::Collection | Screen::Sample { .. } | Screen::Table { .. }
+        );
+    let foot = if typing_here {
+        wrap_hints(TYPING_KEYS, room.saturating_sub(10), 2)
+            .into_iter()
+            .map(|line| format!(" {line}"))
+            .collect()
+    } else if matches!(workbench.mode, Mode::Note { .. }) {
         wrap_hints(NOTE_KEYS, room.saturating_sub(1), 2)
             .into_iter()
             .map(|line| format!(" {line}"))
@@ -94,26 +110,25 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
             .as_ref()
             .map(|workspace| workspace.edit.path().display().to_string())
             .unwrap_or_default(),
-        Screen::Sample { .. }
-        | Screen::Table { .. }
-        | Screen::Property { .. }
-        | Screen::Items { .. } => match workbench.current() {
-            Some((path, sample)) => {
-                let name = sample
-                    .name()
-                    .map(str::to_string)
-                    .unwrap_or_else(|| path.display().to_string());
-                // The way taken by links, each sample left, then this one.
-                workbench
-                    .trail
-                    .iter()
-                    .map(|step| step.name.as_str())
-                    .chain(std::iter::once(name.as_str()))
-                    .collect::<Vec<_>>()
-                    .join(" › ")
+        Screen::Sample { .. } | Screen::Table { .. } | Screen::Items { .. } => {
+            match workbench.current() {
+                Some((path, sample)) => {
+                    let name = sample
+                        .name()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| path.display().to_string());
+                    // The way taken by links, each sample left, then this one.
+                    workbench
+                        .trail
+                        .iter()
+                        .map(|step| step.name.as_str())
+                        .chain(std::iter::once(name.as_str()))
+                        .collect::<Vec<_>>()
+                        .join(" › ")
+                }
+                None => String::new(),
             }
-            None => String::new(),
-        },
+        }
     };
     // On the terminal's own background, the name in the accent colour: a
     // reversed bar hid the computation drawn on it.
@@ -175,8 +190,8 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
             let furthest = collection(frame, workbench, main);
             workbench.hscroll = workbench.hscroll.min(furthest);
         }
-        // A table, a property or a list in a window over its sample.
-        Screen::Table { .. } | Screen::Property { .. } | Screen::Items { .. } => {
+        // A table or a list in a window over its sample.
+        Screen::Table { .. } | Screen::Items { .. } => {
             NOTE_SHOWN.with(|shown| shown.set(None));
             NOTE_EDITED.with(|edited| edited.set(None));
             workbench.note_view = sample(frame, workbench, main);
@@ -184,7 +199,6 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
             frame.render_widget(Clear, window);
             match workbench.screen {
                 Screen::Table { .. } => table(frame, workbench, window),
-                Screen::Property { .. } => property_window(frame, workbench, window),
                 _ => items_window(frame, workbench, window),
             }
         }
@@ -216,9 +230,50 @@ pub fn draw(frame: &mut Frame, workbench: &mut Workbench) {
         Screen::Configure => configure(frame, workbench, main),
     }
     frame.render_widget(Paragraph::new(status_line(workbench, status.width)), status);
+    // A value's card over its screen.
+    if workbench.card.is_some()
+        && matches!(
+            workbench.screen,
+            Screen::Sample { .. } | Screen::Table { .. }
+        )
+    {
+        card_window(frame, workbench, main);
+    }
+    // The cell typed in the typing mode, typed where it is: it never widens.
+    if let Some(area) = CELL_TYPED.with(|cell| cell.take())
+        && let Mode::Prompt {
+            purpose: super::model::Purpose::Cell(_),
+            text,
+        } = &mut workbench.mode
+    {
+        draw_typed(
+            frame,
+            area,
+            text,
+            Style::new().fg(colors().value).add_modifier(Modifier::BOLD),
+        );
+    }
     // The note being edited has keys of its own, which the foot says: the
     // sample's said what its keys no longer did while it was typed in.
-    let foot: Vec<Line<'static>> = foot.iter().map(|line| hint_spans(line)).collect();
+    let mut foot: Vec<Line<'static>> = foot.iter().map(|line| hint_spans(line)).collect();
+    // The typing mode said before its keys, as an editor says its mode.
+    if typing_here && let Some(first) = foot.first_mut() {
+        first.spans.insert(
+            0,
+            Span::styled(
+                " TYPING ",
+                Style::new()
+                    // The theme's background on its accent; black where the
+                    // terminal's is left to it.
+                    .fg(match colors().background {
+                        Color::Reset => Color::Black,
+                        background => background,
+                    })
+                    .bg(colors().accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+    }
     frame.render_widget(Paragraph::new(foot), hints);
     // A window's scroll kept within what it shows, as the history's is.
     if let Some(scroll) = overlay(frame, workbench) {
@@ -539,14 +594,33 @@ fn status_line(workbench: &Workbench, width: u16) -> Line<'static> {
     if !workbench.selected.is_empty() {
         parts.push(format!("values: {} selected", workbench.selected.len()));
     }
-    Line::raw(format!(
-        " {}",
-        ellipsized(
-            &parts.join(" · "),
-            (width as usize).saturating_sub(1).max(1)
-        )
-    ))
+    let waiting = workbench.waiting_count();
+    if waiting > 0 {
+        parts.push(format!(
+            "{waiting} {} not written",
+            if waiting == 1 { "file" } else { "files" }
+        ));
+    }
+    // The value under the cursor, every digit of it, at the line's end:
+    // every screen shows values rounded.
+    let raw = workbench.raw_here().unwrap_or_default();
+    let room = (width as usize).saturating_sub(1).max(1);
+    let said = ellipsized(&parts.join(" · "), room);
+    let left = said.chars().count();
+    let raw_room = room.saturating_sub(left + 4);
+    if raw.is_empty() || raw_room < 12 {
+        return Line::raw(format!(" {said}"));
+    }
+    let raw = ellipsized(&raw, raw_room);
+    let gap = room.saturating_sub(left + raw.chars().count());
+    Line::from(vec![
+        Span::raw(format!(" {said}{}", " ".repeat(gap))),
+        Span::styled(raw, Style::new().fg(colors().muted)),
+    ])
 }
+
+/// The keys of the typing mode, for the foot of the screen.
+const TYPING_KEYS: &str = "type to replace the cell · Enter keep, down · Tab keep, right · ↑ ↓ ← → cells · F2 change · Del take out · Esc leave";
 
 /// The keys of the note being edited, for the foot of the screen.
 const NOTE_KEYS: &str =
@@ -1325,8 +1399,18 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
                     }),
                 ),
             ]))];
+            // A sample with a change waiting: named as a change, or as an
+            // addition where it is made, until written.
+            let waiting = path.and_then(crate::format::stage::entry);
+            let name_style = if waiting.is_some() {
+                Style::new()
+                    .fg(colors().waiting)
+                    .add_modifier(Modifier::ITALIC)
+            } else {
+                Style::new()
+            };
             if named {
-                cells.push(Cell::from(rendered.name.clone()));
+                cells.push(Cell::from(rendered.name.clone()).style(name_style));
             }
             cells.extend(columns.iter().zip(&styles).take(fits).enumerate().map(
                 |(shown, (column, style))| {
@@ -1341,7 +1425,18 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
                     Cell::from(column[row].clone()).style(style)
                 },
             ));
-            Row::new(separated(cells, separator(), 1))
+            // The rows `Shift+↑` `Shift+↓` took in the typing mode: what is
+            // typed goes to each.
+            let taken = workbench.typing
+                && workbench.rows_from.is_some_and(|from| {
+                    (from.min(workbench.cursor)..=from.max(workbench.cursor)).contains(&row)
+                });
+            let row_style = if taken {
+                Style::new().add_modifier(Modifier::REVERSED)
+            } else {
+                Style::new()
+            };
+            Row::new(separated(cells, separator(), 1)).style(row_style)
         })
         .collect();
     let rows: Vec<Row> = rows
@@ -1386,12 +1481,34 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
         ),
     };
     let header: Vec<Cell> = header.into_iter().map(Cell::from).collect();
-    let table = Table::new(rows, separated(widths, Constraint::Length(1), 1))
+    let collection_lengths = separated(widths, Constraint::Length(1), 1);
+    // The column typed in, in the typing mode: the profile's column, among
+    // those shown — the mark first, then the names, then the data's.
+    let typed_column = workbench.typing.then(|| {
+        let field = workbench
+            .profile
+            .columns()
+            .get(workbench.column)
+            .map(|column| column.field.clone())?;
+        let item = if field == "name" {
+            1
+        } else {
+            let at = data.iter().position(|&at| at == workbench.column)?;
+            let shown = at.checked_sub(hidden.0).filter(|shown| *shown < fits)?;
+            1 + usize::from(named) + shown
+        };
+        Some(if item <= 1 { item } else { 2 * item - 1 })
+    });
+    let typed_column = typed_column.flatten();
+    let table = Table::new(rows, collection_lengths.clone())
         .header(
             Row::new(separated(header, separator(), 1))
                 .style(Style::new().add_modifier(Modifier::BOLD)),
         )
-        .row_highlight_style(Style::new().reversed())
+        // In the typing mode, the line on its own background and the cell
+        // typed in reversed on it; else the line reversed, as every list.
+        .cell_highlight_style(Style::new().reversed())
+        .row_highlight_style(line_style(workbench))
         .block(
             framed_saying(workbench, area.width)
                 .title(Line::from(edges).style(Style::new().fg(colors().muted)))
@@ -1405,9 +1522,26 @@ fn collection(frame: &mut Frame, workbench: &Workbench, area: Rect) -> usize {
     }
     let mut state = TableState::default()
         .with_selected(Some(selected))
+        .with_selected_column(typed_column)
         .with_offset(offset);
     frame.render_stateful_widget(table, area, &mut state);
     keep_offset(workbench, "collection", state.offset());
+    if matches!(
+        workbench.mode,
+        Mode::Prompt {
+            purpose: super::model::Purpose::Cell(_),
+            ..
+        }
+    ) && let Some(column) = typed_column
+    {
+        let rect = cell_rect(
+            area,
+            &lengths(&collection_lengths),
+            column,
+            selected.saturating_sub(state.offset()),
+        );
+        CELL_TYPED.with(|cell| cell.set(rect));
+    }
     // Each heading drawn across the table: `── more ───…`.
     let inside = area.width.saturating_sub(4);
     for (at, title) in &titled {
@@ -2016,177 +2150,6 @@ fn table_extent(workbench: &Workbench) -> Option<(u16, u16)> {
     Some((width as u16, (rows + 5) as u16))
 }
 
-/// A property in its window: what the model declares it to be, then a table
-/// of one row — value, uncertainty, readings — each cell in its state's
-/// colour, the one under the cursor reversed.
-fn property_window(frame: &mut Frame, workbench: &Workbench, area: Rect) {
-    let Screen::Property {
-        ref name, column, ..
-    } = workbench.screen
-    else {
-        return;
-    };
-    let Some((path, sample)) = workbench.current() else {
-        return;
-    };
-    let columns = workbench.property_columns(name);
-    let config = workbench.collection.config_for(&path);
-    let entry = workbench
-        .entries()
-        .into_iter()
-        .find(|entry| entry.field == *name);
-    // A cell's own state, as its table's window colours it: a cell is no
-    // entry of the sample, and its window said none.
-    let state = entry
-        .as_ref()
-        .map(|entry| entry.state.clone())
-        .or_else(|| super::model::cell_state(&sample, name, config, &path))
-        .unwrap_or_default();
-    let identifier = Identifier::new(name).ok();
-    let handle = identifier
-        .as_ref()
-        .and_then(|name| sample.property(name).ok());
-    // Its unit as the screen writes it, `pt/day`, where the file writes `pt/d`.
-    let unit = Some(workbench.window_unit()).filter(|unit| !unit.is_empty());
-    let shown = |field: &str| {
-        editing::value_at(&sample, field)
-            .map(|value| editing::previewed(&value, field, config))
-            .unwrap_or_else(|| "—".to_string())
-    };
-    // **The two numbers the sample's line shows**, `25.056 ± 0.053`, where
-    // there is one: written apart, each at its own precision, the window said
-    // `25.0559` and `0.052173` under that line.
-    let on_the_line: Option<(String, Option<String>)> = entry.as_ref().map(|entry| {
-        let line = entry.shown.trim();
-        // A value waiting for an input is bracketed on the line, `(25.056)`.
-        let line = line
-            .strip_prefix('(')
-            .and_then(|inner| inner.strip_suffix(')'))
-            .unwrap_or(line);
-        let line = unit
-            .as_deref()
-            .and_then(|unit| line.strip_suffix(unit))
-            .map(str::trim_end)
-            .unwrap_or(line);
-        match line.split_once(" \u{b1} ") {
-            Some((value, uncertainty)) => (value.to_string(), Some(uncertainty.to_string())),
-            None => (line.to_string(), None),
-        }
-    });
-    let cells: Vec<String> = columns
-        .iter()
-        .map(|which| match (*which, &on_the_line) {
-            ("value", Some((value, _))) if !value.is_empty() => value.clone(),
-            ("uncertainty", Some((_, Some(uncertainty)))) => uncertainty.clone(),
-            _ => match *which {
-                "value" => shown(name),
-                "uncertainty" => shown(&format!("{name}.u")),
-                _ => handle
-                    .as_ref()
-                    .and_then(|handle| handle.readings())
-                    .map(|readings| {
-                        // At the precision the quantity declares.
-                        readings
-                            .as_slice()
-                            .iter()
-                            .map(|reading| {
-                                crate::core::value::Value::number(*reading).map_or_else(
-                                    |_| reading.to_string(),
-                                    |value| editing::previewed(&value, name, config),
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    })
-                    .unwrap_or_else(|| "—".to_string()),
-            },
-        })
-        .collect();
-    drop(sample);
-    // As wide as its header with its unit: `value [pt/day` was cut.
-    let titles: Vec<String> = columns
-        .iter()
-        .map(|which| match (*which, &unit) {
-            ("readings", _) => (*which).to_string(),
-            (_, Some(unit)) => format!("{which} [{unit}]"),
-            (_, None) => (*which).to_string(),
-        })
-        .collect();
-    let mut wanted: Vec<usize> = titles
-        .iter()
-        .zip(&cells)
-        .map(|(title, cell)| cell.chars().count().max(title.chars().count()) + 2)
-        .collect();
-    let headers: Vec<Cell> = titles.iter().cloned().map(Cell::from).collect();
-    // What does not fit is cut where it ends, and said cut: the readings read
-    // `1.055, 1.053, 1.0`, a third reading of one.
-    let room = usize::from(framed_saying(workbench, area.width).inner(area).width)
-        .saturating_sub(columns.len().saturating_sub(1));
-    let mut cells = cells;
-    if let Some(last) = wanted.len().checked_sub(1) {
-        let before: usize = wanted[..last].iter().sum();
-        let left = room.saturating_sub(before);
-        if wanted[last] > left {
-            wanted[last] = left;
-            let fits = left.saturating_sub(2);
-            if cells[last].chars().count() > fits {
-                let kept: String = cells[last].chars().take(fits.saturating_sub(1)).collect();
-                cells[last] = format!("{}…", kept.trim_end_matches([',', ' ']));
-            }
-        }
-    }
-    let widths: Vec<Constraint> = wanted
-        .iter()
-        .map(|width| Constraint::Length(*width as u16))
-        .collect();
-    let colour = state_colour(&state);
-    let row = Row::new(cells.into_iter().enumerate().map(|(at, cell)| {
-        let style = if columns[at] == "readings" {
-            Style::new().fg(colors().muted)
-        } else {
-            Style::new().fg(colour)
-        };
-        Cell::from(cell).style(style)
-    }));
-    let block = framed_saying(workbench, area.width)
-        .title(format!(" {name} "))
-        .title_bottom(element_line(workbench, area.width));
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-    // What the model declares, wrapped rather than cut.
-    let declared_text = workbench.declared_as(name);
-    let declared_rows = (declared_text.chars().count() as u16)
-        .div_ceil(inner.width.max(1))
-        .max(1);
-    let [declared, said, table_area] = Layout::vertical([
-        Constraint::Length(declared_rows),
-        Constraint::Length(1),
-        Constraint::Min(2),
-    ])
-    .areas(inner);
-    frame.render_widget(
-        Paragraph::new(Line::styled(declared_text, Style::new().fg(colors().muted)))
-            .wrap(Wrap { trim: true }),
-        declared,
-    );
-    if !state.is_empty() {
-        frame.render_widget(
-            Paragraph::new(Line::styled(state.clone(), Style::new().fg(colour))),
-            said,
-        );
-    }
-    let mut table_state = TableState::default()
-        .with_selected(Some(0))
-        .with_selected_column(Some(column));
-    frame.render_stateful_widget(
-        Table::new(vec![row], widths)
-            .header(Row::new(headers).style(Style::new().add_modifier(Modifier::BOLD)))
-            .cell_highlight_style(Style::new().reversed()),
-        table_area,
-        &mut table_state,
-    );
-}
-
 /// A list in its window: a table of one column, an item a row, the empty
 /// row at the foot adding one.
 fn items_window(frame: &mut Frame, workbench: &Workbench, area: Rect) {
@@ -2225,7 +2188,7 @@ fn items_window(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     let header = if readings {
         let unit = Identifier::new(field)
             .ok()
-            .and_then(|name| sample.property(&name).ok())
+            .and_then(|name| sample.property_if(&name))
             .and_then(|handle| handle.presentation().unit)
             .filter(|unit| !unit.is_empty())
             .map(|unit| {
@@ -2628,13 +2591,14 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
     };
     let count = held.rows().count();
     let header: Vec<Cell> = header.into_iter().map(Cell::from).collect();
-    let table = Table::new(rows, separated(widths, Constraint::Length(1), 0))
+    let table_lengths = separated(widths, Constraint::Length(1), 0);
+    let table = Table::new(rows, table_lengths.clone())
         .header(
             Row::new(separated(header, separator(), 0))
                 .style(Style::new().add_modifier(Modifier::BOLD)),
         )
-        // The row underlined, the cell under the cursor reversed.
-        .row_highlight_style(Style::new().add_modifier(Modifier::UNDERLINED))
+        // The row on its own background, the cell under the cursor reversed.
+        .row_highlight_style(line_style(workbench))
         .cell_highlight_style(Style::new().reversed())
         .block(
             framed_saying(workbench, area.width)
@@ -2659,8 +2623,27 @@ fn table(frame: &mut Frame, workbench: &Workbench, area: Rect) {
             &vec![1; count],
             rows_shown,
         ));
+    let typed_at = state.selected_column();
+    let offset_before = state.offset();
     frame.render_stateful_widget(table, area, &mut state);
     keep_offset(workbench, "table", state.offset());
+    let _ = offset_before;
+    if matches!(
+        workbench.mode,
+        Mode::Prompt {
+            purpose: super::model::Purpose::Cell(_),
+            ..
+        }
+    ) && let Some(column) = typed_at
+    {
+        let rect = cell_rect(
+            area,
+            &lengths(&table_lengths),
+            column,
+            cursor.saturating_sub(state.offset()),
+        );
+        CELL_TYPED.with(|cell| cell.set(rect));
+    }
     say_inside(
         frame,
         area,
@@ -2724,8 +2707,21 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
         .map(|entry| entry.field.chars().count())
         .max()
         .unwrap_or(0);
-    // The quantities' values lined up on their `±`.
+    // The quantities' values lined up on their `±`; one without an
+    // uncertainty shows where it goes, `± —`.
     let mut entries = entries;
+    for entry in entries.iter_mut() {
+        if entry.kind == EntryKind::Quantity
+            && !entry.shown.contains('±')
+            && entry.shown != "—"
+            && !entry.shown.is_empty()
+        {
+            entry.shown = match entry.shown.split_once(' ') {
+                Some((number, unit)) => format!("{number} ± — {unit}"),
+                None => format!("{} ± —", entry.shown),
+            };
+        }
+    }
     let quantities: Vec<usize> = (0..entries.len())
         .filter(|at| entries[*at].kind == EntryKind::Quantity)
         .collect();
@@ -2747,11 +2743,8 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
     // read through a slot; the note no wider than prose is read, the values
     // taking what lies beyond. The same while the note is edited: a window that
     // moved as editing began was read as a bug, and was one.
-    let state_width = entries
-        .iter()
-        .map(|entry| entry.state.chars().count())
-        .max()
-        .unwrap_or(0);
+    // A line shows its state's mark alone: its words are the value's card's.
+    let state_width = 0;
     // The selection and the mark, the name, the value, the state, the spaces
     // between and the frame.
     let needed = (3 + widest + 2 + shown_width + 2 + state_width + 5) as u16;
@@ -2769,16 +2762,6 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
             .max(24.min(area.width / 2))
             .max(area.width.saturating_sub(READING_WIDTH))
     };
-    // Where the state does not fit, its mark alone stands for it, rather
-    // than the state being cut off the line: at 80 columns an outdated value read
-    // as current. The mark has a column of its own, before the name, so that
-    // no value too long for the pane pushes it out of sight. Where some room
-    // is left, the state is cut there with an ellipsis: gone whole as soon as
-    // one state was long, at 120 columns no state was read at all, `current`
-    // included, just when a value was outdated.
-    let state_room =
-        (values_width as usize).saturating_sub(2 + 2 + 3 + widest + 2 + shown_width + 2);
-    let marked_only = needed > values_width && state_room < 8;
     let [left, right] = if hidden {
         [area, Rect::default()]
     } else if stacked {
@@ -2787,9 +2770,18 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
     } else {
         Layout::horizontal([Constraint::Length(values_width), Constraint::Min(20)]).areas(area)
     };
+    // What waits for this sample, read once for every line.
+    let fields: Vec<String> = entries.iter().map(|entry| entry.field.clone()).collect();
+    let waiting_fields = workbench
+        .current()
+        .map(|(path, _)| path)
+        .map(|path| workbench.waiting_fields(&path, &fields))
+        .unwrap_or_default();
     let items: Vec<ListItem> = entries
         .iter()
         .map(|entry| {
+            // A change waiting for it: drawn as a change, until written.
+            let waiting = waiting_fields.contains(&entry.field);
             let colour = match entry.kind {
                 EntryKind::Quantity => Color::Reset,
                 EntryKind::Attribute => colors().attribute,
@@ -2824,33 +2816,43 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
                     Style::new().fg(colour),
                 ),
             ];
-            spans.extend(match entry.kind {
+            let changed = Style::new()
+                .fg(colors().waiting)
+                .add_modifier(Modifier::ITALIC);
+            let value: Vec<Span> = match entry.kind {
                 EntryKind::Quantity => value_spans(&cut, Style::new()),
                 EntryKind::Attribute => vec![Span::styled(cut, attribute_style(entry.link))],
                 EntryKind::Table => vec![Span::raw(cut)],
                 EntryKind::Backlink => vec![Span::styled(cut, Style::new().fg(colors().muted))],
-            });
+            };
+            // `± —`, where an uncertainty goes, faint; the number before it
+            // as any value.
+            spans.extend(value.into_iter().flat_map(|span| {
+                let parts: Vec<Span> = match span.content.split_once("± —") {
+                    Some((before, after)) if !waiting => vec![
+                        Span::styled(before.to_string(), span.style),
+                        Span::styled("± —".to_string(), span.style.fg(colors().muted)),
+                        Span::styled(after.to_string(), span.style),
+                    ],
+                    _ => vec![span],
+                };
+                parts.into_iter().map(|span| {
+                    if waiting {
+                        span.patch_style(changed)
+                    } else {
+                        span
+                    }
+                })
+            }));
             spans.push(Span::raw(" ".repeat(padding)));
-            spans.push(Span::styled(
-                if marked_only {
-                    String::new()
-                } else if needed > values_width {
-                    ellipsized(&entry.state, state_room)
-                } else {
-                    entry.state.clone()
-                },
-                Style::new().fg(state_colour),
-            ));
             ListItem::new(Line::from(spans))
         })
         .collect();
     // Under a window, the line it was opened from.
     let cursor = match &workbench.screen {
-        Screen::Sample { cursor, .. }
-        | Screen::Table { back: cursor, .. }
-        | Screen::Property { back: cursor, .. } => *cursor,
+        Screen::Sample { cursor, .. } | Screen::Table { back: cursor, .. } => *cursor,
         Screen::Items { up, .. } => match **up {
-            Screen::Sample { cursor, .. } | Screen::Property { back: cursor, .. } => cursor,
+            Screen::Sample { cursor, .. } => cursor,
             _ => 0,
         },
         _ => 0,
@@ -2866,7 +2868,7 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
         ));
     frame.render_stateful_widget(
         List::new(items)
-            .highlight_style(Style::new().reversed())
+            .highlight_style(line_style(workbench))
             .block(
                 framed_saying(workbench, left.width)
                     .title(" values ")
@@ -2876,6 +2878,40 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
         &mut state,
     );
     keep_offset(workbench, "sample", state.offset());
+    // The typing mode's cell on the cursor's line: the name's or the
+    // value's, marked; typed, its editor drawn over it.
+    if workbench.typing && matches!(workbench.screen, Screen::Sample { .. }) {
+        let row = cursor.saturating_sub(state.offset()) as u16;
+        let y = left.y + 1 + row;
+        let name_x = left.x + 1 + 4;
+        let value_x = name_x + widest as u16 + 2;
+        let right_edge = (left.x + left.width).saturating_sub(1);
+        let rect = if workbench.cell == 0 {
+            Rect::new(name_x, y, widest as u16, 1)
+        } else {
+            Rect::new(value_x, y, right_edge.saturating_sub(value_x).max(1), 1)
+        };
+        if y + 1 < left.y + left.height {
+            if matches!(
+                workbench.mode,
+                Mode::Prompt {
+                    purpose: super::model::Purpose::Cell(_),
+                    ..
+                }
+            ) {
+                CELL_TYPED.with(|cell| cell.set(Some(rect)));
+            } else {
+                let marked = if workbench.cell == 0 {
+                    rect
+                } else {
+                    Rect::new(value_x, y, (shown_width as u16).max(1).min(rect.width), 1)
+                };
+                frame
+                    .buffer_mut()
+                    .set_style(marked, Style::new().reversed());
+            }
+        }
+    }
     say_inside(
         frame,
         left,
@@ -2941,7 +2977,32 @@ fn sample(frame: &mut Frame, workbench: &Workbench, area: Rect) -> Option<NoteVi
 /// A frame's place on the screen — x, y, width, height — and a scroll.
 type Shown = Option<((u16, u16, u16, u16), usize)>;
 
+/// Where a cell of row `row` and table column `column` lies in a table drawn
+/// in `area`, its columns `lens` wide one column apart, under its frame and
+/// its header.
+fn cell_rect(area: Rect, lens: &[u16], column: usize, row: usize) -> Option<Rect> {
+    let x = area.x + 2 + lens.iter().take(column).map(|len| len + 1).sum::<u16>();
+    let y = area.y + 2 + row as u16;
+    let width = (*lens.get(column)?)
+        .max(8)
+        .min((area.x + area.width).saturating_sub(x + 1));
+    (y + 1 < area.y + area.height && width > 0).then_some(Rect::new(x, y, width, 1))
+}
+
+/// The lengths of a table's columns, its separators among them.
+fn lengths(widths: &[Constraint]) -> Vec<u16> {
+    widths
+        .iter()
+        .map(|width| match width {
+            Constraint::Length(length) => *length,
+            _ => 0,
+        })
+        .collect()
+}
+
 thread_local! {
+    /// Where the cell typed in the typing mode lies, which its editor draws.
+    static CELL_TYPED: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
     /// Where the note being edited goes, which its editor draws.
     static NOTE_EDITED: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
     /// Where the note was last drawn, and the scroll it was drawn at, which
@@ -3536,29 +3597,13 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                 status,
             );
         }
+        // A cell of the typing mode is typed where it is, drawn by its screen.
+        Mode::Prompt {
+            purpose: super::model::Purpose::Cell(_),
+            ..
+        } => {}
         Mode::Prompt { purpose, .. } => {
             let (title, actions) = match purpose {
-                // In a quantity's window, its unit and what is typed: the
-                // number alone.
-                super::model::Purpose::Edit { field, .. }
-                    if matches!(workbench.screen, Screen::Property { .. }) =>
-                {
-                    let unit = workbench.window_unit();
-                    let unit = if unit.is_empty() {
-                        String::new()
-                    } else {
-                        format!(" in {unit}")
-                    };
-                    let said = if field.ends_with(".u") {
-                        "the number alone, a point for decimals; empty clears it"
-                    } else {
-                        "the number alone, a point for decimals"
-                    };
-                    (
-                        format!("{field}{unit} — {said}"),
-                        "Enter preview · Esc cancel",
-                    )
-                }
                 super::model::Purpose::Edit { field, .. } => {
                     (format!("{field} ="), "Enter preview · Esc cancel")
                 }
@@ -3663,6 +3708,7 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                     "Enter keep this name · Esc keep the host's",
                 ),
                 // The setup's model one already has.
+                super::model::Purpose::Cell(_) => (String::new(), ""),
                 super::model::Purpose::ModelPath => (
                     "your model file's path, from the project's folder".to_string(),
                     "Enter use it · Esc back to the question",
@@ -3686,7 +3732,21 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
             query,
             typing,
         } => {
+            // The theme the project names, which a choice here is over.
+            let theme_title = match workbench
+                .collection
+                .config()
+                .and_then(|config| config.theme())
+            {
+                Some(named) => format!("theme · this project names {named}"),
+                None => "theme".to_string(),
+            };
             let (title, actions, ticks) = match purpose {
+                super::model::Choosing::Theme { .. } => (
+                    theme_title.as_str(),
+                    "↑↓ try · / narrow · Enter keep · Esc the one before",
+                    false,
+                ),
                 super::model::Choosing::Sort => (
                     "sort by, first to last",
                     "Space tick · r reverse · ⇧↑↓ move · / narrow · Enter sort · Esc cancel",
@@ -3756,6 +3816,11 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                             "[{}] {label}{running}{item}",
                             if *ticked { "x" } else { " " }
                         )
+                    } else if matches!(purpose, super::model::Choosing::Theme { .. })
+                        && workbench.themes.own(label)
+                    {
+                        // One's own, after those SampleKit has: said so.
+                        format!("{label}  yours")
                     } else {
                         label.clone()
                     }
@@ -3831,6 +3896,12 @@ fn overlay(frame: &mut Frame, workbench: &mut Workbench) -> Option<usize> {
                     line.extend(chosen);
                 }
                 footer.push(Line::from(line));
+            }
+            // One's own themes left out, and why: the list does not show them.
+            if matches!(purpose, super::model::Choosing::Theme { .. }) {
+                for said in workbench.themes.said() {
+                    footer.push(Line::styled(said.clone(), Style::new().fg(colors().muted)));
+                }
             }
             footer.extend(status.iter().cloned());
             let status = footer.as_slice();
@@ -4178,4 +4249,177 @@ fn attribute_style(link: Option<crate::presentation::links::Leads>) -> Style {
         Some(Leads::Nowhere) => Style::new().fg(colors().error).underlined(),
         Some(_) => Style::new().fg(colors().link).underlined(),
     }
+}
+
+/// A value's card: the value, its readings, what it reads and what reads it,
+/// the line under the cursor lit; a line typed in, its editor at its value.
+fn card_window(frame: &mut Frame, workbench: &Workbench, main: Rect) {
+    use super::model::CardGroup;
+    let lines = workbench.card_lines();
+    let Some((field, cursor)) = workbench.card.clone() else {
+        return;
+    };
+    let named = lines
+        .iter()
+        .map(|line| line.field.chars().count())
+        .max()
+        .unwrap_or(0)
+        .max(8);
+    let shown = lines
+        .iter()
+        .map(|line| line.shown.chars().count())
+        .max()
+        .unwrap_or(0)
+        .clamp(12, 36);
+    // A heading before each group that has lines.
+    let mut rows: Vec<(Option<usize>, Line<'static>)> = Vec::new();
+    let mut group = None;
+    for (at, line) in lines.iter().enumerate() {
+        if group != Some(line.group) {
+            group = Some(line.group);
+            let heading = match line.group {
+                CardGroup::Itself | CardGroup::Readings => None,
+                CardGroup::Reads => Some("reads"),
+                CardGroup::ReadBy => Some("read by"),
+            };
+            if let Some(heading) = heading {
+                rows.push((None, Line::raw("")));
+                rows.push((
+                    None,
+                    Line::styled(
+                        format!(" {heading}"),
+                        Style::new().fg(colors().muted).add_modifier(Modifier::BOLD),
+                    ),
+                ));
+            }
+        }
+        let label = match line.group {
+            CardGroup::Readings => "readings".to_string(),
+            _ => line.field.clone(),
+        };
+        let indent = if matches!(line.group, CardGroup::Reads | CardGroup::ReadBy) {
+            "   "
+        } else {
+            " "
+        };
+        let mark = state_mark(&line.state);
+        let style = if line.group == CardGroup::Itself {
+            Style::new().add_modifier(Modifier::BOLD)
+        } else {
+            Style::new()
+        };
+        // The value as a line shows it: its number in the value's style, its
+        // unit in the unit's; text as text.
+        let padded = format!("{:<shown$}", ellipsized(&line.shown, shown));
+        let mut spans = vec![
+            Span::styled(
+                format!(
+                    "{indent}{}",
+                    ellipsized(&format!("{label:<named$}"), named + 2)
+                ),
+                style,
+            ),
+            Span::raw("  "),
+        ];
+        spans.extend(
+            value_spans(&padded, style)
+                .into_iter()
+                .map(|span| span.patch_style(style)),
+        );
+        spans.push(Span::raw("  "));
+        spans.push(Span::styled(
+            format!(
+                "{} {}",
+                if mark.is_empty() { " " } else { mark },
+                line.state
+            ),
+            Style::new().fg(state_colour(&line.state)),
+        ));
+        rows.push((Some(at), Line::from(spans)));
+    }
+    let width = (named + shown + 40) as u16;
+    let height = rows.len() as u16 + 2;
+    let area = window_area(main, Some((width, height)));
+    frame.render_widget(Clear, area);
+    let block = framed()
+        .title(format!(" {field} · its card "))
+        .title_bottom(hint_spans(&card_keys(area.width as usize)).right_aligned());
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    let at_row = rows
+        .iter()
+        .position(|(at, _)| *at == Some(cursor))
+        .unwrap_or(0);
+    let first = (at_row + 1).saturating_sub(inner.height as usize);
+    for (shown_at, (at, line)) in rows
+        .iter()
+        .enumerate()
+        .skip(first)
+        .take(inner.height as usize)
+    {
+        let y = inner.y + (shown_at - first) as u16;
+        let rect = Rect::new(inner.x, y, inner.width, 1);
+        // What a narrow card cannot hold of a line, its state's words, is cut
+        // with its mark.
+        let mut line = line.clone();
+        let width = line.width();
+        if width > usize::from(inner.width)
+            && let Some(last) = line.spans.last_mut()
+        {
+            let before = width - last.width();
+            let room = usize::from(inner.width).saturating_sub(before);
+            last.content = ellipsized(&last.content, room).into();
+        }
+        frame.render_widget(Paragraph::new(line), rect);
+        if *at == Some(cursor) {
+            // On the `line` colour, as the screens' cursor line: reversed,
+            // a unit and a state became blocks of their colours.
+            frame
+                .buffer_mut()
+                .set_style(rect, Style::new().bg(colors().line));
+            if matches!(
+                workbench.mode,
+                Mode::Prompt {
+                    purpose: super::model::Purpose::Cell(_),
+                    ..
+                }
+            ) {
+                let indent = if lines
+                    .get(cursor)
+                    .is_some_and(|line| matches!(line.group, CardGroup::Reads | CardGroup::ReadBy))
+                {
+                    3
+                } else {
+                    1
+                };
+                let x = inner.x + (indent + named + 2) as u16;
+                let typed = Rect::new(x, y, inner.width.saturating_sub(x - inner.x), 1);
+                CELL_TYPED.with(|cell| cell.set(Some(typed)));
+            }
+        }
+    }
+}
+
+/// The card's keys at its foot, as many as its width holds, the first most
+/// wanted: cut, a key's words were cut in their middle.
+fn card_keys(width: usize) -> String {
+    let mut keys = vec![
+        "↑↓ line",
+        "e type in it",
+        "Esc close",
+        "w write",
+        "u take back",
+    ];
+    while keys.len() > 1 && keys.join(" · ").chars().count() + 6 > width {
+        keys.pop();
+    }
+    format!(" {} ", keys.join(" · "))
+}
+
+/// The cursor's line on the collection, a sample and a table: on the `line`
+/// colour, its colours kept — reversed, a mark became a block of its colour,
+/// and the line a dark bar on a light theme — the cell typed in, in the typing
+/// mode, reversed on it.
+fn line_style(_workbench: &Workbench) -> Style {
+    Style::new().bg(colors().line)
 }

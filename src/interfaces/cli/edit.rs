@@ -1759,7 +1759,7 @@ fn readings_change(
                 samplekit::format::fingerprint::check_property(sample, &name),
                 Ok(samplekit::format::fingerprint::Freshness::Edited)
             );
-            let held = sample.property(&name).ok().map(|handle| {
+            let held = sample.property_if(&name).map(|handle| {
                 handle.peek(|property| {
                     (
                         property.peek_value(),
@@ -1795,10 +1795,10 @@ fn readings_change(
             }
             // The statistic the file records for them, where it records one: a
             // median said as a mean was the preview's own guess.
-            let location = sample.property(&name).ok().and_then(|handle| {
+            let location = sample.property_if(&name).and_then(|handle| {
                 handle.peek(samplekit::core::property::Property::declared_location)
             });
-            let mut convention = sample.property(&name).ok().and_then(|handle| {
+            let mut convention = sample.property_if(&name).and_then(|handle| {
                 handle
                     .records()
                     .statistics
@@ -2220,7 +2220,7 @@ pub(super) fn apply_known(
             }),
             Value::Integer(_) | Value::Number(_),
         ) if sample.has_property(&name) => {
-            let handle = sample.property(&name).ok();
+            let handle = sample.property_if(&name);
             let written = handle
                 .as_ref()
                 .and_then(|handle| handle.presentation().unit);

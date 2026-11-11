@@ -45,7 +45,7 @@ DESCRIBED = {}
 
 # What this worker and the command line say to each other, numbered as the
 # command line's `PROTOCOL` is: raised with any change to the requests.
-PROTOCOL = 2
+PROTOCOL = 3
 
 
 class Forward(logging.Handler):

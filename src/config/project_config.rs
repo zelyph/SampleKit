@@ -8,6 +8,8 @@ use std::io;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
+use crate::core::link::portable;
+
 use indexmap::IndexMap;
 use serde::Deserialize;
 
@@ -48,6 +50,10 @@ pub struct ProjectConfig {
     /// `[colors]`: the colour for each role the TUI and the command line
     /// draw, where the project changes one. Checked here, drawn there.
     colors: IndexMap<String, String>,
+    /// `[colors] theme`: the TUI's theme for the project, a name the TUI
+    /// checks against the themes it has: one of one's own, named by a
+    /// project shared, is not its reader's, and no reason to refuse it.
+    colors_theme: Option<String>,
     /// `[history] shared`: whether git carries the history, where something
     /// declares it.
     history_shared: Option<bool>,
@@ -134,6 +140,14 @@ pub const COLOR_ROLES: &[(&str, &str)] = &[
     ("message", "yellow"),
     ("error", "red"),
     ("accent", "cyan"),
+    // What waits to be written, in italics, which no other role draws in.
+    ("waiting", "light-magenta"),
+    // The cursor's line in the typing mode, the cell under it reversed on it.
+    ("line", "dark-grey"),
+    // The whole screen's background and its text, the TUI's alone: left to
+    // the terminal, which the command line never paints over.
+    ("background", "default"),
+    ("foreground", "default"),
 ];
 
 /// The colours a role takes: the terminal's sixteen by name, `default` for
@@ -167,6 +181,72 @@ pub fn is_color(text: &str) -> bool {
         || (text.len() == 7
             && text.starts_with('#')
             && text[1..].chars().all(|digit| digit.is_ascii_hexdigit()))
+}
+
+/// A theme of one's own, as its file writes it: the theme it starts from,
+/// and the roles it changes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ThemeFile {
+    pub base: Option<String>,
+    pub colors: IndexMap<String, String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WrittenTheme {
+    base: Option<String>,
+    #[serde(default)]
+    colors: IndexMap<String, String>,
+}
+
+/// A theme's file read from its text: `base`, then `[colors]`, each role and
+/// colour checked as a project's `[colors]` is, what is refused naming
+/// `path`. A `theme` is a project's choice of a base, which a theme's file
+/// writes as `base`.
+pub fn theme_file(path: &Path, text: &str) -> Result<ThemeFile, ConfigError> {
+    let written: WrittenTheme = toml::from_str(text).map_err(|error| ConfigError::Parse {
+        path: path.to_path_buf(),
+        line: error.span().map(|span| line_of(text, span.start)),
+        message: said_of(
+            error.message(),
+            error.span().map(|span| line_text(text, span.start)),
+        ),
+    })?;
+    if written.colors.contains_key("theme") {
+        return Err(ConfigError::Parse {
+            path: path.to_path_buf(),
+            line: line_of_key(text, "colors", Some("theme")),
+            message: "[colors] theme is a project's: a theme's file starts from another with \
+                      base = \"NAME\", above [colors]"
+                .to_string(),
+        });
+    }
+    Ok(ThemeFile {
+        base: written.base,
+        colors: section_colors(path, "colors", written.colors)?,
+    })
+}
+
+/// SampleKit's configuration folder, where one's own themes are:
+/// `$SAMPLEKIT_CONFIG_DIR`, or the system's own place for a program's
+/// configuration, by `etcetera` — `$XDG_CONFIG_HOME/samplekit`,
+/// `~/.config/samplekit` without it, `~/Library/Application
+/// Support/samplekit` on macOS, `%APPDATA%\samplekit` on Windows. `None`
+/// where the system has none.
+pub fn config_directory() -> Option<PathBuf> {
+    use etcetera::BaseStrategy;
+    if let Some(directory) =
+        std::env::var_os("SAMPLEKIT_CONFIG_DIR").filter(|value| !value.is_empty())
+    {
+        return Some(PathBuf::from(directory));
+    }
+    let strategy = etcetera::base_strategy::choose_native_strategy().ok()?;
+    Some(strategy.config_dir().join("samplekit"))
+}
+
+/// `themes/` in the configuration folder: one's own themes, a file each.
+pub fn themes_folder() -> Option<PathBuf> {
+    config_directory().map(|directory| directory.join("themes"))
 }
 
 /// `[model]`: a path relative to the configuration file, never an import path.
@@ -1263,8 +1343,43 @@ fn read(path: &Path) -> Result<String, ConfigError> {
 /// edit is checked with before it is written. What it
 /// imports is read from the files it names.
 pub fn parse(path: &Path, text: &str) -> Result<ProjectConfig, ConfigError> {
-    parse_within(path, text, &mut Vec::new())
+    let key = (path.to_path_buf(), text.to_string());
+    let parsed = PARSED.get_or_init(Default::default);
+    let held = parsed.lock().ok().and_then(|held| held.get(&key).cloned());
+    // Kept while each file it imports holds the text it held.
+    if let Some((config, imported)) = held
+        && imported
+            .iter()
+            .all(|(file, text)| std::fs::read_to_string(file).ok().as_ref() == Some(text))
+    {
+        return Ok(config);
+    }
+    let config = parse_within(path, text, &mut Vec::new())?;
+    let imported = config
+        .imports
+        .iter()
+        .filter_map(|file| Some((file.clone(), std::fs::read_to_string(file).ok()?)))
+        .collect();
+    if let Ok(mut held) = parsed.lock() {
+        if held.len() >= PARSED_KEPT {
+            held.clear();
+        }
+        held.insert(key, (config.clone(), imported));
+    }
+    Ok(config)
 }
+
+/// The configurations parsed, by their file and its text, with the text of
+/// each file they import: a sample read from Python parsed its project's
+/// configuration again, four thousand times over a project of as many.
+type Parsed = std::sync::Mutex<
+    std::collections::HashMap<(PathBuf, String), (ProjectConfig, Vec<(PathBuf, String)>)>,
+>;
+
+static PARSED: std::sync::OnceLock<Parsed> = std::sync::OnceLock::new();
+
+/// Configurations kept before the store is emptied.
+const PARSED_KEPT: usize = 256;
 
 /// `parse`, `importing` holding the files whose imports are being read, so
 /// that one met twice is a loop rather than a recursion without end.
@@ -1536,7 +1651,7 @@ fn imported_file(path: &Path, here: &Path, written: &str) -> Result<PathBuf, Con
             .map_err(|_| refused("the home folder is not known here".to_string()))?;
         home.join(written.trim_start_matches('~').trim_start_matches('/'))
     } else {
-        here.join(written)
+        here.join(portable(written))
     };
     // A file is taken as it is, whatever its name.
     if folder.is_file() {
@@ -2080,6 +2195,13 @@ fn line_of(text: &str, offset: usize) -> usize {
 /// Every profile is validated at load, including ones this run will never use.
 /// A typo in an export used once a month should be reported the next time
 /// *anything* in the project is loaded, not thirty days later.
+fn slashed_patterns(patterns: Vec<String>) -> Vec<String> {
+    patterns
+        .into_iter()
+        .map(|pattern| pattern.replace('\\', "/"))
+        .collect()
+}
+
 fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, ConfigError> {
     let schema_version = written.schema_version.ok_or(ConfigError::MissingVersion {
         path: path.to_path_buf(),
@@ -2096,12 +2218,12 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         .model
         .as_ref()
         .and_then(|model| model.python.clone())
-        .map(PathBuf::from);
+        .map(|python| PathBuf::from(portable(&python)));
     let model = written.model.and_then(|model| {
         Some(ModelDeclaration {
-            path: PathBuf::from(model.path?),
+            path: PathBuf::from(portable(&model.path?)),
             class: model.class,
-            python: model.python.map(PathBuf::from),
+            python: model.python.map(|python| PathBuf::from(portable(&python))),
         })
     });
     let defaults = CollectionRules::default();
@@ -2109,9 +2231,11 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
         // A project is its folder and every folder below it, unless it says
         // otherwise: its samples commonly sit in a folder of their own.
         recursive: written.collection.recursive.unwrap_or(true),
-        include: written.collection.include.unwrap_or(defaults.include),
-        exclude: written.collection.exclude.unwrap_or(defaults.exclude),
-        files: written.collection.files.unwrap_or_default(),
+        // A pattern matches paths written with `/` on every system: a `\`
+        // written on Windows is read as one.
+        include: slashed_patterns(written.collection.include.unwrap_or(defaults.include)),
+        exclude: slashed_patterns(written.collection.exclude.unwrap_or(defaults.exclude)),
+        files: slashed_patterns(written.collection.files.unwrap_or_default()),
     };
 
     let mut properties = IndexMap::new();
@@ -2181,7 +2305,9 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
             NamedQuery {
                 name,
                 filter: query.filter,
-                directory: query.directory.map(PathBuf::from),
+                directory: query
+                    .directory
+                    .map(|directory| PathBuf::from(portable(&directory))),
             },
         );
     }
@@ -2352,7 +2478,7 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 Export::Figure(FigureExport {
                     name,
                     figure,
-                    output: PathBuf::from(export.output),
+                    output: PathBuf::from(portable(&export.output)),
                     query: export.query,
                     style: export.style,
                 }),
@@ -2464,7 +2590,7 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
                 name,
                 profile,
                 format,
-                output: PathBuf::from(export.output),
+                output: PathBuf::from(portable(&export.output)),
                 filename: export.filename.unwrap_or(false),
                 path: export.path.unwrap_or(false),
                 query: export.query,
@@ -2674,6 +2800,9 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
     if let Some(precision) = &written.render.precision {
         check_precision(path, "render", None, precision)?;
     }
+    // `theme` names the TUI's theme for the project: a name, not a role.
+    let mut colors = written.colors;
+    let colors_theme = colors.shift_remove("theme");
     Ok(ProjectConfig {
         root,
         schema_version,
@@ -2699,7 +2828,8 @@ fn build(path: &Path, root: PathBuf, written: Written) -> Result<ProjectConfig, 
             path,
             matplotlib_settings(path, written.matplotlib, "[matplotlib]")?,
         )?,
-        colors: section_colors(path, "colors", written.colors)?,
+        colors_theme,
+        colors: section_colors(path, "colors", colors)?,
         history_shared: written.history.shared,
         imports: Vec::new(),
         origins: IndexMap::new(),
@@ -2855,6 +2985,7 @@ fn sheets_and_fonts(
             .into_iter()
             .map(|entry| {
                 let a_path = key == "fonts" || entry.to_ascii_lowercase().ends_with(".mplstyle");
+                let entry = if a_path { portable(&entry) } else { entry };
                 if a_path && Path::new(&entry).is_relative() {
                     // By the path's parts, which know Windows's separators:
                     // by the words of `/`, `sub\../paper.mplstyle` kept its `..`.
@@ -3063,7 +3194,8 @@ impl ProjectConfig {
     /// A path relative to the configuration's directory, so that a project can
     /// be moved or copied whole.
     pub fn resolve(&self, relative: &str) -> PathBuf {
-        let path = Path::new(relative);
+        let relative = portable(relative);
+        let path = Path::new(&relative);
         if path.is_absolute() {
             path.to_path_buf()
         } else {
@@ -3302,6 +3434,17 @@ impl ProjectConfig {
 
     pub fn matplotlib(&self) -> &IndexMap<String, toml::Value> {
         &self.matplotlib
+    }
+
+    /// The roles the project's `[colors]` names, and none it leaves to the
+    /// theme: what the TUI lays over its theme.
+    pub fn colors_named(&self) -> &IndexMap<String, String> {
+        &self.colors
+    }
+
+    /// `[colors] theme`, where the project names its theme.
+    pub fn theme(&self) -> Option<&str> {
+        self.colors_theme.as_deref()
     }
 
     /// The colour of a role: the project's, or the default

@@ -3448,6 +3448,26 @@ pub struct Trace {
 }
 
 impl Trace {
+    /// What the trace knows, by a digest: the tags read, the latest write's
+    /// formulas, and how many formulas each value is known computed by. A
+    /// plan made under the same stamp is the same plan.
+    pub fn stamp(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut read: Vec<&String> = self.read.iter().collect();
+        read.sort();
+        read.hash(&mut hasher);
+        self.latest.hash(&mut hasher);
+        let mut known: Vec<(&String, usize)> = self
+            .formulas
+            .iter()
+            .map(|(value, formulas)| (value, formulas.len()))
+            .collect();
+        known.sort();
+        known.hash(&mut hasher);
+        hasher.finish()
+    }
+
     /// Whether the history holds no fact at all: a project computed before
     /// its history kept the trace, or never computed.
     pub fn is_empty(&self) -> bool {

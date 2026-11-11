@@ -1190,7 +1190,7 @@ fn said(
 fn property_of(sample: &Sample, name: &str) -> Option<crate::core::sample::PropertyHandle> {
     Identifier::new(name)
         .ok()
-        .and_then(|name| sample.property(&name).ok())
+        .and_then(|name| sample.property_if(&name))
 }
 
 /// Whether `value` holds an override: its state *edited*.

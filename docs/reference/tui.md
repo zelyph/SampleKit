@@ -10,7 +10,7 @@ In a list to choose from, `Space` ticks and `Enter` accepts what is ticked, and 
 
 ## Typing
 
-In every line typed (the filter, a prompt, a value's window, a list's `/`, the start page's name and narrowing) and in the note. A window's `Enter`, `Esc` and `Tab` stay the window's.
+In every line typed (the filter, a prompt, a cell of the typing mode, a list's `/`, the start page's name and narrowing) and in the note. A window's `Enter`, `Esc` and `Tab` stay the window's.
 
 | Keys | What they do |
 | --- | --- |
@@ -58,6 +58,7 @@ In every line typed (the filter, a prompt, a value's window, a list's `/`, the s
 | `o` | Open a folder: Enter on a project opens it, on any other goes in |
 | `c` | Configure a project: a recent one holding a .samplekitrc, or another moved to |
 | `g` | Guide and demo: the guide in the browser; the demo's page, its steps; the first time, the demo is written and its first step opened |
+| `T` | the theme: each tried on the page as the cursor reaches it, Enter keeps it for the projects naming none |
 | `q` `Esc` | quit |
 | `Ctrl+C` | quit, from the page or from a project |
 | `?` | this help |
@@ -78,7 +79,7 @@ In every line typed (the filter, a prompt, a value's window, a list's `/`, the s
 
 | Keys | What they do |
 | --- | --- |
-| `1…5` | open that step; quitting it comes back to the demo's page |
+| `1…6` | open that step; quitting it comes back to the demo's page |
 | `Enter` | the step marked; the home page, which walks through the steps, in the browser; the demo's folder, in the file manager, to edit its files and try the command line there; or Reset the demo, asked first |
 | `Esc` `q` | back to the start page |
 
@@ -130,8 +131,10 @@ What a project opens on: its samples, one per line. The basket, the samples `Spa
 | --- | --- |
 | `N` | a new sample beside this one: its name, then field=value …, and keep:field,… from the one under the cursor |
 | `u` | undo the last change written |
+| `w` | write the changes waiting, all previewed: one change of the history |
 | `D` | remove the sample, or the basket's: its file, asked first, u gives it back |
 | `R` | rename the sample, its own files and the links leading to it, asked first |
+| `e` | the typing mode: ← → the column, what you type goes to the sample, the rows Shift+↑ ↓ took, or the basket |
 
 **Computing and checking**
 
@@ -161,6 +164,7 @@ What a project opens on: its samples, one per line. The basket, the samples `Spa
 
 | Keys | What they do |
 | --- | --- |
+| `T` | the theme: each tried on the screen as the cursor reaches it, Enter keeps it |
 | `?` | this help |
 | `q` | quit |
 
@@ -201,9 +205,10 @@ One sample, value by value, and its tables.
 
 | Keys | What they do |
 | --- | --- |
+| `w` | write the changes waiting, all previewed: one change of the history |
 | `D` | remove this sample: its file, asked first, u gives it back |
 | `R` | rename this sample, its own files and the links leading to it, asked first |
-| `e` | change the value, previewed |
+| `e` | the typing mode: what you type replaces the cell, the arrows go from cell to cell, Esc leaves |
 | `N` | edit the note |
 | `A` | add an attribute: its name, then its value |
 | `u` | undo the last change written |
@@ -213,7 +218,8 @@ One sample, value by value, and its tables.
 | Keys | What they do |
 | --- | --- |
 | `H` | this sample's history: each change kept, and what it changed |
-| `Enter` | open the value in its window (value, uncertainty, readings), or an attribute's items; a link, its sample or its address |
+| `i` | the value's card: its state, what it reads and what reads it, each typed in with e |
+| `Enter` | an attribute's items; a link, its sample or its address; a table, unfolded |
 | `c` | compute the selected values, or this one, even if current or edited |
 | `C` | compute what is not current in the sample |
 
@@ -234,6 +240,7 @@ One sample, value by value, and its tables.
 
 | Keys | What they do |
 | --- | --- |
+| `T` | the theme: each tried on the screen as the cursor reaches it, Enter keeps it |
 | `?` | this help |
 
 ## A table
@@ -265,7 +272,8 @@ One table of a sample, row by row.
 
 | Keys | What they do |
 | --- | --- |
-| `e` | change the index or a text cell; on the empty row, add one; a value is changed in its window, Enter |
+| `w` | write the changes waiting, all previewed: one change of the history |
+| `e` | the typing mode: what you type replaces the cell, a value with its uncertainty; on the empty row, a new row; Delete takes a row out |
 | `u` | undo the last change written |
 
 **Computing and checking**
@@ -273,7 +281,7 @@ One table of a sample, row by row.
 | Keys | What they do |
 | --- | --- |
 | `H` | the sample's history: each change kept, and what it changed |
-| `Enter` | open the cell: its value, its uncertainty, where it came from; e there changes them |
+| `i` | the cell's card: its state, what it reads and what reads it, each typed in with e |
 | `c` | compute the selected columns, or this one, even if current or edited |
 | `C` | compute what is not current in the sample |
 
@@ -296,41 +304,21 @@ One table of a sample, row by row.
 | --- | --- |
 | `?` | this help |
 
-## A value's window
+## A value's card
 
-`Enter` on a value of a sample: its value, its uncertainty and its readings, a column each.
-
-**Moving**
+`i` on a value of a sample, or on a table's cell holding one: the value, its readings, what it reads and what reads it, each with its value and its state.
 
 | Keys | What they do |
 | --- | --- |
-| `l` `→` | next column |
-| `h` `←` | previous column; from the first, back to the sample |
-| `Esc` `q` | back to the sample |
-
-**Changing**
-
-| Keys | What they do |
-| --- | --- |
-| `e` | change the cell, previewed; on readings, their list |
-| `u` | undo the last change written |
-
-**Computing and checking**
-
-| Keys | What they do |
-| --- | --- |
-| `c` | compute the property, even if current or edited |
-| `Enter` | where the value came from |
-
-**The TUI**
-
-| Keys | What they do |
-| --- | --- |
-| `?` | this help |
+| `j` `k` `↓` `↑` | the next line, the line above |
+| `e` `Enter` `F2` | type over the line under the cursor: what is typed waits, and the card is drawn again as it makes it |
+| `w` | the changes waiting, previewed, written by y |
+| `u` | take back the last change |
+| `Esc` `q` `i` | close the card |
 
 ## A list's window
 
-A value's readings, or an attribute's items, one per row.
+`Enter` on an attribute: its items, one per row.
 
 **Moving**
 

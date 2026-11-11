@@ -1080,7 +1080,7 @@ pub fn kept_by(sample: &Sample, field_name: &str) -> Option<Kept> {
     else {
         return None;
     };
-    let handle = sample.property(&name).ok()?;
+    let handle = sample.property_if(&name)?;
     let readings = handle.readings()?;
     let uncertainty = handle
         .peek(Property::peek_uncertainty)
@@ -1239,7 +1239,7 @@ fn refuses_text(
     if !matches!(channel, Channel::Value) || !matches!(value, Value::Text(_) | Value::Boolean(_)) {
         return None;
     }
-    let handle = sample.property(name).ok()?;
+    let handle = sample.property_if(name)?;
     // Readings, a statistic of them declared, or an uncertainty, are a
     // number's too: a quantity a computation left without a value, holding
     // only the statistic it declares, took `1,016` as text.
@@ -2098,7 +2098,7 @@ pub fn set_readings(
     // — or entered where there were none — stands, stale, beside the new
     // evidence; an entered uncertainty and a declared statistic stay; the
     // record stays, and says the readings moved.
-    let held = sample.property(name).ok().map(|handle| {
+    let held = sample.property_if(name).map(|handle| {
         let records = handle.records().clone();
         let presentation = handle.presentation();
         handle.peek(|property| {

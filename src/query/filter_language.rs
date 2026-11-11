@@ -2706,13 +2706,20 @@ pub fn caret(source: &str, error: &FilterError) -> Option<String> {
 }
 
 /// Whether the sample's attributes, or the one named, hold a link to
-/// `target` as the link writes it: a wikilink's target, a Markdown link's file
-/// name without its `.md` (and `.sample`).
+/// `target`, as Obsidian writes one: a wikilink's target by the end of its
+/// path, its `.md` and its case aside — `[[samples/Steel-01.md]]` links to
+/// `steel-01` — and a Markdown link's file name without its `.md` (and
+/// `.sample`).
 fn links_to(subject: &Subject, field: Option<&Identifier>, target: &str) -> Truth {
     use crate::core::link::{self, Link};
     use crate::core::sample::AttributeValue;
+    let named_as = |written: &str| {
+        let last = written.rsplit('/').next().unwrap_or(written);
+        let stem = last.strip_suffix(".md").unwrap_or(last);
+        stem.to_lowercase() == target.to_lowercase()
+    };
     let leads = |text: &str| match link::parse(text) {
-        Some(Link::Sample { target: named, .. }) => named == target,
+        Some(Link::Sample { target: named, .. }) => named_as(&named),
         Some(Link::Path { path, .. }) => std::path::Path::new(&path)
             .file_stem()
             .map(|stem| stem.to_string_lossy())
@@ -2734,7 +2741,7 @@ fn links_to(subject: &Subject, field: Option<&Identifier>, target: &str) -> Trut
             .sample
             .attribute_names()
             .into_iter()
-            .filter_map(|name| subject.sample.attribute(name).ok())
+            .filter_map(|name| subject.sample.attribute_if(name))
             .any(holds),
     };
     if found { Truth::True } else { Truth::False }

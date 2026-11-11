@@ -1078,3 +1078,174 @@ fn a_markdown_link_written_unquoted_is_refused_at_its_line() {
             .is_ok()
     );
 }
+
+// ------------------------------------------------------------ changes waiting
+
+const WAITING: &str = "---\nschema_version: 1\nname: C1\nalloy: cobalt\n---\n";
+
+/// A project of one sample whose changes wait in a folder beside it, as the
+/// terminal interface keeps them; the folder let go when the test ends.
+struct Waiting {
+    scratch: Scratch,
+    folder: PathBuf,
+}
+
+impl Waiting {
+    fn new(name: &str) -> Waiting {
+        let scratch = Scratch::new(name);
+        fs::create_dir_all(scratch.0.join("project")).unwrap();
+        scratch.file("project/C1.md", WAITING);
+        let folder = scratch.0.join("waiting");
+        samplekit::format::stage::begin(&folder, Some(&scratch.0.join("project"))).unwrap();
+        Waiting { scratch, folder }
+    }
+
+    fn at(&self, name: &str) -> PathBuf {
+        self.scratch.0.join("project").join(name)
+    }
+}
+
+impl Drop for Waiting {
+    fn drop(&mut self) {
+        samplekit::format::stage::end(&self.folder);
+    }
+}
+
+fn saved_as(path: &std::path::Path, alloy: &str) {
+    let (mut sample, origin) = document::load_sample(path).unwrap();
+    sample
+        .set_attribute(
+            id("alloy"),
+            samplekit::core::sample::AttributeValue::Scalar(Value::text(alloy)),
+        )
+        .unwrap();
+    document::save_sample(&mut sample, &Destination::Origin(origin)).unwrap();
+}
+
+#[test]
+fn a_save_waits_and_the_file_reads_as_it_would() {
+    let waiting = Waiting::new("waiting-save");
+    let path = waiting.at("C1.md");
+    saved_as(&path, "nickel");
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        WAITING,
+        "the file is untouched"
+    );
+    let read = document::read_text(&path).unwrap();
+    assert!(read.contains("alloy: nickel"), "{read}");
+    // A second save follows the first, read as it left it.
+    saved_as(&path, "chrome");
+    assert!(
+        document::read_text(&path)
+            .unwrap()
+            .contains("alloy: chrome")
+    );
+    assert_eq!(samplekit::format::stage::count(&waiting.folder), 1);
+    // Back to what the disk holds: nothing waits.
+    saved_as(&path, "cobalt");
+    assert_eq!(samplekit::format::stage::count(&waiting.folder), 0);
+    assert_eq!(fs::read_to_string(&path).unwrap(), WAITING);
+}
+
+#[test]
+fn what_waits_is_written_at_once_and_refused_over_another_hands_change() {
+    let waiting = Waiting::new("waiting-commit");
+    let first = waiting.at("C1.md");
+    let second = waiting.at("C2.md");
+    fs::write(&second, WAITING.replace("C1", "C2")).unwrap();
+    saved_as(&first, "nickel");
+    saved_as(&second, "nickel");
+    let written = samplekit::format::stage::commit(&waiting.folder).unwrap();
+    assert_eq!(written.len(), 2);
+    assert!(
+        fs::read_to_string(&first)
+            .unwrap()
+            .contains("alloy: nickel")
+    );
+    assert!(
+        fs::read_to_string(&second)
+            .unwrap()
+            .contains("alloy: nickel")
+    );
+    assert_eq!(samplekit::format::stage::count(&waiting.folder), 0);
+    // Another hand writes C1 while a change waits on it: nothing is written.
+    saved_as(&first, "tin");
+    saved_as(&second, "tin");
+    fs::write(
+        &first,
+        "---\nschema_version: 1\nname: C1\nalloy: zinc\n---\n",
+    )
+    .unwrap();
+    match samplekit::format::stage::commit(&waiting.folder) {
+        Err(DocumentError::ConcurrentEdit { path }) => assert!(path.ends_with("C1.md"), "{path:?}"),
+        other => panic!("{other:?}"),
+    }
+    assert!(fs::read_to_string(&first).unwrap().contains("alloy: zinc"));
+    assert!(
+        fs::read_to_string(&second)
+            .unwrap()
+            .contains("alloy: nickel")
+    );
+    assert_eq!(samplekit::format::stage::count(&waiting.folder), 2);
+}
+
+#[test]
+fn a_removal_and_a_move_wait_and_a_file_made_then_removed_was_never_there() {
+    let waiting = Waiting::new("waiting-remove");
+    let path = waiting.at("C1.md");
+    let photo = waiting.at("C1.png");
+    fs::write(&photo, [137u8, 80, 78, 71]).unwrap();
+    let moved = waiting.at("photos/C9.png");
+    document::remove_file(&path).unwrap();
+    document::move_file(&photo, &moved).unwrap();
+    assert!(
+        path.is_file() && photo.is_file() && !moved.exists(),
+        "nothing moves yet"
+    );
+    assert!(
+        document::read_text(&path).is_err(),
+        "removed, it reads as no file"
+    );
+    assert!(samplekit::format::stage::exists(&moved));
+    samplekit::format::stage::commit(&waiting.folder).unwrap();
+    assert!(!path.exists() && !photo.exists());
+    assert_eq!(fs::read(&moved).unwrap(), [137u8, 80, 78, 71]);
+    // Made while waiting, then removed: nothing waits.
+    let made = waiting.at("C2.md");
+    fs::write(waiting.at("C3.md"), WAITING.replace("C1", "C3")).unwrap();
+    let (mut sample, _) = document::load_sample(&waiting.at("C3.md")).unwrap();
+    document::save_sample(&mut sample, &Destination::New(made.clone())).unwrap();
+    assert!(!made.exists() && samplekit::format::stage::exists(&made));
+    document::remove_file(&made).unwrap();
+    assert_eq!(samplekit::format::stage::count(&waiting.folder), 0);
+}
+
+#[test]
+fn what_waits_outlasts_the_process_and_is_read_again() {
+    let waiting = Waiting::new("waiting-again");
+    let path = waiting.at("C1.md");
+    saved_as(&path, "nickel");
+    fs::write(waiting.at("C2.md"), WAITING.replace("C1", "C2")).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    saved_as(&waiting.at("C2.md"), "tin");
+    // An entry cut short, as a process killed while writing leaves it.
+    fs::write(waiting.folder.join("cut.json"), "{\"path\": ").unwrap();
+    samplekit::format::stage::end(&waiting.folder);
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        WAITING,
+        "ended, the disk's is read"
+    );
+    let count =
+        samplekit::format::stage::begin(&waiting.folder, Some(&waiting.scratch.0.join("project")))
+            .unwrap();
+    assert_eq!(count, 2);
+    let entries = samplekit::format::stage::entries(&waiting.folder);
+    assert!(entries[0].path.ends_with("C1.md") && entries[1].path.ends_with("C2.md"));
+    assert!(
+        document::read_text(&path)
+            .unwrap()
+            .contains("alloy: nickel")
+    );
+}

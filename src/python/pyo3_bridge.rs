@@ -1689,8 +1689,14 @@ fn import_file<'py>(py: Python<'py>, path: &Path, root: &Path) -> PyResult<Bound
         let held = sys
             .getattr("modules")?
             .call_method1("get", (dotted.as_str(),))?;
-        if held.is_none() || same_origin(&held, path)? {
-            let module = py.import(dotted.as_str())?.into_any();
+        // A name another module holds first is no import of this file:
+        // `model/specimen.py` as `model.specimen`, where a `model.py` on the
+        // path, another project's or an installed one, is the `model` Python
+        // finds before the folder. The file is then imported by its path.
+        if (held.is_none() || same_origin(&held, path)?)
+            && let Ok(module) = py.import(dotted.as_str())
+        {
+            let module = module.into_any();
             if same_origin(&module, path)? {
                 return Ok(module);
             }

@@ -1564,8 +1564,11 @@ impl EnvCompleter for SamplekitPowershell {
         output: &mut dyn std::io::Write,
     ) -> Result<(), std::io::Error> {
         let quoted = |text: &str| format!("'{}'", text.replace('\'', "''"));
+        // The command's aliases too, `Set-Alias sk BIN`, those defined
+        // before this runs: PowerShell gives an alias no completion of its own.
         let script = r#"
-Register-ArgumentCompleter -Native -CommandName BIN -ScriptBlock {
+$names = @('BIN') + @(Get-Alias -Definition 'BIN' -ErrorAction SilentlyContinue | ForEach-Object Name)
+Register-ArgumentCompleter -Native -CommandName $names -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $words = @()

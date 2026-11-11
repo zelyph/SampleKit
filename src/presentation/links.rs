@@ -40,6 +40,10 @@ pub fn shown(text: &str, from: &Path, samples: &[(PathBuf, Option<String>)]) -> 
                 .map(|(path, name)| (path.as_path(), name.as_deref())),
         ) {
             Resolved::One(_) => Leads::Inside,
+            // A file of the project by its whole name, `[[curve.csv]]`.
+            Resolved::Nowhere if crate::config::discovery::names_a_file(from, target) => {
+                Leads::Inside
+            }
             _ => Leads::Nowhere,
         },
         Link::Path { path, .. } => {
@@ -131,7 +135,9 @@ pub fn row(
                     name,
                     channel: Channel::Value,
                     ..
-                } => attribute(subject.sample.attribute(&name).ok()?, from, samples),
+                } if subject.sample.has_attribute(&name) => {
+                    attribute(subject.sample.attribute_if(&name)?, from, samples)
+                }
                 _ => None,
             }
         })

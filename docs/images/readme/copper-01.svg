@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="324" viewBox="0 0 900 324" font-family="'DejaVu Sans Mono', Menlo, Consolas, monospace" font-size="15" xml:space="preserve" style="white-space:pre">
+<rect width="900" height="324" fill="#11151c"/>
+<text x="18" y="13" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">SampleKit</text>
+<text x="108" y="13" textLength="99" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">· copper-01</text>
+<text x="27" y="31" textLength="54" lengthAdjust="spacing" fill="#d1d7e0">values</text>
+<text x="423" y="31" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 54H36M27 54V72M180 54H198M198 54H216M216 54H234M234 54H252M252 54H270M270 54H288M288 54H306M306 54H324M324 54H342M342 54H360M360 54H378M378 54H396M396 54H414M414 54H432M432 54H450M450 54H468M468 54H486M486 54H504M504 54H522M522 54H540M540 54H558M558 54H576M576 54H594M594 54H612M612 54H630M630 54H648M648 54H666M666 54H684M684 54H702M702 54H720M720 54H738M738 54H756M756 54H774M774 54H792M792 54H801M801 54V72M819 54H828M819 54V72M936 54H954M954 54H972M972 54H990M990 54H1008M1008 54H1026M1026 54H1044M1044 54H1062M1062 54H1080M1080 54H1098M1098 54H1116M1116 54H1134M1134 54H1152M1152 54H1170M1170 54H1188M1188 54H1206M1206 54H1224M1224 54H1242M1242 54H1260M1260 54H1278M1278 54H1296M1296 54H1314M1314 54H1332M1332 54H1350M1350 54H1368M1368 54H1386M1386 54H1404M1404 54H1422M1422 54H1440M1440 54H1458M1458 54H1476M1476 54H1494M1494 54H1512M1512 54H1530M1530 54H1548M1548 54H1566M1566 54H1584M1584 54H1602M1602 54H1620M1620 54H1638M1638 54H1656M1656 54H1674M1674 54H1692M1692 54H1710M1710 54H1728M1728 54H1746M1746 54H1764M1764 54H1773M1773 54V72"/>
+<rect x="27" y="36" width="360" height="18" fill="#232a36"/>
+<text x="54" y="49" textLength="36" lengthAdjust="spacing" fill="#60a5fa">name</text>
+<text x="189" y="49" textLength="81" lengthAdjust="spacing" fill="#60a5fa">copper-01</text>
+<text x="423" y="49" textLength="441" lengthAdjust="spacing" fill="#d1d7e0">Tested at 2 mm/min, across the rolling direction.</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 72V108M801 72V108M819 72V108M1773 72V108"/>
+<text x="54" y="67" textLength="36" lengthAdjust="spacing" fill="#60a5fa">tags</text>
+<text x="189" y="67" textLength="9" lengthAdjust="spacing" fill="#60a5fa">—</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 108V144M801 108V144M819 108V144M1773 108V144"/>
+<text x="54" y="85" textLength="72" lengthAdjust="spacing" fill="#60a5fa">material</text>
+<text x="189" y="85" textLength="54" lengthAdjust="spacing" fill="#60a5fa">copper</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 144V180M801 144V180M819 144V180M1773 144V180"/>
+<text x="54" y="103" textLength="117" lengthAdjust="spacing" fill="#60a5fa">compared_with</text>
+<text x="189" y="103" textLength="72" lengthAdjust="spacing" fill="#7dd3fc" text-decoration="underline">steel-01</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 180V216M801 180V216M819 180V216M1773 180V216"/>
+<text x="54" y="121" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="189" y="121" textLength="144" lengthAdjust="spacing" fill="#f0abfc" font-weight="bold" font-style="italic">12.5043 ± 0.0033</text>
+<text x="342" y="121" textLength="18" lengthAdjust="spacing" fill="#f0abfc" font-style="italic">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 216V252M801 216V252M819 216V252M1773 216V252"/>
+<text x="54" y="139" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">thickness</text>
+<text x="198" y="139" textLength="135" lengthAdjust="spacing" fill="#f0abfc" font-weight="bold" font-style="italic">1.9967 ± 0.0056</text>
+<text x="342" y="139" textLength="18" lengthAdjust="spacing" fill="#f0abfc" font-style="italic">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 252V288M801 252V288M819 252V288M1773 252V288"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 288V324M801 288V324M819 288V324M1773 288V324"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M801 324V360M819 324V360M1773 324V360"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 360V396M801 360V396M819 360V396M1773 360V396"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M801 396V432M819 396V432M1773 396V432"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 432V468M801 432V468M819 432V468M1773 432V468"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 468V504M801 468V504M819 468V504M1773 468V504"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 504V540M801 504V540M819 504V540M1773 504V540"/>
+<text x="333" y="283" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">e</text>
+<text x="351" y="283" textLength="36" lengthAdjust="spacing" fill="#8b949e">edit</text>
+<text x="693" y="283" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">N</text>
+<text x="711" y="283" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="774" y="283" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">n</text>
+<text x="792" y="283" textLength="81" lengthAdjust="spacing" fill="#8b949e">hide note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 558H36M27 540V558M36 558H54M54 558H72M72 558H90M90 558H108M108 558H126M126 558H144M144 558H162M162 558H180M180 558H198M198 558H216M216 558H234M234 558H252M252 558H270M270 558H288M288 558H306M306 558H324M324 558H342M342 558H360M360 558H378M378 558H396M396 558H414M414 558H432M432 558H450M450 558H468M468 558H486M486 558H504M504 558H522M522 558H540M540 558H558M558 558H576M576 558H594M594 558H612M612 558H630M630 558H648M792 558H801M801 540V558M819 558H828M819 540V558M828 558H846M846 558H864M864 558H882M882 558H900M900 558H918M918 558H936M936 558H954M954 558H972M972 558H990M990 558H1008M1008 558H1026M1026 558H1044M1044 558H1062M1062 558H1080M1080 558H1098M1098 558H1116M1116 558H1134M1134 558H1152M1152 558H1170M1170 558H1188M1188 558H1206M1206 558H1224M1224 558H1242M1242 558H1260M1260 558H1278M1278 558H1296M1296 558H1314M1314 558H1332M1332 558H1350M1350 558H1368M1764 558H1773M1773 540V558"/>
+<text x="18" y="301" textLength="315" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples · 1 file not written</text>
+<text x="18" y="319" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Esc</text>
+<text x="54" y="319" textLength="54" lengthAdjust="spacing" fill="#8b949e">back ·</text>
+<text x="117" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">H</text>
+<text x="135" y="319" textLength="81" lengthAdjust="spacing" fill="#8b949e">history ·</text>
+<text x="225" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="243" y="319" textLength="54" lengthAdjust="spacing" fill="#8b949e">undo ·</text>
+<text x="306" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">C</text>
+<text x="324" y="319" textLength="72" lengthAdjust="spacing" fill="#8b949e">update ·</text>
+<text x="405" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">a</text>
+<text x="423" y="319" textLength="45" lengthAdjust="spacing" fill="#8b949e">all ·</text>
+<text x="477" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">x</text>
+<text x="495" y="319" textLength="63" lengthAdjust="spacing" fill="#8b949e">clear ·</text>
+<text x="567" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">o</text>
+<text x="585" y="319" textLength="63" lengthAdjust="spacing" fill="#8b949e">files ·</text>
+<text x="657" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">E</text>
+<text x="675" y="319" textLength="72" lengthAdjust="spacing" fill="#8b949e">editor ·</text>
+<text x="756" y="319" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">?</text>
+<text x="774" y="319" textLength="72" lengthAdjust="spacing" fill="#8b949e">all keys</text>
+</svg>

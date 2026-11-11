@@ -6,13 +6,16 @@ standard it was tested to. A link is an attribute, so it is written, read,
 filtered and exported as one; SampleKit also shows where it leads, follows it
 from either side, checks it, and keeps it when a sample is renamed.
 
-The commands run in the last step of the [home page's](../index.md) tensile
-example, where the aluminium and copper specimens name the steel one they are
-compared with:
+The commands run in the fourth step of the [home page's](../index.md) tensile
+example, `04-results`, where the aluminium and copper specimens name the
+steel one they are compared with:
 
 ```yaml
 compared_with: "[[steel-01]]"
 ```
+
+The demo's sixth step, `06-links`, holds a link in every form, and one that
+leads nowhere ([links](../index.md#links)).
 
 ## 1. Write a link
 
@@ -21,8 +24,9 @@ A link leads to one of three places ([every form](../reference/sample-files.md#l
 | Written | Leads to |
 | --- | --- |
 | `"[[steel-01]]"`, `"[[steel-01\|the steel]]"` | a sample of the project: the one whose file is `steel-01.md`, or else the one whose `name` is `steel-01` |
+| `"[[curve.csv]]"`, `"[[method.pdf#page=12]]"` | a file of the project, by its name and its extension; a PDF at a page |
 | `"[the curve](../machine/steel-01/curve.csv)"` | a file, a sample of another project among them, by its path from the sample's own folder |
-| `"https://…"`, `"[ISO 6892-1](https://…)"` | a web page |
+| `"https://…"`, `"[ISO 6892-1](https://…)"`, `"zotero://…"` | a web page, or a reference in another tool |
 
 These are the forms Obsidian and Markdown write, so a project opened in
 either reads its links the same way. **The quotes are needed** in the file:

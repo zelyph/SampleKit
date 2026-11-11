@@ -246,6 +246,8 @@ fn session(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     workbench: &mut Workbench,
 ) -> Result<Ended, String> {
+    // A file changed outside, told by the system rather than looked for.
+    workbench.watch_files();
     loop {
         terminal
             .draw(|frame| super::view::draw(frame, workbench))
@@ -268,8 +270,9 @@ fn session(
             }
             continue;
         }
-        // Waiting for a key, the files are looked at once a second: one
-        // changed outside SampleKit is read again without a key pressed.
+        // Waiting for a key, the files are looked at once a second where the
+        // system tells of a change, or now and then: one changed outside
+        // SampleKit is read again without a key pressed.
         if !event::poll(Duration::from_secs(1)).map_err(|error| error.to_string())? {
             workbench.catch_up();
             continue;
@@ -343,6 +346,7 @@ fn key_of(pressed: &KeyEvent) -> Option<Key> {
         KeyCode::Left => Key::Left,
         KeyCode::Right => Key::Right,
         KeyCode::Delete => Key::Delete,
+        KeyCode::F(2) => Key::F2,
         _ => return None,
     })
 }
@@ -399,6 +403,21 @@ fn handle(
         Effect::OpenAddress(address) => {
             workbench.message = match opening::open(std::path::Path::new(&address)) {
                 Ok(()) => format!("opened {address}"),
+                Err(error) => error.to_string(),
+            }
+        }
+        Effect::OpenPage { file, page } => {
+            workbench.message = match opening::open_page(&file, page) {
+                Ok(opening::PageShown::AtPage) => {
+                    format!(
+                        "opened {} at page {page}, in the web browser",
+                        file.display()
+                    )
+                }
+                Ok(opening::PageShown::Whole) => format!(
+                    "opened {}: no web browser found to open it at page {page}",
+                    file.display()
+                ),
                 Err(error) => error.to_string(),
             }
         }

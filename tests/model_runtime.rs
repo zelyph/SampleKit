@@ -1029,6 +1029,60 @@ fn no_model_is_an_unknown_option() {
 }
 
 #[test]
+fn a_python_file_added_to_the_model_is_seen_at_the_next_reading() {
+    let scratch = Scratch::new("walk-again");
+    project(&scratch, BILLET);
+    let template = runtime::template_of(&loaded(&scratch)).unwrap();
+    let before = runtime::template_files(&template).unwrap();
+    let added = scratch.write("project/helpers/fit.py", "SCALE = 1\n");
+    assert!(!before.contains(&added));
+    samplekit::collection::sample_list::from_directory(&scratch.at("project")).unwrap();
+    let files = runtime::template_files(&template).unwrap();
+    assert!(files.contains(&added), "{files:?}");
+    fs::remove_file(&added).unwrap();
+    samplekit::collection::sample_list::from_directory(&scratch.at("project")).unwrap();
+    assert!(!runtime::template_files(&template).unwrap().contains(&added));
+}
+
+/// The workbench's plan, once the thread making it beside the screen gave it.
+fn planned_in(workbench: &mut samplekit::tui::model::Workbench) {
+    let start = std::time::Instant::now();
+    while workbench.planning.is_some() {
+        assert!(
+            start.elapsed() < std::time::Duration::from_secs(60),
+            "no plan came"
+        );
+        workbench.tick();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn a_reload_plans_again_the_sample_whose_file_changed() {
+    let scratch = Scratch::new("plan-again");
+    let root = project(&scratch, BILLET);
+    let mut workbench = samplekit::tui::model::Workbench::open(&root).unwrap();
+    planned_in(&mut workbench);
+    let owed = |workbench: &samplekit::tui::model::Workbench, name: &str| {
+        workbench.owed[&scratch.at(&format!("project/samples/{name}.md"))].len()
+    };
+    let (c1, c2) = (owed(&workbench, "c1"), owed(&workbench, "c2"));
+    assert!(c1 > 0, "{:?}", workbench.owed);
+    // c1's ductility entered by hand: owed no longer; c2 as it was.
+    let file = scratch.at("project/samples/c1.md");
+    let text = fs::read_to_string(&file).unwrap();
+    fs::write(
+        &file,
+        text.replace("properties:\n", "properties:\n  ductility: {v: 3.0}\n"),
+    )
+    .unwrap();
+    workbench.reload();
+    planned_in(&mut workbench);
+    assert!(owed(&workbench, "c1") < c1, "{:?}", workbench.owed);
+    assert_eq!(owed(&workbench, "c2"), c2);
+}
+
+#[test]
 fn the_models_digest_covers_its_tree() {
     let scratch = Scratch::new("digest-tree");
     project(&scratch, BILLET);
@@ -1062,7 +1116,7 @@ fn a_dead_worker_is_not_reported_as_a_template_failure() {
     fake_python(
         &scratch,
         &format!(
-            "printf '{{\"ready\": {{\"version\": \"{}\", \"python\": \"3\", \"protocol\": 2}}}}\\n'\nread line\necho Killed >&2\nexit 137\n",
+            "printf '{{\"ready\": {{\"version\": \"{}\", \"python\": \"3\", \"protocol\": 3}}}}\\n'\nread line\necho Killed >&2\nexit 137\n",
             runtime::VERSION
         ),
     );
@@ -1486,7 +1540,7 @@ fn a_worker_writing_an_unreadable_line_is_stopped() {
     fake_python(
         &scratch,
         &format!(
-            "printf '{{\"ready\": {{\"version\": \"{}\", \"python\": \"3\", \"protocol\": 2}}}}\\n'\nread line\n\
+            "printf '{{\"ready\": {{\"version\": \"{}\", \"python\": \"3\", \"protocol\": 3}}}}\\n'\nread line\n\
              printf '{{\"output\": {{\"value\": null, \"text\": \"bad\\\\udcff\"}}}}\\n'\n\
              exec sleep 60\n",
             runtime::VERSION
@@ -1512,7 +1566,7 @@ fn a_worker_is_never_waited_for_behind_a_full_pipe() {
     fake_python(
         &scratch,
         &format!(
-            "printf '{{\"ready\": {{\"version\": \"{}\", \"python\": \"3\", \"protocol\": 2}}}}\\n'\n\
+            "printf '{{\"ready\": {{\"version\": \"{}\", \"python\": \"3\", \"protocol\": 3}}}}\\n'\n\
              head -c 1000000 /dev/zero | tr '\\000' x\necho\nexec cat > /dev/null\n",
             runtime::VERSION
         ),
@@ -5236,6 +5290,43 @@ fn a_model_reading_its_own_folder_moves_with_its_project() {
 }
 
 #[test]
+fn a_model_in_a_folder_is_found_past_another_model_module() {
+    // `model/billet.py` was imported as `model.billet`: a `model.py` Python
+    // finds first, installed or another project's, made it "'model' is not
+    // a package", and nothing was computed.
+    let scratch = Scratch::new("model-folder-shadowed");
+    project(&scratch, BILLET);
+    fs::rename(scratch.at("project/model.py"), {
+        fs::create_dir_all(scratch.at("project/model")).unwrap();
+        scratch.at("project/model/billet.py")
+    })
+    .unwrap();
+    scratch.write(
+        "project/.samplekitrc",
+        "schema_version = 1\n[model]\npath = \"model/billet.py\"\npython = \".venv\"\n",
+    );
+    scratch.write("elsewhere/model.py", "shadow = True\n");
+    let computed = command(&scratch, &scratch.at("project"))
+        .env("PYTHONPATH", scratch.at("elsewhere"))
+        .args(["samples", "compute", "--write"])
+        .stdin(Stdio::null())
+        .output()
+        .expect("the binary runs");
+    assert_eq!(code(&computed), 0, "{}{}", out(&computed), err(&computed));
+    assert!(
+        !err(&computed).contains("is not a package"),
+        "{}",
+        err(&computed)
+    );
+    let after = run(&scratch, &["samples", "status"]);
+    assert!(
+        out(&after).contains("every computed value in 2 samples is current"),
+        "{}",
+        out(&after)
+    );
+}
+
+#[test]
 fn a_first_trace_takes_the_values_held_as_its_baseline() {
     // A project computed where no trace was kept — the demo as it is shipped,
     // a project moved in: its first computation takes what the files hold as
@@ -5517,12 +5608,27 @@ fn a_new_sample_is_filled_in_the_workbench() {
     // Unfolded as any table, on the empty row: its cells typed, the index
     // last, and the row previewed whole.
     assert!(workbench.on_the_empty_row(), "{:?}", workbench.message);
-    for character in "le1.04\nhe1\ny".chars() {
+    // In the typing mode: the second cell, then the index, which keeps the
+    // row; out of it, `w` writes what waits.
+    workbench.key(Key::Char('e'));
+    workbench.key(Key::Right);
+    for character in "1.04\n".chars() {
         workbench.key(if character == '\n' {
             Key::Enter
         } else {
             Key::Char(character)
         });
+    }
+    workbench.key(Key::Left);
+    for character in "1\n".chars() {
+        workbench.key(if character == '\n' {
+            Key::Enter
+        } else {
+            Key::Char(character)
+        });
+    }
+    for key in [Key::Esc, Key::Char('w'), Key::Char('y')] {
+        workbench.key(key);
     }
     let written = fs::read_to_string(scratch.at("project/pieces/fresh.md")).unwrap();
     assert!(
@@ -5543,12 +5649,16 @@ fn a_new_sample_is_filled_in_the_workbench() {
     for _ in 0..at {
         workbench.key(Key::Down);
     }
-    for character in "e1.05\ny".chars() {
+    // Typed in the typing mode, kept, then written out of it.
+    for character in "e1.05\n".chars() {
         workbench.key(if character == '\n' {
             Key::Enter
         } else {
             Key::Char(character)
         });
+    }
+    for key in [Key::Esc, Key::Char('w'), Key::Char('y')] {
+        workbench.key(key);
     }
     let written = fs::read_to_string(scratch.at("project/pieces/fresh.md")).unwrap();
     assert!(
@@ -5874,12 +5984,27 @@ fn a_table_no_sample_holds_takes_its_first_row_in_the_workbench() {
     }
     workbench.key(Key::Right);
     assert!(workbench.on_the_empty_row(), "{}", workbench.message);
-    for character in "le2\nhe1\ny".chars() {
+    // In the typing mode: the second cell, then the index, which keeps the
+    // row; out of it, `w` writes what waits.
+    workbench.key(Key::Char('e'));
+    workbench.key(Key::Right);
+    for character in "2\n".chars() {
         workbench.key(if character == '\n' {
             Key::Enter
         } else {
             Key::Char(character)
         });
+    }
+    workbench.key(Key::Left);
+    for character in "1\n".chars() {
+        workbench.key(if character == '\n' {
+            Key::Enter
+        } else {
+            Key::Char(character)
+        });
+    }
+    for key in [Key::Esc, Key::Char('w'), Key::Char('y')] {
+        workbench.key(key);
     }
     let written = fs::read_to_string(scratch.at("project/samples/a.md")).unwrap();
     assert!(
@@ -7677,5 +7802,132 @@ fn a_first_trace_taken_by_compute_says_so() {
         err(&computed).contains("taken as computed by the model as it is now"),
         "{}",
         err(&computed)
+    );
+}
+
+/// Started over a folder of changes waiting, the worker computes from what
+/// waits and saves into it: the sample's file is untouched until the changes
+/// are written.
+#[test]
+fn a_worker_over_what_waits_computes_from_it_and_adds_to_it() {
+    use samplekit::format::{document, stage};
+    let scratch = Scratch::new("waiting-worker");
+    let project = project(&scratch, BILLET);
+    let path = scratch.at("project/samples/c1.md");
+    let on_disk = fs::read_to_string(&path).unwrap();
+    let folder = scratch.at("waiting");
+    stage::begin(&folder, Some(&project)).unwrap();
+    // The diameter changed, waiting: 12 becomes 20.
+    let waiting = on_disk.replace("v: 12.0", "v: 20.0");
+    stage::save(&path, &waiting).unwrap();
+    let config = loaded(&scratch);
+    let python = runtime::interpreter_for(&config, &project).unwrap();
+    let mut worker = Worker::start_waiting(&python, Some(&folder)).unwrap();
+    let report = worker
+        .compute(
+            &request(&scratch, "project/samples/c1.md"),
+            true,
+            &mut |_| {},
+        )
+        .unwrap();
+    drop(worker);
+    assert!(report.computed >= 2, "{report:?}");
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        on_disk,
+        "the file is untouched"
+    );
+    stage::refresh(&folder).unwrap();
+    let computed = document::read_text(&path).unwrap();
+    stage::end(&folder);
+    // 20 / 4: computed from what waited, not from the file's 12.
+    assert!(computed.contains("v: 5.0"), "{computed}");
+}
+
+#[test]
+fn the_documentations_templates_make_a_project_that_computes() {
+    // The four templates the guide offers, each placed where the guide says:
+    // the configuration as `.samplekitrc`, the model where `[model] path`
+    // names it, the sample in `samples/`, the script in `scripts/`.
+    let templates = Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/templates");
+    let template = |name: &str| fs::read_to_string(templates.join(name)).unwrap();
+    let scratch = Scratch::new("templates");
+    scratch.write("project/.samplekitrc", &template("samplekitrc.toml"));
+    let loaded = loaded(&scratch);
+    let model = loaded.model().expect("the template declares a model");
+    let model_path = scratch.at("project").join(&model.path);
+    assert!(
+        model_path.starts_with(scratch.at("project")),
+        "{}",
+        model_path.display()
+    );
+    fs::create_dir_all(model_path.parent().unwrap()).unwrap();
+    fs::write(&model_path, template("model.py")).unwrap();
+    scratch.write("project/samples/specimen-01.md", &template("sample.md"));
+    scratch.write("project/scripts/script.py", &template("script.py"));
+    std::os::unix::fs::symlink(venv(), scratch.at("project/.venv")).unwrap();
+    let said = |output: &Output| {
+        format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+    };
+
+    // Valid as written, the sample found by the collection.
+    let validated = run(&scratch, &["validate"]);
+    assert!(validated.status.success(), "{}", said(&validated));
+    assert!(
+        said(&validated).contains("1 sample · 0 defects"),
+        "{}",
+        said(&validated)
+    );
+
+    // The computed value and the table's computed column, written.
+    let computed = run(&scratch, &["compute", "--write"]);
+    assert!(computed.status.success(), "{}", said(&computed));
+    let shown = run(&scratch, &["samples/specimen-01.md", "view"]);
+    let view = said(&shown);
+    assert!(view.contains("area       200.30 ± 0.36 mm²"), "{view}");
+    assert!(view.contains("stress [MPa]"), "{view}");
+    assert!(view.contains("20.9"), "{view}");
+    assert!(view.contains("49.1"), "{view}");
+    let written = scratch.read("project/samples/specimen-01.md");
+    assert_eq!(written.matches("stress: {v: ").count(), 5, "{written}");
+    let status = run(&scratch, &["status"]);
+    assert!(status.status.success(), "{}", said(&status));
+    assert!(
+        said(&status).contains("every computed value in 1 sample is current"),
+        "{}",
+        said(&status)
+    );
+
+    // The model's script, with its option, run by the command line.
+    let ran = run(
+        &scratch,
+        &["run", "classify", "--set", "limit=150", "--write"],
+    );
+    assert!(ran.status.success(), "{}", said(&ran));
+    assert!(
+        scratch
+            .read("project/samples/specimen-01.md")
+            .contains("size: large"),
+        "{}",
+        said(&ran)
+    );
+
+    // The script of one's own, with its option, run by the project's Python.
+    let script = Command::new(scratch.at("project/.venv/bin/python"))
+        .args(["scripts/script.py", "--limit", "500"])
+        .current_dir(scratch.at("project"))
+        .env("SAMPLEKIT_STATE_DIR", scratch.at("state"))
+        .env("PYTHONDONTWRITEBYTECODE", "1")
+        .output()
+        .unwrap();
+    assert!(script.status.success(), "{}", said(&script));
+    assert!(
+        said(&script).contains("specimen-01    200.30 ± 0.36 mm²  small"),
+        "{}",
+        said(&script)
     );
 }

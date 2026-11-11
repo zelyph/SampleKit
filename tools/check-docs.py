@@ -164,6 +164,21 @@ def check_links():
                                 "site nor an image of docs/")
             elif not re.match(r"[a-z]+://", target):
                 failures.append(check_link(readme, target, step))
+    # The repository's README, which is also the crate's page and the
+    # package's: its pictures by their address on GitHub, and the pages of
+    # the site, each a file of docs/.
+    readme = ROOT / "README.md"
+    text = FENCE.sub("", readme.read_text())
+    for target in LINK.findall(text):
+        page = PAGE_ADDRESS.fullmatch(target)
+        image = IMAGE_ADDRESS.fullmatch(target)
+        if page:
+            failures.append(check_link(readme, page.group(1) + ".md" + (page.group(2) or ""),
+                                       DOCS))
+        elif image:
+            failures.append(check_link(readme, image.group(1), DOCS))
+        elif target.startswith(RAW):
+            failures.append(f"README.md: {target} is no image of docs/")
     return [failure for failure in failures if failure]
 
 

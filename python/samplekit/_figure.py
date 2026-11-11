@@ -18,7 +18,9 @@ REFUSED, FAILED, UNWRITTEN, INTERRUPTED = 1, 2, 3, 130
 
 
 def main():
-    request = json.loads(sys.stdin.read())
+    # Read as the UTF-8 it is written in: Windows' Python decoded it in its
+    # code page, and a folder named "Thèse" did not exist.
+    request = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     warnings.showwarning = _said
     try:
         return _run(request)

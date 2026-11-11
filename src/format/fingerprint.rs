@@ -941,8 +941,8 @@ fn compare(
                 }
             }
             InputName::Named(name) => {
-                let property = sample.property(name).ok();
-                let attribute = sample.attribute(name).ok();
+                let property = sample.property_if(name);
+                let attribute = sample.attribute_if(name);
                 match (property, attribute, recorded) {
                     (None, None, _) => missing.push(input.clone()),
                     // An input that was a property and is now an attribute, or

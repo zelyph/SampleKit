@@ -11,7 +11,9 @@ folder of samples without one is read with the defaults below.
 - A folder below a project with a `.samplekitrc` of its own is a separate
   project.
 - Paths written in `.samplekitrc` are relative to the file itself, imported
-  ones to the file that declares them.
+  ones to the file that declares them. Write them with `/`, which every system
+  reads; a `\` written on Windows is read as `/` on Linux and macOS too, so
+  that the project reads wherever it is copied.
 - What `list`, the completion and the TUI's `f` offer is the configuration of
   the folder a command runs from, or of its target.
 - `--rc PATH` uses another configuration for one command; `--show-rc` prints
@@ -292,8 +294,18 @@ of the terminal's sixteen by name (`black`, `red`, `green`, `yellow`, `blue`,
 `light-yellow`, `light-blue`, `light-magenta`, `light-cyan`, `white`; `gray`
 and `dark-gray` too), or `#rrggbb`.
 
+In the terminal interface, a role the table leaves out is its **theme's**:
+SampleKit's own, `samplekit-dark` or `samplekit-light`, or `terminal` where
+the terminal does not say it draws every colour, unless one is chosen with `T`
+or named by `theme`, and the roles the table names are laid over it.
+The command line has no theme: a role left out there is the default below,
+one of the terminal's sixteen, which is also the theme `terminal`.
+
 | Key | Type | Default | Meaning | Example |
 | --- | --- | --- | --- | --- |
+| `theme` | text | none | The terminal interface's theme for this project: one SampleKit has, or one of your own; a theme chosen with `T` in this folder comes first. A name no theme bears is said, and passed over | `theme = "nord"` |
+| `background` | colour | `default` | The background of the terminal interface's whole screen; the command line leaves the terminal's | `background = "#1e1e2e"` |
+| `foreground` | colour | `default` | The terminal interface's text, where nothing else colours it | `foreground = "#cdd6f4"` |
 | `failed` | colour | `red` | A value whose formula failed | `failed = "light-red"` |
 | `outdated` | colour | `yellow` | A value that is not current | `outdated = "#ff8800"` |
 | `edited` | colour | `magenta` | A value written by hand over its formula | `edited = "light-magenta"` |
@@ -310,6 +322,11 @@ and `dark-gray` too), or `#rrggbb`.
 | `message` | colour | `yellow` | Messages | `message = "default"` |
 | `error` | colour | `red` | Errors | `error = "light-red"` |
 | `accent` | colour | `cyan` | The name in the title bar, a computation in progress | `accent = "#5fafd7"` |
+| `waiting` | colour | `light-magenta` | What waits to be written in the terminal interface, in italics | `waiting = "light-yellow"` |
+| `line` | colour | `dark-grey` | The background of the cursor's line on the collection, a sample and a table; in the typing mode the cell under the cursor reversed on it | `line = "#313244"` |
+
+[Choose the colours](../guides/colours.md) shows every theme SampleKit has,
+says how one is chosen, and how to make your own.
 
 ## `[history]`
 

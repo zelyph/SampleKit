@@ -1882,3 +1882,22 @@ fn text_is_refused_in_a_measured_column_where_it_is_written() {
     ];
     assert!(table.refuses_what_is_no_number(&fine).is_ok());
 }
+
+#[test]
+fn a_row_taken_out_leaves_the_others_found_by_their_index() {
+    let mut table = soak();
+    table.remove_row(&by_index(&[200.0])).unwrap();
+    assert_eq!(table.rows().count(), 2);
+    assert!(table.row(&by_index(&[200.0])).is_err());
+    assert_eq!(value_at(&table, &by_index(&[78.5]), "tension"), 20.0);
+    assert_eq!(value_at(&table, &by_index(&[65.0]), "tension"), 12.5);
+    // Its index is free again.
+    table
+        .add_row(cells(&[("temperature", 200.0), ("tension", 9.0)]))
+        .unwrap();
+    assert_eq!(value_at(&table, &by_index(&[200.0]), "tension"), 9.0);
+    assert!(
+        table.remove_row(&by_index(&[300.0])).is_err(),
+        "no such row"
+    );
+}

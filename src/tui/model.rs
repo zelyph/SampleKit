@@ -6,13 +6,12 @@
 //! A prototype (proto/tui): its keys and screens are tried in use before
 //! they are specified.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 use crate::collection::computation;
 use crate::collection::editing::{self, Became};
-use crate::collection::explanation::{self, Explanation, InputState, Made, Origin};
 use crate::collection::exports;
 use crate::collection::sample_list::{self as list, SampleList};
 use crate::collection::tagging;
@@ -70,6 +69,8 @@ pub enum Key {
     },
     /// Shift+Tab.
     BackTab,
+    /// F2: a cell changed without replacing it, in the typing mode.
+    F2,
     /// Shift+↑ and Shift+↓: the item under the cursor moved.
     MoveUp,
     MoveDown,
@@ -88,8 +89,6 @@ pub enum Place {
     Collection,
     Sample,
     Table,
-    /// A property in its window.
-    Property,
     /// A list in its window: readings, or an attribute's items.
     Items,
     Control,
@@ -142,6 +141,10 @@ pub enum Action {
     Remove,
     Write,
     Reread,
+    /// The typing mode: what is typed replaces the cell under the cursor.
+    Typing,
+    /// A value's card: its state, what it reads and what reads it.
+    Card,
     Summary,
     ScrollLeft,
     ScrollRight,
@@ -170,6 +173,8 @@ pub enum Action {
     RestoreAt,
     /// From the history, a snapshot marked, then compared with another.
     Compare,
+    /// The list of themes, each tried on the screen.
+    Theme,
 }
 
 /// Every binding, once: what a key does and what help says it does, from the
@@ -336,67 +341,6 @@ pub const BINDINGS: &[(Place, Key, Action, &str)] = &[
         Action::History,
         "this sample's history: each change kept, and what it changed",
     ),
-    (
-        Place::Property,
-        Key::Char('l'),
-        Action::NextColumn,
-        "next column",
-    ),
-    (
-        Place::Property,
-        Key::Right,
-        Action::NextColumn,
-        "next column",
-    ),
-    (
-        Place::Property,
-        Key::Char('h'),
-        Action::PreviousColumn,
-        "previous column; from the first, back to the sample",
-    ),
-    (
-        Place::Property,
-        Key::Left,
-        Action::PreviousColumn,
-        "previous column; from the first, back to the sample",
-    ),
-    (
-        Place::Property,
-        Key::Char('e'),
-        Action::Edit,
-        "change the cell, previewed; on readings, their list",
-    ),
-    (
-        Place::Property,
-        Key::Char('c'),
-        Action::ComputeValue,
-        "compute the property, even if current or edited",
-    ),
-    (
-        Place::Property,
-        Key::Enter,
-        Action::Explain,
-        "where the value came from",
-    ),
-    (
-        Place::Property,
-        Key::Esc,
-        Action::Back,
-        "back to the sample",
-    ),
-    (
-        Place::Property,
-        Key::Char('q'),
-        Action::Back,
-        "back to the sample",
-    ),
-    (
-        Place::Property,
-        Key::Char('u'),
-        Action::Undo,
-        "undo the last change written",
-    ),
-    (Place::Property, Key::Char('?'), Action::Help, "this help"),
     (Place::Items, Key::Char('j'), Action::Down, "next item"),
     (Place::Items, Key::Down, Action::Down, "next item"),
     (Place::Items, Key::Char('k'), Action::Up, "previous item"),
@@ -593,6 +537,24 @@ pub const BINDINGS: &[(Place, Key, Action, &str)] = &[
     ),
     (
         Place::Collection,
+        Key::Char('w'),
+        Action::Write,
+        "write the changes waiting, all previewed: one change of the history",
+    ),
+    (
+        Place::Sample,
+        Key::Char('w'),
+        Action::Write,
+        "write the changes waiting, all previewed: one change of the history",
+    ),
+    (
+        Place::Table,
+        Key::Char('w'),
+        Action::Write,
+        "write the changes waiting, all previewed: one change of the history",
+    ),
+    (
+        Place::Collection,
         Key::Char('W'),
         Action::Declare,
         "save what is shown in .samplekitrc: the filter, the columns, an export",
@@ -712,6 +674,12 @@ pub const BINDINGS: &[(Place, Key, Action, &str)] = &[
     ),
     (
         Place::Collection,
+        Key::Char('T'),
+        Action::Theme,
+        "the theme: each tried on the screen as the cursor reaches it, Enter keeps it",
+    ),
+    (
+        Place::Collection,
         Key::Char('<'),
         Action::ScrollLeft,
         "the columns further left",
@@ -740,14 +708,20 @@ pub const BINDINGS: &[(Place, Key, Action, &str)] = &[
     (
         Place::Sample,
         Key::Char('e'),
-        Action::Edit,
-        "change the value, previewed",
+        Action::Typing,
+        "the typing mode: what you type replaces the cell, the arrows go from cell to cell, Esc leaves",
+    ),
+    (
+        Place::Sample,
+        Key::Char('i'),
+        Action::Card,
+        "the value's card: its state, what it reads and what reads it, each typed in with e",
     ),
     (
         Place::Sample,
         Key::Enter,
         Action::Explain,
-        "open the value in its window (value, uncertainty, readings), or an attribute's items; a link, its sample or its address",
+        "an attribute's items; a link, its sample or its address; a table, unfolded",
     ),
     (
         Place::Sample,
@@ -858,6 +832,12 @@ pub const BINDINGS: &[(Place, Key, Action, &str)] = &[
         Action::NoteUp,
         "scroll the note up",
     ),
+    (
+        Place::Sample,
+        Key::Char('T'),
+        Action::Theme,
+        "the theme: each tried on the screen as the cursor reaches it, Enter keeps it",
+    ),
     (Place::Sample, Key::Char('?'), Action::Help, "this help"),
     (
         Place::Sample,
@@ -895,14 +875,20 @@ pub const BINDINGS: &[(Place, Key, Action, &str)] = &[
     (
         Place::Table,
         Key::Char('e'),
-        Action::Edit,
-        "change the index or a text cell; on the empty row, add one; a value is changed in its window, Enter",
+        Action::Typing,
+        "the typing mode: what you type replaces the cell, a value with its uncertainty; on the empty row, a new row; Delete takes a row out",
     ),
     (
         Place::Table,
-        Key::Enter,
-        Action::Explain,
-        "open the cell: its value, its uncertainty, where it came from; e there changes them",
+        Key::Char('i'),
+        Action::Card,
+        "the cell's card: its state, what it reads and what reads it, each typed in with e",
+    ),
+    (
+        Place::Collection,
+        Key::Char('e'),
+        Action::Typing,
+        "the typing mode: ← → the column, what you type goes to the sample, the rows Shift+↑ ↓ took, or the basket",
     ),
     (
         Place::Table,
@@ -1005,6 +991,8 @@ pub fn short(action: Action) -> &'static str {
         Action::NoteUp => "note up",
         Action::Remove => "remove",
         Action::Write => "write",
+        Action::Typing => "type",
+        Action::Card => "card",
         Action::Reread => "read again",
         Action::Summary => "summary",
         Action::ScrollLeft | Action::ScrollRight => "more columns",
@@ -1019,6 +1007,7 @@ pub fn short(action: Action) -> &'static str {
         Action::ListOrSingle => "list or single",
         Action::RestoreAt => "restore",
         Action::Compare => "compare",
+        Action::Theme => "theme",
     }
 }
 
@@ -1080,7 +1069,6 @@ pub fn hinted(place: Place) -> &'static [Action] {
             Action::Files,
             Action::Editor,
         ],
-        Place::Property => &[Action::NextColumn, Action::Back, Action::Undo],
         Place::Items => &[Action::Back, Action::Undo],
     }
 }
@@ -1094,6 +1082,12 @@ pub enum Effect {
     Open(PathBuf),
     /// A web address an attribute links to, in the browser.
     OpenAddress(String),
+    /// A PDF shown at a page: in the browser, which opens one there on every
+    /// system.
+    OpenPage {
+        file: PathBuf,
+        page: u32,
+    },
     Navigate(PathBuf),
     Editor(PathBuf),
 }
@@ -1135,17 +1129,6 @@ pub enum Screen {
         name: Identifier,
         cursor: usize,
         column: usize,
-    },
-    /// A property opened in its window: a table of one row — `value`,
-    /// `uncertainty`, `readings` where a formula does not give it — `column`
-    /// among them, `back` the sample screen's cursor. A table's cell opens in
-    /// it too, `name` its address, `up` the table it was opened from.
-    Property {
-        at: usize,
-        back: usize,
-        name: String,
-        column: usize,
-        up: Option<Box<Screen>>,
     },
     /// A list opened as a table of one column: a property's readings, or an
     /// attribute's value or items; `cursor` its row, the empty one at the foot
@@ -1303,6 +1286,8 @@ pub enum Purpose {
         readings: bool,
         at: Option<usize>,
     },
+    /// A cell typed in the typing mode, kept as it is left.
+    Cell(CellAt),
     /// A cell of the row being typed at a table's foot.
     DraftCell {
         path: PathBuf,
@@ -1328,6 +1313,31 @@ pub enum Purpose {
     },
 }
 
+/// What a cell typed in the typing mode changes.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CellAt {
+    /// An attribute's name: renamed, its value kept.
+    Name { path: PathBuf, field: String },
+    /// A field's value: an attribute's, a table's cell, or — `quantity` — a
+    /// value with its uncertainty, `12.6 ± 0.02`. `shown` is what it opened
+    /// as: typed back as it was, it is left as it is.
+    Value {
+        path: PathBuf,
+        field: String,
+        quantity: bool,
+        shown: String,
+    },
+    /// A measured value's readings.
+    Readings { path: PathBuf, field: String },
+    /// A column of the collection, for each of `paths`.
+    Listed {
+        paths: Vec<PathBuf>,
+        field: String,
+        quantity: bool,
+        shown: String,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Choosing {
     Sort,
@@ -1343,6 +1353,11 @@ pub enum Choosing {
     FigureField(FigureRow),
     /// What `W` declares, an item's at its position.
     Declare(Vec<Declare>),
+    /// The theme, each item a theme's name; `before` the one in force when
+    /// the list opened, given back by `Esc`.
+    Theme {
+        before: String,
+    },
 }
 
 /// What `W`, and the figure's `w`, declare in `.samplekitrc`.
@@ -1668,56 +1683,6 @@ pub enum ConfigRow {
     },
 }
 
-/// Why a quantity's value, or its uncertainty, as typed is not a number:
-/// written with a unit, `21 L`, or a decimal comma, `21,5`. `None` for a
-/// number, an empty text, or a text that is none of these.
-fn number_refused(text: &str, unit: &str) -> Option<String> {
-    let number = |text: &str| text.trim().parse::<f64>().is_ok();
-    if let Some((whole, decimals)) = text.split_once(',')
-        && number(whole)
-        && !decimals.is_empty()
-        && decimals.chars().all(|c| c.is_ascii_digit())
-    {
-        return Some(format!(
-            "'{text}' has a decimal comma: use a point for decimals — {whole}.{decimals}"
-        ));
-    }
-    // A value and its uncertainty typed together: each has its cell.
-    if let Some((value, uncertainty)) = ["±", "+/-", "+-"]
-        .iter()
-        .find_map(|sign| text.split_once(sign))
-        && number(value)
-        && number(uncertainty)
-    {
-        return Some(format!(
-            "'{text}': its uncertainty has a cell of its own: {} here, and {} in the \
-             uncertainty",
-            value.trim(),
-            uncertainty.trim().trim_start_matches('-')
-        ));
-    }
-    let digits = text
-        .find(|c: char| !(c.is_ascii_digit() || "+-.eE".contains(c)))
-        .unwrap_or(text.len());
-    let (figure, rest) = text.split_at(digits);
-    if !figure.is_empty() && number(figure) && !rest.trim().is_empty() {
-        let unit = if unit.is_empty() {
-            String::new()
-        } else {
-            format!(": it is in {unit}")
-        };
-        return Some(format!(
-            "'{text}': write the number alone, {}{unit}",
-            figure.trim()
-        ));
-    }
-    None
-}
-
-/// A number written with a decimal comma in a filter — `1,05` outside
-/// quotes, digits on both sides — said with the number it meant; `None`
-/// where there is none. Asked only of a filter that does not read, where
-/// the comma is what the parser stopped at.
 /// The values a filter compares a field with by `==`, or tests a list with
 /// by `has`: for each, what precedes it through its operator, the clause it
 /// ends, and the value as written. Read from the text, quotes kept whole;
@@ -1927,12 +1892,13 @@ fn section_of(action: Action) -> &'static str {
         Select | SelectAll | ClearSelection | Basket | TagBasket => "choosing",
         Declare => "the project",
         Edit | EditNote | NewSample | AddAttribute | RemoveSample | RenameSample | AddRow
-        | Undo | Remove | Write | Reread => "changing",
+        | Undo | Remove | Write | Reread | Typing => "changing",
+        Card => "computing and checking",
         ComputeValue | ComputeSample | Explain | Control | History => "computing and checking",
         RestoreAt | Compare => "the history",
         Produce => "figures and exports",
         Configure | Model | Editor | Files => "the project",
-        Help | Quit => "the TUI",
+        Help | Quit | Theme => "the TUI",
     }
 }
 
@@ -2001,6 +1967,10 @@ pub fn confirm_action(pending: &Pending) -> &'static str {
         Pending::Undo(_) => "y restore · n cancel · j k scroll",
         Pending::Remove(_) => "y delete · n cancel · j k scroll",
         Pending::Quit => "y leave · n stay",
+        Pending::TakeUp => "y keep them · n drop them",
+        Pending::Commit => "y write · n cancel · j k scroll",
+        Pending::DropWaiting => "y drop them · n keep them",
+        Pending::Leave => "w write · d drop · k keep for next time · n stay",
         Pending::Compute(_) => "y compute · n cancel · j k scroll",
         Pending::Setup => "y set up · n cancel · j k scroll",
         Pending::Figure { .. } => "y replace · n cancel",
@@ -2023,6 +1993,14 @@ pub struct ExportFile {
 }
 
 pub enum Pending {
+    /// The changes a last session left waiting: kept, or dropped.
+    TakeUp,
+    /// Every change waiting, written.
+    Commit,
+    /// The changes waiting dropped, a session's undo of them gone.
+    DropWaiting,
+    /// Leaving with changes waiting: written, dropped, or kept for next time.
+    Leave,
     Write {
         path: PathBuf,
         sample: Box<Sample>,
@@ -2106,6 +2084,9 @@ pub struct ScriptRunning {
 pub enum Progress {
     Said(String),
     Done(String),
+    /// What a computation that waits says of its formulas, kept once its
+    /// values are written.
+    Traced(computation::Tracing),
     /// Where a computation is: values done of those planned, and the value
     /// under way, for the title bar rather than the message.
     At {
@@ -2176,13 +2157,12 @@ pub enum EntryKind {
 
 impl Screen {
     /// The sample a screen shows, by its position in the view: the sample's,
-    /// a table's of it, a value's window or a list's.
+    /// a table's of it or a list's.
     pub fn sample_at(&self) -> Option<usize> {
         match self {
-            Screen::Sample { at, .. }
-            | Screen::Table { at, .. }
-            | Screen::Property { at, .. }
-            | Screen::Items { at, .. } => Some(*at),
+            Screen::Sample { at, .. } | Screen::Table { at, .. } | Screen::Items { at, .. } => {
+                Some(*at)
+            }
             _ => None,
         }
     }
@@ -2192,12 +2172,6 @@ impl Screen {
     fn move_sample_to(&mut self, found: usize) {
         match self {
             Screen::Sample { at, .. } | Screen::Table { at, .. } => *at = found,
-            Screen::Property { at, up, .. } => {
-                *at = found;
-                if let Some(up) = up {
-                    up.move_sample_to(found);
-                }
-            }
             Screen::Items { at, up, .. } => {
                 *at = found;
                 up.move_sample_to(found);
@@ -2418,6 +2392,9 @@ pub struct Remembered {
     /// Whether a sample's note is hidden, the values taking the width.
     #[serde(default)]
     pub note_hidden: bool,
+    /// The theme chosen in this folder with `T`, over the project's own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
 }
 
 pub struct Workbench {
@@ -2426,6 +2403,17 @@ pub struct Workbench {
     /// What the files were when the collection was read — their times and
     /// sizes, and their folders' — so that one changed outside is read again.
     read_as: u64,
+    /// Each sample's file as it was read, by a digest of its text, with the
+    /// sample's changes then; and the project's settings, by a digest of
+    /// theirs: what the next reading keeps a sample by.
+    read_texts: Texts,
+    settings_read: u64,
+    /// The system's word of a file changed, once the terminal asks for it:
+    /// without it, the files are looked at each time.
+    watch: Option<super::watch::Watch>,
+    /// Each sample's last plan, with what it was made from: planned again
+    /// only where that changed.
+    planned: std::sync::Arc<HashMap<PathBuf, (u64, Vec<runtime::Planned>)>>,
     /// The collection filtered, sorted, and narrowed to the basket when asked.
     pub view: SampleList,
     pub profile: Profile,
@@ -2547,8 +2535,17 @@ pub struct Workbench {
     /// Where the note is drawn, as the view last drew it: the wheel over it
     /// scrolls it.
     pub note_area: Option<(u16, u16, u16, u16)>,
-    /// The project's colours.
+    /// The colours in force: the theme's, the project's roles over them.
     pub theme: super::theme::Theme,
+    /// Every theme, as the workbench opened.
+    pub themes: super::theme::Themes,
+    /// The name of the theme in force.
+    pub theme_name: String,
+    /// The theme chosen in this folder with `T`, remembered with it.
+    pub theme_chosen: Option<String>,
+    /// Where the person's last choice of a theme is kept, `<state>/theme`:
+    /// a test points it elsewhere, the choice being every project's.
+    pub last_theme: Option<PathBuf>,
     /// The control screen's line a sample was opened from, where `Back`
     /// returns rather than to the collection.
     pub from_control: Option<usize>,
@@ -2563,6 +2560,98 @@ pub struct Workbench {
     pub model_unread: Option<String>,
     /// The model's plan being read beside the screen.
     pub planning: Option<mpsc::Receiver<Planning>>,
+    /// Where this project's changes wait until `w` writes them: in the
+    /// workbench's state, one folder per project. `None` where no state can
+    /// be kept, the changes then written at once.
+    pub waiting: Option<PathBuf>,
+    /// What began this workbench's waiting: ended by it alone, so that a
+    /// workbench opened again on the project keeps its own.
+    waiting_owner: u64,
+    /// This session's changes waiting, each as what waited before it: what
+    /// `u` takes back, one at a time, until they are written.
+    pub waiting_undo: Vec<Vec<crate::format::stage::Entry>>,
+    /// What computations that wait say of the formulas that computed: kept in
+    /// the history's trace once their values are written, dropped with them.
+    traces_waiting: Vec<computation::Tracing>,
+    /// What waited before the computation running, for `u`.
+    computing_waited: Option<Vec<crate::format::stage::Entry>>,
+    /// What the history will say of each change waiting, beside
+    /// `waiting_undo`: `change: diameter 12.0 → 12.5, written C1.md`.
+    waiting_said: Vec<String>,
+    /// The typing mode: what is typed replaces the cell under the cursor, and
+    /// the arrows go from cell to cell.
+    pub typing: bool,
+    /// The cell of a sample's line the cursor is on in the typing mode: 0 its
+    /// name, 1 its value, 2 its readings.
+    pub cell: usize,
+    /// The column of the collection the cursor is on, among those shown.
+    pub column: usize,
+    /// Where `Shift+↑` `Shift+↓` began taking rows of the collection.
+    pub rows_from: Option<usize>,
+    /// A value's card open over its screen: its address, and the line the
+    /// cursor is on.
+    pub card: Option<(String, usize)>,
+}
+
+impl Drop for Workbench {
+    /// Its changes wait no longer in this process; they stay in their folder
+    /// for the next session.
+    fn drop(&mut self) {
+        crate::format::stage::end_owned(self.waiting_owner);
+    }
+}
+
+/// How long ago `since`, in seconds since 1970, was: `3 hours ago`.
+fn when_said(since: u64) -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |now| now.as_secs());
+    let ago = now.saturating_sub(since);
+    match ago {
+        0..60 => "a moment ago".to_string(),
+        60..3600 => format!("{} ago", counted((ago / 60) as usize, "minute", "minutes")),
+        3600..86400 => format!("{} ago", counted((ago / 3600) as usize, "hour", "hours")),
+        _ => format!("{} ago", counted((ago / 86400) as usize, "day", "days")),
+    }
+}
+
+/// The folder a project's changes wait in, beside the workbench's state of it.
+pub fn waiting_folder(root: &Path) -> Option<PathBuf> {
+    state_file(root).map(|file| file.with_extension("waiting"))
+}
+
+/// Whether `pending`, confirmed, makes a change that waits rather than one
+/// written at once: what changes samples, and a state restored from the
+/// history. An undo of what was written, an export, a figure, the
+/// configuration and the setup are written at once.
+fn waits(pending: &Pending, title: &str) -> bool {
+    match pending {
+        Pending::Write { .. }
+        | Pending::New { .. }
+        | Pending::Remove(_)
+        | Pending::Rename(_)
+        | Pending::Tag(_)
+        | Pending::Run { .. } => true,
+        Pending::Undo(_) => title.starts_with("restore"),
+        _ => false,
+    }
+}
+
+/// What an action said, once its change waits rather than being written.
+fn waiting_said(said: &str, waiting: usize) -> String {
+    let said = said
+        .replacen("written: ", "changed ", 1)
+        .replacen("created: ", "made ", 1)
+        .replace(" · u gives it back", "")
+        .replace(" · u gives them back", "")
+        .replace(
+            " · u gives the samples back; R again moves its own files back",
+            "",
+        );
+    format!(
+        "{said} — not written yet: {} waiting, w writes, u takes it back",
+        counted(waiting, "file", "files")
+    )
 }
 
 /// A value the model would compute that no file records: its name, and
@@ -2590,9 +2679,14 @@ impl Owed {
 
 /// The model's plan, as its worker gave it: each sample's values, and why
 /// the samples it could not plan were not.
+#[derive(Default)]
 pub struct Planning {
     pub plans: Vec<(PathBuf, Vec<runtime::Planned>)>,
     pub unread: Vec<String>,
+    /// What each plan was made from, by a digest: its file's text, the
+    /// project's settings and the trace of its formulas. The next plan keeps
+    /// a sample's where none changed.
+    pub made_from: HashMap<PathBuf, u64>,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -2608,7 +2702,17 @@ pub struct NoteView {
 impl Workbench {
     /// The collection at `root`, as the last session left it there.
     pub fn open(root: &Path) -> Result<Workbench, String> {
-        let collection = list::from_directory(root).map_err(|error| error.to_string())?;
+        // What waits from the last session is what the files read as, from
+        // the first reading on.
+        let waiting = waiting_folder(root);
+        let (waiting_owner, kept) = waiting
+            .as_ref()
+            .map(|folder| crate::format::stage::begin_owned(folder, Some(root)))
+            .transpose()
+            .map_err(|error| format!("the changes waiting could not be read: {error}"))?
+            .unwrap_or((0, 0));
+        let (collection, read_texts, settings_read) =
+            read_collection(root, None).map_err(|error| error.to_string())?;
         let remembered = remembered(root);
         let profile = match remembered.as_ref() {
             Some(state) if !state.shown.is_empty() => {
@@ -2618,6 +2722,10 @@ impl Workbench {
         };
         let mut workbench = Workbench {
             read_as: files_stamp(&collection, root),
+            read_texts,
+            settings_read,
+            watch: None,
+            planned: Default::default(),
             root: root.to_path_buf(),
             view: collection.filter_by(|_| true),
             collection,
@@ -2672,12 +2780,32 @@ impl Workbench {
             note_hidden: false,
             note_area: None,
             theme: super::theme::Theme::default(),
+            themes: super::theme::Themes::read(
+                crate::config::project_config::themes_folder().as_deref(),
+            ),
+            theme_name: String::new(),
+            theme_chosen: remembered.as_ref().and_then(|state| state.theme.clone()),
+            last_theme: super::theme::last_choice_file(),
             from_control: None,
             owed: Default::default(),
             model_unread: None,
             planning: None,
+            waiting,
+            waiting_owner,
+            waiting_undo: Vec::new(),
+            traces_waiting: Vec::new(),
+            computing_waited: None,
+            waiting_said: Vec::new(),
+            typing: false,
+            cell: 1,
+            column: 0,
+            rows_from: None,
+            card: None,
         };
-        workbench.theme = super::theme::Theme::of(workbench.collection.config());
+        // One's own themes left out, and a theme named that is none, said.
+        let mut said: Vec<String> = workbench.themes.said().to_vec();
+        said.extend(workbench.themed());
+        workbench.message = said.join(" · ");
         if let Some(said) = UNREAD_STATE.with(|said| said.borrow_mut().take()) {
             workbench.message = said;
         }
@@ -2732,7 +2860,211 @@ impl Workbench {
         {
             workbench.message = said;
         }
+        if kept > 0 {
+            workbench.offer_waiting();
+        }
         Ok(workbench)
+    }
+
+    /// The files this project's changes wait for.
+    pub fn waiting_entries(&self) -> Vec<crate::format::stage::Entry> {
+        self.waiting
+            .as_ref()
+            .map(|folder| crate::format::stage::entries(folder))
+            .unwrap_or_default()
+    }
+
+    /// How many files have a change waiting.
+    pub fn waiting_count(&self) -> usize {
+        self.waiting
+            .as_ref()
+            .map_or(0, |folder| crate::format::stage::count(folder))
+    }
+
+    /// The changes a last session left waiting, offered back: kept, or
+    /// dropped.
+    fn offer_waiting(&mut self) {
+        let entries = self.waiting_entries();
+        let since = entries.iter().map(|entry| entry.since).min().unwrap_or(0);
+        let mut lines = vec![format!(
+            "{} changed and not written, since {}:",
+            counted(entries.len(), "file", "files"),
+            when_said(since)
+        )];
+        lines.extend(
+            entries
+                .iter()
+                .map(|entry| format!("  {}", self.here(&entry.path))),
+        );
+        lines.push(String::new());
+        lines.push("y keeps them waiting, w then writes them · n drops them".to_string());
+        self.mode = Mode::Confirm {
+            title: "changes waiting".to_string(),
+            lines,
+            pending: Box::new(Pending::TakeUp),
+        };
+    }
+
+    /// The changes waiting over a file another hand changed since laid again
+    /// over it, field by field: what each changed of the file kept, where the
+    /// two did not change the same field. Gives those that did, each said.
+    fn relay_waiting(&mut self) -> Vec<String> {
+        let mut said = Vec::new();
+        for entry in self
+            .waiting_entries()
+            .into_iter()
+            .filter(|entry| entry.conflicts())
+        {
+            let name = self.here(&entry.path);
+            let (crate::format::stage::After::Text(after), Ok(now)) =
+                (&entry.after, std::fs::read_to_string(&entry.path))
+            else {
+                said.push(format!("{name} was changed since by another hand"));
+                continue;
+            };
+            let base = entry.before();
+            match version_control::taken_back(
+                &name,
+                Some(after.as_bytes()),
+                base.as_deref(),
+                Some(now.as_bytes()),
+            ) {
+                Ok(Some(merged)) => {
+                    let merged = String::from_utf8_lossy(&merged).into_owned();
+                    if let Err(error) = crate::format::stage::relay(&entry.path, &now, &merged) {
+                        said.push(format!("{name}: {error}"));
+                    }
+                }
+                Ok(None) => said.push(format!("{name} was removed since by another hand")),
+                Err(fields) => said.push(format!(
+                    "{name}: {} changed both here and since by another hand",
+                    fields.join(", ")
+                )),
+            }
+        }
+        said
+    }
+
+    /// `w`: every change waiting, previewed as `diff` says a change, then
+    /// written at once, one change of the history.
+    fn preview_waiting(&mut self) {
+        let clashes = self.relay_waiting();
+        let entries = self.waiting_entries();
+        if entries.is_empty() {
+            self.message = "nothing waits to be written".to_string();
+            return;
+        }
+        let mut lines = Vec::new();
+        for entry in &entries {
+            let name = self.here(&entry.path);
+            let config = self.config_for(&entry.path).cloned();
+            let changed = match (&entry.after, config.as_ref()) {
+                (crate::format::stage::After::MovedFrom(from), _) => {
+                    vec![format!("{name}   moved from {}", self.here(from))]
+                }
+                (crate::format::stage::After::Removed, _) => vec![format!("{name}   removed")],
+                (_, Some(config)) if !entry.existed => crate::presentation::changes::made_of(
+                    &name,
+                    entry.after_bytes().as_deref().unwrap_or_default(),
+                    config,
+                ),
+                (_, Some(config)) => crate::presentation::changes::changes_typed(
+                    &name,
+                    entry.before().as_ref(),
+                    entry.after_bytes().as_ref(),
+                    config,
+                ),
+                (_, None) => vec![format!("{name}   changed")],
+            };
+            lines.extend(if changed.is_empty() {
+                vec![format!("{name}   changed")]
+            } else {
+                changed
+            });
+        }
+        if !clashes.is_empty() {
+            lines.push(String::new());
+            lines.extend(
+                clashes
+                    .iter()
+                    .map(|clash| format!("{clash}: nothing will be written over it")),
+            );
+        }
+        self.mode = Mode::Confirm {
+            title: format!("write · {}", counted(entries.len(), "file", "files")),
+            lines,
+            pending: Box::new(Pending::Commit),
+        };
+    }
+
+    /// The changes waiting written, one snapshot of the history, one `u`.
+    fn commit_waiting(&mut self) -> Effect {
+        let Some(folder) = self.waiting.clone() else {
+            return Effect::None;
+        };
+        let entries = crate::format::stage::entries(&folder);
+        let touched: Vec<PathBuf> = entries
+            .iter()
+            .flat_map(|entry| match &entry.after {
+                crate::format::stage::After::MovedFrom(from) => {
+                    vec![entry.path.clone(), from.clone()]
+                }
+                _ => vec![entry.path.clone()],
+            })
+            .collect();
+        let clashes = self.relay_waiting();
+        if let Some(first) = clashes.first() {
+            self.message =
+                format!("{first}: nothing written — u takes back what waits, or E opens the file");
+            return Effect::None;
+        }
+        // The history's snapshot before the write is of the files as they
+        // are on disk, not as what waits reads them.
+        let before = snapshot(&touched);
+        let (writing, unread) = {
+            let _through = crate::format::stage::Through::new();
+            version_control::before_writing(&self.places(&touched))
+        };
+        let written = crate::format::stage::commit(&folder);
+        match written {
+            Ok(written) => {
+                let changed = settled(before);
+                if !changed.is_empty() {
+                    self.undo.push(changed);
+                }
+                self.waiting_undo.clear();
+                for tracing in std::mem::take(&mut self.traces_waiting) {
+                    for (root, error) in tracing.keep() {
+                        self.message =
+                            format!("the trace of {} was not kept: {error}", root.display());
+                    }
+                }
+                let names: Vec<String> = written.iter().map(|path| self.here(path)).collect();
+                self.message = format!(
+                    "written: {} · u takes it back",
+                    match names.as_slice() {
+                        [one] => one.clone(),
+                        many => counted(many.len(), "file", "files"),
+                    }
+                );
+                // Each change as the history would have said it written at
+                // once; what a last session left, by its files.
+                let changes = std::mem::take(&mut self.waiting_said);
+                let said = if changes.is_empty() {
+                    format!("tui · write: {}", names.join(", "))
+                } else {
+                    format!("tui · {}", changes.join("; "))
+                }
+                .replace(&format!("{}/", self.root.display()), "");
+                let failures = version_control::after_writing(writing, &said);
+                if let Some(warning) = history_warning(unread.into_iter().chain(failures)) {
+                    self.message = format!("{} — {warning}", self.message);
+                }
+            }
+            Err(error) => self.message = format!("{error} — nothing more was written"),
+        }
+        self.reload();
+        Effect::None
     }
 
     /// Folders made projects, reached as the workbench opens: the snapshots
@@ -2800,6 +3132,95 @@ impl Workbench {
                 .collect(),
             selected: self.selected.iter().cloned().collect(),
             note_hidden: self.note_hidden,
+            theme: self.theme_chosen.clone(),
+        }
+    }
+
+    /// The theme in force made the screen's: the folder's choice, the
+    /// project's `theme`, the last choice, then the default, the project's
+    /// roles over it. What was said of a name that is no theme, returned.
+    pub fn themed(&mut self) -> Vec<String> {
+        let last = self
+            .last_theme
+            .as_deref()
+            .and_then(super::theme::last_chosen);
+        let (name, theme, said) = self.themes.resolve(
+            super::theme::Choices {
+                folder: self.theme_chosen.as_deref(),
+                last: last.as_deref(),
+                default: super::theme::terminal_default(),
+            },
+            self.collection.config(),
+        );
+        self.theme_name = name;
+        self.theme = theme;
+        said
+    }
+
+    /// `T`: every theme, the cursor on the one in force, the project's named
+    /// in the title where it names one.
+    fn choose_theme(&mut self) {
+        let names = self.themes.names();
+        let cursor = names
+            .iter()
+            .position(|name| *name == self.theme_name)
+            .unwrap_or(0);
+        self.mode = Mode::Picker {
+            purpose: Choosing::Theme {
+                before: self.theme_name.clone(),
+            },
+            items: names
+                .into_iter()
+                .map(|name| (name.to_string(), false))
+                .collect(),
+            cursor,
+            query: Typed::unfocused(""),
+            typing: false,
+        };
+    }
+
+    /// The theme under the list's cursor made the screen's, while the list
+    /// is open: seen before it is kept.
+    fn try_theme(&mut self) {
+        if let Mode::Picker {
+            purpose: Choosing::Theme { .. },
+            items,
+            cursor,
+            query,
+            ..
+        } = &self.mode
+            && let Some(&at) = visible(items, query.text()).get(*cursor)
+            && let Some(theme) = self.themes.theme(&items[at].0, self.collection.config())
+        {
+            self.theme = theme;
+        }
+    }
+
+    /// `name` kept: the folder's choice, remembered with it — none where it
+    /// is the theme the project names, so that the project's changed is
+    /// seen — and the person's last choice, for every project.
+    fn keep_theme(&mut self, name: String) {
+        let named = self
+            .collection
+            .config()
+            .and_then(|config| config.theme())
+            .map(str::to_string);
+        self.theme_chosen = (named.as_deref() != Some(name.as_str())).then(|| name.clone());
+        let kept = match &self.last_theme {
+            Some(file) => super::theme::keep_last(file, &name),
+            None => Err("the theme is not kept for other projects: this system has no state                          folder"
+                .to_string()),
+        };
+        let said = self.themed();
+        self.message = match kept {
+            Ok(()) if named.as_deref() == Some(name.as_str()) => {
+                format!("theme {name}, the project's own")
+            }
+            Ok(()) => format!("theme {name}, kept for this folder and the next ones"),
+            Err(error) => format!("theme {name} for this folder · {error}"),
+        };
+        if !said.is_empty() {
+            self.message = format!("{} · {}", self.message, said.join(" · "));
         }
     }
 
@@ -3140,6 +3561,13 @@ impl Workbench {
         if !matches!(self.mode, Mode::Normal) || self.running.is_some() {
             return false;
         }
+        // Told by the system, the files are looked at only where it told of
+        // a change, or once in a while.
+        if let Some(watch) = self.watch.as_mut()
+            && !watch.due()
+        {
+            return false;
+        }
         if files_stamp(&self.collection, &self.root) == self.read_as {
             return false;
         }
@@ -3185,6 +3613,7 @@ impl Workbench {
                         _ => self.message = text,
                     }
                 }
+                Ok(Progress::Traced(_)) => {}
                 // A drawing thread gone without a word is over, not open.
                 Err(mpsc::TryRecvError::Disconnected) => {
                     said = true;
@@ -3265,6 +3694,7 @@ impl Workbench {
                     done = Some(text);
                     break;
                 }
+                Ok(Progress::Traced(tracing)) => self.traces_waiting.push(tracing),
                 Err(mpsc::TryRecvError::Disconnected) => {
                     said = true;
                     done = Some("the computation ended without a word".to_string());
@@ -3274,6 +3704,18 @@ impl Workbench {
             }
         }
         if let Some(text) = done {
+            // What the worker computed waits with the rest: read again from
+            // its folder, and taken back by one `u`.
+            if let Some(folder) = self.waiting.clone() {
+                let _ = crate::format::stage::refresh(&folder);
+                if let Some(waited) = self.computing_waited.take()
+                    && waited != crate::format::stage::entries(&folder)
+                {
+                    self.waiting_undo.push(waited);
+                    self.waiting_said
+                        .push(format!("compute: {}", for_history(&text)));
+                }
+            }
             if let Some(before) = self.running.take().and_then(|running| running.before) {
                 let changed = settled(before);
                 if !changed.is_empty() {
@@ -3631,12 +4073,37 @@ impl Workbench {
         self.open_history(sample);
     }
 
+    /// The system asked to tell of a file changed in the project, as the
+    /// terminal's loop asks: the files are then looked at only when it does,
+    /// and every thirty seconds all the same. Where the system offers no
+    /// watch, they are looked at as before. Whether it does.
+    pub fn watch_files(&mut self) -> bool {
+        let mut watch = super::watch::Watch::new();
+        watch.follow(super::watch::folders_of(
+            &self.root,
+            watched_files(&self.collection),
+        ));
+        let told = watch.told();
+        self.watch = Some(watch);
+        told
+    }
+
     /// The collection read again from its files: after a write, or an editor.
     pub fn reload(&mut self) {
-        match list::from_directory(&self.root) {
-            Ok(collection) => {
+        let previous = (&self.collection, &self.read_texts, self.settings_read);
+        match read_collection(&self.root, Some(previous)) {
+            Ok((collection, texts, settings)) => {
                 self.read_as = files_stamp(&collection, &self.root);
                 self.collection = collection;
+                self.read_texts = texts;
+                self.settings_read = settings;
+                // A folder made or removed is watched or no longer.
+                if let Some(watch) = self.watch.as_mut() {
+                    watch.follow(super::watch::folders_of(
+                        &self.root,
+                        watched_files(&self.collection),
+                    ));
+                }
                 // Its fields read again when next asked: a write, an editor,
                 // a computation may have added one.
                 self.described = std::cell::OnceCell::new();
@@ -3644,7 +4111,8 @@ impl Workbench {
                 // basket, which would otherwise refuse every action on it;
                 // said.
                 let held = self.basket.len();
-                self.basket.retain(|path| path.is_file());
+                self.basket
+                    .retain(|path| crate::format::stage::exists(path));
                 let gone = held - self.basket.len();
                 if gone > 0 {
                     self.message = format!(
@@ -3653,7 +4121,12 @@ impl Workbench {
                     );
                 }
                 // Its colours with it: .samplekitrc may be what was edited.
-                self.theme = super::theme::Theme::of(self.collection.config());
+                let said = self.themed();
+                if !said.is_empty() {
+                    self.message = said.join(" · ");
+                }
+                // The list of themes open: the one under its cursor still tried.
+                self.try_theme();
                 // What the model owes, planned again: a value written may
                 // be one it owed, or make another wait.
                 self.plan_owed();
@@ -3722,10 +4195,20 @@ impl Workbench {
             }
             return;
         }
+        // What each sample was read from, for the plans kept.
+        let texts: HashMap<PathBuf, u64> = self
+            .read_texts
+            .iter()
+            .map(|(path, (digest, _))| (path.clone(), *digest))
+            .collect();
+        let settings = self.settings_read;
+        let kept = std::sync::Arc::clone(&self.planned);
         let (sender, receiver) = mpsc::channel();
         std::thread::spawn(move || {
+            use std::hash::{Hash, Hasher};
             let mut plans = Vec::new();
             let mut unread = Vec::new();
+            let mut made_from = HashMap::new();
             for (config, from, paths) in jobs {
                 // What the project's trace knows of the formulas that
                 // computed each value.
@@ -3737,7 +4220,20 @@ impl Workbench {
                         continue;
                     }
                 };
+                let traced = trace.as_deref().map(|trace| trace.stamp());
                 for path in paths {
+                    let made = texts.get(&path).map(|digest| {
+                        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                        (digest, settings, traced).hash(&mut hasher);
+                        hasher.finish()
+                    });
+                    if let Some(made) = made {
+                        made_from.insert(path.clone(), made);
+                        if let Some((_, plan)) = kept.get(&path).filter(|(from, _)| *from == made) {
+                            plans.push((path, plan.clone()));
+                            continue;
+                        }
+                    }
                     // Forced, as `status` plans it, so that a value held for
                     // want of its record is told from an override.
                     let recorded = match crate::format::document::load_sample(&path) {
@@ -3754,7 +4250,11 @@ impl Workbench {
                     }
                 }
             }
-            let _ = sender.send(Planning { plans, unread });
+            let _ = sender.send(Planning {
+                plans,
+                unread,
+                made_from,
+            });
         });
         self.planning = Some(receiver);
     }
@@ -3764,12 +4264,29 @@ impl Workbench {
     /// value the file records as failed or outdated left to the file's own
     /// state. The marks, the sample screen and the control screen read it.
     pub fn take_plan(&mut self, planning: Planning) {
-        let mut owed = std::collections::BTreeMap::new();
-        for (path, plan) in planning.plans {
-            let Some(entry) = self
-                .collection
+        // Kept for the next plan, each with what it was made from.
+        self.planned = std::sync::Arc::new(
+            planning
+                .plans
                 .iter()
-                .find(|entry| entry.path.as_deref() == Some(path.as_path()))
+                .filter_map(|(path, plan)| {
+                    Some((path.clone(), (*planning.made_from.get(path)?, plan.clone())))
+                })
+                .collect(),
+        );
+        let mut owed = std::collections::BTreeMap::new();
+        // Each plan's sample found by its path at once: searched along the
+        // collection, a plan per sample was a search per sample.
+        let by_path: HashMap<&Path, usize> = self
+            .collection
+            .iter()
+            .enumerate()
+            .filter_map(|(at, entry)| Some((entry.path.as_deref()?, at)))
+            .collect();
+        for (path, plan) in planning.plans {
+            let Some(entry) = by_path
+                .get(path.as_path())
+                .and_then(|at| self.collection.get(*at))
             else {
                 continue;
             };
@@ -3897,7 +4414,6 @@ impl Workbench {
             Screen::Collection => Place::Collection,
             Screen::Sample { .. } => Place::Sample,
             Screen::Table { .. } => Place::Table,
-            Screen::Property { .. } => Place::Property,
             Screen::Items { .. } => Place::Items,
             Screen::Control { .. } => Place::Control,
             Screen::History { .. } => Place::History,
@@ -3910,10 +4426,7 @@ impl Workbench {
     pub fn current(&self) -> Option<(PathBuf, std::cell::Ref<'_, Sample>)> {
         let at = match self.screen {
             Screen::Collection => self.cursor,
-            Screen::Sample { at, .. }
-            | Screen::Table { at, .. }
-            | Screen::Property { at, .. }
-            | Screen::Items { at, .. } => at,
+            Screen::Sample { at, .. } | Screen::Table { at, .. } | Screen::Items { at, .. } => at,
             Screen::Control { .. }
             | Screen::History { .. }
             | Screen::Setup { .. }
@@ -3949,6 +4462,25 @@ impl Workbench {
 
     /// A key, in whatever mode the workbench is in.
     pub fn key(&mut self, key: Key) -> Effect {
+        let effect = self.key_now(key);
+        // In the typing mode a change kept waits at once, with no preview of
+        // it alone: what a cell typed the way `e` types it previewed.
+        if self.typing
+            && let Mode::Confirm { title, pending, .. } = &self.mode
+            && waits(pending, title)
+            && !matches!(**pending, Pending::Remove(_) | Pending::Rename(_))
+            && let Mode::Confirm {
+                title,
+                lines,
+                pending,
+            } = std::mem::replace(&mut self.mode, Mode::Normal)
+        {
+            return self.confirming(Key::Char('y'), title, lines, *pending);
+        }
+        effect
+    }
+
+    fn key_now(&mut self, key: Key) -> Effect {
         // Held with Ctrl or Alt, a key means something only to what is typed:
         // Ctrl+Y is not y, nor Alt+U u. Shift with a key that moves is that
         // key, as it was; the mouse dragged is nothing.
@@ -3994,7 +4526,17 @@ impl Workbench {
             key => key,
         };
         let mode = std::mem::replace(&mut self.mode, Mode::Normal);
+        let typed_on = matches!(
+            self.screen,
+            Screen::Collection | Screen::Sample { .. } | Screen::Table { .. }
+        );
         match mode {
+            Mode::Normal if self.card.is_some() => self.card_key(key),
+            Mode::Normal if self.typing && typed_on => self.typing_key(key),
+            Mode::Prompt {
+                purpose: Purpose::Cell(at),
+                text,
+            } => self.cell_key(key, at, text),
             Mode::Normal => self.normal(key),
             Mode::Filter {
                 text,
@@ -4012,7 +4554,11 @@ impl Workbench {
                 cursor,
                 query,
                 typing,
-            } => self.picking(key, purpose, items, cursor, query, typing),
+            } => {
+                let effect = self.picking(key, purpose, items, cursor, query, typing);
+                self.try_theme();
+                effect
+            }
             Mode::Confirm {
                 title,
                 lines,
@@ -4071,7 +4617,7 @@ impl Workbench {
             Screen::Collection => 0,
             Screen::Control { .. } => self.control.len().saturating_sub(1),
             Screen::History { .. } => self.history.len().saturating_sub(1),
-            Screen::Setup { .. } | Screen::Configure | Screen::Property { .. } => 0,
+            Screen::Setup { .. } | Screen::Configure => 0,
             // Its items, and the empty row at its foot.
             Screen::Items { .. } => self.items().map_or(0, |(_, items, _)| items.len()),
         };
@@ -4085,7 +4631,6 @@ impl Workbench {
                 })
                 .unwrap_or(0)
                 .saturating_sub(1),
-            Screen::Property { name, .. } => self.property_columns(name).len().saturating_sub(1),
             _ => 0,
         };
         // `Enter` and `o` on an attribute that links elsewhere follow it, and
@@ -4151,6 +4696,7 @@ impl Workbench {
                     && !matches!(
                         action,
                         Action::Summary
+                            | Action::Theme
                             | Action::Filter
                             | Action::ClearFilter
                             | Action::Columns
@@ -4204,6 +4750,17 @@ impl Workbench {
                 }
             }
             (Screen::Collection, Action::Control) => self.open_control(),
+            (Screen::Collection | Screen::Sample { .. } | Screen::Table { .. }, Action::Typing) => {
+                self.begin_typing()
+            }
+            (Screen::Sample { .. } | Screen::Table { .. }, Action::Card) => self.open_card(),
+            (Screen::Collection | Screen::Sample { .. } | Screen::Table { .. }, Action::Write) => {
+                if self.running.is_some() {
+                    self.message = "a computation is running: w once it has finished".to_string();
+                } else {
+                    self.preview_waiting();
+                }
+            }
             (Screen::Collection, Action::History) => self.open_history(None),
             (Screen::Sample { at, .. } | Screen::Table { at, .. }, Action::History) => {
                 let at = *at;
@@ -4236,6 +4793,7 @@ impl Workbench {
                 self.screen = back;
             }
             (Screen::Collection, Action::Summary) => self.summarised = !self.summarised,
+            (Screen::Collection | Screen::Sample { .. }, Action::Theme) => self.choose_theme(),
             (Screen::Collection, Action::ScrollLeft) => {
                 self.hscroll = self.hscroll.saturating_sub(1)
             }
@@ -4431,27 +4989,9 @@ impl Workbench {
                             };
                         }
                     }
-                    _ => self.message = "l unfolds a table; Enter explains a value".to_string(),
+                    _ => self.message = "l unfolds a table; i opens a value's card".to_string(),
                 }
             }
-            (Screen::Property { column, .. }, Action::NextColumn) => {
-                *column = (*column + 1).min(last_column)
-            }
-            (Screen::Property { column, .. }, Action::PreviousColumn) if *column > 0 => {
-                *column -= 1
-            }
-            (Screen::Property { at, back, up, .. }, Action::Back | Action::PreviousColumn) => {
-                self.screen = match up.take() {
-                    Some(up) => *up,
-                    None => Screen::Sample {
-                        at: *at,
-                        cursor: *back,
-                    },
-                }
-            }
-            (Screen::Property { .. }, Action::Edit) => self.edit_property_cell(),
-            (Screen::Property { .. }, Action::ComputeValue) => self.compute_chosen(false),
-            (Screen::Property { .. }, Action::Explain) => self.explain(),
             (Screen::Items { cursor, .. }, Action::Down) => *cursor = (*cursor + 1).min(last_entry),
             (Screen::Items { cursor, .. }, Action::Up) => *cursor = cursor.saturating_sub(1),
             (Screen::Items { up, .. }, Action::Back) => {
@@ -4590,7 +5130,6 @@ impl Workbench {
                 );
             }
             (Screen::Sample { .. }, Action::Explain) => self.open_window(),
-            (Screen::Table { .. }, Action::Explain) => self.open_cell_window(false),
             (Screen::Sample { .. } | Screen::Table { .. }, Action::Edit) => self.begin_edit(),
             (Screen::Sample { .. }, Action::AddAttribute) => {
                 let path = self.current().map(|(path, _)| path);
@@ -4695,6 +5234,24 @@ impl Workbench {
     /// a computation's snapshot is taken as it ends, and the workbench
     /// dropped before it lost it while its worker went on writing unseen.
     fn quit(&mut self) -> Effect {
+        // Changes waiting: written, dropped or kept for next time — asked
+        // once nothing runs any more.
+        let waiting = self.waiting_count();
+        if waiting > 0 && self.under_way().is_empty() && !self.from_start {
+            self.mode = Mode::Confirm {
+                title: "quit".to_string(),
+                lines: vec![
+                    format!(
+                        "{} changed and not written",
+                        counted(waiting, "file", "files")
+                    ),
+                    "w writes them · d drops them · k keeps them for next time · n stays"
+                        .to_string(),
+                ],
+                pending: Box::new(Pending::Leave),
+            };
+            return Effect::None;
+        }
         let unwritten = self
             .workspace
             .as_ref()
@@ -4783,6 +5340,8 @@ impl Workbench {
             }
             mode => mode,
         };
+        // A list of themes narrowed: the one now under its cursor tried.
+        self.try_theme();
     }
 
     /// Ctrl+C where a line or the note is typed and something in it is
@@ -5101,6 +5660,10 @@ impl Workbench {
                 };
                 let offered = |written: &str| {
                     let mut found: Vec<String> = Vec::new();
+                    // Each candidate once, known at once: searched along
+                    // those found, the values of thousands of samples were a
+                    // search per candidate.
+                    let mut seen: HashSet<String> = HashSet::new();
                     for entry in self.collection.iter() {
                         let other = entry.sample.borrow();
                         let subject = Subject {
@@ -5110,7 +5673,7 @@ impl Workbench {
                             states: entry.states.as_deref(),
                         };
                         for candidate in filter::complete(written, &subject) {
-                            if !found.contains(&candidate) {
+                            if seen.insert(candidate.clone()) {
                                 found.push(candidate);
                             }
                         }
@@ -5119,6 +5682,7 @@ impl Workbench {
                 };
                 let _ = subject;
                 let mut found = offered(text);
+                let mut listed: HashSet<String> = found.iter().cloned().collect();
                 // What begins with the word being typed comes first; then what
                 // holds its letters in order, closest first: `bx` finds `porosity`,
                 // and `hz` finds `roughness`.
@@ -5129,7 +5693,7 @@ impl Workbench {
                 if !typed.is_empty() {
                     let mut near: Vec<(i64, String)> = offered(settled)
                         .into_iter()
-                        .filter(|candidate| !found.contains(candidate))
+                        .filter(|candidate| !listed.contains(candidate))
                         .filter_map(|candidate| {
                             let word = candidate.strip_prefix(settled)?;
                             let word = word.trim_matches(|c: char| c == '"' || c == ' ');
@@ -5137,6 +5701,7 @@ impl Workbench {
                         })
                         .collect();
                     near.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+                    listed.extend(near.iter().map(|(_, candidate)| candidate.clone()));
                     found.extend(near.into_iter().map(|(_, candidate)| candidate));
                 }
                 // Then every field of the collection, a table's cells among
@@ -5153,7 +5718,7 @@ impl Workbench {
                         .iter()
                         .filter_map(|field| {
                             let candidate = format!("{before}{field}");
-                            (!found.contains(&candidate))
+                            (!listed.contains(&candidate))
                                 .then(|| fuzzy(field, word).map(|score| (score, candidate)))
                                 .flatten()
                         })
@@ -5178,14 +5743,19 @@ impl Workbench {
         {
             return (Vec::new(), Some(comma));
         }
+        // Forty shown at most: the rest, put as they are shown, were never seen.
+        const SHOWN: usize = 40;
         let mut shown: Vec<String> = Vec::new();
         for candidate in candidates {
             let candidate = self.completion_shown(candidate);
             if !shown.contains(&candidate) {
                 shown.push(candidate);
+                if shown.len() == SHOWN {
+                    break;
+                }
             }
         }
-        (shown.into_iter().take(40).collect(), error)
+        (shown, error)
     }
 
     /// A completion's number at the precision its field declares where it
@@ -5515,6 +6085,10 @@ impl Workbench {
                 return;
             }
         };
+        if let Err(said) = self.reads_what_waits(&python) {
+            self.message = said;
+            return;
+        }
         let count = samples.len();
         let request = scripting::ScriptRequest {
             script: name.to_string(),
@@ -6884,6 +7458,10 @@ impl Workbench {
         name: &str,
         count: usize,
     ) {
+        if let Err(said) = self.reads_what_waits(&python) {
+            self.message = said;
+            return;
+        }
         let drawn = name.to_string();
         let name = name.to_string();
         let file = request.output.clone();
@@ -7205,6 +7783,15 @@ impl Workbench {
                 lines.push(format!("  and {} more", behind.named.len() - 6));
             }
         }
+        // Made from what is shown: changes not written included, said.
+        let waiting = self.waiting_count();
+        if waiting > 0 {
+            lines.push(String::new());
+            lines.push(format!(
+                "made from what is shown: {} not written yet — w writes them",
+                counted(waiting, "file changed", "files changed")
+            ));
+        }
         self.mode = Mode::Confirm {
             title,
             lines,
@@ -7299,6 +7886,12 @@ impl Workbench {
                 // Back to the figure's window, which asked.
                 if matches!(purpose, Choosing::FigureField(_)) {
                     self.mode = Mode::Figure;
+                }
+                // The theme there was, given back.
+                if let Choosing::Theme { before } = &purpose
+                    && let Some(theme) = self.themes.theme(before, self.collection.config())
+                {
+                    self.theme = theme;
                 }
                 return Effect::None;
             }
@@ -7530,6 +8123,12 @@ impl Workbench {
                                 Purpose::DeclareName(offered.swap_remove(at)),
                                 String::new(),
                             );
+                        }
+                        return Effect::None;
+                    }
+                    Choosing::Theme { .. } => {
+                        if let Some((name, _)) = under.and_then(|at| items.get(at)) {
+                            self.keep_theme(name.clone());
                         }
                         return Effect::None;
                     }
@@ -7946,7 +8545,6 @@ impl Workbench {
                     ("E", "editor"),
                 ]
             }
-            Screen::Property { .. } => vec![("e", "edit"), ("c", "compute"), ("Enter", "explain")],
             Screen::Items {
                 readings,
                 ref field,
@@ -7972,7 +8570,7 @@ impl Workbench {
                         hints
                     }
                     EntryKind::Quantity => {
-                        let mut hints = vec![("e", "edit"), ("Enter", "explain")];
+                        let mut hints = vec![("e", "edit"), ("i", "card")];
                         if self.computable(&entry) {
                             hints.extend([("c", "compute"), ("Space", "select")]);
                         }
@@ -8009,7 +8607,7 @@ impl Workbench {
             Screen::Table { .. } => match self.cell() {
                 None => Vec::new(),
                 Some((cell, _)) => {
-                    let mut hints = vec![("e", "edit"), ("Enter", "explain")];
+                    let mut hints = vec![("e", "edit"), ("i", "card")];
                     if !cell.state.is_empty() {
                         hints.extend([("c", "compute"), ("Space", "select the column")]);
                     }
@@ -8026,16 +8624,6 @@ impl Workbench {
         match self.screen {
             Screen::Sample { cursor, .. } => self.entries().into_iter().nth(cursor),
             Screen::Table { .. } => self.cell().map(|(entry, _)| entry),
-            // The property itself, as its sample's line says it.
-            Screen::Property {
-                ref name, ref up, ..
-            } => match up.as_deref() {
-                Some(table) => self.cell_on(table).map(|(entry, _)| entry),
-                None => self
-                    .entries()
-                    .into_iter()
-                    .find(|entry| entry.field == *name),
-            },
             Screen::Items { .. }
             | Screen::Collection
             | Screen::Control { .. }
@@ -8107,130 +8695,8 @@ impl Workbench {
         ))
     }
 
-    fn explain(&mut self) {
-        let Some(entry) = self.entry() else {
-            return;
-        };
-        let Some((path, sample)) = self.current() else {
-            return;
-        };
-        let vocabulary = self.collection.vocabulary();
-        let config = self.config_for(&path);
-        let subject = Subject {
-            sample: &sample,
-            path: Some(&path),
-            vocabulary: &vocabulary,
-            states: None,
-        };
-        // A value as the sample screen shows it, and an input's the same way.
-        let shown = |field: &str| {
-            let profile = profile_of(&[field.to_string()]);
-            let text = render::cell(
-                &profile.columns()[0],
-                &subject,
-                render::Declaration::Profile(&profile),
-                config,
-                None,
-                true,
-            );
-            if text.is_empty() {
-                "—".to_string()
-            } else {
-                text
-            }
-        };
-        let lines =
-            match explanation::explain(&sample, Some(&path), config, &entry.field, &vocabulary) {
-                Ok(explained) => {
-                    let mut lines = Vec::new();
-                    if matches!(explained, Explanation::Value(_)) {
-                        lines.push(format!("{} = {}", entry.field, shown(&entry.field)));
-                        lines.push(String::new());
-                    }
-                    let stored = explanation::nothing_stored(&sample, &entry.field);
-                    lines.extend(explained_lines(&explained, &shown).into_iter().map(|line| {
-                        if line == "nothing is stored here" {
-                            stored.clone()
-                        } else {
-                            line
-                        }
-                    }));
-                    // A value the model owes and the sample does not hold:
-                    // what it is computed from, and the input nobody entered,
-                    // as `explain` says it.
-                    if let Explanation::Value(value) = &explained
-                        && matches!(value.origin, explanation::Origin::Nothing)
-                        && let Some(described) = config.and_then(runtime::current_description)
-                        && let Some(property) = described.property(&entry.field)
-                    {
-                        let shown_path = self.here(&path);
-                        lines.extend(explanation::owed_lines(
-                            &described,
-                            property,
-                            &entry.field,
-                            &sample,
-                            &shown_path,
-                        ));
-                    }
-                    // A formula changed since it computed it: outdated, as
-                    // `status` says, though current by its inputs.
-                    // A cell is its column's, whose formula it is: one of a
-                    // column whose formula changed was said current.
-                    let column = match fields::parse(&entry.field) {
-                        Ok(fields::Field::Cell { table, column, .. }) => {
-                            format!("{table}.{column}")
-                        }
-                        _ => entry.field.clone(),
-                    };
-                    if let Some(said) =
-                        crate::collection::computation::planned_states(config, &path, &sample)
-                            .and_then(|planned| {
-                                planned
-                                    .get(entry.field.as_str())
-                                    .or_else(|| planned.get(&column))
-                                    .cloned()
-                            })
-                            .filter(|said| said.contains("formula changed"))
-                    {
-                        let outdated =
-                            format!("this value is outdated — {said}: C computes it again");
-                        // In place of the line that called it current.
-                        match lines
-                            .iter()
-                            .position(|line| line == "this value is current")
-                        {
-                            Some(at) => lines[at] = outdated,
-                            None => lines.push(outdated),
-                        }
-                    }
-                    lines
-                }
-                Err(_) => vec!["nothing to explain here".to_string()],
-            };
-        drop(sample);
-        // Paths as the rest of the screen writes them, from the folder opened:
-        // `./pieces/…` where the folder is `.`.
-        let written = path.display().to_string();
-        let lines = if written.starts_with("./") {
-            let shown = self.here(&path);
-            lines
-                .into_iter()
-                .map(|line| line.replace(&written, &shown))
-                .collect()
-        } else {
-            lines
-        };
-        self.mode = Mode::Panel {
-            title: format!("{} — where it came from", entry.field),
-            lines,
-            scroll: 0,
-        };
-    }
-
     // ------------------------------------------------------------ windows
 
-    /// `Enter` on a sample's line: a property in its window, an attribute's
-    /// value or items in theirs, a table unfolded.
     /// An attribute under the cursor that links elsewhere, followed: a sample
     /// it names, on its own screen; a file, in its application; a web
     /// address, in the browser. In a list's window, the item under the
@@ -8254,7 +8720,7 @@ impl Workbench {
         let name = Identifier::new(&field).ok()?;
         let (path, text) = {
             let (path, sample) = self.current()?;
-            let text = match (sample.attribute(&name).ok()?, item) {
+            let text = match (sample.attribute_if(&name)?, item) {
                 (
                     crate::core::sample::AttributeValue::Scalar(crate::core::value::Value::Text(
                         text,
@@ -8281,13 +8747,14 @@ impl Workbench {
                 Some((entry.path.clone()?, name))
             })
             .collect();
-        let leads = discovery::destination(&link, &path, || {
-            discovery::linkable(config.as_ref(), &path, &known)
-        });
+        let leads = discovery::destination(&link, &path, config.as_ref(), &known);
         let written = text.trim();
         match leads {
             discovery::Destination::Address(address) => return Some(Effect::OpenAddress(address)),
             discovery::Destination::File(file) => return Some(Effect::Open(file)),
+            discovery::Destination::Page { file, page } => {
+                return Some(Effect::OpenPage { file, page });
+            }
             discovery::Destination::Sample(found) => {
                 let written = written.to_string();
                 return Some(self.visit(found, &written));
@@ -8389,15 +8856,8 @@ impl Workbench {
         };
         match entry.kind {
             EntryKind::Backlink => {}
-            EntryKind::Quantity if !entry.field.contains('[') => {
-                self.screen = Screen::Property {
-                    at,
-                    back: cursor,
-                    name: entry.field,
-                    column: 0,
-                    up: None,
-                }
-            }
+            // A value is typed in on its line and read in its card, `i`.
+            EntryKind::Quantity => {}
             // The name is one value, never a list: its line. The tags are a
             // list, in the window every list has.
             EntryKind::Attribute if entry.field == "name" => self.begin_edit(),
@@ -8420,300 +8880,6 @@ impl Workbench {
                         column: 0,
                     };
                 }
-            }
-            EntryKind::Quantity => self.explain(),
-        }
-    }
-
-    /// The cell under a table's cursor in its window, as a property's value
-    /// is; `edit` begins with its value typed. A cell of the index, or of
-    /// text, is changed on one line, and explained.
-    fn open_cell_window(&mut self, edit: bool) {
-        let Screen::Table { at, back, .. } = self.screen else {
-            return;
-        };
-        if let Some((path, field, text)) = self.index_cell() {
-            if edit {
-                self.mode = Mode::prompt(Purpose::Edit { path, field }, text);
-            } else {
-                self.explain();
-            }
-            return;
-        }
-        let Some((entry, _)) = self.cell() else {
-            return;
-        };
-        let text = self.current().is_some_and(|(_, sample)| {
-            matches!(
-                editing::value_at(&sample, &entry.field),
-                Some(crate::core::value::Value::Text(_))
-            )
-        });
-        if text {
-            if edit {
-                self.begin_text_edit(entry.field);
-            } else {
-                self.explain();
-            }
-            return;
-        }
-        let up = Box::new(self.screen.clone());
-        self.screen = Screen::Property {
-            at,
-            back,
-            name: entry.field,
-            column: 0,
-            up: Some(up),
-        };
-        if edit {
-            self.edit_property_cell();
-        }
-    }
-
-    /// The unit of the quantity a window shows, as the screen writes it —
-    /// `°C` where `[unit.*]` gives a plain form; empty where it has none.
-    pub fn window_unit(&self) -> String {
-        let Screen::Property { ref name, .. } = self.screen else {
-            return String::new();
-        };
-        let Some((path, sample)) = self.current() else {
-            return String::new();
-        };
-        let own = match name.split_once('.') {
-            Some((table, column)) if name.contains('[') => {
-                let column = column.split('[').next().unwrap_or(column);
-                Identifier::new(table)
-                    .ok()
-                    .zip(Identifier::new(column).ok())
-                    .and_then(|(table, column)| {
-                        let table = sample.table(&table).ok()?;
-                        table.column(&column).ok()?.presentation().unit.clone()
-                    })
-            }
-            _ => Identifier::new(name)
-                .ok()
-                .and_then(|name| sample.property(&name).ok())
-                .and_then(|handle| handle.presentation().unit),
-        };
-        drop(sample);
-        let config = self.config_for(&path).or_else(|| self.collection.config());
-        let unit = own
-            .or_else(|| {
-                config
-                    .and_then(|config| config.property(name))
-                    .and_then(|declared| declared.unit.clone())
-            })
-            .unwrap_or_default();
-        config
-            .and_then(|config| config.unit(&unit))
-            .and_then(|variants| variants.get("plain").cloned())
-            .unwrap_or(unit)
-    }
-
-    /// A value changed on one line, as typed.
-    fn begin_text_edit(&mut self, field: String) {
-        let Some((path, sample)) = self.current() else {
-            return;
-        };
-        let text = editing::value_at(&sample, &field)
-            .map(|value| denoised(&value))
-            .filter(|shown| shown != "—")
-            .unwrap_or_default();
-        drop(sample);
-        self.mode = Mode::prompt(Purpose::Edit { path, field }, text);
-    }
-
-    /// The columns of a property's window: its value and uncertainty, and its
-    /// readings where no formula gives its value.
-    pub fn property_columns(&self, name: &str) -> Vec<&'static str> {
-        use crate::config::model_runtime::Origin;
-        use crate::core::property::InputName;
-        // A table's cell: its value and its uncertainty.
-        if name.contains('[') {
-            return vec!["value", "uncertainty"];
-        }
-        // A formula's, as the model declares it, as the workbench's sample
-        // holds it, or as its file records it: a record naming anything but
-        // the value's own readings — a sample read without the model's
-        // Python holds no formula.
-        let current = self.current();
-        let described = current
-            .as_ref()
-            .and_then(|(path, _)| self.config_for(path))
-            .and_then(crate::config::model_runtime::current_description)
-            .and_then(|described| described.properties.get(name).cloned())
-            .is_some_and(|property| {
-                matches!(
-                    property.value,
-                    Origin::Formula { .. } | Origin::Quantity { .. }
-                )
-            });
-        let held = current
-            .and_then(|(_, sample)| {
-                let name = Identifier::new(name).ok()?;
-                let handle = sample.property(&name).ok()?;
-                let readings = Identifier::new("readings").ok()?;
-                Some(
-                    handle.is_computed()
-                        || handle.records().computed.is_some_and(|inputs| {
-                            inputs
-                                .keys()
-                                .any(|input| *input != InputName::Named(readings.clone()))
-                        }),
-                )
-            })
-            .unwrap_or(false);
-        let computed = described || held;
-        if computed {
-            vec!["value", "uncertainty"]
-        } else {
-            vec!["value", "uncertainty", "readings"]
-        }
-    }
-
-    /// What the model declares a property to be, as the window's first line
-    /// says it: `the value is the mean of its readings, the uncertainty their
-    /// standard error`.
-    pub fn declared_as(&self, name: &str) -> String {
-        use crate::config::model_runtime::Origin;
-        let Some((path, _)) = self.current() else {
-            return String::new();
-        };
-        let Some(described) = self
-            .config_for(&path)
-            .and_then(crate::config::model_runtime::current_description)
-        else {
-            return String::new();
-        };
-        // A cell is its column's: a table's formula, a statistic of its
-        // readings, or entered — said of every cell, a computed one included,
-        // *entered by hand*.
-        if let Ok(fields::Field::Cell { table, column, .. }) = fields::parse(name) {
-            let Some(declared) = described.tables.get(table.as_str()).and_then(|held| {
-                held.columns
-                    .iter()
-                    .find(|held| held.name == column.as_str())
-            }) else {
-                return "the model does not declare its column: entered by hand".to_string();
-            };
-            let from = |reads: &[String]| {
-                if reads.is_empty() {
-                    String::new()
-                } else {
-                    format!(", from {}", reads.join(", "))
-                }
-            };
-            if let Some(Origin::Rows { reads, .. }) = &declared.uncertainty {
-                return format!(
-                    "its value is entered, a table's formula gives its uncertainty{}",
-                    from(reads)
-                );
-            }
-            return match &declared.value {
-                Origin::Rows { reads, .. } | Origin::Columns { reads, .. } => {
-                    format!("a table's formula gives it{}", from(reads))
-                }
-                Origin::Statistic { statistic } => format!(
-                    "the value is the {} of its readings",
-                    statistic.replace('_', " ")
-                ),
-                _ => "its column is entered".to_string(),
-            };
-        }
-        let Some(property) = described.properties.get(name) else {
-            return "the model does not declare it: entered by hand".to_string();
-        };
-        let reads = |reads: &[String]| {
-            if reads.is_empty() {
-                String::new()
-            } else {
-                format!(", from {}", reads.join(", "))
-            }
-        };
-        let value = match &property.value {
-            Origin::Entered => "the value is entered".to_string(),
-            Origin::Formula { reads: from } => format!("a formula gives the value{}", reads(from)),
-            Origin::Quantity { reads: from } => {
-                return format!(
-                    "one formula gives the value and its uncertainty{}",
-                    reads(from)
-                );
-            }
-            Origin::Statistic { statistic } => {
-                format!(
-                    "the value is the {} of its readings",
-                    statistic.replace('_', " ")
-                )
-            }
-            Origin::Rows { .. } | Origin::Columns { .. } => {
-                "a table's formula gives it".to_string()
-            }
-        };
-        let uncertainty = match &property.uncertainty {
-            None => String::new(),
-            Some(Origin::Entered) => ", the uncertainty entered".to_string(),
-            Some(Origin::Statistic { statistic }) => {
-                format!(", the uncertainty their {}", statistic.replace('_', " "))
-            }
-            Some(Origin::Formula { reads: from } | Origin::Quantity { reads: from }) => {
-                format!(", a formula gives the uncertainty{}", reads(from))
-            }
-            Some(_) => String::new(),
-        };
-        format!("{value}{uncertainty}")
-    }
-
-    /// `e` in a property's window: its value or uncertainty on one line, its
-    /// readings in their own window.
-    fn edit_property_cell(&mut self) {
-        let Screen::Property {
-            at,
-            back,
-            ref name,
-            column,
-            ref up,
-        } = self.screen
-        else {
-            return;
-        };
-        let up = up.clone();
-        let name = name.clone();
-        let columns = self.property_columns(&name);
-        let Some(which) = columns.get(column).copied() else {
-            return;
-        };
-        let Some((path, sample)) = self.current() else {
-            return;
-        };
-        match which {
-            "readings" => {
-                drop(sample);
-                self.screen = Screen::Items {
-                    at,
-                    field: name.clone(),
-                    readings: true,
-                    cursor: 0,
-                    up: Box::new(Screen::Property {
-                        at,
-                        back,
-                        name,
-                        column,
-                        up,
-                    }),
-                };
-            }
-            _ => {
-                let field = if which == "uncertainty" {
-                    format!("{name}.u")
-                } else {
-                    name.clone()
-                };
-                let text = editing::value_at(&sample, &field)
-                    .map(|value| denoised(&value))
-                    .filter(|shown| shown != "—")
-                    .unwrap_or_default();
-                drop(sample);
-                self.mode = Mode::prompt(Purpose::Edit { path, field }, text);
             }
         }
     }
@@ -9143,33 +9309,17 @@ impl Workbench {
                 .unwrap_or_default()
         };
         let text = text_of(&entry.field);
-        // A quantity is changed in its window, its value first: the same
-        // window `Enter` opens, a cell of a table's as a property's. A text
-        // cell is one line.
+        // A quantity is typed in its cell, its value with its uncertainty, in
+        // the typing mode. A text cell is one line.
         let numeric = !matches!(
             editing::value_at(&sample, &entry.field),
             Some(crate::core::value::Value::Text(_))
         );
         if entry.kind == EntryKind::Quantity && numeric {
             drop(sample);
-            match self.screen {
-                // A cell holding a value is changed in its window, opened by
-                // `Enter`, where its value and its uncertainty are side by
-                // side: typed from the table, a row filled cell by cell sent
-                // the next cell's number into the uncertainty.
-                Screen::Table { .. } => {
-                    self.message = "Enter opens the cell, its value and its uncertainty: e there \
-                                    changes them"
-                        .to_string();
-                }
-                Screen::Sample { .. } => {
-                    self.open_window();
-                    if matches!(self.screen, Screen::Property { .. }) {
-                        self.edit_property_cell();
-                    }
-                }
-                _ => {}
-            }
+            self.message =
+                "a value is typed in its cell: e enters the typing mode, i opens its card"
+                    .to_string();
             return;
         }
         drop(sample);
@@ -9203,12 +9353,14 @@ impl Workbench {
             }
             Key::Enter => {
                 // A line refused keeps its window, its text and what is said,
-                // as the quantity's window does: closed, the text was lost,
+                // as a cell of the typing mode does: closed, the text was lost,
                 // and what was typed again fell on the screen as its keys.
                 let again = purpose.clone();
                 self.message.clear();
                 let text = line.text().to_string();
                 let accepted = match purpose {
+                    // Kept by the typing mode's own keys, before this.
+                    Purpose::Cell(_) => false,
                     Purpose::ScriptOptions { script, samples } => {
                         match typed_options(&text, &script) {
                             Ok(options) => {
@@ -9231,16 +9383,6 @@ impl Workbench {
                         }
                         self.mode = Mode::Figure;
                         true
-                    }
-                    // A value or an uncertainty typed in a quantity's window
-                    // is a number alone: `21 L` or `21,5` is said at once.
-                    Purpose::Edit { .. }
-                        if matches!(self.screen, Screen::Property { .. })
-                            && number_refused(text.trim(), &self.window_unit()).is_some() =>
-                    {
-                        self.message =
-                            number_refused(text.trim(), &self.window_unit()).unwrap_or_default();
-                        false
                     }
                     Purpose::Edit { path, field } => {
                         self.preview_edit(path, &field, text.trim());
@@ -9434,7 +9576,7 @@ impl Workbench {
                     crate::format::fingerprint::check_property(&sample, &name),
                     Ok(Freshness::Edited)
                 );
-                let kept = sample.property(&name).ok().and_then(|handle| {
+                let kept = sample.property_if(&name).and_then(|handle| {
                     handle.peek(|property| {
                         let written = property
                             .written_value()
@@ -9807,6 +9949,62 @@ impl Workbench {
         lines: Vec<String>,
         pending: Pending,
     ) -> Effect {
+        // What waits: kept or dropped, written, or kept for next time.
+        let folder = self.waiting.clone();
+        match (&pending, key) {
+            (Pending::TakeUp, Key::Char('y')) => {
+                self.message = format!(
+                    "{} waiting · w writes them, u drops them",
+                    counted(self.waiting_count(), "file", "files")
+                );
+                return Effect::None;
+            }
+            (Pending::TakeUp | Pending::DropWaiting, Key::Char('n') | Key::Esc)
+                if matches!(pending, Pending::DropWaiting) =>
+            {
+                self.message = "they wait still".to_string();
+                return Effect::None;
+            }
+            (Pending::TakeUp, Key::Char('n') | Key::Esc)
+            | (Pending::DropWaiting, Key::Char('y')) => {
+                if let Some(folder) = &folder
+                    && let Err(error) = crate::format::stage::forget_all(folder)
+                {
+                    self.message = format!("the changes waiting could not be dropped: {error}");
+                    return Effect::None;
+                }
+                self.waiting_undo.clear();
+                self.waiting_said.clear();
+                self.traces_waiting.clear();
+                self.reload();
+                self.message =
+                    "the changes waiting are dropped: the files are as written".to_string();
+                return Effect::None;
+            }
+            (Pending::Commit, Key::Char('y')) if self.running.is_none() => {
+                self.confirm_scroll = 0;
+                return self.commit_waiting();
+            }
+            (Pending::Leave, Key::Char('w')) => {
+                self.commit_waiting();
+                if self.waiting_count() > 0 {
+                    return Effect::None;
+                }
+                return Effect::Quit;
+            }
+            (Pending::Leave, Key::Char('d')) => {
+                if let Some(folder) = &folder {
+                    let _ = crate::format::stage::forget_all(folder);
+                }
+                return Effect::Quit;
+            }
+            (Pending::Leave, Key::Char('k') | Key::Char('y')) => return Effect::Quit,
+            (Pending::Leave, Key::Char('n') | Key::Esc) => {
+                self.message = "they wait still".to_string();
+                return Effect::None;
+            }
+            _ => {}
+        }
         match key {
             // Files a computation is writing are written by nothing else
             // meanwhile: its save would refuse theirs, or undo mix the two.
@@ -9870,6 +10068,10 @@ impl Workbench {
                     Pending::Declare { edit, .. } => vec![edit.path().to_path_buf()],
                     // Not kept for `u`: an undo is not undone.
                     Pending::Undo(_)
+                    | Pending::TakeUp
+                    | Pending::Commit
+                    | Pending::DropWaiting
+                    | Pending::Leave
                     | Pending::Quit
                     | Pending::Compute(_)
                     | Pending::Figure { .. } => Vec::new(),
@@ -9894,6 +10096,11 @@ impl Workbench {
                         })
                         .unwrap_or_default(),
                 };
+                // A change to samples waits until `w` writes it: no snapshot of
+                // the history, no undo of a write, what waited kept for `u`.
+                let waiting = self.waiting.is_some() && waits(&pending, &title);
+                let waited_before = waiting.then(|| self.waiting_entries());
+                let _through = (!waiting).then(crate::format::stage::Through::new);
                 let before = snapshot(&touched);
                 // What changed since the history's last snapshot is one of its
                 // own, so this change is credited with its own. An undo's files
@@ -9904,10 +10111,14 @@ impl Workbench {
                     }
                     _ => touched.clone(),
                 };
-                let (writing, unread) = version_control::before_writing(&self.places(&reached));
+                let bracket =
+                    (!waiting).then(|| version_control::before_writing(&self.places(&reached)));
                 let mut wrote = false;
                 let mut renamed: Option<PathBuf> = None;
                 self.message = match pending {
+                    Pending::TakeUp | Pending::Commit | Pending::DropWaiting | Pending::Leave => {
+                        String::new()
+                    }
                     Pending::Write {
                         path,
                         mut sample,
@@ -9990,8 +10201,7 @@ impl Workbench {
                         let mut removed = 0;
                         let mut failed = None;
                         for path in &paths {
-                            document::note_written(path);
-                            match std::fs::remove_file(path) {
+                            match document::remove_file(path) {
                                 Ok(()) => removed += 1,
                                 Err(error) => {
                                     failed = Some(format!("{}: {error}", self.here(path)));
@@ -10050,10 +10260,12 @@ impl Workbench {
                     Pending::Undo(group) => {
                         // Checked again now: an edit made while the question
                         // was open is not overwritten either.
-                        if let Some(moved) = group
-                            .iter()
-                            .find(|undone| std::fs::read(&undone.path).ok() != undone.after)
-                        {
+                        if let Some(moved) = group.iter().find(|undone| {
+                            document::read_text(&undone.path)
+                                .ok()
+                                .map(String::into_bytes)
+                                != undone.after
+                        }) {
                             let restoring = title.starts_with("restore");
                             let said = format!(
                                 "{} changed meanwhile: {}",
@@ -10239,7 +10451,41 @@ impl Workbench {
                         }
                     },
                 };
-                if wrote {
+                // What the history will say of it: `change: diameter 12.0 →
+                // 12.5, written C1.md`, kept until it is written where it waits.
+                let history_said = {
+                    let title = title.split(" · ").next().unwrap_or(&title).to_string();
+                    if title.starts_with("undo") {
+                        format!("{}{}", version_control::UNDO, self.message)
+                    } else {
+                        let message = self.message.replacen("written: ", "written ", 1).replacen(
+                            "created: ",
+                            "created ",
+                            1,
+                        );
+                        match changing.as_deref().filter(|changing| !changing.is_empty()) {
+                            Some(changing) => {
+                                format!("{title}: {changing}, {}", for_history(&message))
+                            }
+                            None => format!("{title}: {}", for_history(&message)),
+                        }
+                    }
+                    .replace(&format!("{}/", self.root.display()), "")
+                };
+                if wrote && waiting {
+                    if self
+                        .draft
+                        .as_ref()
+                        .is_some_and(|draft| touched.contains(&draft.path))
+                    {
+                        self.draft = None;
+                    }
+                    if let Some(waited) = waited_before {
+                        self.waiting_undo.push(waited);
+                        self.waiting_said.push(history_said);
+                    }
+                    self.message = waiting_said(&self.message, self.waiting_count());
+                } else if wrote && let Some((writing, unread)) = bracket {
                     // A row typed at a table's foot, written: the empty row is
                     // empty again.
                     if self
@@ -10261,23 +10507,7 @@ impl Workbench {
                     // it always has, the values changed before the file: `change: diameter 12.0 →
                     // 12.5, written C1.md`.
                     // Titled what and where; the history names what alone.
-                    let title = title.split(" · ").next().unwrap_or(&title).to_string();
-                    let said = if title.starts_with("undo") {
-                        format!("tui · {}{}", version_control::UNDO, self.message)
-                    } else {
-                        let message = self.message.replacen("written: ", "written ", 1).replacen(
-                            "created: ",
-                            "created ",
-                            1,
-                        );
-                        match changing.as_deref().filter(|changing| !changing.is_empty()) {
-                            Some(changing) => {
-                                format!("tui · {title}: {changing}, {}", for_history(&message))
-                            }
-                            None => format!("tui · {title}: {}", for_history(&message)),
-                        }
-                    }
-                    .replace(&format!("{}/", self.root.display()), "");
+                    let said = format!("tui · {history_said}");
                     let failures = version_control::after_writing(writing, &said);
                     if let Some(warning) = history_warning(unread.into_iter().chain(failures)) {
                         self.message = format!("{} — {warning}", self.message);
@@ -10662,6 +10892,47 @@ impl Workbench {
         // back.
         if self.running.is_some() {
             self.message = "a computation is running: undo once it has finished".to_string();
+            return;
+        }
+        // What waits is taken back first, a change at a time; what a last
+        // session left waiting, whole.
+        if let Some(folder) = self.waiting.clone()
+            && crate::format::stage::count(&folder) > 0
+        {
+            match self.waiting_undo.pop() {
+                Some(waited) => {
+                    self.waiting_said.pop();
+                    if let Err(error) = crate::format::stage::restore(&folder, waited) {
+                        self.message = format!("not taken back: {error}");
+                        return;
+                    }
+                    self.reload();
+                    let left = self.waiting_count();
+                    self.message = if left == 0 {
+                        "taken back: nothing waits to be written".to_string()
+                    } else {
+                        format!(
+                            "taken back · {} still waiting, w writes them",
+                            counted(left, "file", "files")
+                        )
+                    };
+                }
+                None => {
+                    let count = crate::format::stage::count(&folder);
+                    self.mode = Mode::Confirm {
+                        title: "drop what waits".to_string(),
+                        lines: vec![
+                            format!(
+                                "{} changed and not written, before this session: taken back \
+                                 whole, not one by one",
+                                counted(count, "file", "files")
+                            ),
+                            "y drops them · n keeps them".to_string(),
+                        ],
+                        pending: Box::new(Pending::DropWaiting),
+                    };
+                }
+            }
             return;
         }
         // Past this session's changes, the history's: an undo that outlives the
@@ -12046,17 +12317,29 @@ impl Workbench {
                         config: group.config.clone(),
                         requests: planned.requests,
                         before: planned.before,
+                        waiting: None,
                     });
                 }
             }
         }
         // What a computation writes is undone as a whole, and is one snapshot
-        // in the history, after one of what changed before it.
-        let before = snapshot(&computing.paths);
-        let (writing, unread) = version_control::before_writing(&self.places(&computing.paths));
-        self.computing_history = Some(writing);
-        if let Some(warning) = history_warning(unread) {
-            self.message = warning;
+        // in the history, after one of what changed before it; while changes
+        // wait, it waits with them.
+        let waiting = self.waiting.clone();
+        let before = if waiting.is_some() {
+            self.computing_waited = Some(self.waiting_entries());
+            None
+        } else {
+            let before = snapshot(&computing.paths);
+            let (writing, unread) = version_control::before_writing(&self.places(&computing.paths));
+            self.computing_history = Some(writing);
+            if let Some(warning) = history_warning(unread) {
+                self.message = warning;
+            }
+            Some(before)
+        };
+        for job in &mut jobs {
+            job.waiting = waiting.clone();
         }
         // A value typed over its formula, kept by a computation not forced:
         // said after it, as the command line says it.
@@ -12067,10 +12350,7 @@ impl Workbench {
         };
         let (sender, receiver) = mpsc::channel();
         std::thread::spawn(move || run_jobs(jobs, kept, &sender));
-        self.running = Some(Running {
-            receiver,
-            before: Some(before),
-        });
+        self.running = Some(Running { receiver, before });
         self.run = Some(RunStatus {
             now: "planning".to_string(),
             ..RunStatus::default()
@@ -12517,6 +12797,131 @@ fn table_derived(table: &crate::core::table::Table) -> bool {
 /// number: a file edited, added or removed changes it. Its configurations,
 /// what they import and the models they declare — each model's folder, where
 /// the modules it imports sit — count as its files.
+/// Each sample's file by a digest of its text, with the sample's changes
+/// when it was read.
+type Texts = HashMap<PathBuf, (u64, u64)>;
+
+/// A sample as the collection holds it.
+type Held = std::rc::Rc<std::cell::RefCell<crate::core::sample::Sample>>;
+
+/// The collection at `root` read, with each file's digest and the settings'
+/// digest. Given the previous reading, a sample whose file holds the same
+/// text, and which nothing changed since, is kept as it is, unless the
+/// settings it was read under changed: their model declares units and
+/// formulas on every sample.
+fn read_collection(
+    root: &Path,
+    previous: Option<(&SampleList, &Texts, u64)>,
+) -> Result<(SampleList, Texts, u64), list::ListError> {
+    let kept: HashMap<PathBuf, Held> = previous
+        .map(|(collection, _, _)| {
+            collection
+                .iter()
+                .filter_map(|entry| Some((entry.path.clone()?, entry.sample.clone())))
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut digests: HashMap<PathBuf, u64> = HashMap::new();
+    let mut reused = 0usize;
+    let collection = list::from_directory_reusing(root, &mut |path| {
+        let digest = text_digest(path)?;
+        digests.insert(path.to_path_buf(), digest);
+        let (_, texts, _) = previous?;
+        let (was, changes) = texts.get(path)?;
+        let sample = kept.get(path)?;
+        let same = *was == digest && sample.try_borrow().ok()?.changes() == *changes;
+        same.then(|| {
+            reused += 1;
+            sample.clone()
+        })
+    })?;
+    let settings = settings_digest(&collection);
+    if reused > 0 && previous.is_some_and(|(_, _, read)| read != settings) {
+        return read_collection(root, None);
+    }
+    let texts = collection
+        .iter()
+        .filter_map(|entry| {
+            let path = entry.path.clone()?;
+            let digest = *digests.get(&path)?;
+            Some((path, (digest, entry.sample.borrow().changes())))
+        })
+        .collect();
+    Ok((collection, texts, settings))
+}
+
+/// A file's text, by a digest of it: never by its time, which a USB key
+/// keeps to two seconds.
+fn text_digest(path: &Path) -> Option<u64> {
+    use std::hash::{Hash, Hasher};
+    // What a change waiting makes it, where one waits: a sample changed and
+    // not written is read again as such.
+    let bytes = match crate::format::stage::text(path) {
+        Some(text) => text?.into_bytes(),
+        None => std::fs::read(path).ok()?,
+    };
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    bytes.hash(&mut hasher);
+    Some(hasher.finish())
+}
+
+/// The settings a collection is read under, by a digest of their texts: each
+/// configuration with its imports, its model's Python files, and the model's
+/// description.
+fn settings_digest(collection: &SampleList) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut files: Vec<PathBuf> = Vec::new();
+    for config in collection.configurations() {
+        files.push(config.root().join(".samplekitrc"));
+        files.extend(config.imports().iter().cloned());
+        files.push(runtime::description_path(config));
+        if let Some(model) = config.model() {
+            let model = config.root().join(&model.path);
+            let modules = model
+                .parent()
+                .and_then(|folder| std::fs::read_dir(folder).ok())
+                .into_iter()
+                .flatten()
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| path.extension().is_some_and(|extension| extension == "py"));
+            files.extend(modules);
+            files.push(model);
+        }
+    }
+    files.sort();
+    files.dedup();
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    for file in files {
+        file.hash(&mut hasher);
+        text_digest(&file).hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+/// The files a collection was read from: its samples, those set aside, and
+/// each configuration with its imports and its model.
+fn watched_files(collection: &SampleList) -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = collection
+        .iter()
+        .filter_map(|entry| entry.path.clone())
+        .chain(
+            collection
+                .skipped()
+                .iter()
+                .map(|skipped| skipped.path.clone()),
+        )
+        .collect();
+    for config in collection.configurations() {
+        files.push(config.root().join(".samplekitrc"));
+        files.extend(config.imports().iter().cloned());
+        if let Some(model) = config.model() {
+            files.push(config.root().join(&model.path));
+        }
+    }
+    files
+}
+
 fn files_stamp(collection: &SampleList, root: &Path) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -13134,6 +13539,9 @@ struct Job {
     config: Option<crate::config::project_config::ProjectConfig>,
     requests: Vec<runtime::Request>,
     before: std::collections::HashMap<PathBuf, Vec<version_control::HeldRecord>>,
+    /// Where the project's changes wait: the worker reads them, and what it
+    /// computes waits with them.
+    waiting: Option<PathBuf>,
 }
 
 fn run_jobs(jobs: Vec<Job>, kept: usize, sender: &mpsc::Sender<Progress>) {
@@ -13144,6 +13552,7 @@ fn run_jobs(jobs: Vec<Job>, kept: usize, sender: &mpsc::Sender<Progress>) {
     let mut total = 0;
     let finished = std::cell::Cell::new(0usize);
     let mut tracing = computation::Tracing::default();
+    let mut deferred = false;
     // What was computed, for the outcome to name: kept over every screen until
     // the next run, `✓ 1 computed` was read on the collection as said of it.
     let mut samples: Vec<String> = Vec::new();
@@ -13157,9 +13566,11 @@ fn run_jobs(jobs: Vec<Job>, kept: usize, sender: &mpsc::Sender<Progress>) {
         config,
         requests,
         before,
+        waiting: waits_in,
     } in jobs
     {
-        let mut worker = match runtime::Worker::start(&python) {
+        deferred |= waits_in.is_some();
+        let mut worker = match runtime::Worker::start_waiting(&python, waits_in.as_deref()) {
             Ok(worker) => worker,
             Err(error) => {
                 let _ = sender.send(Progress::Done(error.to_string()));
@@ -13233,12 +13644,17 @@ fn run_jobs(jobs: Vec<Job>, kept: usize, sender: &mpsc::Sender<Progress>) {
         }
     }
     // What the writes computed, kept in each project's history; a trace not
-    // kept is said as the history's failures are.
-    for (root, error) in tracing.keep() {
-        refused.push(format!(
-            "the trace of {} was not kept: {error}",
-            root.display()
-        ));
+    // kept is said as the history's failures are. Values that wait have
+    // theirs kept once they are written.
+    if deferred {
+        let _ = sender.send(Progress::Traced(tracing));
+    } else {
+        for (root, error) in tracing.keep() {
+            refused.push(format!(
+                "the trace of {} was not kept: {error}",
+                root.display()
+            ));
+        }
     }
     // Nothing ran because it was refused is not nothing to compute; nor is what
     // waits for its inputs.
@@ -13407,116 +13823,6 @@ pub fn word(state: &Freshness) -> String {
     }
 }
 
-/// An explanation as the panel lists it: what the command line's `explain`
-/// says, each input with its value and its state.
-fn explained_lines(explained: &Explanation, shown: &dyn Fn(&str) -> String) -> Vec<String> {
-    match explained {
-        Explanation::Table(table) => {
-            let mut lines = vec![counted(table.rows, "row", "rows")];
-            for column in &table.columns {
-                lines.push(format!(
-                    "  {:<16} {:<10} {}",
-                    column.name.to_string(),
-                    column.unit.clone().unwrap_or_default(),
-                    column.kind.said()
-                ));
-            }
-            lines
-        }
-        Explanation::Value(value) => {
-            let channel = |made: &Made| match made {
-                Made::Value => "its value",
-                Made::Uncertainty => "its uncertainty",
-                Made::Whole => "it",
-            };
-            let mut lines = Vec::new();
-            match &value.origin {
-                Origin::Nothing => lines.push("nothing is stored here".to_string()),
-                Origin::Failed { message } => {
-                    lines.push("its formula failed:".to_string());
-                    lines.extend(message.lines().map(|line| format!("  {line}")));
-                }
-                Origin::Statistic { readings } => {
-                    lines.push(format!("a statistic of {readings} readings"))
-                }
-                Origin::ByHand => {
-                    lines.push("put here by hand, over what a formula or a statistic gave".into())
-                }
-                Origin::Entered => lines.push("entered or measured; nothing computed it".into()),
-                Origin::ReadsNothing(made) => lines.push(format!(
-                    "a formula that reads nothing of this sample computed {}",
-                    channel(made)
-                )),
-                Origin::OwnReadings => lines.push(
-                    "computed from its own readings, by the statistic its model declares".into(),
-                ),
-                Origin::Inputs { inputs, .. } => {
-                    lines.push("computed from".to_string());
-                    let rows: Vec<[String; 3]> = inputs
-                        .iter()
-                        .map(|input| {
-                            let value = match (&input.field, input.cells) {
-                                (_, Some(cells)) => format!("{cells} cells"),
-                                (Some(field), None) => shown(field),
-                                (None, None) => "—".to_string(),
-                            };
-                            let state = match &input.state {
-                                Some(InputState::Of(state)) => word(state),
-                                Some(InputState::Column { stale: true }) => "outdated".to_string(),
-                                Some(InputState::Column { stale: false }) => "current".to_string(),
-                                None => String::new(),
-                            };
-                            [input.name.clone(), value, state]
-                        })
-                        .collect();
-                    let width = |at: usize| {
-                        rows.iter()
-                            .map(|row| row[at].chars().count())
-                            .max()
-                            .unwrap_or(0)
-                    };
-                    let (names, values) = (width(0), width(1));
-                    for [name, value, state] in rows {
-                        let pad = |text: &str, to: usize| {
-                            format!("{text}{}", " ".repeat(to - text.chars().count()))
-                        };
-                        lines.push(format!(
-                            "  {}  {}  {state}",
-                            pad(&name, names),
-                            pad(&value, values)
-                        ));
-                    }
-                }
-            }
-            if let Some(state) = value
-                .state
-                .as_ref()
-                .map(word)
-                .filter(|said| !said.is_empty())
-            {
-                lines.push(String::new());
-                lines.push(format!("this value is {state}"));
-            }
-            if let Some(trace) = &value.trace {
-                lines.push(String::new());
-                lines.extend(trace.lines().map(str::to_string));
-            }
-            // A message or a trace may hold several lines; a blank line
-            // stays one.
-            lines
-                .into_iter()
-                .flat_map(|line| {
-                    if line.is_empty() {
-                        vec![line]
-                    } else {
-                        line.lines().map(str::to_string).collect()
-                    }
-                })
-                .collect()
-        }
-    }
-}
-
 pub fn key_name(key: Key) -> String {
     match key {
         Key::Char(' ') => "Space".to_string(),
@@ -13539,6 +13845,7 @@ pub fn key_name(key: Key) -> String {
         Key::BackTab => "Shift+Tab".to_string(),
         Key::MoveUp => "Shift+↑".to_string(),
         Key::MoveDown => "Shift+↓".to_string(),
+        Key::F2 => "F2".to_string(),
         Key::Chord(pressed) => {
             use crossterm::event::{KeyCode, KeyModifiers};
             let mut name = String::new();
@@ -13682,4 +13989,1304 @@ pub fn remember(workbench: &Workbench) -> Result<(), String> {
             file.display()
         )
     })
+}
+
+// ------------------------------------------------------------ the typing mode
+
+/// What a cell opened as.
+fn line_shown(at: &CellAt) -> String {
+    match at {
+        CellAt::Name { field, .. } => field.clone(),
+        CellAt::Value { shown, .. } | CellAt::Listed { shown, .. } => shown.trim().to_string(),
+        CellAt::Readings { .. } => String::new(),
+    }
+}
+
+/// A value typed with its uncertainty, `12.6 ± 0.02`, `12.6 +- 0.02`: the
+/// value's text, and the uncertainty's — `None` not typed, kept; `Some("")`
+/// typed empty, `12.6 ±`, taken out.
+fn value_and_uncertainty(text: &str) -> (String, Option<String>) {
+    let text = text.replace("+/-", "±").replace("+-", "±");
+    match text.split_once('±') {
+        Some((value, uncertainty)) => {
+            let uncertainty = uncertainty.trim();
+            let uncertainty = if uncertainty == "—" {
+                ""
+            } else {
+                uncertainty
+            };
+            (value.trim().to_string(), Some(uncertainty.to_string()))
+        }
+        None => (text.trim().to_string(), None),
+    }
+}
+
+impl Workbench {
+    /// `e` or `i`: the typing mode, on the cell under the cursor.
+    pub fn begin_typing(&mut self) {
+        self.typing = true;
+        self.rows_from = None;
+        if matches!(self.screen, Screen::Sample { .. }) {
+            self.cell = self.cell.clamp(1, 2);
+            self.fit_cell();
+        }
+        self.message = match self.table_said() {
+            Some(said) => said,
+            None => "typing: what you type replaces the cell · Esc leaves".to_string(),
+        };
+    }
+
+    /// On a table's line of a sample, how its cells are typed.
+    fn table_said(&self) -> Option<String> {
+        let entry = self
+            .entry()
+            .filter(|_| matches!(self.screen, Screen::Sample { .. }))?;
+        (entry.kind == EntryKind::Table).then(|| {
+            format!(
+                "{} is a table: → or Enter opens it, where its cells are typed, the empty row \
+                 at its foot adding one",
+                entry.field
+            )
+        })
+    }
+
+    /// The cell of a sample's line kept to those the line has.
+    fn fit_cell(&mut self) {
+        let Some(entry) = self.entry() else { return };
+        let most = match entry.kind {
+            EntryKind::Quantity => 2,
+            EntryKind::Attribute => 1,
+            _ => 1,
+        };
+        self.cell = self.cell.min(most);
+    }
+
+    /// A key of the typing mode, nothing being typed in a cell.
+    pub fn typing_key(&mut self, key: Key) -> Effect {
+        self.message.clear();
+        match key {
+            Key::Esc => {
+                if self.rows_from.take().is_none() {
+                    self.typing = false;
+                    let waiting = self.waiting_count();
+                    self.message = if waiting == 0 {
+                        "out of typing".to_string()
+                    } else {
+                        format!(
+                            "out of typing · {} not written yet, w writes",
+                            counted(waiting, "file", "files")
+                        )
+                    };
+                }
+                Effect::None
+            }
+            Key::MoveUp | Key::MoveDown if matches!(self.screen, Screen::Collection) => {
+                if self.rows_from.is_none() {
+                    self.rows_from = Some(self.cursor);
+                }
+                self.move_by(if key == Key::MoveUp { -1 } else { 1 });
+                Effect::None
+            }
+            Key::Up | Key::Down | Key::PageUp | Key::PageDown | Key::Home | Key::End => {
+                self.rows_from = None;
+                let effect = self.normal(key);
+                if matches!(self.screen, Screen::Sample { .. }) {
+                    self.fit_cell();
+                }
+                effect
+            }
+            Key::Left | Key::Right | Key::Tab | Key::BackTab => {
+                self.move_cell(matches!(key, Key::Right | Key::Tab));
+                Effect::None
+            }
+            Key::Enter
+                if matches!(self.screen, Screen::Sample { .. })
+                    && self
+                        .entry()
+                        .is_some_and(|entry| entry.kind == EntryKind::Table) =>
+            {
+                self.normal(Key::Right)
+            }
+            Key::Enter | Key::F2 => {
+                self.open_cell(None);
+                Effect::None
+            }
+            Key::Delete | Key::Backspace => {
+                self.take_out_here();
+                Effect::None
+            }
+            Key::Char(character) => {
+                self.open_cell(Some(character));
+                Effect::None
+            }
+            _ => Effect::None,
+        }
+    }
+
+    /// The cursor a cell right, or left: a sample's line from its name to its
+    /// readings, a table's columns, the collection's.
+    fn move_cell(&mut self, right: bool) {
+        match &mut self.screen {
+            Screen::Sample { .. } => {
+                if right {
+                    let on_table = self
+                        .entry()
+                        .is_some_and(|entry| entry.kind == EntryKind::Table);
+                    if on_table {
+                        self.normal(Key::Right);
+                        return;
+                    }
+                    self.cell += 1;
+                } else {
+                    self.cell = self.cell.saturating_sub(1);
+                }
+                self.fit_cell();
+                // The readings are not on the line: said as the cursor
+                // reaches their cell.
+                if self.cell == 2
+                    && let Some(entry) = self.entry()
+                {
+                    let readings = self
+                        .current()
+                        .and_then(|(_, sample)| readings_shown(&sample, &entry.field));
+                    self.message = match readings {
+                        None if self.formula_gives(&entry.field) => {
+                            formula_has_no_readings(&entry.field)
+                        }
+                        Some(readings) => format!(
+                            "{}'s readings: {readings} — what you type replaces them",
+                            entry.field,
+                        ),
+                        None => format!(
+                            "{} holds no readings: what you type gives them",
+                            entry.field
+                        ),
+                    };
+                }
+            }
+            Screen::Table { .. } => {
+                self.normal(if right { Key::Right } else { Key::Left });
+            }
+            Screen::Collection => {
+                let columns = self.profile.columns().len();
+                self.column = if right {
+                    (self.column + 1).min(columns.saturating_sub(1))
+                } else {
+                    self.column.saturating_sub(1)
+                };
+            }
+            _ => {}
+        }
+    }
+
+    /// The cell under the cursor opened to be typed in: what is typed replaces
+    /// it, `typed` its first character; none, it is changed as it is.
+    fn open_cell(&mut self, typed: Option<char>) {
+        let opened = match &self.screen {
+            Screen::Sample { .. } => self.sample_cell(),
+            Screen::Table { .. } => {
+                // The empty row, a row's index and a text cell open as `e`
+                // opens them; a value's cell takes its uncertainty with it.
+                match self.table_value_cell() {
+                    Some(opened) => Some(opened),
+                    None => {
+                        self.begin_edit();
+                        if let Mode::Prompt { text, .. } = &mut self.mode
+                            && let Some(character) = typed
+                        {
+                            *text = Typed::new_selected(text.text());
+                            text.insert(&character.to_string());
+                        }
+                        return;
+                    }
+                }
+            }
+            Screen::Collection => self.listed_cell(),
+            _ => None,
+        };
+        let Some((at, text)) = opened else {
+            return;
+        };
+        let mut line = Typed::new_selected(&text);
+        if let Some(character) = typed {
+            line.insert(&character.to_string());
+        } else {
+            line = Typed::new(&text);
+        }
+        self.mode = Mode::Prompt {
+            purpose: Purpose::Cell(at),
+            text: line,
+        };
+    }
+
+    /// A value's text as it opens: as the screen shows it, at its precision.
+    fn shown_for_typing(&self, path: &Path, sample: &Sample, field: &str) -> String {
+        // A value of the sample opens as its line shows it, its unit apart.
+        if !field.contains('[')
+            && let Some(entry) = self
+                .entries()
+                .into_iter()
+                .find(|entry| entry.field == field && entry.kind == EntryKind::Quantity)
+            && entry.shown != "—"
+        {
+            let words: Vec<&str> = entry.shown.split_whitespace().collect();
+            let numbers: Vec<&str> = match words.last() {
+                Some(last) if last.parse::<f64>().is_err() && words.len() > 1 => {
+                    words[..words.len() - 1].to_vec()
+                }
+                _ => words,
+            };
+            return match numbers.as_slice() {
+                [value, "±", uncertainty] => format!("{value} +- {uncertainty}"),
+                [value] => format!("{value} +- "),
+                _ => numbers.join(" ").replace('±', "+-"),
+            };
+        }
+        let config = self.config_for(path);
+        let shown = |field: &str| {
+            editing::value_at(sample, field)
+                .filter(|value| !matches!(value, crate::core::value::Value::Absent))
+                .map(|value| editing::previewed(&value, field, config))
+                .filter(|shown| shown != "—")
+        };
+        // `+-`, which every keyboard has; `±` is how it is shown.
+        let value = shown(field).unwrap_or_default();
+        match shown(&format!("{field}.u")) {
+            Some(uncertainty) => format!("{value} +- {uncertainty}"),
+            None => format!("{value} +- "),
+        }
+    }
+
+    fn sample_cell(&mut self) -> Option<(CellAt, String)> {
+        let entry = self.entry()?;
+        let (path, sample) = self.current()?;
+        match (entry.kind, self.cell) {
+            (EntryKind::Attribute, _) if entry.field == "name" => {
+                drop(sample);
+                self.message =
+                    "the name is changed by R, which renames its file and its links".to_string();
+                None
+            }
+            (EntryKind::Attribute, _) if entry.field == "tags" => {
+                let text = sample
+                    .tags()
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                drop(sample);
+                self.mode = Mode::prompt(Purpose::Tags { path }, text);
+                None
+            }
+            (EntryKind::Attribute, 0) => Some((
+                CellAt::Name {
+                    path,
+                    field: entry.field.clone(),
+                },
+                entry.field.clone(),
+            )),
+            (EntryKind::Attribute, _) => {
+                let text = editing::value_at(&sample, &entry.field)
+                    .map(|value| denoised(&value))
+                    .filter(|shown| shown != "—")
+                    .or_else(|| {
+                        sample
+                            .attribute(&Identifier::new(&entry.field).ok()?)
+                            .ok()
+                            .map(editing::shown_attribute)
+                    })
+                    .unwrap_or_default();
+                Some((
+                    CellAt::Value {
+                        path,
+                        field: entry.field.clone(),
+                        quantity: false,
+                        shown: text.clone(),
+                    },
+                    text,
+                ))
+            }
+            (EntryKind::Table, _) => {
+                drop(sample);
+                self.message = self.table_said().unwrap_or_default();
+                None
+            }
+            (EntryKind::Quantity, 0) => {
+                drop(sample);
+                self.message = format!(
+                    "{} is the model's or the project's name: its value and its readings are \
+                     typed",
+                    entry.field
+                );
+                None
+            }
+            (EntryKind::Quantity, 1) => {
+                let text = self.shown_for_typing(&path, &sample, &entry.field);
+                Some((
+                    CellAt::Value {
+                        path,
+                        field: entry.field.clone(),
+                        quantity: true,
+                        shown: text.clone(),
+                    },
+                    text,
+                ))
+            }
+            (EntryKind::Quantity, _) => {
+                let readings = readings_shown(&sample, &entry.field);
+                if readings.is_none() && self.formula_gives(&entry.field) {
+                    drop(sample);
+                    self.message = formula_has_no_readings(&entry.field);
+                    return None;
+                }
+                let readings = readings.unwrap_or_default();
+                Some((
+                    CellAt::Readings {
+                        path,
+                        field: entry.field.clone(),
+                    },
+                    readings,
+                ))
+            }
+            _ => None,
+        }
+    }
+
+    /// A table's cell holding a value — not its index, not the empty row —
+    /// opened with its uncertainty.
+    fn table_value_cell(&self) -> Option<(CellAt, String)> {
+        let Screen::Table {
+            name,
+            cursor,
+            column,
+            ..
+        } = &self.screen
+        else {
+            return None;
+        };
+        if self.on_the_empty_row() {
+            return None;
+        }
+        let (path, sample) = self.current()?;
+        let layout = table_layout(&sample, name, self.config_for(&path))?;
+        let columns = layout.cursor_columns();
+        let at = columns.get(*column)?;
+        if layout.index.contains(at) {
+            return None;
+        }
+        let table = sample.table(name).ok()?;
+        let row = table.rows().nth(*cursor)?;
+        let index: Vec<crate::core::value::Value> = row.index().into_iter().cloned().collect();
+        let field = cell_address(name, at, index);
+        let numeric = !matches!(
+            editing::value_at(&sample, &field),
+            Some(crate::core::value::Value::Text(_))
+        );
+        if !numeric {
+            return None;
+        }
+        let text = self.shown_for_typing(&path, &sample, &field);
+        Some((
+            CellAt::Value {
+                path,
+                field,
+                quantity: true,
+                shown: text.clone(),
+            },
+            text,
+        ))
+    }
+
+    /// The collection's samples a cell typed goes to: the rows taken with
+    /// `Shift`, else the basket's where the cursor's sample is in it, else the
+    /// cursor's.
+    fn rows_typed(&self) -> Vec<PathBuf> {
+        let at = |row: usize| self.view.get(row).and_then(|entry| entry.path.clone());
+        if let Some(from) = self.rows_from {
+            let (low, high) = (from.min(self.cursor), from.max(self.cursor));
+            return (low..=high).filter_map(at).collect();
+        }
+        match at(self.cursor) {
+            Some(path) if self.basket.contains(&path) => self.basket.iter().cloned().collect(),
+            Some(path) => vec![path],
+            None => Vec::new(),
+        }
+    }
+
+    fn listed_cell(&mut self) -> Option<(CellAt, String)> {
+        let column = self.profile.columns().get(self.column)?.clone();
+        let field = column.field.clone();
+        if field == "name" {
+            self.message =
+                "the name is changed by R, which renames its file and its links".to_string();
+            return None;
+        }
+        let paths = self.rows_typed();
+        let (path, sample) = self.current()?;
+        let quantity = sample.property(&Identifier::new(&field).ok()?).is_ok();
+        let text = if quantity {
+            self.shown_for_typing(&path, &sample, &field)
+        } else {
+            editing::value_at(&sample, &field)
+                .map(|value| denoised(&value))
+                .filter(|shown| shown != "—")
+                .unwrap_or_default()
+        };
+        Some((
+            CellAt::Listed {
+                paths,
+                field,
+                quantity,
+                shown: text.clone(),
+            },
+            text,
+        ))
+    }
+
+    /// A key while a cell of the typing mode is typed in: kept by `Enter`,
+    /// `Tab` and the arrows up and down, which then move; `Esc` leaves it as
+    /// it was. A cell refused stays open, what is wrong said.
+    pub fn cell_key(&mut self, key: Key, at: CellAt, mut line: Typed) -> Effect {
+        // A link being typed, `[[C`, is completed by `Tab` rather than kept.
+        let in_link = {
+            let before = &line.text()[..line.at()];
+            before
+                .rfind("[[")
+                .is_some_and(|open| !before[open..].contains("]]"))
+        };
+        if key == Key::Tab
+            && in_link
+            && matches!(
+                at,
+                CellAt::Value {
+                    quantity: false,
+                    ..
+                }
+            )
+        {
+            self.complete_link(&mut line);
+            self.mode = Mode::Prompt {
+                purpose: Purpose::Cell(at),
+                text: line,
+            };
+            return Effect::None;
+        }
+        match key {
+            Key::Esc => {
+                self.message.clear();
+                Effect::None
+            }
+            Key::Enter | Key::Tab | Key::BackTab | Key::Up | Key::Down => {
+                let text = line.text().to_string();
+                let waiting = self.waiting_count();
+                match self.keep_cell(&at, &text) {
+                    Ok(()) if self.card.is_some() => {
+                        if self.message.is_empty() {
+                            self.message = format!(
+                                "kept — not written yet: {} waiting, w writes, u takes it back",
+                                counted(self.waiting_count(), "file", "files")
+                            );
+                        }
+                    }
+                    Ok(()) => {
+                        let kept = std::mem::take(&mut self.message);
+                        match key {
+                            Key::Tab | Key::BackTab => self.move_cell(key == Key::Tab),
+                            Key::Up => {
+                                self.normal(Key::Up);
+                            }
+                            _ => {
+                                self.normal(Key::Down);
+                            }
+                        }
+                        if matches!(self.screen, Screen::Sample { .. }) {
+                            self.fit_cell();
+                        }
+                        // What the cell did stays said, the cursor moved on.
+                        self.message = if !kept.is_empty() {
+                            kept
+                        } else if self.waiting_count() != waiting || text.trim() != line_shown(&at)
+                        {
+                            format!(
+                                "kept — not written yet: {} waiting, w writes, u takes it back",
+                                counted(self.waiting_count(), "file", "files")
+                            )
+                        } else {
+                            String::new()
+                        };
+                    }
+                    Err(said) => {
+                        self.message = said;
+                        self.mode = Mode::Prompt {
+                            purpose: Purpose::Cell(at),
+                            text: line,
+                        };
+                    }
+                }
+                Effect::None
+            }
+            key => {
+                line.key(key);
+                self.mode = Mode::Prompt {
+                    purpose: Purpose::Cell(at),
+                    text: line,
+                };
+                Effect::None
+            }
+        }
+    }
+
+    /// A preview just made, confirmed at once: in the typing mode a cell kept
+    /// waits, no preview of it alone. What refused it is given back.
+    fn confirm_at_once(&mut self, typed: &str, shown: &str) -> Result<(), String> {
+        match std::mem::replace(&mut self.mode, Mode::Normal) {
+            Mode::Confirm {
+                title,
+                lines,
+                pending,
+            } => {
+                self.confirming(Key::Char('y'), title, lines, *pending);
+                Ok(())
+            }
+            mode => {
+                self.mode = mode;
+                // Typed back as it opened, it was left as it is.
+                if typed.trim() == shown.trim() || self.message.is_empty() {
+                    Ok(())
+                } else {
+                    Err(std::mem::take(&mut self.message))
+                }
+            }
+        }
+    }
+
+    /// A cell typed, kept: its change made and waiting.
+    fn keep_cell(&mut self, at: &CellAt, text: &str) -> Result<(), String> {
+        self.message.clear();
+        match at {
+            CellAt::Name { path, field } => {
+                let text = text.trim();
+                if text == field {
+                    return Ok(());
+                }
+                self.rename_attribute(path, field, text)?;
+                self.confirm_at_once(text, field)
+            }
+            CellAt::Value {
+                path,
+                field,
+                quantity: false,
+                shown,
+            } => {
+                if text.trim() == shown.trim() {
+                    return Ok(());
+                }
+                self.preview_edit(path.clone(), field, text.trim());
+                self.confirm_at_once(text, shown)
+            }
+            CellAt::Value {
+                path,
+                field,
+                quantity: true,
+                shown,
+            } => self.keep_quantity(path, field, text, shown),
+            CellAt::Readings { path, field } => {
+                self.preview_quantity(path.clone(), field, Some(text.trim().to_string()), &[]);
+                // What the readings give, the value written beside them
+                // staying or no value, is said: no preview shows it.
+                let given = match &self.mode {
+                    Mode::Confirm { lines, .. } => lines
+                        .iter()
+                        .map(|line| line.trim())
+                        .find(|line| line.contains(" readings; "))
+                        .map(str::to_string),
+                    _ => None,
+                };
+                self.confirm_at_once(text, "")?;
+                if let Some(given) = given {
+                    self.message = format!("{given} · {}", self.message);
+                }
+                Ok(())
+            }
+            CellAt::Listed {
+                paths,
+                field,
+                quantity,
+                shown,
+            } => {
+                if text.trim() == shown.trim() && paths.len() <= 1 {
+                    return Ok(());
+                }
+                // One change for `u`, however many samples it reached.
+                let waited = self.waiting_entries();
+                let (undone, said) = (self.waiting_undo.len(), self.waiting_said.len());
+                for path in paths {
+                    let kept = if *quantity {
+                        self.keep_quantity(path, field, text, "")
+                    } else {
+                        self.preview_edit(path.clone(), field, text.trim());
+                        self.confirm_at_once(text, "")
+                    };
+                    if let Err(error) = kept {
+                        return Err(format!("{}: {error}", self.here(path)));
+                    }
+                }
+                if self.waiting_undo.len() > undone + 1 {
+                    self.waiting_undo.truncate(undone);
+                    self.waiting_undo.push(waited);
+                    let lines: Vec<String> = self.waiting_said.drain(said..).collect();
+                    self.waiting_said.push(lines.join("; "));
+                }
+                if paths.len() > 1 {
+                    self.message = format!(
+                        "{field} typed in {} — not written yet, w writes",
+                        counted(paths.len(), "sample", "samples")
+                    );
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// A value with its uncertainty kept: what changed of each, the part
+    /// typed back as it opened left as it is.
+    fn keep_quantity(
+        &mut self,
+        path: &Path,
+        field: &str,
+        text: &str,
+        shown: &str,
+    ) -> Result<(), String> {
+        let (value, uncertainty) = value_and_uncertainty(text);
+        let (was_value, was_uncertainty) = value_and_uncertainty(shown);
+        // `21,5` is said as a decimal comma, as the value's window says it.
+        for typed in std::iter::once(&value).chain(uncertainty.as_ref()) {
+            if typed.contains(',') && typed.replace(',', ".").parse::<f64>().is_ok() {
+                return Err(format!(
+                    "'{typed}' reads as a decimal comma: a point is written for decimals — {}",
+                    typed.replace(',', ".")
+                ));
+            }
+        }
+        let mut assignments = Vec::new();
+        // Emptied, the value is taken out, as the window empties it.
+        if value != was_value && (!value.is_empty() || !was_value.is_empty()) {
+            assignments.push((field.to_string(), value));
+        }
+        // Taken out where there was one: nothing to take out where there was
+        // none, unless several samples are typed in at once.
+        if let Some(uncertainty) = uncertainty
+            && Some(&uncertainty) != was_uncertainty.as_ref()
+            && !(uncertainty.is_empty()
+                && !shown.is_empty()
+                && was_uncertainty.as_deref().is_none_or(str::is_empty))
+        {
+            assignments.push((format!("{field}.u"), uncertainty));
+        }
+        if assignments.is_empty() {
+            return Ok(());
+        }
+        self.preview_quantity(path.to_path_buf(), field, None, &assignments);
+        self.confirm_at_once(text, shown)
+    }
+
+    /// An attribute renamed, its value kept: previewed, as every change is.
+    fn rename_attribute(&mut self, path: &Path, from: &str, to: &str) -> Result<(), String> {
+        let refused = |error: &dyn std::fmt::Display| error.to_string();
+        let to_name =
+            Identifier::new(to).map_err(|error| format!("'{to}' is not a usable name: {error}"))?;
+        let from_name = Identifier::new(from).map_err(|error| refused(&error))?;
+        let (mut sample, origin) = document::load_sample(path).map_err(|error| refused(&error))?;
+        if sample.has_attribute(&to_name) || sample.property(&to_name).is_ok() {
+            return Err(format!(
+                "{to} is held already: its value is typed in its own line"
+            ));
+        }
+        let value = sample
+            .remove_attribute(&from_name)
+            .map_err(|error| refused(&error))?;
+        sample
+            .set_attribute(to_name, value)
+            .map_err(|error| refused(&error))?;
+        let lines = crate::presentation::changes::change_lines(&[
+            crate::presentation::changes::FieldChange::said(from, format!("renamed {to}")),
+        ]);
+        self.mode = Mode::Confirm {
+            title: format!("change · {}", self.here(path)),
+            lines,
+            pending: Box::new(Pending::Write {
+                path: path.to_path_buf(),
+                sample: Box::new(sample),
+                origin,
+            }),
+        };
+        Ok(())
+    }
+
+    /// `Delete` in the typing mode: the attribute under the cursor taken out,
+    /// or the table's row.
+    fn take_out_here(&mut self) {
+        let outcome = (|| -> Result<(PathBuf, Sample, document::Origin, String), String> {
+            let refused = |error: &dyn std::fmt::Display| error.to_string();
+            match &self.screen {
+                Screen::Sample { .. } => {
+                    let entry = self.entry().ok_or_else(String::new)?;
+                    if entry.kind != EntryKind::Attribute
+                        || entry.field == "name"
+                        || entry.field == "tags"
+                    {
+                        return Err("Delete takes out an attribute, or a table's row: a value \
+                                    of the model stays"
+                            .to_string());
+                    }
+                    let (path, _) = self.current().ok_or_else(String::new)?;
+                    let (mut sample, origin) =
+                        document::load_sample(&path).map_err(|error| refused(&error))?;
+                    let name = Identifier::new(&entry.field).map_err(|error| refused(&error))?;
+                    sample
+                        .remove_attribute(&name)
+                        .map_err(|error| refused(&error))?;
+                    Ok((path, sample, origin, format!("{}   taken out", entry.field)))
+                }
+                Screen::Table { name, cursor, .. } => {
+                    if self.on_the_empty_row() {
+                        return Err("the empty row holds nothing to take out".to_string());
+                    }
+                    let (path, held) = self.current().ok_or_else(String::new)?;
+                    let table = held.table(name).map_err(|error| refused(&error))?;
+                    let row = table.rows().nth(*cursor).ok_or_else(String::new)?;
+                    let index: Vec<crate::core::value::Value> =
+                        row.index().into_iter().cloned().collect();
+                    let said = index.iter().map(denoised).collect::<Vec<_>>().join(", ");
+                    drop(held);
+                    let (mut sample, origin) =
+                        document::load_sample(&path).map_err(|error| refused(&error))?;
+                    sample
+                        .remove_row(name, &crate::core::table::RowAddress::Index(index))
+                        .map_err(|error| refused(&error))?;
+                    Ok((
+                        path,
+                        sample,
+                        origin,
+                        format!("{name}   the row of {said} taken out"),
+                    ))
+                }
+                _ => Err(String::new()),
+            }
+        })();
+        match outcome {
+            Ok((path, sample, origin, said)) => {
+                let title = format!("change · {}", self.here(&path));
+                self.confirming(
+                    Key::Char('y'),
+                    title,
+                    vec![said],
+                    Pending::Write {
+                        path,
+                        sample: Box::new(sample),
+                        origin,
+                    },
+                );
+                if let Screen::Table { cursor, .. } = &mut self.screen {
+                    *cursor = cursor.saturating_sub(0);
+                }
+            }
+            Err(said) => {
+                if !said.is_empty() {
+                    self.message = said;
+                }
+            }
+        }
+    }
+}
+
+impl Workbench {
+    /// The value under the cursor with every digit it holds, for the end of
+    /// the status line: `width = 12.513333333333334 ± 0.010088497300281277
+    /// mm`. Nothing for text, or where no value is under the cursor.
+    pub fn raw_here(&self) -> Option<String> {
+        let number = |value: crate::core::value::Value| match value {
+            crate::core::value::Value::Number(number) => Some(number.to_string()),
+            _ => None,
+        };
+        let (field, unit) = match &self.screen {
+            Screen::Sample { .. } => {
+                let entry = self.entry()?;
+                if entry.kind != EntryKind::Quantity {
+                    return None;
+                }
+                // Its unit as the line shows it: the last word, where it is
+                // no number.
+                let unit = entry
+                    .shown
+                    .split_whitespace()
+                    .last()
+                    .filter(|word| word.parse::<f64>().is_err() && *word != "—")
+                    .map(str::to_string);
+                (entry.field.clone(), unit)
+            }
+            Screen::Table { .. } => match self.table_value_cell()? {
+                (CellAt::Value { field, .. }, _) => (field, None),
+                _ => return None,
+            },
+            Screen::Collection => {
+                let column = self.profile.columns().get(self.column)?;
+                (column.field.clone(), None)
+            }
+            _ => return None,
+        };
+        let (_, sample) = self.current()?;
+        let value = number(editing::value_at(&sample, &field)?)?;
+        let mut said = format!("{field} = {value}");
+        if let Some(uncertainty) =
+            editing::value_at(&sample, &format!("{field}.u")).and_then(number)
+        {
+            said.push_str(&format!(" ± {uncertainty}"));
+        }
+        if let Some(unit) = unit {
+            said.push_str(&format!(" {unit}"));
+        }
+        Some(said)
+    }
+
+    /// The fields among `fields` of the sample at `path` that read otherwise
+    /// than its file does, what waits for it read once: none where nothing
+    /// waits for it.
+    pub fn waiting_fields(&self, path: &Path, fields: &[String]) -> HashSet<String> {
+        let Some(entry) = crate::format::stage::entry(path) else {
+            return HashSet::new();
+        };
+        let written = entry
+            .base
+            .filter(|_| entry.existed)
+            .and_then(|base| document::sample_from_text(&base, path).ok());
+        let Some((_, now)) = self.current().filter(|(at, _)| at == path) else {
+            return HashSet::new();
+        };
+        fields
+            .iter()
+            .filter(|field| match &written {
+                None => true,
+                Some(written) => {
+                    editing::value_at(written, field) != editing::value_at(&now, field)
+                        || editing::value_at(written, &format!("{field}.u"))
+                            != editing::value_at(&now, &format!("{field}.u"))
+                }
+            })
+            .cloned()
+            .collect()
+    }
+}
+
+impl Workbench {
+    /// Whether the package in `python` reads the changes waiting, where some
+    /// wait: an earlier one would draw or run from the files as written, and
+    /// say nothing. Asked as the model's worker is, its version and protocol.
+    fn reads_what_waits(&self, python: &Path) -> Result<(), String> {
+        if self.waiting_count() == 0 {
+            return Ok(());
+        }
+        runtime::Worker::start_waiting(python, self.waiting.as_deref())
+            .map(drop)
+            .map_err(|error| format!("changes wait, and {error} — w writes them first"))
+    }
+}
+
+// --------------------------------------------------------------- the card
+
+/// Said where readings are typed for a value a formula gives: readings are
+/// what was measured, and it has none to enter.
+fn formula_has_no_readings(field: &str) -> String {
+    format!(
+        "{field} is a formula's: it holds no readings, what was measured is typed in its inputs"
+    )
+}
+
+/// A value's readings as they are typed, `8, 10`; `None` where it holds none.
+/// A field's readings are a list, which no field address reads as one value.
+fn readings_shown(sample: &Sample, field: &str) -> Option<String> {
+    let name = Identifier::new(field).ok()?;
+    let readings = sample.property(&name).ok()?.readings()?;
+    Some(
+        readings
+            .as_slice()
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", "),
+    )
+}
+
+/// What a line of a value's card is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardGroup {
+    /// The value itself.
+    Itself,
+    /// Its readings.
+    Readings,
+    /// What it reads.
+    Reads,
+    /// What reads it.
+    ReadBy,
+}
+
+/// A line of a value's card: its field, what it shows, its state in words,
+/// and whether `e` types in it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CardLine {
+    pub group: CardGroup,
+    pub field: String,
+    pub shown: String,
+    pub state: String,
+    pub editable: bool,
+}
+
+impl Workbench {
+    /// Whether a formula gives the value `name`: as the model declares it, as
+    /// the workbench's sample holds it, or as its file records it, by a record
+    /// naming anything but the value's own readings, since a sample read
+    /// without the model's Python holds no formula.
+    fn formula_gives(&self, name: &str) -> bool {
+        use crate::config::model_runtime::Origin;
+        use crate::core::property::InputName;
+        let current = self.current();
+        let described = current
+            .as_ref()
+            .and_then(|(path, _)| self.config_for(path))
+            .and_then(crate::config::model_runtime::current_description)
+            .and_then(|described| described.properties.get(name).cloned())
+            .is_some_and(|property| {
+                matches!(
+                    property.value,
+                    Origin::Formula { .. } | Origin::Quantity { .. }
+                )
+            });
+        let held = current
+            .and_then(|(_, sample)| {
+                let name = Identifier::new(name).ok()?;
+                let handle = sample.property_if(&name)?;
+                let readings = Identifier::new("readings").ok()?;
+                Some(
+                    handle.is_computed()
+                        || handle.records().computed.is_some_and(|inputs| {
+                            inputs
+                                .keys()
+                                .any(|input| *input != InputName::Named(readings.clone()))
+                        }),
+                )
+            })
+            .unwrap_or(false);
+        described || held
+    }
+
+    /// `i`: the card of the value, or the table's cell, under the cursor.
+    fn open_card(&mut self) {
+        let field = match &self.screen {
+            Screen::Sample { .. } => match self.entry() {
+                Some(entry) if entry.kind == EntryKind::Quantity => entry.field,
+                Some(entry) => {
+                    self.message = format!(
+                        "{} is no value: a value's card says what it reads and what reads it",
+                        entry.field
+                    );
+                    return;
+                }
+                None => return,
+            },
+            Screen::Table { .. } => match self.table_value_cell() {
+                Some((CellAt::Value { field, .. }, _)) => field,
+                _ => {
+                    self.message = "a cell holding a value has a card".to_string();
+                    return;
+                }
+            },
+            _ => return,
+        };
+        self.typing = false;
+        self.card = Some((field, 0));
+    }
+
+    /// A field's value as the card shows it, and its state in words.
+    fn card_value(&self, sample: &Sample, path: &Path, field: &str) -> (String, String) {
+        let config = self.config_for(path);
+        if field.contains('[') {
+            let shown = |field: &str| {
+                editing::value_at(sample, field)
+                    .filter(|value| !value.is_absent())
+                    .map(|value| editing::previewed(&value, field, config))
+            };
+            let mut said = shown(field).unwrap_or_else(|| "—".to_string());
+            if let Some(uncertainty) = shown(&format!("{field}.u")) {
+                said.push_str(&format!(" ± {uncertainty}"));
+            }
+            let state = cell_state(sample, field, config, path).unwrap_or_default();
+            return (said, state);
+        }
+        let entry = self
+            .entries()
+            .into_iter()
+            .find(|entry| entry.field == field);
+        match entry {
+            Some(entry) => (entry.shown, entry.state),
+            None => (
+                editing::value_at(sample, field)
+                    .map(|value| denoised(&value))
+                    .unwrap_or_else(|| "—".to_string()),
+                String::new(),
+            ),
+        }
+    }
+
+    /// The lines of the card open: the value, its readings, what it reads and
+    /// what reads it, as the records its file keeps say them.
+    pub fn card_lines(&self) -> Vec<CardLine> {
+        let Some((field, _)) = &self.card else {
+            return Vec::new();
+        };
+        let Some((path, sample)) = self.current() else {
+            return Vec::new();
+        };
+        let mut lines = Vec::new();
+        let (shown, state) = self.card_value(&sample, &path, field);
+        lines.push(CardLine {
+            group: CardGroup::Itself,
+            field: field.clone(),
+            shown,
+            state,
+            editable: true,
+        });
+        // A cell's own table and row: what `row.force` names.
+        let cell = match fields::parse(field) {
+            Ok(fields::Field::Cell {
+                table, column, row, ..
+            }) => Some((table, column, row)),
+            _ => None,
+        };
+        if let Some(readings) = readings_shown(&sample, field) {
+            lines.push(CardLine {
+                group: CardGroup::Readings,
+                field: field.clone(),
+                shown: readings,
+                state: String::new(),
+                editable: cell.is_none(),
+            });
+        }
+        // What it reads, as its record names it.
+        let records = match &cell {
+            Some((table, column, row)) => sample
+                .table(table)
+                .ok()
+                .and_then(|held| held.at(row, column).ok().map(|cell| cell.records().clone())),
+            None => Identifier::new(field)
+                .ok()
+                .and_then(|name| sample.property(&name).ok().map(|handle| handle.records())),
+        };
+        let inputs: Vec<String> = records
+            .and_then(|records| records.computed)
+            .map(|computed| computed.keys().map(ToString::to_string).collect())
+            .unwrap_or_default();
+        for input in inputs.iter().filter(|input| *input != "readings") {
+            // `row.force`: the cell of the same row.
+            let input = match (input.strip_prefix("row."), &cell) {
+                (Some(column), Some((table, _, crate::core::table::RowAddress::Index(index)))) => {
+                    match Identifier::new(column) {
+                        Ok(column) => cell_address(table, &column, index.clone()),
+                        Err(_) => input.clone(),
+                    }
+                }
+                _ => input.clone(),
+            };
+            let whole_column = !input.contains('[') && input.contains('.');
+            let (shown, state) = if whole_column {
+                ("its column".to_string(), String::new())
+            } else {
+                self.card_value(&sample, &path, &input)
+            };
+            lines.push(CardLine {
+                group: CardGroup::Reads,
+                editable: !whole_column,
+                field: input,
+                shown,
+                state,
+            });
+        }
+        // What reads it: the values whose records name it, and a table's
+        // column whose cells do — its own row's, for a cell.
+        let named = |computed: &Option<
+            indexmap::IndexMap<
+                crate::core::property::InputName,
+                crate::core::property::InputRecord,
+            >,
+        >,
+                     wanted: &[String]| {
+            computed.as_ref().is_some_and(|computed| {
+                computed.keys().any(|key| wanted.contains(&key.to_string()))
+            })
+        };
+        let wanted_by_values: Vec<String> = match &cell {
+            Some((table, column, _)) => vec![format!("{table}.{column}")],
+            None => vec![field.clone()],
+        };
+        for name in sample.property_names() {
+            let other = name.to_string();
+            if other == *field {
+                continue;
+            }
+            if let Ok(handle) = sample.property(name)
+                && named(&handle.records().computed, &wanted_by_values)
+            {
+                let (shown, state) = self.card_value(&sample, &path, &other);
+                lines.push(CardLine {
+                    group: CardGroup::ReadBy,
+                    field: other,
+                    shown,
+                    state,
+                    editable: true,
+                });
+            }
+        }
+        for table_name in sample.table_names() {
+            let Ok(held) = sample.table(table_name) else {
+                continue;
+            };
+            for column in held.column_names() {
+                let rows: Vec<Vec<crate::core::value::Value>> = held
+                    .rows()
+                    .filter_map(|row| {
+                        let cell_here = row.cell(column).ok()?;
+                        let wanted: Vec<String> = match &cell {
+                            Some((table, of, crate::core::table::RowAddress::Index(index)))
+                                if table == table_name =>
+                            {
+                                let same_row =
+                                    row.index().into_iter().cloned().collect::<Vec<_>>() == *index;
+                                if same_row {
+                                    vec![format!("row.{of}")]
+                                } else {
+                                    Vec::new()
+                                }
+                            }
+                            Some(_) => Vec::new(),
+                            None => vec![field.clone()],
+                        };
+                        named(&cell_here.records().computed, &wanted)
+                            .then(|| row.index().into_iter().cloned().collect())
+                    })
+                    .collect();
+                match rows.as_slice() {
+                    [] => {}
+                    [index] => {
+                        let address = cell_address(table_name, column, index.clone());
+                        let (shown, state) = self.card_value(&sample, &path, &address);
+                        lines.push(CardLine {
+                            group: CardGroup::ReadBy,
+                            field: address,
+                            shown,
+                            state,
+                            editable: true,
+                        });
+                    }
+                    many => lines.push(CardLine {
+                        group: CardGroup::ReadBy,
+                        field: format!("{table_name}.{column}"),
+                        shown: counted(many.len(), "row", "rows"),
+                        state: String::new(),
+                        editable: false,
+                    }),
+                }
+            }
+        }
+        lines
+    }
+
+    /// A key while a card is open.
+    pub fn card_key(&mut self, key: Key) -> Effect {
+        let lines = self.card_lines();
+        let Some((field, cursor)) = self.card.clone() else {
+            return Effect::None;
+        };
+        self.message.clear();
+        match key {
+            Key::Esc | Key::Char('q') | Key::Char('i') => self.card = None,
+            Key::Down | Key::Char('j') => {
+                self.card = Some((field, (cursor + 1).min(lines.len().saturating_sub(1))))
+            }
+            Key::Up | Key::Char('k') => self.card = Some((field, cursor.saturating_sub(1))),
+            Key::Char('w') => {
+                self.card = None;
+                self.preview_waiting();
+            }
+            Key::Char('u') => self.begin_undo(),
+            // The readings, a list: `Enter` opens them in their window, an
+            // item at a time — changed, taken out, moved.
+            Key::Enter
+                if lines
+                    .get(cursor)
+                    .is_some_and(|line| line.group == CardGroup::Readings) =>
+            {
+                let at = self.screen.sample_at();
+                if let Some(at) = at {
+                    self.card = None;
+                    self.screen = Screen::Items {
+                        at,
+                        field: field.clone(),
+                        readings: true,
+                        cursor: 0,
+                        up: Box::new(self.screen.clone()),
+                    };
+                }
+            }
+            Key::Char('e') | Key::Enter | Key::F2 => {
+                let Some(line) = lines.get(cursor) else {
+                    return Effect::None;
+                };
+                if !line.editable {
+                    self.message = format!(
+                        "{} is a whole column: its cells are typed in its table",
+                        line.field
+                    );
+                    return Effect::None;
+                }
+                let Some((path, sample)) = self.current() else {
+                    return Effect::None;
+                };
+                let (at, text) = if line.group == CardGroup::Readings {
+                    (
+                        CellAt::Readings {
+                            path: path.clone(),
+                            field: line.field.clone(),
+                        },
+                        line.shown.clone(),
+                    )
+                } else {
+                    let quantity = line.field.contains('[')
+                        || Identifier::new(&line.field)
+                            .is_ok_and(|name| sample.property(&name).is_ok());
+                    let text = if quantity {
+                        self.shown_for_typing(&path, &sample, &line.field)
+                    } else {
+                        editing::value_at(&sample, &line.field)
+                            .map(|value| denoised(&value))
+                            .unwrap_or_default()
+                    };
+                    (
+                        CellAt::Value {
+                            path: path.clone(),
+                            field: line.field.clone(),
+                            quantity,
+                            shown: text.clone(),
+                        },
+                        text,
+                    )
+                };
+                drop(sample);
+                self.mode = Mode::Prompt {
+                    purpose: Purpose::Cell(at),
+                    text: Typed::new_selected(&text),
+                };
+            }
+            _ => {}
+        }
+        Effect::None
+    }
 }

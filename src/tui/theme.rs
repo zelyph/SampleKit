@@ -1,13 +1,16 @@
 //! The workbench's colours, one for each role project config names in
-//! `[colors]`: the terminal's sixteen unless the project says
-//! otherwise, so that the terminal's theme decides the shades.
+//! `[colors]`, given by a theme: SampleKit's own, dark or light, one of the
+//! others built in, or one of one's own; the project's roles laid over it.
 
 use std::cell::Cell;
+use std::path::{Path, PathBuf};
 
+use indexmap::IndexMap;
+use ratatui::buffer::Buffer;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Span;
 
-use crate::config::project_config::{COLOR_ROLES, ProjectConfig};
+use crate::config::project_config::{self, COLOR_ROLES, ProjectConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
@@ -30,21 +33,31 @@ pub struct Theme {
     pub error: Color,
     /// The name on the title bar, and a computation under way beside it.
     pub accent: Color,
+    /// What waits to be written, drawn in italics.
+    pub waiting: Color,
+    /// The background of the cursor's line in the typing mode.
+    pub line: Color,
+    /// The whole screen's background, and its text where nothing else
+    /// colours it: `Reset`, the terminal's own, under `terminal`.
+    pub background: Color,
+    pub foreground: Color,
 }
 
 impl Theme {
-    /// The project's colours, each role it leaves out the default one.
+    /// The terminal's sixteen, `terminal`, the project's roles over them:
+    /// what the TUI drew before it had themes.
     pub fn of(config: Option<&ProjectConfig>) -> Theme {
+        Theme::from_roles(&terminal_roles(), config)
+    }
+
+    /// Each role as `roles` writes it, the project's over it where it names
+    /// one.
+    fn from_roles(roles: &IndexMap<String, String>, config: Option<&ProjectConfig>) -> Theme {
         let role = |name: &str| {
             let written = config
-                .and_then(|config| config.color(name))
-                .or_else(|| {
-                    COLOR_ROLES
-                        .iter()
-                        .find(|(role, _)| *role == name)
-                        .map(|(_, color)| *color)
-                })
-                .unwrap_or("default");
+                .and_then(|config| config.colors_named().get(name))
+                .or_else(|| roles.get(name))
+                .map_or("default", String::as_str);
             color(written)
         };
         Theme {
@@ -64,6 +77,10 @@ impl Theme {
             message: role("message"),
             error: role("error"),
             accent: role("accent"),
+            waiting: role("waiting"),
+            line: role("line"),
+            background: role("background"),
+            foreground: role("foreground"),
         }
     }
 }
@@ -71,6 +88,370 @@ impl Theme {
 impl Default for Theme {
     fn default() -> Theme {
         Theme::of(None)
+    }
+}
+
+/// The themes SampleKit is built with, by name, in the order its list offers
+/// them: its own two, the sixteen colours, then the nine of the colours page.
+pub const BUILT_IN: &[&str] = &[
+    "samplekit-dark",
+    "samplekit-light",
+    "terminal",
+    "catppuccin-mocha",
+    "catppuccin-latte",
+    "dracula",
+    "nord",
+    "tokyo-night",
+    "gruvbox-dark",
+    "gruvbox-light",
+    "solarized-dark",
+    "solarized-light",
+];
+
+/// Each built-in theme's file, as the documentation offers it to copy: the
+/// page and the TUI read the same file, so that neither drifts from the other.
+const FILES: &[(&str, &str)] = &[
+    (
+        "samplekit-dark",
+        include_str!("../../docs/templates/colours/samplekit-dark.toml"),
+    ),
+    (
+        "samplekit-light",
+        include_str!("../../docs/templates/colours/samplekit-light.toml"),
+    ),
+    (
+        "catppuccin-mocha",
+        include_str!("../../docs/templates/colours/catppuccin-mocha.toml"),
+    ),
+    (
+        "catppuccin-latte",
+        include_str!("../../docs/templates/colours/catppuccin-latte.toml"),
+    ),
+    (
+        "dracula",
+        include_str!("../../docs/templates/colours/dracula.toml"),
+    ),
+    (
+        "nord",
+        include_str!("../../docs/templates/colours/nord.toml"),
+    ),
+    (
+        "tokyo-night",
+        include_str!("../../docs/templates/colours/tokyo-night.toml"),
+    ),
+    (
+        "gruvbox-dark",
+        include_str!("../../docs/templates/colours/gruvbox-dark.toml"),
+    ),
+    (
+        "gruvbox-light",
+        include_str!("../../docs/templates/colours/gruvbox-light.toml"),
+    ),
+    (
+        "solarized-dark",
+        include_str!("../../docs/templates/colours/solarized-dark.toml"),
+    ),
+    (
+        "solarized-light",
+        include_str!("../../docs/templates/colours/solarized-light.toml"),
+    ),
+];
+
+/// The theme a role left out of one's own falls back to, and the default on
+/// a dark terminal.
+const DARK: &str = "samplekit-dark";
+
+/// `terminal`: every role as [`COLOR_ROLES`] gives it.
+fn terminal_roles() -> IndexMap<String, String> {
+    COLOR_ROLES
+        .iter()
+        .map(|(role, color)| (role.to_string(), color.to_string()))
+        .collect()
+}
+
+/// The default theme, by the terminal's background as `COLORFGBG` says it,
+/// `fg;bg` or `fg;default;bg`, the sixteen colours numbered: light where it
+/// is 7 or above 8, dark otherwise, and dark where nothing says.
+pub fn default_theme(colorfgbg: Option<&str>) -> &'static str {
+    let light = colorfgbg
+        .and_then(|value| value.rsplit(';').next())
+        .and_then(|background| background.trim().parse::<u8>().ok())
+        .is_some_and(|background| background == 7 || background > 8);
+    if light { "samplekit-light" } else { DARK }
+}
+
+/// Whether the terminal draws a colour given by its red, green and blue, as
+/// a theme's are: `COLORTERM` `truecolor` or `24bit`, as the terminals that
+/// can say, or Windows Terminal, which can without saying.
+pub fn draws_every_colour(colorterm: Option<&str>, windows_terminal: bool) -> bool {
+    windows_terminal
+        || colorterm.is_some_and(|value| {
+            let value = value.trim();
+            value.eq_ignore_ascii_case("truecolor") || value.eq_ignore_ascii_case("24bit")
+        })
+}
+
+/// The default of this terminal, read once: [`default_theme`] where it draws
+/// every colour, its own sixteen, `terminal`, where it does not say so.
+pub fn terminal_default() -> &'static str {
+    static READ: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
+    READ.get_or_init(|| {
+        let colorterm = std::env::var("COLORTERM").ok();
+        let windows_terminal =
+            std::env::var_os("WT_SESSION").is_some_and(|value| !value.is_empty());
+        if draws_every_colour(colorterm.as_deref(), windows_terminal) {
+            default_theme(std::env::var("COLORFGBG").ok().as_deref())
+        } else {
+            "terminal"
+        }
+    })
+}
+
+/// Every theme there is, each its every role: the built-in ones, then one's
+/// own, and what was said of a file of one's own left out.
+#[derive(Debug, Clone, Default)]
+pub struct Themes {
+    themes: Vec<(String, IndexMap<String, String>, bool)>,
+    said: Vec<String>,
+}
+
+/// Where the theme in force comes from, first to last: the folder's choice,
+/// the project's `theme` (read from the configuration), the person's last
+/// choice, then the default.
+#[derive(Debug, Clone, Copy)]
+pub struct Choices<'a> {
+    pub folder: Option<&'a str>,
+    pub last: Option<&'a str>,
+    pub default: &'a str,
+}
+
+impl Themes {
+    /// The built-in themes, then each `.toml` of `folder`, by its name, in
+    /// the order of their names. A file that does not read, names a base no
+    /// theme bears or one leading back to it, or takes a built-in's name is
+    /// left out, and said.
+    pub fn read(folder: Option<&Path>) -> Themes {
+        let mut themes: Vec<(String, IndexMap<String, String>, bool)> = BUILT_IN
+            .iter()
+            .map(|name| {
+                let roles = match FILES.iter().find(|(file, _)| file == name) {
+                    Some((_, text)) => {
+                        let mut roles = terminal_roles();
+                        let file =
+                            project_config::theme_file(Path::new(&format!("{name}.toml")), text)
+                                .unwrap_or_else(|error| panic!("a built-in theme reads: {error}"));
+                        roles.extend(file.colors);
+                        roles
+                    }
+                    None => terminal_roles(),
+                };
+                (name.to_string(), roles, false)
+            })
+            .collect();
+        let mut said = Vec::new();
+        let mut own: IndexMap<String, project_config::ThemeFile> = IndexMap::new();
+        if let Some(folder) = folder
+            && folder.exists()
+        {
+            let mut files: Vec<PathBuf> = match std::fs::read_dir(folder) {
+                Ok(entries) => entries
+                    .flatten()
+                    .map(|entry| entry.path())
+                    .filter(|path| {
+                        path.extension()
+                            .is_some_and(|extension| extension == "toml")
+                    })
+                    .collect(),
+                Err(error) => {
+                    said.push(format!(
+                        "the themes of {} are not read: {error}",
+                        folder.display()
+                    ));
+                    Vec::new()
+                }
+            };
+            files.sort();
+            for path in files {
+                let Some(name) = path
+                    .file_stem()
+                    .map(|stem| stem.to_string_lossy().to_string())
+                else {
+                    continue;
+                };
+                if BUILT_IN.contains(&name.as_str()) {
+                    said.push(format!(
+                        "theme {}: {name} is a theme SampleKit has, left as it is: give yours \
+                         another name, with base = \"{name}\" to start from it",
+                        path.display()
+                    ));
+                    continue;
+                }
+                let read = std::fs::read_to_string(&path)
+                    .map_err(|error| format!("{}: {error}", path.display()))
+                    .and_then(|text| {
+                        project_config::theme_file(&path, &text).map_err(|error| error.to_string())
+                    });
+                match read {
+                    Ok(file) => {
+                        own.insert(name, file);
+                    }
+                    Err(error) => said.push(format!("theme left out: {error}")),
+                }
+            }
+        }
+        // Each of one's own on its base, a base of one's own first: followed
+        // from one to the next, a loop said.
+        let names: Vec<String> = own.keys().cloned().collect();
+        for name in names {
+            let mut chain: Vec<String> = vec![name.clone()];
+            let base_roles = loop {
+                let last = chain.last().expect("the chain holds the theme");
+                let base = own[last.as_str()]
+                    .base
+                    .clone()
+                    .unwrap_or_else(|| DARK.to_string());
+                if let Some((_, roles, _)) = themes.iter().find(|(held, ..)| *held == base) {
+                    break Ok(roles.clone());
+                }
+                if chain.contains(&base) {
+                    chain.push(base);
+                    break Err(format!(
+                        "theme {name} left out: its bases lead back to it, {}",
+                        chain.join(" → ")
+                    ));
+                }
+                if !own.contains_key(&base) {
+                    let known: Vec<String> = themes
+                        .iter()
+                        .map(|(held, ..)| held.clone())
+                        .chain(own.keys().cloned())
+                        .collect();
+                    let near =
+                        crate::core::identifier::nearest(&base, known.iter().map(String::as_str))
+                            .map(|near| format!(" — did you mean {near}?"))
+                            .unwrap_or_default();
+                    break Err(format!(
+                        "theme {name} left out: base = \"{base}\" is no theme here{near}"
+                    ));
+                }
+                chain.push(base);
+            };
+            match base_roles {
+                Ok(mut roles) => {
+                    // From the base up, each theme's roles over the one below.
+                    for link in chain.iter().rev() {
+                        roles.extend(own[link.as_str()].colors.clone());
+                    }
+                    themes.push((name, roles, true));
+                }
+                Err(error) => said.push(error),
+            }
+        }
+        Themes { themes, said }
+    }
+
+    pub fn names(&self) -> Vec<&str> {
+        self.themes.iter().map(|(name, ..)| name.as_str()).collect()
+    }
+
+    /// Whether `name` is one's own, of the themes folder.
+    pub fn own(&self, name: &str) -> bool {
+        self.themes
+            .iter()
+            .any(|(held, _, own)| held == name && *own)
+    }
+
+    /// What was said of one's own themes left out.
+    pub fn said(&self) -> &[String] {
+        &self.said
+    }
+
+    /// A theme by name, the project's roles laid over it.
+    pub fn theme(&self, name: &str, config: Option<&ProjectConfig>) -> Option<Theme> {
+        self.themes
+            .iter()
+            .find(|(held, ..)| held == name)
+            .map(|(_, roles, _)| Theme::from_roles(roles, config))
+    }
+
+    /// The theme in force: the first of `choices` and the project's `theme`
+    /// that names a theme there is, in their order, the default otherwise;
+    /// its name, the theme with the project's roles over it, and what was
+    /// said of a name passed over.
+    pub fn resolve(
+        &self,
+        choices: Choices,
+        config: Option<&ProjectConfig>,
+    ) -> (String, Theme, Vec<String>) {
+        let named = [
+            (choices.folder, "the theme chosen in this folder"),
+            (
+                config.and_then(ProjectConfig::theme),
+                "the project's [colors] theme",
+            ),
+            (choices.last, "the theme last chosen"),
+            (Some(choices.default), "the default theme"),
+        ];
+        let mut unknown: Vec<String> = Vec::new();
+        for (name, whose) in named {
+            let Some(name) = name else { continue };
+            if let Some(theme) = self.theme(name, config) {
+                let said = unknown
+                    .into_iter()
+                    .map(|passed| format!("{passed}: {name} instead"))
+                    .collect();
+                return (name.to_string(), theme, said);
+            }
+            let near = crate::core::identifier::nearest(name, self.names())
+                .map(|near| format!(" — did you mean {near}?"))
+                .unwrap_or_default();
+            unknown.push(format!("{whose}, {name}, is no theme here{near}"));
+        }
+        // No default unknown: SampleKit's own are built in.
+        let theme = self
+            .theme(DARK, config)
+            .unwrap_or_else(|| Theme::of(config));
+        (DARK.to_string(), theme, unknown)
+    }
+}
+
+/// Where the person's last choice of a theme is kept: `theme` in the state
+/// folder, for every project.
+pub fn last_choice_file() -> Option<PathBuf> {
+    crate::config::model_runtime::state_directory().map(|directory| directory.join("theme"))
+}
+
+/// The theme `file` keeps, if it keeps one.
+pub fn last_chosen(file: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(file).ok()?;
+    let name = text.trim();
+    (!name.is_empty()).then(|| name.to_string())
+}
+
+/// `name` kept in `file` as the person's last choice.
+pub fn keep_last(file: &Path, name: &str) -> Result<(), String> {
+    if let Some(folder) = file.parent() {
+        std::fs::create_dir_all(folder)
+            .map_err(|error| format!("the theme is not kept: {}: {error}", folder.display()))?;
+    }
+    std::fs::write(file, format!("{name}\n"))
+        .map_err(|error| format!("the theme is not kept: {}: {error}", file.display()))
+}
+
+/// The frame painted in its theme: each colour left to the terminal the
+/// theme's text or background, wherever it was drawn — a pane, a window, a
+/// cell a window cleared. `terminal` leaves them to it.
+pub fn paint(buffer: &mut Buffer, theme: &Theme) {
+    if theme.background == Color::Reset && theme.foreground == Color::Reset {
+        return;
+    }
+    for cell in &mut buffer.content {
+        if cell.fg == Color::Reset {
+            cell.fg = theme.foreground;
+        }
+        if cell.bg == Color::Reset {
+            cell.bg = theme.background;
+        }
     }
 }
 

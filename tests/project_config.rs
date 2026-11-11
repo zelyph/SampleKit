@@ -1143,6 +1143,95 @@ fn the_workbench_colours_are_named_by_role() {
 }
 
 #[test]
+fn a_project_names_its_theme_beside_its_roles() {
+    let scratch = Scratch::new("colors-theme");
+    let path = scratch.config(
+        "",
+        "schema_version = 1\n[colors]\ntheme = \"nord\"\noutdated = \"#ff8800\"\n",
+    );
+    let config = config::load(&path).unwrap();
+    assert_eq!(config.theme(), Some("nord"));
+    // A name, not a role: only `outdated` is laid over the theme.
+    assert_eq!(
+        config.colors_named().keys().collect::<Vec<_>>(),
+        ["outdated"]
+    );
+    assert_eq!(config.color("theme"), None);
+    // Any name loads: one's own theme, named by a project shared, is not
+    // its reader's, which the TUI says.
+    let own = scratch.config("o", "schema_version = 1\n[colors]\ntheme = \"my-own\"\n");
+    assert_eq!(config::load(&own).unwrap().theme(), Some("my-own"));
+    let number = scratch.config("n", "schema_version = 1\n[colors]\ntheme = 3\n");
+    assert!(config::load(&number).is_err());
+    // None named, none.
+    let none = scratch.config("x", "schema_version = 1\n");
+    assert_eq!(config::load(&none).unwrap().theme(), None);
+}
+
+#[test]
+fn the_background_and_the_text_are_roles_left_to_the_terminal() {
+    let scratch = Scratch::new("colors-background");
+    let path = scratch.config(
+        "",
+        "schema_version = 1\n[colors]\nbackground = \"#1e1e2e\"\n",
+    );
+    let config = config::load(&path).unwrap();
+    assert_eq!(config.color("background"), Some("#1e1e2e"));
+    assert_eq!(config.color("foreground"), Some("default"));
+    let plain = scratch.config("p", "schema_version = 1\n");
+    assert_eq!(
+        config::load(&plain).unwrap().color("background"),
+        Some("default")
+    );
+    let navy = scratch.config("n", "schema_version = 1\n[colors]\nforeground = \"navy\"\n");
+    let error = config::load(&navy).unwrap_err().to_string();
+    assert!(
+        error.contains("not a colour") && error.contains("light-blue"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_theme_file_is_its_base_and_its_colors() {
+    let path = Path::new("/themes/mine.toml");
+    let file = config::theme_file(
+        path,
+        "# Mine: nord, its accent pinker.\nbase = \"nord\"\n\n[colors]\naccent = \"#ff79c6\"\n",
+    )
+    .unwrap();
+    assert_eq!(file.base.as_deref(), Some("nord"));
+    assert_eq!(file.colors["accent"], "#ff79c6");
+    let alone = config::theme_file(path, "[colors]\nbackground = \"#000000\"\n").unwrap();
+    assert_eq!(alone.base, None);
+    // Each refused, naming the file.
+    for (text, said) in [
+        ("[colors]\nstaled = \"red\"\n", "no role 'staled'"),
+        ("[colors]\naccent = \"pinkish\"\n", "not a colour"),
+        ("base = \"nord\"\nname = \"mine\"\n", "name"),
+        ("[colors]\ntheme = \"nord\"\n", "base = \"NAME\""),
+        ("[colors\n", ""),
+    ] {
+        let error = config::theme_file(path, text).unwrap_err().to_string();
+        assert!(
+            error.contains("mine.toml") && error.contains(said),
+            "{text}: {error}"
+        );
+    }
+}
+
+#[test]
+fn the_themes_folder_is_in_the_configuration_folder() {
+    let scratch = Scratch::new("config-dir");
+    // SAFETY: no other test of this file reads the configuration folder.
+    unsafe { std::env::set_var("SAMPLEKIT_CONFIG_DIR", &scratch.0) };
+    assert_eq!(
+        config::config_directory().as_deref(),
+        Some(scratch.0.as_path())
+    );
+    assert_eq!(config::themes_folder(), Some(scratch.0.join("themes")));
+}
+
+#[test]
 fn a_figure_declares_its_limits_its_scales_and_its_aspect() {
     // A free bound is `auto`; a scale or an aspect that is not one is refused,
     // and so is a log axis starting at or below zero.
@@ -1379,6 +1468,30 @@ fn imports_chain() {
     );
     let canonical = |path: &Path| dunce::canonicalize(path).unwrap();
     assert_eq!(config.imports(), [canonical(&data), canonical(&root)]);
+}
+
+#[test]
+fn a_file_imported_changed_is_read_again() {
+    // What is kept of a configuration read is kept by its text and by the
+    // text of every file it imports, the farthest too.
+    let scratch = Scratch::new("import-changed");
+    let root = scratch.config("", COMMON);
+    scratch.config("data", "schema_version = 1\nimport = \"..\"\n");
+    let own = scratch.config("data/c1", "schema_version = 1\nimport = \"..\"\n");
+    let unit = || {
+        config::load(&own)
+            .unwrap()
+            .property("collar")
+            .unwrap()
+            .unit
+            .clone()
+    };
+    assert_eq!(unit().as_deref(), Some("cL"));
+    let common = std::fs::read_to_string(&root).unwrap();
+    std::fs::write(&root, common.replace("\"cL\"", "\"mL\"")).unwrap();
+    assert_eq!(unit().as_deref(), Some("mL"));
+    std::fs::remove_file(&root).unwrap();
+    assert!(config::load(&own).is_err());
 }
 
 #[test]

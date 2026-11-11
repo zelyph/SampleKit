@@ -1,0 +1,23 @@
+# Dracula, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "dracula" in a project's [colors] does; or copy this table.
+[colors]
+background = "#282a36"   # the screen
+foreground = "#f8f8f2"   # its text
+failed     = "#ff5555"   # red
+outdated   = "#f1fa8c"   # yellow
+edited     = "#ffb86c"   # orange
+current    = "#50fa7b"   # green
+selected   = "#8be9fd"   # cyan
+attribute  = "#bd93f9"   # purple
+link       = "#8be9fd"   # cyan
+value      = "#f8f8f2"   # foreground
+unit       = "#8be9fd"   # cyan
+table      = "#ff79c6"   # pink
+index      = "#50fa7b"   # green
+key        = "#8be9fd"   # cyan
+muted      = "#6272a4"   # comment
+message    = "#f1fa8c"   # yellow
+error      = "#ff5555"   # red
+accent     = "#bd93f9"   # purple
+waiting    = "#ff79c6"   # pink
+line       = "#44475a"   # current line

@@ -578,6 +578,19 @@ fn classify_distinguishes_its_three_refusals() {
 }
 
 #[test]
+fn a_file_given_its_version_is_a_sample_at_the_next_look() {
+    // What is known of a frontmatter is known by its text: the same file,
+    // its version written, is classified again.
+    let scratch = Scratch::new("version-written");
+    let file = scratch.file("later.md", "---\nname: A\n---\n");
+    assert_eq!(discovery::classify(&file), Err(SkipReason::NoVersion));
+    fs::write(&file, "---\nschema_version: 1\nname: A\n---\n").unwrap();
+    assert!(discovery::classify(&file).is_ok());
+    fs::write(&file, "---\nname: A\n---\n").unwrap();
+    assert_eq!(discovery::classify(&file), Err(SkipReason::NoVersion));
+}
+
+#[test]
 fn a_file_without_its_version_is_no_sample() {
     // A sample says which shape it is: a frontmatter without `schema_version`
     // is left out, as a README is, whatever fields it holds.
@@ -808,4 +821,29 @@ fn a_files_entry_without_name_keeps_the_rule_by_name() {
         )]
     );
     assert_eq!(unowned, ["reports/C12_report.pdf"]);
+}
+
+#[test]
+fn a_sample_made_or_removed_while_waiting_is_found_or_not() {
+    use samplekit::format::{document, stage};
+    let scratch = Scratch::new("waiting");
+    let project = scratch.dir("project");
+    scratch.config("project", "schema_version = 1\n");
+    scratch.sample("project/C1.md");
+    let removed = scratch.sample("project/C2.md");
+    let folder = scratch.0.join("waiting");
+    stage::begin(&folder, Some(&project)).unwrap();
+    let (mut sample, _) = document::load_sample(&project.join("C1.md")).unwrap();
+    let made = project.join("C3.md");
+    document::save_sample(&mut sample, &document::Destination::New(made.clone())).unwrap();
+    document::remove_file(&removed).unwrap();
+    let found = discover(&project, None);
+    stage::end(&folder);
+    assert!(!made.exists() && removed.exists(), "nothing on disk moved");
+    assert_eq!(names(&found), ["C1.md", "C3.md"]);
+    assert_eq!(
+        names(&discover(&project, None)),
+        ["C1.md", "C2.md"],
+        "ended, the disk's"
+    );
 }

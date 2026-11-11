@@ -108,6 +108,7 @@ pub fn event_of(key: Key) -> Option<Event> {
         Key::Left => pressed(KeyCode::Left, KeyModifiers::NONE),
         Key::Right => pressed(KeyCode::Right, KeyModifiers::NONE),
         Key::Delete => pressed(KeyCode::Delete, KeyModifiers::NONE),
+        Key::F2 => pressed(KeyCode::F(2), KeyModifiers::NONE),
         Key::Click(x, y) => mouse(MouseEventKind::Down(MouseButton::Left), x, y),
         Key::Wheel { down, x, y } => mouse(
             if down {

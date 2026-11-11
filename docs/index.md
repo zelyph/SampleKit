@@ -25,6 +25,7 @@ editor, and the answers come with it:
 | To… | See |
 | --- | --- |
 | keep each sample in a file you can read anywhere | [Samples and projects](#samples-and-projects), [files](#files) |
+| link a sample to others, its files, a PDF's page, a web page | [Links](#links) |
 | compute values with formulas you write in Python | [The model](#the-model-what-a-sample-holds), [values computed from others](#values-computed-from-others) |
 | know which results no longer hold, and why | [Values out of date](#values-out-of-date) |
 | write tables for another program or a paper | [Tables written to files](#tables-written-to-files) |
@@ -40,7 +41,7 @@ in a folder of your own, `init` makes it a project, with its own Python
 environment holding the package, where your formulas run:
 
 ```bash
-cargo install samplekit --locked --version 1.0.0-rc.2
+cargo install samplekit --locked --version 1.0.0-rc.3
 samplekit init --write
 ```
 
@@ -65,7 +66,7 @@ uv, into an environment of your own.
 ## Samples and projects
 
 The rest of this page builds one example, a step at a time: a few material
-specimens, tested in tension. SampleKit carries it as a **demo** in five
+specimens, tested in tension. SampleKit carries it as a **demo** in six
 steps, each a project to try the commands on: `samplekit` alone opens the
 start page, where `g`, then *The demo*, writes it and opens its first step.
 
@@ -1858,7 +1859,7 @@ validate` says where a pattern of `.samplekitrc` cannot work, a misspelt
 A file no name finds, or another sample, is named by a **link**, an attribute
 written as Obsidian or Markdown writes one: here the aluminium and copper
 specimens hold `compared_with: "[[steel-01]]"`, which the terminal interface
-follows and `rename` keeps ([link samples](guides/link-samples.md)).
+follows and `rename` keeps ([links](#links)).
 
 ```{figure} images/tensile-fracture.jpg
 :alt: A flat tensile specimen broken in the jaws of a testing machine
@@ -1867,6 +1868,72 @@ follows and `rename` keeps ([link samples](guides/link-samples.md)).
 `photos/steel-01-fracture.jpg`: the specimen after the test, still in the
 machine's jaws. Photo by Cdang, Wikimedia Commons, public domain.
 ```
+
+## Links
+
+A specimen names others: the one it is compared with, the one tested before
+it. It names files too, the curve the machine wrote, the method it was tested
+by, and the standard that method follows. Each is a **link**, an attribute
+written as Obsidian or Markdown writes one. The demo's last step,
+`06-links`, gives the specimens one in every form; the steel specimen's:
+
+```{literalinclude} ../examples/tensile/06-links/samples/steel-01.md
+:language: yaml
+:start-after: "tested: 2026-03-04"
+:end-before: "properties:"
+:caption: samples/steel-01.md
+```
+
+Two samples in a list; a sample written in another case than its file,
+`copper-01.md`; its curve, by its path from the sample's folder; the
+standard's web page; and a second steel specimen, not written yet. The
+others write a sample with its extension, `[[aluminium-01.md]]`, or by the
+end of its path, `[[samples/steel-01]]`, and the method's PDF at its second
+page, `[[method.pdf#page=2]]` ([every form](reference/sample-files.md#links)).
+
+In a terminal a link is shown as Markdown shows one, its text alone,
+underlined. In the terminal interface, `Enter` on it goes where it leads: a
+sample opens on its screen, `Esc` coming back; the curve opens in your
+spreadsheet, the PDF at its page and the standard in the browser. A sample's
+screen ends with the samples whose links lead to it, *linked from*.
+
+`validate` says which link leads nowhere, and exits with an error:
+
+```{code-block} console
+:caption: ~/tensile-tests
+
+$ samplekit validate
+  steel-01               repeated_by: [[steel-02]] leads to no sample — no file of the project is named steel-02, and no sample's name is
+
+3 samples · 1 defect · 0 notes
+error: 1 defect in 1 file
+```
+
+Renaming a sample writes again every link leading to it, each in its own
+form, and renames its own files with it. It is previewed first, and
+`--write` makes it:
+
+<!-- run: tensile/06-links -->
+```console
+$ samplekit samples/aluminium-01.md rename aluminium-02
+samples/aluminium-01.md · rename to aluminium-02.md
+
+  file         samples/aluminium-01.md  →  samples/aluminium-02.md
+  name         aluminium-01  →  aluminium-02
+  files        machine/aluminium-01  →  machine/aluminium-02
+
+  2 links leading to it, written again:
+  samples/copper-01.md
+    tested_after       [[aluminium-01.md]]  →  [[aluminium-02.md]]
+  samples/steel-01.md
+    compared_with[#0]  [[aluminium-01]]  →  [[aluminium-02]]
+
+apply these changes? [y/N] n
+nothing written
+```
+
+[Link samples](guides/link-samples.md) goes further: the filter `links to`,
+links from Python, a project opened in Obsidian.
 
 ## Python
 

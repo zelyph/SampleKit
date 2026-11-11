@@ -7,6 +7,119 @@ SampleKit rather than works on it.
 A version ending in `-rc.N` is a release candidate: tried before the version
 of that number is published, and replaced by it.
 
+## [1.0.0-rc.3] — 2026-11-11
+
+The third release candidate of SampleKit 1.0 (`1.0.0rc3` for Python).
+
+### Upgrading from 1.0.0-rc.2
+
+Sample files, the configuration and the history are unchanged. **Install the
+command line and the Python package together**, at the same version, in each
+project's environment: this version refuses rc.2's package. The terminal
+interface now draws in SampleKit's own theme where the terminal draws every
+colour; `theme = "terminal"` in `[colors]`, or `T`, keeps the terminal's
+sixteen colours, as rc.2 drew.
+
+### Added
+
+- **Themes for the terminal interface**: SampleKit's own, `samplekit-dark`
+  and `samplekit-light`, made to be read, each role a colour of its own and
+  every colour at a contrast checked by a test; it is the default, light
+  where the terminal says its background is (`COLORFGBG`), and the
+  terminal's own sixteen colours where it does not say it draws every colour
+  (`COLORTERM`; Windows Terminal draws them all). Ten more are
+  built in by name: `terminal`, the sixteen colours as before, and Catppuccin
+  Mocha and Latte, Dracula, Nord, Tokyo Night, Gruvbox and Solarized, dark
+  and light. A theme paints the whole screen, its background and its text,
+  the two new roles `background` and `foreground` of `[colors]`.
+- **`T` chooses the theme**, on the start page, the collection and a
+  sample: each is tried on the screen as the cursor reaches it, `Enter` keeps
+  it for the folder and as your choice for the projects naming none. A
+  project names its own with `theme = "nord"` in `[colors]`; the roles it
+  names are laid over whichever theme is in force.
+- **Your own themes**: a file each in `themes/` of SampleKit's configuration
+  folder (`~/.config/samplekit/themes/` on Linux), a `[colors]` table over the
+  theme its `base` names. One that does not read is said, never passed over.
+- **The README shows SampleKit at work**: its sample's screen, pictures of
+  the terminal interface, its themes and an animation of it, each drawn by
+  the terminal interface itself; and a logo, SampleKit's name as the start
+  page draws it.
+
+- **The terminal interface keeps every change waiting until `w` writes
+  it**: a value, a row, an attribute, the note, tags, a sample made, removed
+  or renamed, what a script changes, a state restored from the history, and
+  what a computation gives. The screens show the files as the changes make
+  them, marked, while the files themselves are untouched; `w` shows one
+  preview of them all and writes them as one change of the history, and `u`
+  takes back the last change waiting. A computation can be tried and dropped
+  without leaving a trace. What waits outlasts the terminal interface:
+  leaving asks whether to write, drop or keep it, and the project offers it
+  again when it is next opened. A file changed meanwhile by another hand is
+  not written over: what waits is laid again over it, field by field.
+- **A typing mode in the terminal interface**: `e` enters it, and what is
+  typed replaces the cell under the cursor, as in a spreadsheet, the arrows
+  going from cell to cell; `Esc` leaves it. A value and its uncertainty are
+  typed in one cell, `12.6 +- 0.02`, an attribute is renamed by typing over
+  its name, and `Delete` takes out an attribute or a table's row.
+- **A value's card in the terminal interface**: `i` on a value or a table's
+  cell shows its state in words, what it reads and what reads it, each with
+  its value and its state, and each typed in there: what a change makes
+  outdated is seen at once. The list of
+  samples is typed in too, a column for several samples at once, without
+  opening one. A cell never widens as it is typed in, and the status line
+  ends with the value under the cursor, every digit of it.
+
+- **A PDF at a page**: `[the method](method.pdf#page=12)` and
+  `[[method.pdf#page=12]]` open the PDF at that page, in the web browser.
+- **Links as Obsidian writes them**: `[[steel-02.md]]`, `[[2024/steel-02]]`
+  where two samples share a name, `[[Steel-02]]` in another case, and
+  `[[curve.csv]]`, any file of the project by its name. A Markdown link's
+  `#section` is kept apart from its path. `rename` keeps each link as it was
+  written, its folder, extension and heading.
+- **The addresses of other tools**: `zotero://`, `obsidian://`, `mailto:`,
+  `ftp://` and `file://` are links, opened by the application that answers
+  to them.
+- **A sixth step of the demo, *Links***: the specimens linked to each other,
+  to their curves, to a PDF at a page and to a web page, in every form a link
+  takes, with one link that leads nowhere for `validate` to report.
+
+### Changed
+
+- **A value's window is gone from the terminal interface**: what it showed
+  side by side, a value, its uncertainty and its readings, is typed on the
+  value's line or in its card. A sample's line shows the mark of its value's
+  state, its words being the card's.
+
+- **A large project is quick**: over a project of 4,000 samples, the
+  terminal interface opens in a sixteenth of the time it took, and after a
+  write or an edit in an editor it reads again only the files that changed,
+  in a thirtieth. A list takes a sixteenth of the time; `validate` an
+  eleventh, and under a thirtieth where samples link to one another; `compute`'s
+  preview, a fifth. A project's files are read on every core. Nothing a
+  command or a screen says changes.
+- **A file changed outside SampleKit is told by the system**: the terminal
+  interface no longer looks at every file of the project after each key and
+  each second. Linux, macOS, Windows and the BSDs each tell it of a change
+  in the project's folders; it looks all the same every thirty seconds, and
+  where the system can tell nothing, a network drive for one, as before.
+
+### Fixed
+
+- **A model in a folder is found past another module of its name**:
+  `[model] path = "model/specimen.py"`, the demo's, failed with *No module
+  named 'model.specimen'; 'model' is not a package* where Python found a
+  `model.py` first, installed or another project's; the file is now imported
+  by its path.
+- **A figure under a folder whose name has an accent**: on Windows, `p` on a
+  figure under a folder such as `Thèse` said *the directory …\samples does not
+  exist*, Python reading its request in its code page; every Python SampleKit
+  starts now reads and prints UTF-8.
+- **PowerShell completes under an alias**: `Set-Alias sk samplekit`, defined
+  before the completion's line, completes as `samplekit` does.
+- **Paths written on Windows read on Linux and macOS**: a `\` in a path of
+  `.samplekitrc` or of a Markdown link is read as `/`, which SampleKit itself
+  always writes.
+
 ## [1.0.0-rc.2] — 2026-11-04
 
 The second release candidate of SampleKit 1.0 (`1.0.0rc2` for Python).

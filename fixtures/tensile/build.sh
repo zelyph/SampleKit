@@ -30,7 +30,7 @@ cargo build --release --quiet --manifest-path "$root/Cargo.toml"
 
 # Every step with a model, computed and written: the files as the page leaves
 # them at the end of each section.
-for step in 02-readings 03-curve 04-results; do
+for step in 02-readings 03-curve 04-results 06-links; do
     (cd "$destination/$step" && "$bin" samples compute --write > /dev/null)
 done
 for project in rolled cast; do

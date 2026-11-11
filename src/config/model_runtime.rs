@@ -38,7 +38,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// read each other's requests differently, and the version alone let them
 /// run together, every formula then *formula changed*. The first, unnumbered,
 /// is 1.
-pub const PROTOCOL: u64 = 2;
+pub const PROTOCOL: u64 = 3;
 
 /// How many of the worker's last stderr lines a failure carries.
 const TAIL: usize = 40;
@@ -346,6 +346,9 @@ pub fn matplotlib_problems_of(
     let settings = serde_json::to_string(settings).map_err(|error| error.to_string())?;
     let mut child = Command::new(&python)
         .env("PYTHONDONTWRITEBYTECODE", "1")
+        // What Python reads and prints is UTF-8, as it is read here: on
+        // Windows it took its code page, and "Thèse" came back garbled.
+        .env("PYTHONIOENCODING", "utf-8")
         .env("MPLBACKEND", "Agg")
         .args([
             "-c",
@@ -456,11 +459,36 @@ pub fn interpreter_for(config: &ProjectConfig, _from: &Path) -> Result<PathBuf, 
 /// Every `*.py` under the templates directory, in sorted order. A cache, a
 /// hidden directory and a virtual environment hold no code anyone wrote there.
 pub fn template_files(template: &Template) -> Result<Vec<PathBuf>, ModelError> {
-    let mut found = Vec::new();
-    collect(template.directory(), &mut found).map_err(|error| ModelError::Unreadable {
-        path: template.directory().to_path_buf(),
-        reason: error.to_string(),
-    })?;
+    let directory = template.directory().to_path_buf();
+    // The walk kept while no folder it went through changed, and until the
+    // project is read again: a model at a project's root walked every
+    // sample's folder, once for each sample read.
+    let held = WALKED.with(|walked| {
+        walked
+            .borrow()
+            .iter()
+            .find(|(at, folders, _)| *at == directory && folders_unchanged(folders))
+            .map(|(_, _, found)| found.clone())
+    });
+    let mut found = match held {
+        Some(found) => found,
+        None => {
+            let mut found = Vec::new();
+            let mut folders = Vec::new();
+            collect(&directory, &mut found, &mut folders).map_err(|error| {
+                ModelError::Unreadable {
+                    path: directory.clone(),
+                    reason: error.to_string(),
+                }
+            })?;
+            WALKED.with(|walked| {
+                let mut walked = walked.borrow_mut();
+                walked.retain(|(at, _, _)| *at != directory);
+                walked.push((directory.clone(), folders, found.clone()));
+            });
+            found
+        }
+    };
     if !found.contains(&template.path) {
         if fs::metadata(&template.path).is_ok_and(|meta| !meta.is_file()) {
             return Err(ModelError::Unreadable {
@@ -475,7 +503,41 @@ pub fn template_files(template: &Template) -> Result<Vec<PathBuf>, ModelError> {
     Ok(found)
 }
 
-fn collect(directory: &Path, found: &mut Vec<PathBuf>) -> std::io::Result<()> {
+/// A model's folder walked: the folders it went through, the files found.
+type Walk = (PathBuf, Vec<WalkedFolder>, Vec<PathBuf>);
+
+/// A folder walked, and its time when it was.
+type WalkedFolder = (PathBuf, Option<std::time::SystemTime>);
+
+thread_local! {
+    /// Each model's folder walked: the folders it went through, the files found.
+    static WALKED: std::cell::RefCell<Vec<Walk>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn modified(folder: &Path) -> Option<std::time::SystemTime> {
+    fs::metadata(folder).and_then(|meta| meta.modified()).ok()
+}
+
+fn folders_unchanged(folders: &[WalkedFolder]) -> bool {
+    folders
+        .iter()
+        .all(|(folder, time)| time.is_some() && modified(folder) == *time)
+}
+
+/// The model's folders walked again at the next asking. A folder's time is not
+/// proof enough between two readings of a project: a USB key keeps it to two
+/// seconds, or not at all. Each reading forgets, and walks once.
+pub fn forget_walks() {
+    WALKED.with(|walked| walked.borrow_mut().clear());
+}
+
+fn collect(
+    directory: &Path,
+    found: &mut Vec<PathBuf>,
+    folders: &mut Vec<WalkedFolder>,
+) -> std::io::Result<()> {
+    folders.push((directory.to_path_buf(), modified(directory)));
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
         let path = entry.path();
@@ -488,7 +550,7 @@ fn collect(directory: &Path, found: &mut Vec<PathBuf>) -> std::io::Result<()> {
             if name.starts_with('.') || name == "__pycache__" || path.join("pyvenv.cfg").is_file() {
                 continue;
             }
-            collect(&path, found)?;
+            collect(&path, found, folders)?;
         } else if path.extension().is_some_and(|extension| extension == "py")
             // A pipe or a device named `.py` is no source: read, it stopped
             // the command.
@@ -606,10 +668,23 @@ impl Worker {
     /// Spawns the worker and reads its announcement. A package of another
     /// version is refused before any request is sent.
     pub fn start(python: &Path) -> Result<Worker, ModelError> {
+        Worker::start_waiting(python, None)
+    }
+
+    /// A worker reading the changes waiting in `waiting`, where given, and
+    /// adding what it computes to them rather than writing it.
+    pub fn start_waiting(python: &Path, waiting: Option<&Path>) -> Result<Worker, ModelError> {
         // No `__pycache__` left beside the model: a command that only reads
         // writes nothing into the project, the model's folder included.
         let mut child = Command::new(python)
+            .env(
+                crate::format::stage::STAGE_GIVEN,
+                waiting.map(Path::as_os_str).unwrap_or_default(),
+            )
             .env("PYTHONDONTWRITEBYTECODE", "1")
+            // What Python reads and prints is UTF-8, as it is read here: on
+            // Windows it took its code page, and "Thèse" came back garbled.
+            .env("PYTHONIOENCODING", "utf-8")
             // The computation is the command's snapshot, not one per sample the
             // worker saves.
             .env("SAMPLEKIT_HISTORY", "off")

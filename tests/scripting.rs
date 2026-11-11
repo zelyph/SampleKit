@@ -563,14 +563,22 @@ fn p_runs_a_script_in_the_workbench_and_asks_before_writing() {
         "diameter: {v: 12.0, u: 0.1, unit: g}"
     );
     workbench.key(Key::Char('y'));
+    // What it changed waits with the rest, until `w` writes it.
+    assert!(
+        workbench.message.contains("'rescale' changed 2 files")
+            && workbench.message.contains("not written yet"),
+        "{}",
+        workbench.message
+    );
+    assert_eq!(
+        diameter_of(&scratch, "c1"),
+        "diameter: {v: 12.0, u: 0.1, unit: g}"
+    );
+    workbench.key(Key::Char('w'));
+    workbench.key(Key::Char('y'));
     assert_eq!(
         diameter_of(&scratch, "c1"),
         "diameter: {v: 6.0, u: 0.1, unit: g}"
-    );
-    assert!(
-        workbench.message.contains("'rescale' written: 2 files"),
-        "{}",
-        workbench.message
     );
     // A question is asked in the script's window, which shows what it prints
     // as it prints it, and answered on its foot's line.
@@ -625,10 +633,12 @@ fn p_runs_a_script_in_the_workbench_and_asks_before_writing() {
     assert!(
         workbench
             .message
-            .contains("'asked' written: 2 files — answered 'Factor?' 0.5, 'Factor?' 0.5"),
+            .contains("'asked' changed 2 files — answered 'Factor?' 0.5, 'Factor?' 0.5"),
         "{}",
         workbench.message
     );
+    workbench.key(Key::Char('w'));
+    workbench.key(Key::Char('y'));
     assert_eq!(
         diameter_of(&scratch, "c1"),
         "diameter: {v: 3.0, u: 0.1, unit: g}"

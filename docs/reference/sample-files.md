@@ -111,20 +111,40 @@ reference: "[[aluminium-01]]"
 twin: "[[copper-01|the copper]]"
 cut_from: "[plate P3](../plates/P3.md)"
 certificate: "[certificate](../certificates/S355-0425.pdf)"
+method: "[the method](../papers/method.pdf#page=12)"
+curve: "[[curve.csv]]"
 datasheet: "[datasheet](https://example.org/s355)"
 standard: https://example.org/iso-6892
+source: zotero://select/library/items/ABCD1234
 parents: ["[[aluminium-01]]", "[[copper-01]]"]
 ```
 
-- **`[[NAME]]`** names a sample of the project: the one whose file is
-  `NAME.md`, or, where no file is named so, the one whose `name` is NAME.
-  After `|` comes what Obsidian shows in its place, and a heading after `#`
-  is ignored.
+- **`[[NAME]]`** names a sample of the project, as Obsidian finds a note:
+  the one whose file is `NAME.md`, or, where no file is named so, the one
+  whose `name` is NAME; written as it is first, then in any case.
+  `[[NAME.md]]` names it too, and `[[2024/NAME]]` the one under a folder
+  `2024`, where two samples have one name. After `|` comes what Obsidian
+  shows in its place; a heading after `#` is ignored, and the sample opened
+  whole.
+- **`[[FILE]]`**, a name with its extension, names any other file of the
+  project, wherever it lies: `[[curve.csv]]`, `[[method.pdf]]`;
+  `[[2024/curve.csv]]` where two files have one name.
 - **`[text](path)`** names a file by its path from the sample's own folder,
   as Markdown reads a link: a sample, of this project or another, or any
   file, a certificate, a raw data file, a folder. A space in the path is
-  written `%20`, or the path between `<` and `>`.
-- **`https://…`**, alone or as `[text](https://…)`, names a web page.
+  written `%20`, or the path between `<` and `>`. Write it with `/`, as
+  Obsidian does; a `\` is read as `/` on every system. A place in the file
+  after `#` is kept apart from the path: `report.md#results` is
+  `report.md`.
+- **A PDF at a page**, `[the method](method.pdf#page=12)` or
+  `[[method.pdf#page=12]]`, opens at that page in the web browser, which
+  every system's browser does; a PDF reader opened by the system is given no
+  page. Where no browser is found, the PDF opens at its start, and that is
+  said.
+- **`https://…`**, alone or as `[text](https://…)`, names a web page; so do
+  `http://` and `ftp://`. The addresses of other tools are links too, opened
+  by the application that answers to them: `zotero://` (a reference in
+  Zotero), `obsidian://`, `mailto:`, `file://`.
 - **A list of links** names several: the samples a specimen was made from.
 
 **The quotes are needed**: unquoted, a link reads as a list, and the file is
@@ -150,12 +170,14 @@ whose links write NAME ([filters](filters.md)). From
 Python, `sample.linked("reference")` reads the sample, a file that is no
 sample gives its path, a `pathlib.Path`, and a list of links gives a list.
 `validate` reports a link that leads to no sample or to several, and a path
-where nothing is; a web page is not checked.
+where nothing is; a web page, and another tool's address, are not checked.
 
 `samplekit FILE rename NEW` renames a sample and keeps its links: the file,
 its own files under `[collection] files` (a folder named after it too), its
 `name` where it was the file's name, and every link of the project leading to
-it, `[[old]]` and `[text](old.md)` alike.
+it, `[[old]]` and `[text](old.md)` alike, each as it was written:
+`[[2024/OLD.md#Notes|the notes]]` keeps its folder, its extension, its
+heading and its text.
 
 Obsidian makes only `[[…]]` clickable among a note's properties: there, a
 Markdown link stays text. [Link samples](../guides/link-samples.md) walks

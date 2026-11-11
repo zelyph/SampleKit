@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="216" viewBox="0 0 900 216" font-family="'DejaVu Sans Mono', Menlo, Consolas, monospace" font-size="15" xml:space="preserve" style="white-space:pre">
+<rect width="900" height="216" fill="#11151c"/>
+<text x="18" y="13" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">SampleKit</text>
+<text x="108" y="13" textLength="99" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">· ~/tensile</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 54H36M27 54V72M36 54H54M54 54H72M72 54H90M90 54H108M108 54H126M126 54H144M144 54H162M162 54H180M180 54H198M198 54H216M216 54H234M234 54H252M252 54H270M270 54H288M288 54H306M306 54H324M324 54H342M342 54H360M360 54H378M378 54H396M396 54H414M414 54H432M432 54H450M450 54H468M468 54H486M486 54H504M504 54H522M522 54H540M540 54H558M558 54H576M576 54H594M594 54H612M612 54H630M630 54H648M648 54H666M666 54H684M684 54H702M702 54H720M720 54H738M738 54H756M756 54H774M774 54H792M792 54H810M810 54H828M828 54H846M846 54H864M864 54H882M882 54H900M900 54H918M918 54H936M936 54H954M954 54H972M972 54H990M990 54H1008M1008 54H1026M1026 54H1044M1044 54H1062M1062 54H1080M1080 54H1098M1098 54H1116M1116 54H1134M1134 54H1152M1152 54H1170M1170 54H1188M1188 54H1206M1206 54H1224M1224 54H1242M1242 54H1260M1260 54H1278M1278 54H1296M1296 54H1314M1314 54H1332M1332 54H1350M1350 54H1368M1368 54H1386M1386 54H1404M1404 54H1422M1422 54H1440M1440 54H1458M1458 54H1476M1476 54H1494M1494 54H1512M1512 54H1530M1530 54H1548M1548 54H1566M1566 54H1584M1584 54H1602M1602 54H1620M1620 54H1638M1638 54H1656M1656 54H1674M1674 54H1692M1692 54H1710M1710 54H1728M1728 54H1746M1746 54H1764M1764 54H1773M1773 54V72"/>
+<text x="54" y="49" textLength="36" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">name</text>
+<text x="189" y="49" textLength="72" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">material</text>
+<text x="297" y="49" textLength="63" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">E [GPa]</text>
+<text x="423" y="49" textLength="99" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">Rp0.2 [MPa]</text>
+<text x="549" y="49" textLength="72" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">Rm [MPa]</text>
+<text x="648" y="49" textLength="45" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">A [%]</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 72V108M1773 72V108"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 72V108M567 72V108M819 72V108M1071 72V108M1269 72V108"/>
+<rect x="27" y="54" width="846" height="18" fill="#232a36"/>
+<text x="54" y="67" textLength="108" lengthAdjust="spacing" fill="#d1d7e0">aluminium-01</text>
+<text x="189" y="67" textLength="81" lengthAdjust="spacing" fill="#60a5fa">aluminium</text>
+<text x="306" y="67" textLength="90" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">69.2 ± 0.3</text>
+<text x="423" y="67" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">285</text>
+<text x="549" y="67" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">318</text>
+<text x="648" y="67" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 108V144M1773 108V144"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 108V144M567 108V144M819 108V144M1071 108V144M1269 108V144"/>
+<text x="54" y="85" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="189" y="85" textLength="54" lengthAdjust="spacing" fill="#60a5fa">copper</text>
+<text x="297" y="85" textLength="99" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.2 ± 0.9</text>
+<text x="423" y="85" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="549" y="85" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">221</text>
+<text x="648" y="85" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 144V180M1773 144V180"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 144V180M567 144V180M819 144V180M1071 144V180M1269 144V180"/>
+<text x="54" y="103" textLength="72" lengthAdjust="spacing" fill="#d1d7e0">steel-01</text>
+<text x="189" y="103" textLength="45" lengthAdjust="spacing" fill="#60a5fa">steel</text>
+<text x="297" y="103" textLength="99" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">206.3 ± 1.1</text>
+<text x="423" y="103" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">387</text>
+<text x="549" y="103" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">518</text>
+<text x="648" y="103" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 180V216M1773 180V216"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 180V216M567 180V216M819 180V216M1071 180V216M1269 180V216"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 216V252M1773 216V252"/>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 252V288M1773 252V288"/>
+<text x="459" y="157" textLength="45" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Enter</text>
+<text x="513" y="157" textLength="54" lengthAdjust="spacing" fill="#8b949e">open ·</text>
+<text x="576" y="157" textLength="45" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Space</text>
+<text x="630" y="157" textLength="72" lengthAdjust="spacing" fill="#8b949e">basket ·</text>
+<text x="711" y="157" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">o</text>
+<text x="729" y="157" textLength="63" lengthAdjust="spacing" fill="#8b949e">files ·</text>
+<text x="801" y="157" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">E</text>
+<text x="819" y="157" textLength="54" lengthAdjust="spacing" fill="#8b949e">editor</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 306H36M27 288V306M36 306H54M54 306H72M72 306H90M90 306H108M108 306H126M126 306H144M144 306H162M162 306H180M180 306H198M198 306H216M216 306H234M234 306H252M252 306H270M270 306H288M288 306H306M306 306H324M324 306H342M342 306H360M360 306H378M378 306H396M396 306H414M414 306H432M432 306H450M450 306H468M468 306H486M486 306H504M504 306H522M522 306H540M540 306H558M558 306H576M576 306H594M594 306H612M612 306H630M630 306H648M648 306H666M666 306H684M684 306H702M702 306H720M720 306H738M738 306H756M756 306H774M774 306H792M792 306H810M810 306H828M828 306H846M846 306H864M864 306H882M882 306H900M1764 306H1773M1773 288V306"/>
+<text x="18" y="175" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples</text>
+<text x="18" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">/</text>
+<text x="36" y="193" textLength="72" lengthAdjust="spacing" fill="#8b949e">filter ·</text>
+<text x="117" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">s</text>
+<text x="135" y="193" textLength="54" lengthAdjust="spacing" fill="#8b949e">sort ·</text>
+<text x="198" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">c</text>
+<text x="216" y="193" textLength="81" lengthAdjust="spacing" fill="#8b949e">columns ·</text>
+<text x="306" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">C</text>
+<text x="324" y="193" textLength="72" lengthAdjust="spacing" fill="#8b949e">update ·</text>
+<text x="405" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">N</text>
+<text x="423" y="193" textLength="45" lengthAdjust="spacing" fill="#8b949e">new ·</text>
+<text x="477" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="495" y="193" textLength="54" lengthAdjust="spacing" fill="#8b949e">undo ·</text>
+<text x="558" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">p</text>
+<text x="576" y="193" textLength="81" lengthAdjust="spacing" fill="#8b949e">produce ·</text>
+<text x="666" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">v</text>
+<text x="684" y="193" textLength="63" lengthAdjust="spacing" fill="#8b949e">state ·</text>
+<text x="756" y="193" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">H</text>
+<text x="774" y="193" textLength="63" lengthAdjust="spacing" fill="#8b949e">history</text>
+<text x="18" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">M</text>
+<text x="36" y="211" textLength="63" lengthAdjust="spacing" fill="#8b949e">model ·</text>
+<text x="108" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">D</text>
+<text x="126" y="211" textLength="72" lengthAdjust="spacing" fill="#8b949e">remove ·</text>
+<text x="207" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">R</text>
+<text x="225" y="211" textLength="72" lengthAdjust="spacing" fill="#8b949e">rename ·</text>
+<text x="306" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">q</text>
+<text x="324" y="211" textLength="54" lengthAdjust="spacing" fill="#8b949e">quit ·</text>
+<text x="387" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">S</text>
+<text x="405" y="211" textLength="81" lengthAdjust="spacing" fill="#8b949e">summary ·</text>
+<text x="495" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">P</text>
+<text x="513" y="211" textLength="135" lengthAdjust="spacing" fill="#8b949e">configuration ·</text>
+<text x="657" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">g</text>
+<text x="675" y="211" textLength="63" lengthAdjust="spacing" fill="#8b949e">group ·</text>
+<text x="747" y="211" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">?</text>
+<text x="765" y="211" textLength="72" lengthAdjust="spacing" fill="#8b949e">all keys</text>
+</svg>

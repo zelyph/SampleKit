@@ -56,7 +56,7 @@ defective
    expected, two rows with one index, a unit that disagrees.
 
 demo
-   The tensile test in five steps that SampleKit carries, written on demand from
+   The tensile test in six steps that SampleKit carries, written on demand from
    the TUI's start page (`g`), each step a project to try commands on.
 
 digest

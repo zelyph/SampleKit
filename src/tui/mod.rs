@@ -9,3 +9,4 @@ pub mod start;
 pub mod theme;
 pub mod typing;
 pub mod view;
+pub mod watch;

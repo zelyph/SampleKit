@@ -1649,7 +1649,7 @@ pub fn sheet_of_held(
         // where its mean is, found otherwise only with `-c name,notch.readings`.
         let readings = Identifier::new(field)
             .ok()
-            .and_then(|name| sample.property(&name).ok())
+            .and_then(|name| sample.property_if(&name))
             .and_then(|handle| {
                 handle.peek(|property| {
                     property.readings().map(|readings| {

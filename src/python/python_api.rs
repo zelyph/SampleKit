@@ -634,6 +634,11 @@ fn function_of(callable: &Bound<'_, PyAny>) -> Py<PyAny> {
 /// it contained when read, its project, and whether a formula was attached.
 #[derive(Default)]
 pub struct SampleFile {
+    /// What the model owes this sample, kept with what it was planned from:
+    /// the sample's count of changes, its file's time and size, and the
+    /// model's description's. A read of each value consulted it, planned
+    /// anew each time.
+    planned: Option<(PlannedFrom, std::collections::BTreeMap<String, String>)>,
     path: Option<PathBuf>,
     origin: Option<Origin>,
     /// The file's text as it was read or last written: what a save writes
@@ -5405,7 +5410,7 @@ impl PySample {
         let mut file = this.file.borrow_mut();
         // The text the origin's digest was taken of: one changed in between is
         // no base, and the save writes the sample whole, refused as changed.
-        file.read = std::fs::read_to_string(&path)
+        file.read = crate::format::document::read_text(&path)
             .ok()
             .filter(|text| document::digest_of(text) == origin.digest);
         file.path = Some(path);
@@ -5652,9 +5657,7 @@ impl PySample {
                      \"[text](name.md)\""
                 )));
             };
-            let leads = crate::config::discovery::destination(&link, &from, || {
-                crate::config::discovery::linkable(config.as_deref(), &from, &[])
-            });
+            let leads = crate::config::discovery::destination(&link, &from, config.as_deref(), &[]);
             let path = match leads {
                 crate::config::discovery::Destination::Sample(path) => path,
                 crate::config::discovery::Destination::Address(address) => {
@@ -5662,7 +5665,8 @@ impl PySample {
                         "{said} is a web address, {address}, and no sample"
                     )));
                 }
-                crate::config::discovery::Destination::File(path) => {
+                crate::config::discovery::Destination::File(path)
+                | crate::config::discovery::Destination::Page { file: path, .. } => {
                     samples.push(py.import("pathlib")?.getattr("Path")?.call1((path,))?);
                     continue;
                 }
@@ -5731,7 +5735,7 @@ impl PySample {
                  does",
             ));
         }
-        let Ok(held) = fs::read_to_string(&path) else {
+        let Ok(held) = crate::format::document::read_text(&path) else {
             return Err(PyFileNotFoundError::new_err(format!(
                 "{} was removed or moved since it was read, and nothing was removed",
                 path.display()
@@ -5798,7 +5802,7 @@ impl PySample {
         }
         if let (Some(read), Ok(held)) = (
             this.file.borrow().read.as_deref(),
-            fs::read_to_string(&path),
+            crate::format::document::read_text(&path),
         ) && read != held
         {
             return Err(PyOSError::new_err(format!(
@@ -5828,7 +5832,7 @@ impl PySample {
         {
             let mut file = this.file.borrow_mut();
             file.path = Some(plan.to.clone());
-            file.read = fs::read_to_string(&plan.to).ok();
+            file.read = crate::format::document::read_text(&plan.to).ok();
             file.origin = document::load_sample(&plan.to)
                 .ok()
                 .map(|(_, origin)| origin);
@@ -6849,7 +6853,20 @@ impl PySample {
             _ => {}
         }
         let class = slf.get_type();
-        if let Some(attribute) = class.getattr_opt(name)? {
+        // Looked up as `type` looks it up: through the class's `__getattr__`,
+        // a name it lacks built the message naming the nearest one, for each
+        // property a model declares.
+        let found = slf
+            .py()
+            .get_type::<pyo3::types::PyType>()
+            .getattr("__getattribute__")?
+            .call1((&class, name));
+        let attribute = match found {
+            Ok(attribute) => Some(attribute),
+            Err(error) if error.is_instance_of::<PyAttributeError>(slf.py()) => None,
+            Err(error) => return Err(error),
+        };
+        if let Some(attribute) = attribute {
             if attribute.get_type().hasattr("__set__")? {
                 return generic_setattr(slf.as_any(), name, Some(value));
             }
@@ -6994,7 +7011,7 @@ fn wrap_loaded(
         let this = cell.borrow();
         *this.shared.borrow_mut() = SharedSample::new(sample);
         let mut file = this.file.borrow_mut();
-        file.read = std::fs::read_to_string(&path)
+        file.read = crate::format::document::read_text(&path)
             .ok()
             .filter(|text| document::digest_of(text) == origin.digest);
         file.path = Some(path);
@@ -7411,7 +7428,7 @@ fn statistic_stated_otherwise(handle: &PropertyHandle) -> bool {
 /// What a computation changes of a statistic a file states otherwise.
 fn statistic_change(sample: &Sample, label: &str) -> Option<String> {
     let name = Identifier::new(label).ok()?;
-    let handle = sample.property(&name).ok()?;
+    let handle = sample.property_if(&name)?;
     handle.peek(Property::statistic_change_said)
 }
 
@@ -7720,16 +7737,59 @@ fn planned_now(
     let (Some(path), Some(config)) = (path, config) else {
         return Default::default();
     };
-    let mut planned = shared
+    let stamp = |path: &Path| {
+        fs::metadata(path)
+            .ok()
+            .and_then(|meta| Some((meta.modified().ok()?, meta.len())))
+    };
+    let from = shared
         .read_sample("the sample", |sample| {
-            Ok(
-                crate::collection::computation::planned_states(Some(&config), &path, sample)
-                    .unwrap_or_default(),
-            )
+            Ok(PlannedFrom {
+                changes: sample.changes(),
+                file: stamp(&path),
+                description: stamp(&crate::config::model_runtime::description_path(&config)),
+            })
         })
-        .unwrap_or_default();
+        .ok();
+    let held = from.as_ref().and_then(|from| {
+        file.borrow()
+            .planned
+            .as_ref()
+            .filter(|(at, _)| at == from)
+            .map(|(_, planned)| planned.clone())
+    });
+    let mut planned = match held {
+        Some(planned) => planned,
+        None => {
+            let planned =
+                shared
+                    .read_sample("the sample", |sample| {
+                        Ok(crate::collection::computation::planned_states(
+                            Some(&config),
+                            &path,
+                            sample,
+                        )
+                        .unwrap_or_default())
+                    })
+                    .unwrap_or_default();
+            if let Some(from) = from
+                && let Ok(mut file) = file.try_borrow_mut()
+            {
+                file.planned = Some((from, planned.clone()));
+            }
+            planned
+        }
+    };
     planned.retain(|value, _| !computed.contains(value));
     planned
+}
+
+/// What a sample's plan was made from: see [`SampleFile`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PlannedFrom {
+    changes: u64,
+    file: Option<(std::time::SystemTime, u64)>,
+    description: Option<(std::time::SystemTime, u64)>,
 }
 
 /// The values whose own formula changed since they were computed.
@@ -9566,7 +9626,7 @@ fn log_failures(sample: &Bound<'_, PySample>) -> PyResult<()> {
                     .property_names()
                     .into_iter()
                     .filter_map(|name| {
-                        let handle = held.property(name).ok()?;
+                        let handle = held.property_if(name)?;
                         let source = handle.peek(Property::failure_source)?;
                         let raised = source.downcast_ref::<bridge::PythonException>()?;
                         Some((name.to_string(), raised.as_raised(py).unbind()))
@@ -13452,6 +13512,9 @@ fn load(py: Python<'_>, paths: &Bound<'_, PyTuple>) -> PyResult<Py<PyAny>> {
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     // In Python, reading a value never runs its formula: compute does.
     crate::core::property::set_reads_compute(false);
+    // Started by the TUI over changes not written yet: they are what the
+    // files read as, and what this process saves waits with them.
+    crate::format::stage::begin_as_given();
     module.add_function(pyo3::wrap_pyfunction!(check_new, module)?)?;
     module.add_class::<PyProperty>()?;
     module.add_class::<PyComputedColumns>()?;

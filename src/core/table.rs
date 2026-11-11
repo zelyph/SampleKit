@@ -636,6 +636,26 @@ impl Table {
         Ok(())
     }
 
+    /// Takes a row out: what the columns derived from the others read moves,
+    /// as a row added moves it.
+    pub fn remove_row(&mut self, row: &RowAddress) -> Result<(), TableError> {
+        let position = self.position_of(row)?;
+        let removed = self.rows.remove(position);
+        let key = IndexKey::of(&removed.index);
+        self.held.retain(|(held, _)| *held != key);
+        self.lookup = self
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(at, row)| (IndexKey::of(&row.index), at))
+            .collect();
+        self.column_recorded.clear();
+        for column in self.columns.keys().cloned().collect::<Vec<_>>() {
+            self.bump_column(&column);
+        }
+        Ok(())
+    }
+
     /// The row at `position` moved to where its index falls, where the other
     /// rows run in the order of their index: a day changed from 5 to 12 goes
     /// after 11, and a row added with day 5 before 6. A table its file holds

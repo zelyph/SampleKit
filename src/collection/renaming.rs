@@ -192,7 +192,7 @@ pub fn plan(config: Option<&ProjectConfig>, from: &Path, new: &str) -> Result<Pl
                 };
                 let after = match link::parse(text) {
                     Some(Link::Sample { target, .. })
-                        if target == old
+                        if called(&target, &old)
                             && matches!(
                                 link::resolve(
                                     &target,
@@ -265,6 +265,11 @@ pub fn links_leading_to(config: Option<&ProjectConfig>, samples: &[PathBuf]) -> 
         return Vec::new();
     };
     let known = discovery::linkable(config, first, &[]);
+    let index = link::Index::new(
+        known
+            .iter()
+            .map(|(path, name)| (path.as_path(), name.as_deref())),
+    );
     let these: Vec<PathBuf> = samples.iter().map(|path| canonical(path)).collect();
     let mut found = Vec::new();
     for (path, _) in &known {
@@ -287,12 +292,7 @@ pub fn links_leading_to(config: Option<&ProjectConfig>, samples: &[PathBuf]) -> 
                     continue;
                 };
                 let target = match link::parse(text) {
-                    Some(Link::Sample { target, .. }) => match link::resolve(
-                        &target,
-                        known
-                            .iter()
-                            .map(|(path, name)| (path.as_path(), name.as_deref())),
-                    ) {
+                    Some(Link::Sample { target, .. }) => match index.resolve(&target) {
                         Resolved::One(found) => canonical(&found),
                         _ => continue,
                     },
@@ -324,11 +324,24 @@ fn wikilink_renamed(text: &str, new: &str) -> Option<String> {
         Some((target, shown)) => (target, Some(shown)),
         None => (inner, None),
     };
-    let heading = target.split_once('#').map(|(_, heading)| heading);
-    let mut renamed = format!("[[{new}");
-    if let Some(heading) = heading {
+    let (target, fragment) = match target.split_once('#') {
+        Some((target, fragment)) => (target, Some(fragment)),
+        None => (target, None),
+    };
+    // Its folders and its extension as it wrote them: `[[2024/old.md]]`
+    // becomes `[[2024/new.md]]`.
+    let (folders, last) = match target.rfind(['/', '\\']) {
+        Some(at) => target.split_at(at + 1),
+        None => ("", target),
+    };
+    let extension = [".md", ".markdown"]
+        .into_iter()
+        .find(|extension| last.to_ascii_lowercase().ends_with(extension))
+        .map_or("", |extension| &last[last.len() - extension.len()..]);
+    let mut renamed = format!("[[{folders}{new}{extension}");
+    if let Some(fragment) = fragment {
         renamed.push('#');
-        renamed.push_str(heading);
+        renamed.push_str(fragment);
     }
     if let Some(shown) = shown {
         renamed.push('|');
@@ -336,6 +349,18 @@ fn wikilink_renamed(text: &str, new: &str) -> Option<String> {
     }
     renamed.push_str("]]");
     Some(renamed)
+}
+
+/// Whether a wikilink's target calls a sample `old`: by its last part,
+/// `.md` or not, in any case, as Obsidian finds a note.
+fn called(target: &str, old: &str) -> bool {
+    let last = target.rsplit(['/', '\\']).next().unwrap_or(target).trim();
+    let lower = last.to_lowercase();
+    let bare = [".md", ".markdown"]
+        .into_iter()
+        .find_map(|extension| lower.strip_suffix(extension))
+        .unwrap_or(&lower);
+    bare == old.to_lowercase()
 }
 
 /// `[shown](folder/old.md)` leading to `new`'s file, its folder kept, as it
@@ -426,11 +451,11 @@ pub fn apply(plan: &Plan) -> Result<Vec<PathBuf>, RenameError> {
     }
     written.push(plan.to.clone());
     document::note_written(&plan.from);
-    std::fs::remove_file(&plan.from).map_err(|error| failed(&plan.from, &error))?;
+    crate::format::document::remove_file(&plan.from).map_err(|error| failed(&plan.from, &error))?;
     written.push(plan.from.clone());
     for (from, to) in &plan.own {
         document::note_written(from);
-        std::fs::rename(from, to).map_err(|error| failed(from, &error))?;
+        crate::format::document::move_file(from, to).map_err(|error| failed(from, &error))?;
         document::note_written(to);
         written.push(to.clone());
     }

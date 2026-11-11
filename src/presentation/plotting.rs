@@ -179,7 +179,15 @@ pub fn draw_quietly(python: &Path, request: &FigureRequest) -> Result<(), (PlotE
         )
     };
     let mut child = Command::new(python)
+        // What waits to be written is what the figure is drawn from.
+        .env(
+            crate::format::stage::STAGE_GIVEN,
+            crate::format::stage::given_for(&request.samples),
+        )
         .env("PYTHONDONTWRITEBYTECODE", "1")
+        // What Python reads and prints is UTF-8, as it is read here: on
+        // Windows it took its code page, and "Thèse" came back garbled.
+        .env("PYTHONIOENCODING", "utf-8")
         // Its warnings in the command line's colours, where its stderr is.
         .envs(crate::presentation::terminal_rendering::child_colours())
         .args(["-c", BOOTSTRAP])
@@ -255,6 +263,9 @@ fn run(python: &Path, body: &str, capture: bool) -> Result<String, PlotError> {
     });
     let mut child = Command::new(python)
         .env("PYTHONDONTWRITEBYTECODE", "1")
+        // What Python reads and prints is UTF-8, as it is read here: on
+        // Windows it took its code page, and "Thèse" came back garbled.
+        .env("PYTHONIOENCODING", "utf-8")
         // Its warnings in the command line's colours, where its stderr is.
         .envs(crate::presentation::terminal_rendering::child_colours())
         .args(["-c", BOOTSTRAP])

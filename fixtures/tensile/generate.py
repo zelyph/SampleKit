@@ -8,6 +8,7 @@ as a hand writes them: built by build.sh, which computes them.
   03-curve     the test itself: a curve of force against strain, and the stress
   04-results   what the curve gives, a profile, exports, figures, scripts, a sample's own files
   05-projects  the rolled specimens and cast ones, two projects under one root
+  06-links     the results again, each specimen linking to the others, its curve, a PDF, a page
 
 It is SampleKit's demo too: build.rs embeds examples/tensile, which
 tools/regenerate-demo.sh writes with build.sh, and each step's README.md,
@@ -51,6 +52,31 @@ CAST_READINGS = {
     "iron-c1": ([12.488, 12.502, 12.495], [1.992, 2.006, 1.999]),
 }
 CAST_DATES = ["2026-04-14", "2026-04-15"]
+# The links of the sixth step, every form an attribute's link takes: samples
+# as Obsidian writes them, by name, with the extension, in another case, by
+# the end of a path, a list of them; a file of the project, by a Markdown link
+# or by its name; a PDF at a page; a web page. One leads nowhere, for
+# validate to say: the second steel specimen, not written yet.
+LINKS = {
+    "aluminium-01": [
+        'compared_with: "[[steel-01]]"',
+        'method: "[the method](../docs/method.pdf#page=2)"',
+        'standard: "[ISO 6892-1](https://www.iso.org/standard/78322.html)"',
+    ],
+    "copper-01": [
+        'compared_with: "[[samples/steel-01]]"',
+        'tested_after: "[[aluminium-01.md]]"',
+        'raw: "[[copper-01/curve.csv]]"',
+        'method: "[[method.pdf#page=2]]"',
+    ],
+    "steel-01": [
+        'compared_with: ["[[aluminium-01]]", "[[copper-01]]"]',
+        'tested_after: "[[Copper-01]]"',
+        'raw: "[the curve](../machine/steel-01/curve.csv)"',
+        "standard: https://www.iso.org/standard/78322.html",
+        'repeated_by: "[[steel-02]]"',
+    ],
+}
 SHARED = """schema_version = 1
 
 [model]
@@ -207,7 +233,7 @@ def main(destination):
     random.seed(6)
     np.random.seed(6)
     root = pathlib.Path(destination)
-    steps = ["01-measured", "02-readings", "03-curve", "04-results"]
+    steps = ["01-measured", "02-readings", "03-curve", "04-results", "06-links"]
     # Each test as the machine exported it, kept beside the samples.
     exported = {}
     for step in steps:
@@ -248,6 +274,11 @@ def main(destination):
         table += [f"      - {{strain: {strain}, force: {force}}}" for strain, force in rows]
         table += ["---", note(direction), ""]
         (root / "03-curve" / "samples" / f"{name}.md").write_text("\n".join(table))
+        # The sixth step's specimens: the same, their links before their
+        # properties.
+        at = table.index("properties:")
+        linked = table[:at] + LINKS[name] + table[at:]
+        (root / "06-links" / "samples" / f"{name}.md").write_text("\n".join(linked))
         # In the results, the specimens of other metals name the steel one
         # they are compared with: a link, followed from either side.
         if name != "steel-01":
@@ -291,8 +322,10 @@ def main(destination):
     for step in steps + ["05-projects"]:
         shutil.copy(HERE / "readme" / f"{step}.md", root / step / "README.md")
     for step in steps[1:]:
+        # The links' step computes as the results' does, with the same model.
+        model = "04-results" if step == "06-links" else step
         (root / step / "model").mkdir()
-        shutil.copy(HERE / "model" / f"{step}.py", root / step / "model" / "specimen.py")
+        shutil.copy(HERE / "model" / f"{model}.py", root / step / "model" / "specimen.py")
     (root / "02-readings" / ".samplekitrc").write_text(MODEL)
     (root / "03-curve" / ".samplekitrc").write_text(MODEL + PRECISIONS)
     results = MODEL.replace(
@@ -304,6 +337,16 @@ def main(destination):
         'precision = ".1f"\n', "precision = \".1f\"\nsymbol_figure = '$\\sigma$'\n"
     )
     (root / "04-results" / ".samplekitrc").write_text(results + stress + RESULTS)
+    # The links' step: the machine's files, found as a sample's own, and the
+    # precisions of the results, without the exports and figures of step 4.
+    links = MODEL.replace(
+        "schema_version = 1\n", 'schema_version = 1\n\n[collection]\nfiles = ["machine/{name}/*"]\n'
+    )
+    (root / "06-links" / ".samplekitrc").write_text(links + PRECISIONS + SHARED_RESULTS)
+    # The method the samples link to at its second page: two pages of text,
+    # drawn once with matplotlib and kept beside this script.
+    (root / "06-links" / "docs").mkdir()
+    shutil.copy(HERE / "docs" / "method.pdf", root / "06-links" / "docs" / "method.pdf")
     # The photograph the home page shows: Cdang's, Wikimedia Commons, public
     # domain.
     (root / "04-results" / "photos").mkdir()
@@ -318,13 +361,14 @@ def main(destination):
     shutil.copy(HERE / "scripts" / "projects.py", root / "05-projects" / "scripts")
     # What the testing machine wrote of each test: a folder per specimen.
     for name, (rows, direction) in exported.items():
-        folder = root / "04-results" / "machine" / name
-        folder.mkdir(parents=True)
-        lines = ["strain [%],force [kN]"] + [f"{strain},{force}" for strain, force in rows]
-        (folder / "curve.csv").write_text("\n".join(lines) + "\n")
-        (folder / "settings.txt").write_text(
-            f"speed: 2 mm/min\ndirection: {direction}\ngauge length: 50 mm\n"
-        )
+        for step in ("04-results", "06-links"):
+            folder = root / step / "machine" / name
+            folder.mkdir(parents=True)
+            lines = ["strain [%],force [kN]"] + [f"{strain},{force}" for strain, force in rows]
+            (folder / "curve.csv").write_text("\n".join(lines) + "\n")
+            (folder / "settings.txt").write_text(
+                f"speed: 2 mm/min\ndirection: {direction}\ngauge length: 50 mm\n"
+            )
 
 
 if __name__ == "__main__":

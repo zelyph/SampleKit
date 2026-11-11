@@ -410,6 +410,17 @@ pub fn changes_of(
     changes(name, before, after, config, Digits::Declared, None)
 }
 
+/// [`changes_of`], a value typed with more digits than the precision shows
+/// said with all of them, as the value is written: the preview of what waits.
+pub fn changes_typed(
+    name: &str,
+    before: Option<&Vec<u8>>,
+    after: Option<&Vec<u8>>,
+    config: &ProjectConfig,
+) -> Vec<String> {
+    changes(name, before, after, config, Digits::Typed, None)
+}
+
 /// A sample a script made, as its preview says it: `new sample`, then what it
 /// holds, each field from nothing, as `new` previews one — `new sample` alone
 /// said none of the values the script gave it. Its empty fields and its note
@@ -496,6 +507,10 @@ pub fn computed_from(bytes: &[u8]) -> Vec<(String, String)> {
 enum Digits {
     Declared,
     Every,
+    /// At the declared precision, but a value typed with more digits than it
+    /// shows is said with every one of them: what is written. A computation's
+    /// noise, past six decimals, stays at the precision.
+    Typed,
 }
 
 fn changes(
@@ -882,14 +897,34 @@ fn shown_quantity(
         // Where the project declares no precision, as a table shows it: every
         // digit said the noise a computation leaves. Two values shown alike are
         // told apart by their caller, at the fewest digits.
-        (Some(value), Digits::Declared) => render::quantity(
-            &value,
-            property.uncertainty().ok().flatten().as_ref(),
-            presentation,
-            address,
-            Some(config),
-            None,
-        ),
+        (Some(value), Digits::Declared | Digits::Typed) => {
+            let shown = render::quantity(
+                &value,
+                property.uncertainty().ok().flatten().as_ref(),
+                presentation,
+                address,
+                Some(config),
+                None,
+            );
+            let crate::core::value::Value::Number(number) = value else {
+                return shown;
+            };
+            let whole = number.to_string();
+            let decimals = |text: &str| text.split_once('.').map_or(0, |(_, after)| after.len());
+            match (digits, shown.split_once(' ')) {
+                (Digits::Typed, Some((first, rest)))
+                    if decimals(&whole) <= 6 && decimals(&whole) > decimals(first) =>
+                {
+                    format!("{whole} {rest}")
+                }
+                (Digits::Typed, None)
+                    if decimals(&whole) <= 6 && decimals(&whole) > decimals(&shown) =>
+                {
+                    whole
+                }
+                _ => shown,
+            }
+        }
     }
 }
 

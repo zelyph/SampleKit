@@ -16,7 +16,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
 use super::model::{Key, Workbench, recent_projects, state_file};
-use super::theme::{Theme, keyed};
+use super::theme::{Theme, Themes, keyed};
 use super::typing::Typed;
 
 /// Where the guide is read: the site of this version, which the published
@@ -35,7 +35,7 @@ pub const TUTORIAL: &str = concat!(
 );
 /// The demo's steps: each folder, in order, and what it is about in a line.
 /// Each step's name is its README's heading (`demo_steps`).
-pub const STEPS: [(&str, &str); 5] = [
+pub const STEPS: [(&str, &str); 6] = [
     (
         "01-measured",
         "three specimens, their sizes written by hand",
@@ -55,6 +55,10 @@ pub const STEPS: [(&str, &str); 5] = [
     (
         "05-projects",
         "rolled and cast specimens, two projects read as one",
+    ),
+    (
+        "06-links",
+        "the specimens linked: to each other, a curve, a PDF, a web page",
     ),
 ];
 /// `examples/tensile/`, embedded by `build.rs`: a module of its own, so that
@@ -150,6 +154,12 @@ pub enum Mode {
     Forget {
         folder: PathBuf,
     },
+    /// `T`: every theme, the page drawn in the one under the cursor;
+    /// `before` the theme there was, given back by `Esc`.
+    Themes {
+        cursor: usize,
+        before: String,
+    },
     /// `?`: the page's keys, and what each entry does; `back` the mode it was
     /// asked from, returned to as it was.
     Help {
@@ -199,6 +209,10 @@ pub const HELP: &[(&str, &str)] = &[
         "",
         "  the first time, the demo is written and its first step opened",
     ),
+    (
+        "T",
+        "the theme: each tried on the page as the cursor reaches it, Enter keeps it for the projects naming none",
+    ),
     ("q Esc", "quit"),
     ("Ctrl+C", "quit, from the page or from a project"),
     ("?", "this help"),
@@ -220,7 +234,7 @@ pub const HELP: &[(&str, &str)] = &[
     ("", ""),
     ("", "The demo"),
     (
-        "1…5",
+        "1…6",
         "open that step; quitting it comes back to the demo's page",
     ),
     (
@@ -288,6 +302,15 @@ pub struct Start {
     /// the workbench's do. Scrolled afresh each frame, the browser held its
     /// cursor at the foot, the rows below it never shown.
     pub offsets: RefCell<HashMap<&'static str, usize>>,
+    /// Every theme, the name of the one the page is drawn in, and its
+    /// colours: the person's last choice, or the default, there being no
+    /// project.
+    pub themes: Themes,
+    pub theme_name: String,
+    pub theme: Theme,
+    /// Where the person's last choice of a theme is kept, `<state>/theme`:
+    /// a test points it elsewhere.
+    pub last_theme: Option<PathBuf>,
 }
 
 impl Start {
@@ -339,7 +362,85 @@ impl Start {
             environment: demo_environment,
             installing: None,
             offsets: RefCell::default(),
+            themes: Themes::default(),
+            theme_name: String::new(),
+            theme: Theme::default(),
+            last_theme: super::theme::last_choice_file(),
         }
+        .themed(Themes::read(
+            crate::config::project_config::themes_folder().as_deref(),
+        ))
+    }
+
+    /// The page in the person's last theme, or the default, among `themes`;
+    /// what was said of one's own left out, and of a theme kept that is
+    /// none, its message.
+    pub fn themed(mut self, themes: Themes) -> Start {
+        self.themes = themes;
+        let last = self
+            .last_theme
+            .as_deref()
+            .and_then(super::theme::last_chosen);
+        let (name, theme, said) = self.themes.resolve(
+            super::theme::Choices {
+                folder: None,
+                last: last.as_deref(),
+                default: super::theme::terminal_default(),
+            },
+            None,
+        );
+        self.theme_name = name;
+        self.theme = theme;
+        let mut message: Vec<String> = self.themes.said().to_vec();
+        message.extend(said);
+        self.message = message.join(" · ");
+        self
+    }
+
+    /// The theme under the list's cursor, the page's while it is open.
+    fn try_theme(&mut self, cursor: usize) {
+        if let Some(theme) = self
+            .themes
+            .names()
+            .get(cursor)
+            .and_then(|name| self.themes.theme(name, None))
+        {
+            self.theme = theme;
+        }
+    }
+
+    fn themes_key(&mut self, key: Key, cursor: usize, before: String) -> Effect {
+        let last = self.themes.names().len().saturating_sub(1);
+        let cursor = match key {
+            Key::Down | Key::Char('j') => (cursor + 1).min(last),
+            Key::Up | Key::Char('k') => cursor.saturating_sub(1),
+            Key::Home => 0,
+            Key::End => last,
+            Key::Enter => {
+                let name = self.themes.names()[cursor].to_string();
+                self.message = match &self.last_theme {
+                    Some(file) => match super::theme::keep_last(file, &name) {
+                        Ok(()) => format!("theme {name}, kept for the projects naming none"),
+                        Err(error) => format!("theme {name} · {error}"),
+                    },
+                    None => format!(
+                        "theme {name}, not kept for next time: this system has no state folder"
+                    ),
+                };
+                self.theme_name = name;
+                return Effect::None;
+            }
+            Key::Esc | Key::Char('q') => {
+                if let Some(theme) = self.themes.theme(&before, None) {
+                    self.theme = theme;
+                }
+                return Effect::None;
+            }
+            _ => cursor,
+        };
+        self.try_theme(cursor);
+        self.mode = Mode::Themes { cursor, before };
+        Effect::None
     }
 
     /// The entries above the recent projects: the current one, if any; the
@@ -521,6 +622,7 @@ impl Start {
                 Effect::None
             }
             Mode::Menu => self.menu_key(key),
+            Mode::Themes { cursor, before } => self.themes_key(key, cursor, before),
             Mode::Browse {
                 purpose,
                 folder,
@@ -691,6 +793,19 @@ impl Start {
                 return Effect::None;
             }
             Key::Esc => return Effect::Done(Outcome::Quit),
+            Key::Char('T') => {
+                let cursor = self
+                    .themes
+                    .names()
+                    .iter()
+                    .position(|name| *name == self.theme_name)
+                    .unwrap_or(0);
+                self.mode = Mode::Themes {
+                    cursor,
+                    before: self.theme_name.clone(),
+                };
+                return Effect::None;
+            }
             // The recent project marked forgotten: its state removed, the
             // folder untouched.
             Key::Char('x') => {
@@ -939,7 +1054,10 @@ impl Start {
             }
             Key::Esc | Key::Char('q') => return Effect::None,
             Key::Enter => cursor,
-            Key::Char(digit @ '1'..='8') => digit as usize - '1' as usize,
+            // A step's digit: the entries below the steps are reached by moving.
+            Key::Char(digit @ '1'..='9') if (digit as usize - '1' as usize) < STEPS.len() => {
+                digit as usize - '1' as usize
+            }
             _ => {
                 self.mode = Mode::Demo { cursor };
                 return Effect::None;
@@ -1361,8 +1479,9 @@ pub fn shown(path: &Path) -> String {
     path.display().to_string()
 }
 
-/// The name, in figlet's ANSI Shadow.
-const LOGO: [&str; 6] = [
+/// The name, in figlet's ANSI Shadow: the page's, and the documentation's
+/// logo, drawn from it.
+pub const LOGO: [&str; 6] = [
     "███████╗ █████╗ ███╗   ███╗██████╗ ██╗     ███████╗██╗  ██╗██╗████████╗",
     "██╔════╝██╔══██╗████╗ ████║██╔══██╗██║     ██╔════╝██║ ██╔╝██║╚══██╔══╝",
     "███████╗███████║██╔████╔██║██████╔╝██║     █████╗  █████╔╝ ██║   ██║",
@@ -1380,8 +1499,13 @@ const PAGE: usize = 100;
 /// and the keys stay at its foot; a line too long for the width is cut with
 /// an ellipsis, a path from its start, so that its name stays.
 pub fn draw(frame: &mut Frame, start: &mut Start) {
-    let theme = Theme::of(None);
-    super::theme::set(theme);
+    super::theme::set(start.theme);
+    drawn(frame, start);
+    super::theme::paint(frame.buffer_mut(), &start.theme);
+}
+
+fn drawn(frame: &mut Frame, start: &mut Start) {
+    let theme = start.theme;
     let area = frame.area();
     // The widest a line may be: the column's two cells of margin aside. The
     // page's left edge is fixed, a page `PAGE` wide centred, whatever the mode
@@ -1656,6 +1780,35 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
                 ("Esc", "back"),
             ]
         }
+        Mode::Themes {
+            cursor: on_theme, ..
+        } => {
+            above.push(Line::styled(
+                "  The theme",
+                Style::new().add_modifier(Modifier::BOLD),
+            ));
+            above.push(Line::raw(""));
+            name = "themes";
+            cursor = *on_theme;
+            for (index, theme) in start.themes.names().iter().enumerate() {
+                let on = index == *on_theme;
+                let own = if start.themes.own(theme) {
+                    "  yours"
+                } else {
+                    ""
+                };
+                list.push(Line::from(vec![
+                    Span::styled(marker(on), on_style(on)),
+                    Span::styled(theme.to_string(), on_style(on)),
+                    Span::styled(own, muted),
+                ]));
+            }
+            vec![
+                ("j k ↑ ↓", "try"),
+                ("Enter", "keep"),
+                ("Esc", "the one before"),
+            ]
+        }
         Mode::Pick { cursor: on_pick } => {
             above.push(Line::styled(
                 "  Configure a project",
@@ -1691,7 +1844,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             for (index, (entry, what)) in [
                 ("The guide, from installing to figures", "in the browser"),
                 (
-                    "The demo, a tensile test in five steps",
+                    "The demo, a tensile test in six steps",
                     if there {
                         "its steps"
                     } else {
@@ -1722,7 +1875,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
         Mode::Demo { cursor: on_demo } => {
             name = "demo";
             above.push(Line::styled(
-                "  The demo, a tensile test in five steps",
+                "  The demo, a tensile test in six steps",
                 Style::new().add_modifier(Modifier::BOLD),
             ));
             if let Some(folder) = &start.demo {
@@ -1780,7 +1933,7 @@ pub fn draw(frame: &mut Frame, start: &mut Start) {
             }
             vec![
                 ("j k ↑ ↓", "move"),
-                ("1…5", "a step"),
+                ("1…6", "a step"),
                 ("Enter", "open"),
                 ("Esc", "back"),
             ]

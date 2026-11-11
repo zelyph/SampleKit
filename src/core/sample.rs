@@ -799,6 +799,14 @@ impl Sample {
             .ok_or_else(|| unknown(name, self.properties.keys(), NameKind::Property))
     }
 
+    /// The property, where the sample has one of that name: `property`
+    /// without the error, which names the nearest name and costs a search
+    /// among all of them — for every cell of a column most samples leave
+    /// empty.
+    pub fn property_if(&self, name: &Identifier) -> Option<PropertyHandle> {
+        self.properties.get(name).cloned()
+    }
+
     pub fn remove_property(&mut self, name: &Identifier) -> Result<Property, SampleError> {
         let handle = self
             .properties
@@ -901,6 +909,26 @@ impl Sample {
             held.add_row(cells).map_err(SampleError::Table)?;
             // Added by an edit: placed where its index falls.
             held.place_last_row();
+            held.column_names().into_iter().cloned().collect()
+        };
+        for column in columns {
+            self.core.bump(&Node::Column {
+                table: table.clone(),
+                column,
+            });
+        }
+        Ok(())
+    }
+
+    /// A row of a table this sample holds taken out, moving on every column.
+    pub fn remove_row(
+        &mut self,
+        table: &Identifier,
+        row: &crate::core::table::RowAddress,
+    ) -> Result<(), SampleError> {
+        let columns: Vec<Identifier> = {
+            let held = self.table_mut(table)?;
+            held.remove_row(row).map_err(SampleError::Table)?;
             held.column_names().into_iter().cloned().collect()
         };
         for column in columns {
@@ -1063,6 +1091,12 @@ impl Sample {
             .ok_or_else(|| unknown(name, self.attributes.keys(), NameKind::Attribute))
     }
 
+    /// The attribute, where the sample has one of that name: see
+    /// [`Sample::property_if`].
+    pub fn attribute_if(&self, name: &Identifier) -> Option<&AttributeValue> {
+        self.attributes.get(name)
+    }
+
     pub fn remove_attribute(&mut self, name: &Identifier) -> Result<AttributeValue, SampleError> {
         let value = self
             .attributes
@@ -1078,6 +1112,12 @@ impl Sample {
 
     pub fn attribute_names(&self) -> Vec<&Identifier> {
         self.attributes.keys().collect()
+    }
+
+    /// A count that moves whenever anything of the sample changes: what is
+    /// kept about the sample is kept while it stands.
+    pub fn changes(&self) -> u64 {
+        self.core.epoch.get()
     }
 
     pub fn has_attribute(&self, name: &Identifier) -> bool {

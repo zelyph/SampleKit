@@ -17310,6 +17310,19 @@ fn a_filter_selects_the_samples_linking_to_one() {
     assert_eq!(names("parents links to billet-03"), ["billet-01"]);
     assert_eq!(names("twin links to 'billet-03'"), Vec::<String>::new());
     assert_eq!(names("!(links to billet-02)").len(), 3);
+    // As Obsidian writes a link: by the end of a path, with its extension,
+    // in another case.
+    let obsidian = at(
+        scratch.path(),
+        &[
+            "billet-03.sample.md",
+            "set",
+            "after=[[more/Billet-01.md]]",
+            "--write",
+        ],
+    );
+    assert_eq!(code(&obsidian), 0, "{}", err(&obsidian));
+    assert_eq!(names("links to billet-01"), ["billet-03"]);
 }
 
 #[cfg(target_os = "linux")]
@@ -17352,6 +17365,47 @@ fn a_terminal_shows_links_by_their_text_and_a_pipe_as_written() {
         coloured.contains("\u{1b}[4m"),
         "a link is underlined: {coloured:?}"
     );
+}
+
+#[test]
+fn paths_written_with_backslashes_read_on_every_system() {
+    // A .samplekitrc and a link written on Windows: `\` read as a separator,
+    // as `/` is, where Linux and macOS took it for part of a file's name.
+    let scratch = Scratch::new("backslashes");
+    scratch.write(
+        "shared/.samplekitrc",
+        "schema_version = 1\n[query.big]\nfilter = \"size > 1\"\n",
+    );
+    scratch.write(
+        "project/.samplekitrc",
+        "schema_version = 1\nimport = '..\\shared'\n[collection]\nfiles = ['machine\\{name}\\*']\n\
+         [profile.all]\ncolumns = [{ field = \"name\" }]\n\
+         [export.table]\nprofile = \"all\"\nformat = \"csv\"\noutput = 'out\\table.csv'\n",
+    );
+    scratch.write(
+        "project/samples/s1.md",
+        "---\nschema_version: 1\nname: s1\nsize: 2\nraw: '[curve](..\\machine\\s1\\curve.csv)'\n---\n",
+    );
+    scratch.write("project/machine/s1/curve.csv", "1,2\n");
+    let project = scratch.path().join("project");
+    let checked = at(&project, &["samples", "validate"]);
+    assert_eq!(code(&checked), 0, "{}{}", out(&checked), err(&checked));
+    let files = at(&project, &["list", "files"]);
+    assert!(
+        out_slashed(&files).contains("machine/s1/curve.csv"),
+        "{}",
+        out(&files)
+    );
+    let queried = at(&project, &["samples", "--query", "big"]);
+    assert!(
+        out_slashed(&queried).contains("samples/s1.md"),
+        "{}{}",
+        out(&queried),
+        err(&queried)
+    );
+    let exported = at(&project, &["export", "table", "--write"]);
+    assert_eq!(code(&exported), 0, "{}", err(&exported));
+    assert!(project.join("out").join("table.csv").exists());
 }
 
 #[test]
@@ -17534,6 +17588,30 @@ fn rename_writes_again_the_links_to_the_files_it_moves() {
 }
 
 #[test]
+fn rename_keeps_each_links_own_form() {
+    let scratch = Scratch::new("rename-forms");
+    scratch.write(".samplekitrc", "schema_version = 1\n");
+    scratch.write("samples/p3.md", "---\nschema_version: 1\nname: p3\n---\n");
+    scratch.write(
+        "samples/s1.md",
+        "---\nschema_version: 1\nname: s1\nwith: \"[[P3.md]]\"\n\
+         placed: \"[[samples/p3#Notes|the notes]]\"\nheading: \"[p](p3.md#top)\"\n---\n",
+    );
+    let written = at(
+        scratch.path(),
+        &["samples/p3.md", "rename", "plate-03", "--write"],
+    );
+    assert_eq!(code(&written), 0, "{}", err(&written));
+    let linking = fs::read_to_string(scratch.path().join("samples/s1.md")).unwrap();
+    assert!(linking.contains("\"[[plate-03.md]]\""), "{linking}");
+    assert!(
+        linking.contains("\"[[samples/plate-03#Notes|the notes]]\""),
+        "{linking}"
+    );
+    assert!(linking.contains("\"[p](plate-03.md#top)\""), "{linking}");
+}
+
+#[test]
 fn rename_moves_a_sample_its_files_and_the_links_leading_to_it() {
     let scratch = Scratch::new("rename-sample");
     scratch.write(
@@ -17677,6 +17755,15 @@ fn powershell_completion_completes_the_empty_word_after_a_space() {
         ["ductilities"]
     );
     assert!(complete(&["samplekit", ".", "sta"], false).contains(&"status".to_string()));
+    // Under an alias, `Set-Alias sk samplekit`: registered for it too, and
+    // the line it begins completed as the command's.
+    assert!(
+        out(&bridge).contains("Get-Alias -Definition 'samplekit'"),
+        "{}",
+        out(&bridge)
+    );
+    assert!(complete(&["sk", ".", "sta"], false).contains(&"status".to_string()));
+    assert_eq!(complete(&["sk", "--profile", "d"], false), ["ductilities"]);
     // Where no profile is, nothing: which the bridge says.
     let elsewhere = Scratch::new("powershell-nothing");
     let output = Command::new(env!("CARGO_BIN_EXE_samplekit"))

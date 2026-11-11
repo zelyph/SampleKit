@@ -109,6 +109,247 @@ pub fn open(path: &Path) -> Result<(), OpenError> {
     })
 }
 
+/// How a PDF was shown at its page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PageShown {
+    /// In the web browser, at the page.
+    AtPage,
+    /// No browser found: the file opened as it is, at its start.
+    Whole,
+}
+
+/// A PDF shown at `page`, in the system's web browser: a PDF reader opened
+/// by the system's opener is given no page on any system, and every browser
+/// reads a file's `#page=`. Where no browser is found, the file is opened as
+/// it is, and said.
+pub fn open_page(file: &Path, page: u32) -> Result<PageShown, OpenError> {
+    if let Some(refused) = refusal(file) {
+        return Err(refused);
+    }
+    let whole = std::path::absolute(file).unwrap_or_else(|_| file.to_path_buf());
+    let url = file_url(&whole, Some(page));
+    if let Some(line) = browser_line(&url)
+        && let Some((program, arguments)) = line.split_first()
+    {
+        let mut command = Command::new(program);
+        #[cfg(windows)]
+        {
+            // The registry's line as it writes it: its quotes are the
+            // browser's to read.
+            use std::os::windows::process::CommandExt;
+            for argument in arguments {
+                command.raw_arg(argument);
+            }
+        }
+        #[cfg(not(windows))]
+        command.args(arguments);
+        if let Ok(mut child) = command
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            return Ok(PageShown::AtPage);
+        }
+    }
+    open(file).map(|()| PageShown::Whole)
+}
+
+/// `file:///…` for an absolute path, `#page=N` after it: every character
+/// but the unreserved ones and `/` escaped, Windows's `C:\…` written
+/// `/C:/…`.
+pub fn file_url(path: &Path, page: Option<u32>) -> String {
+    let text = path.to_string_lossy().replace('\\', "/");
+    let text = if text.starts_with('/') {
+        text
+    } else {
+        format!("/{text}")
+    };
+    let mut url = String::from("file://");
+    for byte in text.bytes() {
+        if byte.is_ascii_alphanumeric() || b"-._~/:".contains(&byte) {
+            url.push(byte as char);
+        } else {
+            url.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    if let Some(page) = page {
+        url.push_str(&format!("#page={page}"));
+    }
+    url
+}
+
+/// The command that shows `url` in the system's web browser, or `None`.
+fn browser_line(url: &str) -> Option<Vec<String>> {
+    // Who named a browser named it for this.
+    if let Some(browser) = std::env::var("BROWSER")
+        .ok()
+        .and_then(|browsers| browsers.split(':').next().map(str::to_string))
+        .filter(|browser| !browser.trim().is_empty())
+    {
+        return Some(vec![browser, url.to_string()]);
+    }
+    if cfg!(target_os = "macos") {
+        return mac_browser()
+            .map(|app| vec!["open".to_string(), "-a".to_string(), app, url.to_string()]);
+    }
+    if cfg!(windows) {
+        return windows_browser().map(|command| windows_line(&command, url));
+    }
+    if under_wsl() {
+        return None;
+    }
+    let desktop = linux_browser()?;
+    let exec = desktop_exec(&desktop)?;
+    exec_line(&exec, url)
+}
+
+/// The output of a command, trimmed, where it ran and said something.
+fn said(program: &str, arguments: &[&str]) -> Option<String> {
+    let output = Command::new(program)
+        .args(arguments)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    (output.status.success() && !text.is_empty()).then_some(text)
+}
+
+/// Linux's default browser, as its desktop file: what `xdg-settings` says,
+/// else the handler of `https` addresses.
+fn linux_browser() -> Option<PathBuf> {
+    let id = said("xdg-settings", &["get", "default-web-browser"])
+        .or_else(|| said("xdg-mime", &["query", "default", "x-scheme-handler/https"]))?;
+    let home = std::env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")));
+    let dirs = std::env::var("XDG_DATA_DIRS")
+        .ok()
+        .filter(|dirs| !dirs.is_empty())
+        .unwrap_or_else(|| "/usr/local/share:/usr/share".to_string());
+    home.into_iter()
+        .chain(dirs.split(':').map(PathBuf::from))
+        .map(|dir| dir.join("applications").join(&id))
+        .find(|file| file.is_file())
+}
+
+/// The `Exec=` line of a desktop file's own entry.
+fn desktop_exec(file: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(file).ok()?;
+    let mut inside = false;
+    for line in text.lines() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            inside = line == "[Desktop Entry]";
+            continue;
+        }
+        if inside && let Some(exec) = line.strip_prefix("Exec=") {
+            return Some(exec.to_string());
+        }
+    }
+    None
+}
+
+/// A desktop file's `Exec=` line given `url`: its `%u`, `%U`, `%f` or `%F`
+/// made the address, its other field codes dropped, and the address put last
+/// where it names none.
+pub fn exec_line(exec: &str, url: &str) -> Option<Vec<String>> {
+    let mut placed = false;
+    let mut line = Vec::new();
+    for word in shell_words::split(exec).ok()? {
+        match word.as_str() {
+            "%u" | "%U" | "%f" | "%F" => {
+                if !placed {
+                    line.push(url.to_string());
+                    placed = true;
+                }
+            }
+            "%i" | "%c" | "%k" => {}
+            _ => line.push(word.replace("%%", "%")),
+        }
+    }
+    if !placed {
+        line.push(url.to_string());
+    }
+    (!line.is_empty()).then_some(line)
+}
+
+/// macOS's default browser, as the application that opens an `https`
+/// address.
+fn mac_browser() -> Option<String> {
+    said(
+        "osascript",
+        &[
+            "-l",
+            "JavaScript",
+            "-e",
+            "ObjC.import('AppKit'); $.NSWorkspace.sharedWorkspace.URLForApplicationToOpenURL($.NSURL.URLWithString('https://example.org')).path.js",
+        ],
+    )
+}
+
+/// Windows's default browser, as the command its registry gives to open an
+/// `https` address.
+fn windows_browser() -> Option<String> {
+    let choice = said(
+        "reg",
+        &[
+            "query",
+            r"HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice",
+            "/v",
+            "ProgId",
+        ],
+    )?;
+    let id = choice.lines().find_map(|line| {
+        line.trim()
+            .strip_prefix("ProgId")?
+            .split_whitespace()
+            .last()
+            .map(str::to_string)
+    })?;
+    let key = format!(r"HKCR\{id}\shell\open\command");
+    let command = said("reg", &["query", &key, "/ve"])?;
+    command
+        .lines()
+        .find_map(|line| {
+            line.split_once("REG_SZ")
+                .or_else(|| line.split_once("REG_EXPAND_SZ"))
+        })
+        .map(|(_, command)| command.trim().to_string())
+}
+
+/// The registry's command line given `url`: the program, as the line names
+/// it, quoted or not, and the rest, its `%1` the address in quotes, or the
+/// address added where it has none.
+pub fn windows_line(command: &str, url: &str) -> Vec<String> {
+    let command = command.trim();
+    let (program, rest) = match command.strip_prefix('"') {
+        Some(rest) => match rest.split_once('"') {
+            Some((program, rest)) => (program.to_string(), rest.trim().to_string()),
+            None => (rest.to_string(), String::new()),
+        },
+        None => match command.split_once(' ') {
+            Some((program, rest)) => (program.to_string(), rest.trim().to_string()),
+            None => (command.to_string(), String::new()),
+        },
+    };
+    let quoted = format!("\"{url}\"");
+    let rest = if rest.contains("\"%1\"") {
+        rest.replace("\"%1\"", &quoted)
+    } else if rest.contains("%1") {
+        rest.replace("%1", &quoted)
+    } else if rest.is_empty() {
+        quoted
+    } else {
+        format!("{rest} {quoted}")
+    };
+    vec![program, rest]
+}
+
 /// Whether this Linux is WSL's, where `wslview` shows a file and `opener`
 /// knows it.
 fn under_wsl() -> bool {

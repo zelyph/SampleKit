@@ -33,7 +33,7 @@ Without `--write`, it reads everything and says what it would write. Here, a
 tensile project of 0.2, its model in `old/specimen.py`:
 
 ```text
-SampleKit migration tool, for SampleKit 1.0.0-rc.2.
+SampleKit migration tool, for SampleKit 1.0.0-rc.3.
 
 Nothing guarantees that this tool carries your data correctly: it cannot fit
 every use, and it will miss some. It works on a copy, so that nothing is lost:
@@ -75,7 +75,7 @@ Read as SampleKit 0.x (0.1.0 to 0.2.0).
 
 ## What to do next
 
-1. Make the project's environment, in the new folder: `python -m venv .venv`, then `.venv/bin/python -m pip install samplekit==1.0.0-rc.2`.
+1. Make the project's environment, in the new folder: `python -m venv .venv`, then `.venv/bin/python -m pip install samplekit==1.0.0-rc.3`.
 2. Read the model and every line marked `# TODO(migrate)`.
 3. `samplekit . validate`, then `samplekit . compute --write`, which computes again what was not carried.
 4. Compare a few samples with the earlier version's by hand before trusting the rest.
@@ -108,6 +108,24 @@ what it says: make the environment, read every line marked
 `samplekit-migrate.pyz --help` lists its options. The sections below say what
 the tool does, step by step, for those who would rather do it by hand, or
 check what it did.
+
+## From 1.0.0-rc.2
+
+The sample files, the configuration and the history are the same: nothing in
+a project changes, and the migration tool is not needed.
+
+- **Install the command line and the package together**, on every computer
+  that shares a project, as below: the package of rc.2 in a project's
+  environment is refused by this version's command line, which names both
+  versions.
+- **The terminal interface has themes**: it draws in SampleKit's own where
+  the terminal draws every colour, and the roles your `[colors]` names are
+  laid over it. To keep the terminal's sixteen colours, as rc.2 drew, choose
+  `terminal` with `T`, or write `theme = "terminal"` in the project's
+  `[colors]` ([Choose the colours](colours.md)).
+- **The terminal interface keeps every change waiting until `w` writes
+  it**, and a value's window is gone: `e` types in a cell, `i` opens a
+  value's card ([The terminal interface](terminal-interface.md)).
 
 ## From 1.0.0-rc.1
 

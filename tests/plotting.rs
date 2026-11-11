@@ -263,6 +263,32 @@ fn a_model_figure_draws_one_sample() {
 }
 
 #[test]
+fn a_figure_is_drawn_under_a_folder_named_with_an_accent() {
+    // Windows' Python read the request in its own code page: "Thèse" became
+    // "ThÃ¨se", and the samples' folder did not exist. PYTHONIOENCODING
+    // stands for that code page here.
+    let scratch = Scratch::new("accent");
+    project(&scratch);
+    fs::create_dir_all(scratch.at("Thèse")).unwrap();
+    fs::rename(scratch.at("project"), scratch.at("Thèse/project")).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_samplekit"))
+        .current_dir(scratch.at("Thèse/project"))
+        .env("SAMPLEKIT_STATE_DIR", scratch.at("state"))
+        .env("NO_COLOR", "1")
+        .env("MPLBACKEND", "Agg")
+        .env("PYTHONDONTWRITEBYTECODE", "1")
+        .env("PYTHONIOENCODING", "cp1252")
+        // Named whole, as the terminal interface names its samples.
+        .arg(scratch.at("Thèse/project/samples/c1.md"))
+        .args(["plot", "mass_bar", "-o", "one.pdf", "--write"])
+        .stdin(Stdio::null())
+        .output()
+        .expect("the binary runs");
+    assert_eq!(code(&output), 0, "{}", err(&output));
+    assert!(starts_with(&scratch.at("Thèse/project/one.pdf"), b"%PDF"));
+}
+
+#[test]
 fn a_collection_figure_draws_the_selection() {
     let scratch = Scratch::new("model-many");
     project(&scratch);
