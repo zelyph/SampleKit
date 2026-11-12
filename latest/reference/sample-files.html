@@ -4,9 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Written files" href="written-files.html"><link rel="prev" title="Filters" href="filters.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Sample files - SampleKit 1.0.0-rc.2</title>
+        <title>Sample files - SampleKit 1.0.0-rc.3</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -175,7 +177,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -195,8 +197,12 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -216,10 +222,12 @@
 <li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-from-templates.html">Start from templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/colours.html">Choose the colours</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
@@ -459,21 +467,41 @@ does:</p>
 <span class="nt">twin</span><span class="p">:</span><span class="w"> </span><span class="s">"[[copper-01|the</span><span class="nv"> </span><span class="s">copper]]"</span>
 <span class="nt">cut_from</span><span class="p">:</span><span class="w"> </span><span class="s">"[plate</span><span class="nv"> </span><span class="s">P3](../plates/P3.md)"</span>
 <span class="nt">certificate</span><span class="p">:</span><span class="w"> </span><span class="s">"[certificate](../certificates/S355-0425.pdf)"</span>
+<span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="s">"[the</span><span class="nv"> </span><span class="s">method](../papers/method.pdf#page=12)"</span>
+<span class="nt">curve</span><span class="p">:</span><span class="w"> </span><span class="s">"[[curve.csv]]"</span>
 <span class="nt">datasheet</span><span class="p">:</span><span class="w"> </span><span class="s">"[datasheet](https://example.org/s355)"</span>
 <span class="nt">standard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.org/iso-6892</span>
+<span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zotero://select/library/items/ABCD1234</span>
 <span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"[[aluminium-01]]"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"[[copper-01]]"</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">[[NAME]]</span></code></strong> names a sample of the project: the one whose file is
-<code class="docutils literal notranslate"><span class="pre">NAME.md</span></code>, or, where no file is named so, the one whose <code class="docutils literal notranslate"><span class="pre">name</span></code> is NAME.
-After <code class="docutils literal notranslate"><span class="pre">|</span></code> comes what Obsidian shows in its place, and a heading after <code class="docutils literal notranslate"><span class="pre">#</span></code>
-is ignored.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">[[NAME]]</span></code></strong> names a sample of the project, as Obsidian finds a note:
+the one whose file is <code class="docutils literal notranslate"><span class="pre">NAME.md</span></code>, or, where no file is named so, the one
+whose <code class="docutils literal notranslate"><span class="pre">name</span></code> is NAME; written as it is first, then in any case.
+<code class="docutils literal notranslate"><span class="pre">[[NAME.md]]</span></code> names it too, and <code class="docutils literal notranslate"><span class="pre">[[2024/NAME]]</span></code> the one under a folder
+<code class="docutils literal notranslate"><span class="pre">2024</span></code>, where two samples have one name. After <code class="docutils literal notranslate"><span class="pre">|</span></code> comes what Obsidian
+shows in its place; a heading after <code class="docutils literal notranslate"><span class="pre">#</span></code> is ignored, and the sample opened
+whole.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">[[FILE]]</span></code></strong>, a name with its extension, names any other file of the
+project, wherever it lies: <code class="docutils literal notranslate"><span class="pre">[[curve.csv]]</span></code>, <code class="docutils literal notranslate"><span class="pre">[[method.pdf]]</span></code>;
+<code class="docutils literal notranslate"><span class="pre">[[2024/curve.csv]]</span></code> where two files have one name.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">[text](path)</span></code></strong> names a file by its path from the sample's own folder,
 as Markdown reads a link: a sample, of this project or another, or any
 file, a certificate, a raw data file, a folder. A space in the path is
-written <code class="docutils literal notranslate"><span class="pre">%20</span></code>, or the path between <code class="docutils literal notranslate"><span class="pre">&lt;</span></code> and <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">https://…</span></code></strong>, alone or as <code class="docutils literal notranslate"><span class="pre">[text](https://…)</span></code>, names a web page.</p></li>
+written <code class="docutils literal notranslate"><span class="pre">%20</span></code>, or the path between <code class="docutils literal notranslate"><span class="pre">&lt;</span></code> and <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>. Write it with <code class="docutils literal notranslate"><span class="pre">/</span></code>, as
+Obsidian does; a <code class="docutils literal notranslate"><span class="pre">\</span></code> is read as <code class="docutils literal notranslate"><span class="pre">/</span></code> on every system. A place in the file
+after <code class="docutils literal notranslate"><span class="pre">#</span></code> is kept apart from the path: <code class="docutils literal notranslate"><span class="pre">report.md#results</span></code> is
+<code class="docutils literal notranslate"><span class="pre">report.md</span></code>.</p></li>
+<li><p><strong>A PDF at a page</strong>, <code class="docutils literal notranslate"><span class="pre">[the</span> <span class="pre">method](method.pdf#page=12)</span></code> or
+<code class="docutils literal notranslate"><span class="pre">[[method.pdf#page=12]]</span></code>, opens at that page in the web browser, which
+every system's browser does; a PDF reader opened by the system is given no
+page. Where no browser is found, the PDF opens at its start, and that is
+said.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">https://…</span></code></strong>, alone or as <code class="docutils literal notranslate"><span class="pre">[text](https://…)</span></code>, names a web page; so do
+<code class="docutils literal notranslate"><span class="pre">http://</span></code> and <code class="docutils literal notranslate"><span class="pre">ftp://</span></code>. The addresses of other tools are links too, opened
+by the application that answers to them: <code class="docutils literal notranslate"><span class="pre">zotero://</span></code> (a reference in
+Zotero), <code class="docutils literal notranslate"><span class="pre">obsidian://</span></code>, <code class="docutils literal notranslate"><span class="pre">mailto:</span></code>, <code class="docutils literal notranslate"><span class="pre">file://</span></code>.</p></li>
 <li><p><strong>A list of links</strong> names several: the samples a specimen was made from.</p></li>
 </ul>
 <p><strong>The quotes are needed</strong>: unquoted, a link reads as a list, and the file is
@@ -495,11 +523,13 @@ whose links write NAME (<a class="reference internal" href="filters.html"><span 
 Python, <code class="docutils literal notranslate"><span class="pre">sample.linked(&quot;reference&quot;)</span></code> reads the sample, a file that is no
 sample gives its path, a <code class="docutils literal notranslate"><span class="pre">pathlib.Path</span></code>, and a list of links gives a list.
 <code class="docutils literal notranslate"><span class="pre">validate</span></code> reports a link that leads to no sample or to several, and a path
-where nothing is; a web page is not checked.</p>
+where nothing is; a web page, and another tool's address, are not checked.</p>
 <p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FILE</span> <span class="pre">rename</span> <span class="pre">NEW</span></code> renames a sample and keeps its links: the file,
 its own files under <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> (a folder named after it too), its
 <code class="docutils literal notranslate"><span class="pre">name</span></code> where it was the file's name, and every link of the project leading to
-it, <code class="docutils literal notranslate"><span class="pre">[[old]]</span></code> and <code class="docutils literal notranslate"><span class="pre">[text](old.md)</span></code> alike.</p>
+it, <code class="docutils literal notranslate"><span class="pre">[[old]]</span></code> and <code class="docutils literal notranslate"><span class="pre">[text](old.md)</span></code> alike, each as it was written:
+<code class="docutils literal notranslate"><span class="pre">[[2024/OLD.md#Notes|the</span> <span class="pre">notes]]</span></code> keeps its folder, its extension, its
+heading and its text.</p>
 <p>Obsidian makes only <code class="docutils literal notranslate"><span class="pre">[[…]]</span></code> clickable among a note's properties: there, a
 Markdown link stays text. <a class="reference internal" href="../guides/link-samples.html"><span class="std std-doc">Link samples</span></a> walks
 through them on the tensile example.</p>
@@ -908,7 +938,7 @@ nothing is not made.</p></li>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

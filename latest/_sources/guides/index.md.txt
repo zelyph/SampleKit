@@ -7,7 +7,7 @@ and the [concepts](../concepts/index.md) say why SampleKit works as it
 does.
 
 **The guides' examples run in the demo.** SampleKit carries the home page's
-tensile test as a demo in five steps, each a project of its own: a guide's
+tensile test as a demo in six steps, each a project of its own: a guide's
 *last step* is the fourth, with the results, tables, figures and scripts; the
 fifth holds two projects. `samplekit` alone opens the start page, where `g`,
 then *The demo*, writes it, with a Python environment for its model, and
@@ -22,6 +22,7 @@ Python ([the Python to use](work-from-python.md#the-python-to-use)).
 | [Start a project](start-a-project.md) | a folder set up for SampleKit: its configuration, its environment, a first sample |
 | [Bring existing data in](move-existing-data.md) | measurements in a spreadsheet, CSV files or a notebook, turned into sample files |
 | [Write a model](first-model.md) | the values your Python formulas compute, and how SampleKit keeps them current |
+| [Start from templates](start-from-templates.md) | a configuration, a model, a sample and a script to download and fill in |
 
 ## Working with samples
 
@@ -31,6 +32,7 @@ Python ([the Python to use](work-from-python.md#the-python-to-use)).
 | [Find and select samples](find-and-select.md) | which samples, which values, in which order, grouped how, and the table written to a file |
 | [Link samples](link-samples.md) | a sample naming another, a file or a web page: shown, followed both ways, checked, kept when renamed |
 | [Work in the terminal interface](terminal-interface.md) | the same work from one full-screen view, by the keyboard |
+| [Choose the colours](colours.md) | the theme of the terminal interface, the colours of the command line, and files ready for common terminal themes |
 | [Work from Python](work-from-python.md) | your samples read, analysed and changed from a script or a notebook |
 | [Run a script of the model](run-a-script.md) | a task written once in the model, run on the samples selected |
 
@@ -58,10 +60,12 @@ install
 start-a-project
 move-existing-data
 first-model
+start-from-templates
 edit-samples
 find-and-select
 link-samples
 terminal-interface
+colours
 work-from-python
 run-a-script
 export-for-a-paper

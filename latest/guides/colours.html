@@ -1,0 +1,959 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Work from Python" href="work-from-python.html"><link rel="prev" title="Work in the terminal interface" href="terminal-interface.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Choose the colours - SampleKit 1.0.0-rc.3</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Guides</a><input aria-label="Toggle navigation of Guides" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-from-templates.html">Start from templates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Choose the colours</a></li>
+<li class="toctree-l2"><a class="reference internal" href="work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/filters.html">Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/fingerprints.html">Fingerprints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/glossary.html">Glossary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/guides/colours.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section class="tex2jax_ignore mathjax_ignore" id="choose-the-colours">
+<h1>Choose the colours<a class="headerlink" href="#choose-the-colours" title="Link to this heading">¶</a></h1>
+<p>This guide is for the colours of the terminal interface and of the command
+line. The terminal interface draws in a <strong>theme</strong>: SampleKit's own, dark or
+light, unless you choose another. Twelve are built in, each drawn below by
+the terminal interface itself, and you can make your own.</p>
+<section id="choose-a-theme">
+<h2>Choose a theme<a class="headerlink" href="#choose-a-theme" title="Link to this heading">¶</a></h2>
+<p>Press <code class="docutils literal notranslate"><span class="pre">T</span></code> on the collection, on a sample or on the start page: the list of
+every theme opens, those SampleKit has first, then your own. The screen takes
+the theme under the cursor at once, so that you see it before you keep it;
+<code class="docutils literal notranslate"><span class="pre">Enter</span></code> keeps it, <code class="docutils literal notranslate"><span class="pre">Esc</span></code> gives back the one there was.</p>
+<p>What <code class="docutils literal notranslate"><span class="pre">Enter</span></code> keeps is yours, not the project's: the theme for this folder,
+remembered with it as its filter and its columns are, and your last choice,
+which a project naming no theme of its own opens in. The theme in force is,
+first to last:</p>
+<ol class="arabic simple">
+<li><p>the theme you chose with <code class="docutils literal notranslate"><span class="pre">T</span></code> in this folder;</p></li>
+<li><p>the theme the project names, <code class="docutils literal notranslate"><span class="pre">theme</span> <span class="pre">=</span> <span class="pre">&quot;nord&quot;</span></code> in its <code class="docutils literal notranslate"><span class="pre">[colors]</span></code>, shared
+with whoever opens it (the list says <em>this project names nord</em>);</p></li>
+<li><p>the last theme you chose with <code class="docutils literal notranslate"><span class="pre">T</span></code> anywhere;</p></li>
+<li><p>SampleKit's own: <code class="docutils literal notranslate"><span class="pre">samplekit-dark</span></code>, or <code class="docutils literal notranslate"><span class="pre">samplekit-light</span></code> where the
+terminal says its background is light (in the variable <code class="docutils literal notranslate"><span class="pre">COLORFGBG</span></code>,
+which some terminals set). That is where the terminal draws every
+colour, as it says in <code class="docutils literal notranslate"><span class="pre">COLORTERM</span></code> (<code class="docutils literal notranslate"><span class="pre">truecolor</span></code> or <code class="docutils literal notranslate"><span class="pre">24bit</span></code>), and in
+Windows Terminal; elsewhere, the old Windows console, macOS's Terminal or
+a session over SSH for instance, the default is <code class="docutils literal notranslate"><span class="pre">terminal</span></code>, your
+terminal's own sixteen colours, which any terminal draws.</p></li>
+</ol>
+<p>Choosing in a project the theme it names keeps nothing for the folder, so
+that you see the project's theme if it changes. A theme named that this
+machine does not have, one of your own removed or one a colleague's project
+names, is said on the status line, and the next in the list is taken.</p>
+<p>The command line has no theme: it writes on the terminal's own background,
+in the terminal's sixteen colours, the project's roles over them.</p>
+</section>
+<section id="how-colors-works">
+<h2>How <code class="docutils literal notranslate"><span class="pre">[colors]</span></code> works<a class="headerlink" href="#how-colors-works" title="Link to this heading">¶</a></h2>
+<p>A project's <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> changes colours by <strong>role</strong>, in the section
+<code class="docutils literal notranslate"><span class="pre">[colors]</span></code> (the key keeps its American spelling), over whichever theme is in
+force. Each role is one kind of thing on the screen: a value not current, a
+unit, a key named at the foot. Twenty roles:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Role</p></th>
+<th class="head"><p>What it colours</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">background</span></code></p></td>
+<td><p>the terminal interface's whole screen</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">foreground</span></code></p></td>
+<td><p>its text, where nothing else colours it</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">failed</span></code></p></td>
+<td><p>a value whose formula failed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">outdated</span></code></p></td>
+<td><p>a value that is not current</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">edited</span></code></p></td>
+<td><p>a value written by hand over its formula</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">current</span></code></p></td>
+<td><p>a computed value that is current</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">selected</span></code></p></td>
+<td><p>the line or item under the cursor, the basket</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">attribute</span></code></p></td>
+<td><p>attributes, and an attribute's value</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">link</span></code></p></td>
+<td><p>a link, underlined</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">value</span></code></p></td>
+<td><p>a value and its uncertainty, drawn bold</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">unit</span></code></p></td>
+<td><p>a unit, after a number and in a header</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">table</span></code></p></td>
+<td><p>tables</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">index</span></code></p></td>
+<td><p>a table's index column</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">key</span></code></p></td>
+<td><p>keys, in the help and at the foot</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">muted</span></code></p></td>
+<td><p>secondary text</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
+<td><p>messages</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
+<td><p>errors</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">accent</span></code></p></td>
+<td><p>the name in the title bar, a computation in progress</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">waiting</span></code></p></td>
+<td><p>what waits to be written, in italics</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">line</span></code></p></td>
+<td><p>the background of the cursor's line, the cell typed in reversed on it in the typing mode</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[colors]</span>
+<span class="n">theme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"nord"</span><span class="w">        </span><span class="c1"># this project's theme, unless you chose one with T here</span>
+<span class="n">outdated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ff8800"</span><span class="w">  </span><span class="c1"># and over it, outdated values in orange</span>
+</pre></div>
+</div>
+<p>A colour is written in one of three ways:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">default</span></code>, the terminal's own text colour (or its background, for
+<code class="docutils literal notranslate"><span class="pre">background</span></code>);</p></li>
+<li><p>one of the terminal's sixteen by name, <code class="docutils literal notranslate"><span class="pre">red</span></code> or <code class="docutils literal notranslate"><span class="pre">light-blue</span></code> for
+instance (<a class="reference internal" href="../reference/configuration.html#colors"><span class="std std-ref">the configuration reference</span></a>
+lists them): the terminal's theme decides its shade;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">#rrggbb</span></code>, a colour fixed whatever the terminal's theme, which the terminal
+must be able to draw (most do).</p></li>
+</ul>
+<p>A role or a colour SampleKit does not know is refused, with the line and
+what it accepts. What waits to be written is drawn in italics as well as in
+the <code class="docutils literal notranslate"><span class="pre">waiting</span></code> colour: the italics tell it apart whatever the colour.</p>
+</section>
+<section id="your-own-themes">
+<h2>Your own themes<a class="headerlink" href="#your-own-themes" title="Link to this heading">¶</a></h2>
+<p>A theme of your own is a file in the folder <code class="docutils literal notranslate"><span class="pre">themes</span></code> of SampleKit's
+configuration folder: <code class="docutils literal notranslate"><span class="pre">~/.config/samplekit/themes/</span></code> on Linux (or under
+<code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME</span></code>), <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/samplekit/themes/</span></code> on
+macOS, <code class="docutils literal notranslate"><span class="pre">%APPDATA%\samplekit\themes\</span></code> on Windows. The variable
+<code class="docutils literal notranslate"><span class="pre">SAMPLEKIT_CONFIG_DIR</span></code> names another configuration folder. The file's name
+is the theme's: <code class="docutils literal notranslate"><span class="pre">my-nord.toml</span></code> is <code class="docutils literal notranslate"><span class="pre">my-nord</span></code>, listed by <code class="docutils literal notranslate"><span class="pre">T</span></code> after the themes
+SampleKit has.</p>
+<p>The file is a <code class="docutils literal notranslate"><span class="pre">[colors]</span></code> table, with the theme it starts from above it,
+<code class="docutils literal notranslate"><span class="pre">base</span></code>: each role the table leaves out is the base's. Without <code class="docutils literal notranslate"><span class="pre">base</span></code>, it
+starts from <code class="docutils literal notranslate"><span class="pre">samplekit-dark</span></code>; a base may be another of your own.</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">my-nord.toml</span><a class="headerlink" href="#id1" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># My theme: Nord, its accent purple and the cursor's line lighter. Saved in</span>
+<span class="c1"># SampleKit's themes folder, as themes/my-nord.toml, it is named my-nord.</span>
+<span class="n">base</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"nord"</span>
+
+<span class="k">[colors]</span>
+<span class="n">accent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b48ead"</span><span class="w">   </span><span class="c1"># nord15</span>
+<span class="n">line</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#434c5e"</span><span class="w">   </span><span class="c1"># nord2</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/91b432a92e16a349d4a66c1301f67ac7/my-nord.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">my-nord.toml</span></code></a></p>
+<p>A file that does not read, a base no theme bears, a role or a colour that is
+none, or a name SampleKit's own themes already have: the theme is left out,
+and the terminal interface says why as it opens, and at the foot of <code class="docutils literal notranslate"><span class="pre">T</span></code>'s
+list.</p>
+</section>
+<section id="the-themes-samplekit-has">
+<h2>The themes SampleKit has<a class="headerlink" href="#the-themes-samplekit-has" title="Link to this heading">¶</a></h2>
+<p>Below, each theme SampleKit has, by the name <code class="docutils literal notranslate"><span class="pre">T</span></code> lists and <code class="docutils literal notranslate"><span class="pre">theme</span> <span class="pre">=</span></code> takes,
+its file and the terminal interface drawn in it. You can also copy a file's
+<code class="docutils literal notranslate"><span class="pre">[colors]</span></code> table into a <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, or start your own from it. The
+picture is the screen of a sample of the demo, <code class="docutils literal notranslate"><span class="pre">steel-01</span></code>, its width typed
+again: what it feeds is outdated, the change waits.</p>
+<p><code class="docutils literal notranslate"><span class="pre">terminal</span></code> is the one theme without a file: the terminal's sixteen colours,
+as the command line draws them, on the terminal's own background.</p>
+</section>
+<section id="samplekit-dark">
+<h2>SampleKit dark<a class="headerlink" href="#samplekit-dark" title="Link to this heading">¶</a></h2>
+<p>SampleKit's own theme for a dark terminal, and the default. Each role has a
+colour of its own, and every colour is chosen to be read: the text and the
+values at a contrast of 7:1 at least against the background, and against the
+cursor's line, every other role at 4.5:1, by
+<a class="reference external" href="https://www.w3.org/TR/WCAG21/#contrast-enhanced">WCAG's measure</a>. A test
+computes these contrasts, so that a colour changed cannot fall below them.</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">samplekit-dark.toml</span><a class="headerlink" href="#id2" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># SampleKit dark, SampleKit's own theme for a dark terminal: T in the terminal</span>
+<span class="c1"># interface chooses it, as theme = "samplekit-dark" in a project's [colors]</span>
+<span class="c1"># does. Each colour is its role's alone, and read: the text and the values at</span>
+<span class="c1"># 7:1 at least against the background and the cursor's line, every other role</span>
+<span class="c1"># at 4.5:1, by WCAG's contrast.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#11151c"</span><span class="w">   </span><span class="c1"># a blue-black, darker than most terminals', for the colours to stand on</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d1d7e0"</span><span class="w">   </span><span class="c1"># a cool light grey: long reading, softer than white</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f87171"</span><span class="w">   </span><span class="c1"># red, the colour of what went wrong</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fb923c"</span><span class="w">   </span><span class="c1"># orange, a warning: what no longer rests on its measurements</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#c084fc"</span><span class="w">   </span><span class="c1"># purple, a hand over a formula, apart from every state of a computation</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#4ade80"</span><span class="w">   </span><span class="c1"># green, what is right as it is</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#a3e635"</span><span class="w">   </span><span class="c1"># lime, the basket and the item chosen, a green yellower than current</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#60a5fa"</span><span class="w">   </span><span class="c1"># blue, what describes a sample rather than measures it</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7dd3fc"</span><span class="w">   </span><span class="c1"># sky, lighter than an attribute, and underlined</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f5f7fa"</span><span class="w">   </span><span class="c1"># near white, bold: a number is what the screen is for</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2dd4bf"</span><span class="w">   </span><span class="c1"># teal, after the number it belongs to, no longer the accent's cyan</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#818cf8"</span><span class="w">   </span><span class="c1"># indigo, a table among values, between the blues and the purple</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f9a8d4"</span><span class="w">   </span><span class="c1"># pink, a table's index column, set apart from its values</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fde047"</span><span class="w">   </span><span class="c1"># yellow, bold: a key named reads first along the foot</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8b949e"</span><span class="w">   </span><span class="c1"># grey, what explains rather than says, still near 6:1</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#e7d7b5"</span><span class="w">   </span><span class="c1"># sand, what the TUI says, warm beside the cool text</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fb7185"</span><span class="w">   </span><span class="c1"># rose, an error said, pinker than a failed value</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#22d3ee"</span><span class="w">   </span><span class="c1"># cyan, SampleKit's own: its name, its logo, a computation under way</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f0abfc"</span><span class="w">   </span><span class="c1"># orchid, in italics: what waits to be written</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#232a36"</span><span class="w">   </span><span class="c1"># a step above the background, the cursor's line, the text on it at 10:1</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/dc1dfcb64fd8a776ad381ffea1df4d36/samplekit-dark.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">samplekit-dark.toml</span></code></a></p>
+<p><img alt="The terminal interface in SampleKit dark" src="../_images/samplekit-dark.svg" /></p>
+</section>
+<section id="samplekit-light">
+<h2>SampleKit light<a class="headerlink" href="#samplekit-light" title="Link to this heading">¶</a></h2>
+<p>SampleKit's own theme for a light terminal, the default where the terminal
+says its background is light, made to the same contrasts.</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">samplekit-light.toml</span><a class="headerlink" href="#id3" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># SampleKit light, SampleKit's own theme for a light terminal: T in the terminal</span>
+<span class="c1"># interface chooses it, as theme = "samplekit-light" in a project's [colors]</span>
+<span class="c1"># does. Each colour is its role's alone, and read: the text and the values at</span>
+<span class="c1"># 7:1 at least against the background and the cursor's line, every other role</span>
+<span class="c1"># at 4.5:1, by WCAG's contrast.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fbfbfa"</span><span class="w">   </span><span class="c1"># a warm white, short of pure white's glare</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#24292f"</span><span class="w">   </span><span class="c1"># near black: long reading, softer than black</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b91c1c"</span><span class="w">   </span><span class="c1"># red, the colour of what went wrong</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b33c0a"</span><span class="w">   </span><span class="c1"># burnt orange, a warning: what no longer rests on its measurements</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7e22ce"</span><span class="w">   </span><span class="c1"># purple, a hand over a formula, apart from every state of a computation</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#14773a"</span><span class="w">   </span><span class="c1"># green, what is right as it is</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#48730e"</span><span class="w">   </span><span class="c1"># olive, the basket and the item chosen, a green yellower than current</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#1d4ed8"</span><span class="w">   </span><span class="c1"># blue, what describes a sample rather than measures it</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#0369a1"</span><span class="w">   </span><span class="c1"># sky, apart from an attribute's blue, and underlined</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#0b0f14"</span><span class="w">   </span><span class="c1"># black, bold: a number is what the screen is for</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#0d6f68"</span><span class="w">   </span><span class="c1"># teal, after the number it belongs to, no longer the accent's cyan</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#4338ca"</span><span class="w">   </span><span class="c1"># indigo, a table among values, between the blues and the purple</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#be185d"</span><span class="w">   </span><span class="c1"># raspberry, a table's index column, set apart from its values</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#975b06"</span><span class="w">   </span><span class="c1"># ochre, bold: the light theme's yellow, dark enough to read</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#5c6570"</span><span class="w">   </span><span class="c1"># slate, what explains rather than says, still at 5.7:1</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6b5426"</span><span class="w">   </span><span class="c1"># umber, what the TUI says, warm beside the cool text</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#be123c"</span><span class="w">   </span><span class="c1"># crimson, an error said, pinker than a failed value</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#0e7490"</span><span class="w">   </span><span class="c1"># cyan, SampleKit's own: its name, its logo, a computation under way</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#a21caf"</span><span class="w">   </span><span class="c1"># magenta, in italics: what waits to be written</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#e7eaef"</span><span class="w">   </span><span class="c1"># a step below the background, the cursor's line, the text on it at 12:1</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/ae20a8b7bdb687a17acd4be592ed77f4/samplekit-light.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">samplekit-light.toml</span></code></a></p>
+<p><img alt="The terminal interface in SampleKit light" src="../_images/samplekit-light.svg" /></p>
+</section>
+<section id="catppuccin-mocha">
+<h2>Catppuccin Mocha<a class="headerlink" href="#catppuccin-mocha" title="Link to this heading">¶</a></h2>
+<p>Catppuccin's palette, <a class="reference external" href="https://catppuccin.com">catppuccin.com</a>, its dark flavour Mocha.</p>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-text">catppuccin-mocha.toml</span><a class="headerlink" href="#id4" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Catppuccin Mocha, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "catppuccin-mocha" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#1e1e2e"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#cdd6f4"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f38ba8"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f9e2af"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fab387"</span><span class="w">   </span><span class="c1"># peach</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#a6e3a1"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#94e2d5"</span><span class="w">   </span><span class="c1"># teal</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#89b4fa"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#74c7ec"</span><span class="w">   </span><span class="c1"># sapphire</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#cdd6f4"</span><span class="w">   </span><span class="c1"># text</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#89dceb"</span><span class="w">   </span><span class="c1"># sky</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#cba6f7"</span><span class="w">   </span><span class="c1"># mauve</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f5e0dc"</span><span class="w">   </span><span class="c1"># rosewater</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b4befe"</span><span class="w">   </span><span class="c1"># lavender</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6c7086"</span><span class="w">   </span><span class="c1"># overlay0</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#a6adc8"</span><span class="w">   </span><span class="c1"># subtext0</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#eba0ac"</span><span class="w">   </span><span class="c1"># maroon</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f5c2e7"</span><span class="w">   </span><span class="c1"># pink</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f2cdcd"</span><span class="w">   </span><span class="c1"># flamingo</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#313244"</span><span class="w">   </span><span class="c1"># surface0</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/ef527fe394210eb4eebf1695b0a8cbcc/catppuccin-mocha.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">catppuccin-mocha.toml</span></code></a></p>
+<p><img alt="The terminal interface in Catppuccin Mocha" src="../_images/catppuccin-mocha.svg" /></p>
+</section>
+<section id="catppuccin-latte">
+<h2>Catppuccin Latte<a class="headerlink" href="#catppuccin-latte" title="Link to this heading">¶</a></h2>
+<p>Catppuccin's palette, <a class="reference external" href="https://catppuccin.com">catppuccin.com</a>, its light flavour Latte.</p>
+<div class="literal-block-wrapper docutils container" id="id5">
+<div class="code-block-caption"><span class="caption-text">catppuccin-latte.toml</span><a class="headerlink" href="#id5" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Catppuccin Latte, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "catppuccin-latte" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#eff1f5"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#4c4f69"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d20f39"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#df8e1d"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fe640b"</span><span class="w">   </span><span class="c1"># peach</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#40a02b"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#179299"</span><span class="w">   </span><span class="c1"># teal</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#1e66f5"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#209fb5"</span><span class="w">   </span><span class="c1"># sapphire</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#4c4f69"</span><span class="w">   </span><span class="c1"># text</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#04a5e5"</span><span class="w">   </span><span class="c1"># sky</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8839ef"</span><span class="w">   </span><span class="c1"># mauve</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#dc8a78"</span><span class="w">   </span><span class="c1"># rosewater</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7287fd"</span><span class="w">   </span><span class="c1"># lavender</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#9ca0b0"</span><span class="w">   </span><span class="c1"># overlay0</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6c6f85"</span><span class="w">   </span><span class="c1"># subtext0</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#e64553"</span><span class="w">   </span><span class="c1"># maroon</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ea76cb"</span><span class="w">   </span><span class="c1"># pink</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#dd7878"</span><span class="w">   </span><span class="c1"># flamingo</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ccd0da"</span><span class="w">   </span><span class="c1"># surface0</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/af50d83080f3f40884047b57075f5e96/catppuccin-latte.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">catppuccin-latte.toml</span></code></a></p>
+<p><img alt="The terminal interface in Catppuccin Latte" src="../_images/catppuccin-latte.svg" /></p>
+</section>
+<section id="dracula">
+<h2>Dracula<a class="headerlink" href="#dracula" title="Link to this heading">¶</a></h2>
+<p>Dracula's palette, <a class="reference external" href="https://draculatheme.com">draculatheme.com</a>.</p>
+<div class="literal-block-wrapper docutils container" id="id6">
+<div class="code-block-caption"><span class="caption-text">dracula.toml</span><a class="headerlink" href="#id6" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dracula, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "dracula" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#282a36"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f8f8f2"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ff5555"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f1fa8c"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ffb86c"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#50fa7b"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8be9fd"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#bd93f9"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8be9fd"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f8f8f2"</span><span class="w">   </span><span class="c1"># foreground</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8be9fd"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ff79c6"</span><span class="w">   </span><span class="c1"># pink</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#50fa7b"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8be9fd"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6272a4"</span><span class="w">   </span><span class="c1"># comment</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f1fa8c"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ff5555"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#bd93f9"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ff79c6"</span><span class="w">   </span><span class="c1"># pink</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#44475a"</span><span class="w">   </span><span class="c1"># current line</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/5f8a1d18e8e3ccb7fb5253e91740850a/dracula.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">dracula.toml</span></code></a></p>
+<p><img alt="The terminal interface in Dracula" src="../_images/dracula.svg" /></p>
+</section>
+<section id="nord">
+<h2>Nord<a class="headerlink" href="#nord" title="Link to this heading">¶</a></h2>
+<p>Nord's palette, <a class="reference external" href="https://www.nordtheme.com">nordtheme.com</a>, <code class="docutils literal notranslate"><span class="pre">nord0</span></code> to <code class="docutils literal notranslate"><span class="pre">nord15</span></code>.</p>
+<div class="literal-block-wrapper docutils container" id="id7">
+<div class="code-block-caption"><span class="caption-text">nord.toml</span><a class="headerlink" href="#id7" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Nord, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "nord" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2e3440"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d8dee9"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#bf616a"</span><span class="w">   </span><span class="c1"># nord11</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ebcb8b"</span><span class="w">   </span><span class="c1"># nord13</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d08770"</span><span class="w">   </span><span class="c1"># nord12</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#a3be8c"</span><span class="w">   </span><span class="c1"># nord14</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8fbcbb"</span><span class="w">   </span><span class="c1"># nord7</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#81a1c1"</span><span class="w">   </span><span class="c1"># nord9</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#88c0d0"</span><span class="w">   </span><span class="c1"># nord8</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d8dee9"</span><span class="w">   </span><span class="c1"># nord4</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#88c0d0"</span><span class="w">   </span><span class="c1"># nord8</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#5e81ac"</span><span class="w">   </span><span class="c1"># nord10</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8fbcbb"</span><span class="w">   </span><span class="c1"># nord7</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#88c0d0"</span><span class="w">   </span><span class="c1"># nord8</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#4c566a"</span><span class="w">   </span><span class="c1"># nord3</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ebcb8b"</span><span class="w">   </span><span class="c1"># nord13</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#bf616a"</span><span class="w">   </span><span class="c1"># nord11</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#88c0d0"</span><span class="w">   </span><span class="c1"># nord8</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b48ead"</span><span class="w">   </span><span class="c1"># nord15</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#3b4252"</span><span class="w">   </span><span class="c1"># nord1</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/e8ca47746f032b1ced8d6cebce6b6bf7/nord.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">nord.toml</span></code></a></p>
+<p><img alt="The terminal interface in Nord" src="../_images/nord.svg" /></p>
+</section>
+<section id="tokyo-night">
+<h2>Tokyo Night<a class="headerlink" href="#tokyo-night" title="Link to this heading">¶</a></h2>
+<p>Tokyo Night's palette, <a class="reference external" href="https://github.com/folke/tokyonight.nvim">github.com/folke/tokyonight.nvim</a>, its style Night.</p>
+<div class="literal-block-wrapper docutils container" id="id8">
+<div class="code-block-caption"><span class="caption-text">tokyo-night.toml</span><a class="headerlink" href="#id8" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Tokyo Night, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "tokyo-night" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#1a1b26"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#c0caf5"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f7768e"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#e0af68"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ff9e64"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#9ece6a"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#73daca"</span><span class="w">   </span><span class="c1"># teal</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7aa2f7"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7dcfff"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#c0caf5"</span><span class="w">   </span><span class="c1"># foreground</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7dcfff"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#bb9af7"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#73daca"</span><span class="w">   </span><span class="c1"># teal</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7dcfff"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#565f89"</span><span class="w">   </span><span class="c1"># comment</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#737aa2"</span><span class="w">   </span><span class="c1"># dark5</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#f7768e"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7aa2f7"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#bb9af7"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#292e42"</span><span class="w">   </span><span class="c1"># background highlight</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/20f7b7b2f73045b5054086c1972710a5/tokyo-night.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">tokyo-night.toml</span></code></a></p>
+<p><img alt="The terminal interface in Tokyo Night" src="../_images/tokyo-night.svg" /></p>
+</section>
+<section id="gruvbox-dark">
+<h2>Gruvbox dark<a class="headerlink" href="#gruvbox-dark" title="Link to this heading">¶</a></h2>
+<p>Gruvbox's palette, <a class="reference external" href="https://github.com/morhetz/gruvbox">github.com/morhetz/gruvbox</a>, dark.</p>
+<div class="literal-block-wrapper docutils container" id="id9">
+<div class="code-block-caption"><span class="caption-text">gruvbox-dark.toml</span><a class="headerlink" href="#id9" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Gruvbox dark, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "gruvbox-dark" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#282828"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ebdbb2"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fb4934"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fabd2f"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fe8019"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b8bb26"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8ec07c"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#83a598"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#83a598"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ebdbb2"</span><span class="w">   </span><span class="c1"># fg</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8ec07c"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d3869b"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8ec07c"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8ec07c"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#928374"</span><span class="w">   </span><span class="c1"># gray</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#a89984"</span><span class="w">   </span><span class="c1"># fg4</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fb4934"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fe8019"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d3869b"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#3c3836"</span><span class="w">   </span><span class="c1"># bg1</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/532e1939ef8ce025651658cf70a8d7d8/gruvbox-dark.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">gruvbox-dark.toml</span></code></a></p>
+<p><img alt="The terminal interface in Gruvbox dark" src="../_images/gruvbox-dark.svg" /></p>
+</section>
+<section id="gruvbox-light">
+<h2>Gruvbox light<a class="headerlink" href="#gruvbox-light" title="Link to this heading">¶</a></h2>
+<p>Gruvbox's palette, <a class="reference external" href="https://github.com/morhetz/gruvbox">github.com/morhetz/gruvbox</a>, light.</p>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-text">gruvbox-light.toml</span><a class="headerlink" href="#id10" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Gruvbox light, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "gruvbox-light" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fbf1c7"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#3c3836"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#9d0006"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b57614"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#af3a03"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#79740e"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#427b58"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#076678"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#076678"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#3c3836"</span><span class="w">   </span><span class="c1"># fg</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#427b58"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8f3f71"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#427b58"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#427b58"</span><span class="w">   </span><span class="c1"># aqua</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#928374"</span><span class="w">   </span><span class="c1"># gray</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#7c6f64"</span><span class="w">   </span><span class="c1"># fg4</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#9d0006"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#af3a03"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#8f3f71"</span><span class="w">   </span><span class="c1"># purple</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#ebdbb2"</span><span class="w">   </span><span class="c1"># bg1</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/3a6b10f3878fc2ce948f5b70cdab4607/gruvbox-light.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">gruvbox-light.toml</span></code></a></p>
+<p><img alt="The terminal interface in Gruvbox light" src="../_images/gruvbox-light.svg" /></p>
+</section>
+<section id="solarized-dark">
+<h2>Solarized dark<a class="headerlink" href="#solarized-dark" title="Link to this heading">¶</a></h2>
+<p>Solarized's palette, <a class="reference external" href="https://ethanschoonover.com/solarized/">ethanschoonover.com/solarized</a>, dark.</p>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-text">solarized-dark.toml</span><a class="headerlink" href="#id11" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Solarized dark, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "solarized-dark" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#002b36"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#839496"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#dc322f"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b58900"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#cb4b16"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#859900"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2aa198"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#268bd2"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6c71c4"</span><span class="w">   </span><span class="c1"># violet</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#839496"</span><span class="w">   </span><span class="c1"># base0</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2aa198"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6c71c4"</span><span class="w">   </span><span class="c1"># violet</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2aa198"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#93a1a1"</span><span class="w">   </span><span class="c1"># base1</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#586e75"</span><span class="w">   </span><span class="c1"># base01</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#93a1a1"</span><span class="w">   </span><span class="c1"># base1</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#dc322f"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d33682"</span><span class="w">   </span><span class="c1"># magenta</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d33682"</span><span class="w">   </span><span class="c1"># magenta</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#073642"</span><span class="w">   </span><span class="c1"># base02</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/e23297e03cc7f04f0c28c5910c8057a6/solarized-dark.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">solarized-dark.toml</span></code></a></p>
+<p><img alt="The terminal interface in Solarized dark" src="../_images/solarized-dark.svg" /></p>
+</section>
+<section id="solarized-light">
+<h2>Solarized light<a class="headerlink" href="#solarized-light" title="Link to this heading">¶</a></h2>
+<p>Solarized's palette, <a class="reference external" href="https://ethanschoonover.com/solarized/">ethanschoonover.com/solarized</a>, light.</p>
+<div class="literal-block-wrapper docutils container" id="id12">
+<div class="code-block-caption"><span class="caption-text">solarized-light.toml</span><a class="headerlink" href="#id12" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Solarized light, built into SampleKit: T in the terminal interface chooses it,</span>
+<span class="c1"># as theme = "solarized-light" in a project's [colors] does; or copy this table.</span>
+<span class="k">[colors]</span>
+<span class="n">background</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#fdf6e3"</span><span class="w">   </span><span class="c1"># the screen</span>
+<span class="n">foreground</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"#657b83"</span><span class="w">   </span><span class="c1"># its text</span>
+<span class="n">failed</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#dc322f"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">outdated</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#b58900"</span><span class="w">   </span><span class="c1"># yellow</span>
+<span class="n">edited</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#cb4b16"</span><span class="w">   </span><span class="c1"># orange</span>
+<span class="n">current</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#859900"</span><span class="w">   </span><span class="c1"># green</span>
+<span class="n">selected</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2aa198"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">attribute</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"#268bd2"</span><span class="w">   </span><span class="c1"># blue</span>
+<span class="n">link</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6c71c4"</span><span class="w">   </span><span class="c1"># violet</span>
+<span class="n">value</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#657b83"</span><span class="w">   </span><span class="c1"># base00</span>
+<span class="n">unit</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2aa198"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">table</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#6c71c4"</span><span class="w">   </span><span class="c1"># violet</span>
+<span class="n">index</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#2aa198"</span><span class="w">   </span><span class="c1"># cyan</span>
+<span class="n">key</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"#586e75"</span><span class="w">   </span><span class="c1"># base01</span>
+<span class="n">muted</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#93a1a1"</span><span class="w">   </span><span class="c1"># base1</span>
+<span class="n">message</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#586e75"</span><span class="w">   </span><span class="c1"># base01</span>
+<span class="n">error</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">"#dc322f"</span><span class="w">   </span><span class="c1"># red</span>
+<span class="n">accent</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d33682"</span><span class="w">   </span><span class="c1"># magenta</span>
+<span class="n">waiting</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"#d33682"</span><span class="w">   </span><span class="c1"># magenta</span>
+<span class="n">line</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"#eee8d5"</span><span class="w">   </span><span class="c1"># base2</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/9ddf05e847248df1fca6f2e03fafe573/solarized-light.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">solarized-light.toml</span></code></a></p>
+<p><img alt="The terminal interface in Solarized light" src="../_images/solarized-light.svg" /></p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="terminal-interface.html"><span class="std std-doc">Work in the terminal interface</span></a>.</p></li>
+<li><p><a class="reference internal" href="../reference/configuration.html#colors"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">[colors]</span></code></span></a> in the configuration
+reference.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="work-from-python.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Work from Python</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="terminal-interface.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Work in the terminal interface</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Choose the colours</a><ul>
+<li><a class="reference internal" href="#choose-a-theme">Choose a theme</a></li>
+<li><a class="reference internal" href="#how-colors-works">How <code class="docutils literal notranslate"><span class="pre">[colors]</span></code> works</a></li>
+<li><a class="reference internal" href="#your-own-themes">Your own themes</a></li>
+<li><a class="reference internal" href="#the-themes-samplekit-has">The themes SampleKit has</a></li>
+<li><a class="reference internal" href="#samplekit-dark">SampleKit dark</a></li>
+<li><a class="reference internal" href="#samplekit-light">SampleKit light</a></li>
+<li><a class="reference internal" href="#catppuccin-mocha">Catppuccin Mocha</a></li>
+<li><a class="reference internal" href="#catppuccin-latte">Catppuccin Latte</a></li>
+<li><a class="reference internal" href="#dracula">Dracula</a></li>
+<li><a class="reference internal" href="#nord">Nord</a></li>
+<li><a class="reference internal" href="#tokyo-night">Tokyo Night</a></li>
+<li><a class="reference internal" href="#gruvbox-dark">Gruvbox dark</a></li>
+<li><a class="reference internal" href="#gruvbox-light">Gruvbox light</a></li>
+<li><a class="reference internal" href="#solarized-dark">Solarized dark</a></li>
+<li><a class="reference internal" href="#solarized-light">Solarized light</a></li>
+<li><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

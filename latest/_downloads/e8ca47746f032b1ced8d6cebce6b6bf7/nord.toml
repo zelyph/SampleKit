@@ -1,0 +1,23 @@
+# Nord, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "nord" in a project's [colors] does; or copy this table.
+[colors]
+background = "#2e3440"   # the screen
+foreground = "#d8dee9"   # its text
+failed     = "#bf616a"   # nord11
+outdated   = "#ebcb8b"   # nord13
+edited     = "#d08770"   # nord12
+current    = "#a3be8c"   # nord14
+selected   = "#8fbcbb"   # nord7
+attribute  = "#81a1c1"   # nord9
+link       = "#88c0d0"   # nord8
+value      = "#d8dee9"   # nord4
+unit       = "#88c0d0"   # nord8
+table      = "#5e81ac"   # nord10
+index      = "#8fbcbb"   # nord7
+key        = "#88c0d0"   # nord8
+muted      = "#4c566a"   # nord3
+message    = "#ebcb8b"   # nord13
+error      = "#bf616a"   # nord11
+accent     = "#88c0d0"   # nord8
+waiting    = "#b48ead"   # nord15
+line       = "#3b4252"   # nord1

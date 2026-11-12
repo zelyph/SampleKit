@@ -1,0 +1,690 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Edit samples" href="edit-samples.html"><link rel="prev" title="Write a model" href="first-model.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Start from templates - SampleKit 1.0.0-rc.3</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Guides</a><input aria-label="Toggle navigation of Guides" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="first-model.html">Write a model</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Start from templates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="colours.html">Choose the colours</a></li>
+<li class="toctree-l2"><a class="reference internal" href="work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/filters.html">Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/fingerprints.html">Fingerprints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/glossary.html">Glossary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/guides/start-from-templates.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section class="tex2jax_ignore mathjax_ignore" id="start-from-templates">
+<h1>Start from templates<a class="headerlink" href="#start-from-templates" title="Link to this heading">¶</a></h1>
+<p>This guide is for a project of your own started from files rather than from
+nothing: a <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, a model, a sample and a script, each ready to fill
+in, the places for your own choices marked in its comments with <code class="docutils literal notranslate"><span class="pre">←</span> <span class="pre">change</span></code>.
+Together they make a project that validates and computes as downloaded; a
+test of SampleKit builds one from them and computes it, so that they keep
+working.</p>
+<p>They are files to copy, not the demo: the demo, the home page's tensile
+test, is in the command line already (<a class="reference internal" href="index.html"><span class="std std-doc">the guides</span></a>). <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">init</span></code> sets a project up too, with a model that declares nothing yet (<a class="reference internal" href="start-a-project.html"><span class="std std-doc">start
+a project</span></a>); the templates are the same project with one
+value of each kind already declared.</p>
+<section id="the-configuration">
+<h2>The configuration<a class="headerlink" href="#the-configuration" title="Link to this heading">¶</a></h2>
+<p>A project's <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>: which files are samples and where a sample's own
+files are, the model and its Python, the digits of two values, a query, a
+profile, an export and a figure. Save it as <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, with the leading
+dot, in the project's folder. Every key is explained in <a class="reference internal" href="../reference/configuration.html"><span class="std std-doc">the configuration
+reference</span></a>.</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">samplekitrc.toml</span><a class="headerlink" href="#id1" title="Link to this code">¶</a></div>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># A project's configuration: save this file as `.samplekitrc` in the</span>
+<span class="c1"># project's folder. It works as it is, with the model, the sample and the</span>
+<span class="c1"># script of the same templates; every value marked `← change` is one of your</span>
+<span class="c1"># own choices. Every section but `schema_version` is optional, and each key is</span>
+<span class="c1"># explained in the configuration reference.</span>
+
+<span class="n">schema_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+
+
+<span class="c1"># Which files are samples, and where a sample's own files are.</span>
+<span class="k">[collection]</span>
+<span class="n">recursive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">                     </span><span class="c1"># read the folders below this one too</span>
+<span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"draft-*"</span><span class="p">]</span><span class="w">                </span><span class="c1"># ← files left out: drafts, notes</span>
+<span class="n">files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"photos"</span><span class="p">,</span><span class="w"> </span><span class="s2">"raw/{name}/*"</span><span class="p">]</span><span class="w">   </span><span class="c1"># ← a folder searched for files named</span>
+<span class="w">                                     </span><span class="c1">#   as the sample, and a pattern where</span>
+<span class="w">                                     </span><span class="c1">#   {name} is the sample's file name</span>
+
+
+<span class="c1"># The Python model, and the environment it runs in.</span>
+<span class="k">[model]</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"model/model.py"</span><span class="w">              </span><span class="c1"># ← where your model's file is</span>
+<span class="n">class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Specimen"</span><span class="w">                   </span><span class="c1"># ← its class</span>
+<span class="n">python</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".venv"</span><span class="w">                     </span><span class="c1"># ← the environment, made by samplekit init</span>
+
+
+<span class="c1"># How many digits a value is shown with: one section per property, and a</span>
+<span class="c1"># table's column quoted as "table.column".</span>
+<span class="k">[property.area]</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".2f"</span><span class="w">                    </span><span class="c1"># ← two decimals</span>
+
+<span class="k">[property.</span><span class="s2">"curve.stress"</span><span class="k">]</span>
+<span class="n">precision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".1f"</span><span class="w">                    </span><span class="c1"># ← your column, your digits</span>
+
+
+<span class="c1"># A named filter: samplekit --query large</span>
+<span class="k">[query.large]</span>
+<span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"area &gt; 100"</span><span class="w">                </span><span class="c1"># ← in the language of -f</span>
+
+
+<span class="c1"># A named table: samplekit --profile overview</span>
+<span class="k">[profile.overview]</span>
+<span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"name"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"material"</span><span class="w"> </span><span class="p">},</span><span class="w">            </span><span class="c1"># ← your attributes</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"length"</span><span class="p">,</span><span class="w"> </span><span class="n">precision</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">".2f"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"width"</span><span class="p">,</span><span class="w"> </span><span class="n">precision</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">".2f"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">field</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"area"</span><span class="p">,</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"A"</span><span class="w"> </span><span class="p">},</span><span class="w">   </span><span class="c1"># ← a column's title</span>
+<span class="p">]</span>
+<span class="n">sort</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"-area"</span><span class="p">]</span><span class="w">                     </span><span class="c1"># ← a leading - sorts from high to low</span>
+
+
+<span class="c1"># A file written again by one command: samplekit export overview --write</span>
+<span class="k">[export.overview]</span>
+<span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"overview"</span>
+<span class="n">format</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"csv"</span><span class="w">                       </span><span class="c1"># ← csv, tsv or json</span>
+<span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"out/overview.csv"</span><span class="w">          </span><span class="c1"># ← where it is written</span>
+
+
+<span class="c1"># A figure: samplekit plot curves</span>
+<span class="k">[figure.curves]</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"line"</span><span class="w">                        </span><span class="c1"># ← scatter, line, step, bar or box</span>
+<span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"curve.strain"</span>
+<span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"curve.stress"</span>
+<span class="n">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"material"</span><span class="w">                   </span><span class="c1"># ← one series per value of this field</span>
+
+
+<span class="c1"># The colours of the terminal interface and the command line, by role: the</span>
+<span class="c1"># guide "Choose the colours" has a [colors] table for each of nine themes, to</span>
+<span class="c1"># copy here.</span>
+<span class="c1"># [colors]</span>
+<span class="c1"># outdated = "#ff8800"</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/172700b49eb1b6636166f90e1be72060/samplekitrc.toml"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">samplekitrc.toml</span></code></a></p>
+</section>
+<section id="the-model">
+<h2>The model<a class="headerlink" href="#the-model" title="Link to this heading">¶</a></h2>
+<p>The class that says what a sample holds: two values measured several times,
+their mean and standard error as value and uncertainty; an area computed
+from them; a table <code class="docutils literal notranslate"><span class="pre">curve</span></code> whose index is <code class="docutils literal notranslate"><span class="pre">strain</span></code>, a column measured and a
+column computed in each row; and a script with an option. Save it where
+<code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">path</span></code> names it, <code class="docutils literal notranslate"><span class="pre">model/model.py</span></code>. <a class="reference internal" href="first-model.html"><span class="std std-doc">Write a model</span></a>
+explains each kind.</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">model.py</span><a class="headerlink" href="#id2" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">"""A model: what a sample of this project holds, and what is computed from what.</span>
+
+<span class="sd">Save it where `.samplekitrc` names it, `[model] path`, and name its class</span>
+<span class="sd">there, `[model] class`. Every name marked `← change` is one of your own:</span>
+<span class="sd">a property, a unit, a formula. The sample template is a sample of this model.</span>
+<span class="sd">"""</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Specimen</span><span class="p">(</span><span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">):</span>  <span class="c1"># ← your class, as [model] class names it</span>
+<span class="w">    </span><span class="sd">"""A specimen: what it holds, and in which units."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="c1"># Measured several times: the value is the mean of the readings, and</span>
+        <span class="c1"># the uncertainty their standard error.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span>  <span class="c1"># ← your measured value</span>
+            <span class="n">unit</span><span class="o">=</span><span class="s2">"mm"</span><span class="p">,</span>  <span class="c1"># ← its unit</span>
+            <span class="n">value</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
+            <span class="n">uncertainty</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">standard_error</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span>
+            <span class="n">unit</span><span class="o">=</span><span class="s2">"mm"</span><span class="p">,</span>
+            <span class="n">value</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
+            <span class="n">uncertainty</span><span class="o">=</span><span class="n">sk</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">standard_error</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Computed from others: it says what it reads, so that a reading</span>
+        <span class="c1"># changed makes it outdated.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span>  <span class="c1"># ← your computed value</span>
+            <span class="n">unit</span><span class="o">=</span><span class="s2">"mm²"</span><span class="p">,</span>
+            <span class="n">compute</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_area</span><span class="p">,</span>
+            <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="s2">"length"</span><span class="p">,</span> <span class="s2">"width"</span><span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="c1"># A table: its index, a column measured, and a column computed in</span>
+        <span class="c1"># each row from that row's force and the area.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curve</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Table</span><span class="p">(</span>  <span class="c1"># ← your table</span>
+            <span class="p">{</span>
+                <span class="s2">"strain"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"%"</span><span class="p">),</span>  <span class="c1"># ← its index</span>
+                <span class="s2">"force"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">"N"</span><span class="p">),</span>  <span class="c1"># ← a column measured</span>
+                <span class="s2">"stress"</span><span class="p">:</span> <span class="n">sk</span><span class="o">.</span><span class="n">Property</span><span class="p">(</span>  <span class="c1"># ← a column computed</span>
+                    <span class="n">unit</span><span class="o">=</span><span class="s2">"MPa"</span><span class="p">,</span>
+                    <span class="n">compute</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_stress</span><span class="p">,</span>
+                    <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="s2">"row.force"</span><span class="p">,</span> <span class="s2">"area"</span><span class="p">],</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+            <span class="n">index</span><span class="o">=</span><span class="s2">"strain"</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_area</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""The length times the width, and its uncertainty from theirs."""</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">length</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">width</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">uncertainty</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">width</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">length</span><span class="o">.</span><span class="n">uncertainty</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="o">+</span> <span class="p">(</span><span class="n">length</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">width</span><span class="o">.</span><span class="n">uncertainty</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""The force over the area: N over mm² is MPa."""</span>
+        <span class="k">return</span> <span class="n">row</span><span class="o">.</span><span class="n">force</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="nd">@sk</span><span class="o">.</span><span class="n">script</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">classify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">):</span>  <span class="c1"># ← its options, with defaults</span>
+<span class="w">        </span><span class="sd">"""Class the specimen by its area: large from the limit up."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="s2">"large"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="n">limit</span> <span class="k">else</span> <span class="s2">"small"</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/c72effd2dd855ba86458257db4a4752d/model.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">model.py</span></code></a></p>
+</section>
+<section id="a-sample">
+<h2>A sample<a class="headerlink" href="#a-sample" title="Link to this heading">¶</a></h2>
+<p>One sample of that model: two attributes, the readings of the two values
+with their units, the table's rows, and a note below the second <code class="docutils literal notranslate"><span class="pre">---</span></code>. The
+area and the column <code class="docutils literal notranslate"><span class="pre">stress</span></code> are not written in it: <code class="docutils literal notranslate"><span class="pre">compute</span></code> writes them.
+Save it in <code class="docutils literal notranslate"><span class="pre">samples/</span></code> as <code class="docutils literal notranslate"><span class="pre">specimen-01.md</span></code>, the name it holds.</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">sample.md</span><a class="headerlink" href="#id3" title="Link to this code">¶</a></div>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>---
+schema_version: 1
+name: specimen-01
+material: steel
+tested: 2026-11-11
+properties:
+  length: {readings: [20.02, 20.05, 19.98], unit: mm}
+  width: {readings: [10.01, 9.98, 10.03], unit: mm}
+tables:
+  curve:
+    index: strain
+    columns:
+      strain: {unit: "%"}
+      force: {unit: N}
+    rows:
+<span class="w">      </span><span class="k">-</span><span class="w"> </span>strain: 0
+        force: 0
+<span class="w">      </span><span class="k">-</span><span class="w"> </span>strain: 0.1
+        force: 4180
+<span class="w">      </span><span class="k">-</span><span class="w"> </span>strain: 0.5
+        force: 7210
+<span class="w">      </span><span class="k">-</span><span class="w"> </span>strain: 2
+        force: 9050
+<span class="w">      </span><span class="k">-</span><span class="w"> </span>strain: 10
+<span class="gu">        force: 9840</span>
+<span class="gu">---</span>
+A sample of the model template: save it in <span class="sb">`samples/`</span>, named as its <span class="sb">`name`</span>,
+<span class="sb">`specimen-01.md`</span>. Its attributes and readings are yours to change; the area
+and the table's stress are computed by <span class="sb">`samplekit compute --write`</span>, which
+writes them here. This note, below the second <span class="sb">`---`</span>, is yours: SampleKit
+never changes it.
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/9acbc79983a261736dc5c1b2f60e6154/sample.md"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">sample.md</span></code></a></p>
+</section>
+<section id="a-script">
+<h2>A script<a class="headerlink" href="#a-script" title="Link to this heading">¶</a></h2>
+<p>A Python script of your own, beside the model's: it reads the samples, calls
+the model's script <code class="docutils literal notranslate"><span class="pre">classify</span></code> on each, and prints what it gives. Its
+options, <code class="docutils literal notranslate"><span class="pre">--limit</span></code> and <code class="docutils literal notranslate"><span class="pre">--save</span></code>, are its own. Save it in <code class="docutils literal notranslate"><span class="pre">scripts/</span></code> and run
+it from the project's folder with the project's Python, <code class="docutils literal notranslate"><span class="pre">.venv/bin/python</span> <span class="pre">scripts/script.py</span> <span class="pre">--limit</span> <span class="pre">150</span></code> (<a class="reference internal" href="work-from-python.html"><span class="std std-doc">work from Python</span></a>).</p>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-text">script.py</span><a class="headerlink" href="#id4" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">"""A script of your own: the samples read, the model's script called, what it</span>
+<span class="sd">gives printed.</span>
+
+<span class="sd">Save it in the project's `scripts/` folder and run it from the project's</span>
+<span class="sd">folder with the project's Python:</span>
+
+<span class="sd">    .venv/bin/python scripts/script.py --limit 150</span>
+
+<span class="sd">Every line marked `← change` is one of your own choices.</span>
+<span class="sd">"""</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
+
+<span class="n">options</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="vm">__doc__</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--limit"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># ← your options</span>
+<span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--save"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"write what changed"</span><span class="p">)</span>
+<span class="n">given</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+<span class="n">specimens</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">)</span><span class="o">.</span><span class="n">sorted</span><span class="p">(</span><span class="s2">"-area"</span><span class="p">)</span>  <span class="c1"># ← which samples, in which order</span>
+<span class="k">for</span> <span class="n">specimen</span> <span class="ow">in</span> <span class="n">specimens</span><span class="p">:</span>
+    <span class="c1"># The model's script, called as a method: its option is a keyword.</span>
+    <span class="n">specimen</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="n">given</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">specimen</span><span class="o">.</span><span class="n">name</span><span class="si">:</span><span class="s2">14</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">specimen</span><span class="o">.</span><span class="n">area</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">specimen</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>  <span class="c1"># ← what it prints</span>
+    <span class="k">if</span> <span class="n">given</span><span class="o">.</span><span class="n">save</span><span class="p">:</span>
+        <span class="n">specimen</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p><a class="reference download internal" download="" href="../_downloads/5313ac2c16b052fb795d335c51eb756f/script.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">script.py</span></code></a></p>
+</section>
+<section id="put-them-together">
+<h2>Put them together<a class="headerlink" href="#put-them-together" title="Link to this heading">¶</a></h2>
+<p>In a new folder, each file where the configuration expects it:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>.samplekitrc            samplekitrc.toml, renamed
+model/model.py          model.py
+samples/specimen-01.md  sample.md
+scripts/script.py       script.py
+</pre></div>
+</div>
+<p>Then, in that folder:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">init</span></code> offers what is missing, the Python environment <code class="docutils literal notranslate"><span class="pre">.venv/</span></code>
+with SampleKit's package in it, and writes it once you answer <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">validate</span></code> checks every file. It notes that <code class="docutils literal notranslate"><span class="pre">photos</span></code> and <code class="docutils literal notranslate"><span class="pre">raw</span></code>,
+the folders <code class="docutils literal notranslate"><span class="pre">[collection]</span> <span class="pre">files</span></code> names, do not exist yet: make them, or
+change that line to your own folders.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">compute</span> <span class="pre">--write</span></code> computes the area and the column <code class="docutils literal notranslate"><span class="pre">stress</span></code>,
+and writes them in the sample.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">run</span> <span class="pre">classify</span> <span class="pre">--set</span> <span class="pre">limit=150</span></code> runs the model's script on each
+sample, shows what it changes and asks before writing it (<a class="reference internal" href="run-a-script.html"><span class="std std-doc">run a script
+of the model</span></a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">samplekit</span></code> opens the project in the <a class="reference internal" href="terminal-interface.html"><span class="std std-doc">terminal
+interface</span></a>; <code class="docutils literal notranslate"><span class="pre">p</span></code> runs the same script there.</p></li>
+</ol>
+<p>Then change what is marked <code class="docutils literal notranslate"><span class="pre">←</span> <span class="pre">change</span></code>: your values and their units in the
+model, the same names in the sample and in the configuration's profile,
+query and figure. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">validate</span></code> says, with its line, a name that
+refers to nothing.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="colours.html"><span class="std std-doc">Choose the colours</span></a>: a <code class="docutils literal notranslate"><span class="pre">[colors]</span></code> table for your terminal's
+theme, to add to the configuration.</p></li>
+<li><p><a class="reference internal" href="move-existing-data.html"><span class="std std-doc">Bring existing data in</span></a>: samples made from a
+spreadsheet or CSV files rather than written by hand.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="edit-samples.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Edit samples</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="first-model.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Write a model</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Start from templates</a><ul>
+<li><a class="reference internal" href="#the-configuration">The configuration</a></li>
+<li><a class="reference internal" href="#the-model">The model</a></li>
+<li><a class="reference internal" href="#a-sample">A sample</a></li>
+<li><a class="reference internal" href="#a-script">A script</a></li>
+<li><a class="reference internal" href="#put-them-together">Put them together</a></li>
+<li><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

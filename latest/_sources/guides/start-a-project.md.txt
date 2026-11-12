@@ -20,7 +20,7 @@ init · tensile-tests
   .samplekitrc               the project: its model and its collection, and in comments what else it may say
   model/main.py              the model, empty: it runs, and says in comments how to declare each kind
   samples/                   where the samples go, empty: N in the TUI, or samplekit new, makes one
-  .venv/                     the environment the model runs in, with samplekit 1.0.0rc2 installed
+  .venv/                     the environment the model runs in, with samplekit 1.0.0rc3 installed
 
   completion, by hand        add to ~/.zshrc:  source <(samplekit completions zsh)
 
@@ -96,6 +96,8 @@ comment, to read and copy from. It prints the commands to try, in order.
 
 ## Next
 
+- [Start from templates](start-from-templates.md): a configuration, a
+  model, a sample and a script, to download and fill in.
 - [Bring existing data in](move-existing-data.md), from a spreadsheet or CSV
   files.
 - [Write a model](first-model.md): the values your formulas compute.

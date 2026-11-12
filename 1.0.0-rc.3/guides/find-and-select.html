@@ -1,0 +1,711 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Link samples" href="link-samples.html"><link rel="prev" title="Edit samples" href="edit-samples.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Find and select samples - SampleKit 1.0.0-rc.3</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Guides</a><input aria-label="Toggle navigation of Guides" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-from-templates.html">Start from templates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="colours.html">Choose the colours</a></li>
+<li class="toctree-l2"><a class="reference internal" href="work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../reference/cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/filters.html">Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/written-files.html">Written files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/fingerprints.html">Fingerprints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/glossary.html">Glossary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/guides/find-and-select.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section class="tex2jax_ignore mathjax_ignore" id="find-and-select-samples">
+<h1>Find and select samples<a class="headerlink" href="#find-and-select-samples" title="Link to this heading">¶</a></h1>
+<p>This guide is for answering a question from your samples: which ones, which
+values, in which order, grouped how, and the answer written to a file. Every
+command on this page only reads, but for a file written with <code class="docutils literal notranslate"><span class="pre">--write</span></code>.</p>
+<p>The commands run on the <a class="reference internal" href="../index.html"><span class="std std-doc">home page's</span></a> tensile example, in its
+last step.</p>
+<section id="which-samples-a-command-reads">
+<h2>Which samples a command reads<a class="headerlink" href="#which-samples-a-command-reads" title="Link to this heading">¶</a></h2>
+<p>A command reads the folder or the files you name, <code class="docutils literal notranslate"><span class="pre">samples/</span></code> or
+<code class="docutils literal notranslate"><span class="pre">samples/steel-01.md</span></code>; naming nothing, the folder you are in. In a project,
+a folder is read with the folders below it (<a class="reference internal" href="../concepts/projects.html#which-folders-a-command-reads"><span class="std std-ref">which folders a command
+reads</span></a>). Given
+nothing else, a command lists the samples' files:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span>.
+samples/aluminium-01.md
+samples/copper-01.md
+samples/steel-01.md
+</pre></div>
+</div>
+</section>
+<section id="columns">
+<h2>Columns<a class="headerlink" href="#columns" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">-c</span></code> names the columns, by the names the files use. A column may also be one
+part of a value, or one cell of a table:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Column</p></th>
+<th class="head"><p>Is</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">width</span></code></p></td>
+<td><p>the value, with its uncertainty and its unit</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">width.u</span></code></p></td>
+<td><p>its uncertainty alone</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">thickness.readings</span></code></p></td>
+<td><p>its readings</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">'curve.stress[10]'</span></code></p></td>
+<td><p>the stress in the row whose index, the strain, is 10</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">filename</span></code>, <code class="docutils literal notranslate"><span class="pre">project</span></code>, <code class="docutils literal notranslate"><span class="pre">tags</span></code>, <code class="docutils literal notranslate"><span class="pre">state</span></code></p></td>
+<td><p>what every sample has</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-c</span><span class="w"> </span>width.u,thickness.readings,<span class="s">'curve.stress[10]'</span>
+<span class=" -SampleKit -SampleKit-Identity">name</span><span class="w">           </span><span class=" -SampleKit -SampleKit-Header">width.u</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Unit">[mm]</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Header">thickness.readings</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Unit">[mm]</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Header">curve.stress[10]</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Unit">[MPa]</span>
+──────────────────────────────────────────────────────────────────────────────
+<span class=" -SampleKit -SampleKit-Identity">aluminium-01</span><span class="w">     </span><span class=" -SampleKit -SampleKit-Value">0.00375648</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Value">1.993,</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Value">1.98,</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Value">2.007</span><span class="w">                         </span><span class=" -SampleKit -SampleKit-Value">318.1</span>
+<span class=" -SampleKit -SampleKit-Identity">copper-01</span><span class="w">        </span><span class=" -SampleKit -SampleKit-Value">0.00328296</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Value">1.995,</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Value">1.988,</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Value">2.007</span><span class="w">                        </span><span class=" -SampleKit -SampleKit-Value">179.9</span>
+<span class=" -SampleKit -SampleKit-Identity">steel-01</span><span class="w">         </span><span class=" -SampleKit -SampleKit-Value">0.0100885</span><span class="w">    </span><span class=" -SampleKit -SampleKit-Value">1.995,</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Value">2.004,</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Value">2.008</span><span class="w">                        </span><span class=" -SampleKit -SampleKit-Value">504.3</span>
+
+3 of 3 samples
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">list</span> <span class="pre">fields</span></code> lists every name the samples use, properties,
+attributes and tables apart, with an example of a cell's address.</p>
+</section>
+<section id="filters">
+<h2>Filters<a class="headerlink" href="#filters" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">-f</span></code> keeps the samples a condition selects. It compares a field with <code class="docutils literal notranslate"><span class="pre">==</span></code>,
+<code class="docutils literal notranslate"><span class="pre">!=</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>; combines with <code class="docutils literal notranslate"><span class="pre">&amp;&amp;</span></code> (and), <code class="docutils literal notranslate"><span class="pre">||</span></code> (or) and <code class="docutils literal notranslate"><span class="pre">!</span></code>
+(not); and knows a few words: <code class="docutils literal notranslate"><span class="pre">has</span></code> for a tag, <code class="docutils literal notranslate"><span class="pre">in</span> <span class="pre">(a,</span> <span class="pre">b)</span></code> for a list,
+<code class="docutils literal notranslate"><span class="pre">is</span> <span class="pre">missing</span></code> for a value nobody entered, <code class="docutils literal notranslate"><span class="pre">links</span> <span class="pre">to</span> <span class="pre">steel-01</span></code> for the samples
+linking to one (<a class="reference internal" href="link-samples.html"><span class="std std-doc">link samples</span></a>). Quote the whole condition, so that
+the shell leaves it alone (<a class="reference internal" href="../reference/filters.html"><span class="std std-doc">every form</span></a>).</p>
+<p>A table is searched with <code class="docutils literal notranslate"><span class="pre">where</span></code>: the samples one of whose rows holds what the
+condition says. Here, the specimens that stretched past 30 %:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-f</span><span class="w"> </span><span class="s">'curve where (strain &gt; 30)'</span><span class="w"> </span><span class="na">-c</span><span class="w"> </span>material
+<span class=" -SampleKit -SampleKit-Identity">name</span><span class="w">        </span><span class=" -SampleKit -SampleKit-Header">material</span>
+────────────────────
+<span class=" -SampleKit -SampleKit-Identity">copper-01</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Attribute">copper</span>
+
+1 of 3 samples
+</pre></div>
+</div>
+<p>Several <code class="docutils literal notranslate"><span class="pre">-f</span></code> all hold. A filter used often is saved in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> as a
+query, <code class="docutils literal notranslate"><span class="pre">[query.ductile]</span></code> with <code class="docutils literal notranslate"><span class="pre">filter</span> <span class="pre">=</span> <span class="pre">&quot;elongation</span> <span class="pre">&gt;</span> <span class="pre">20&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">--query</span> <span class="pre">ductile</span></code> selects with it (<a class="reference internal" href="../index.html#profiles-and-summaries"><span class="std std-ref">the home page</span></a>).</p>
+</section>
+<section id="order-and-groups">
+<h2>Order and groups<a class="headerlink" href="#order-and-groups" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">-s</span></code> sorts by a field, a <code class="docutils literal notranslate"><span class="pre">-</span></code> before it for the highest first; several,
+comma-separated, sort by the first, then the next. <code class="docutils literal notranslate"><span class="pre">-r</span></code> reverses the order.
+<code class="docutils literal notranslate"><span class="pre">--group</span></code> gives a table per value of a field:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-c</span><span class="w"> </span>elongation<span class="w"> </span><span class="na">-s</span><span class="w"> </span><span class="na">-elongation</span><span class="w"> </span><span class="na">-f</span><span class="w"> </span><span class="s">'elongation &gt; 20'</span>
+<span class=" -SampleKit -SampleKit-Identity">name</span><span class="w">        </span><span class=" -SampleKit -SampleKit-Header">elongation</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Unit">[%]</span>
+──────────────────────────
+<span class=" -SampleKit -SampleKit-Identity">copper-01</span><span class="w">             </span><span class=" -SampleKit -SampleKit-Value">44.0</span>
+<span class=" -SampleKit -SampleKit-Identity">steel-01</span><span class="w">              </span><span class=" -SampleKit -SampleKit-Value">24.0</span>
+
+2 of 3 samples
+<span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-c</span><span class="w"> </span>material,elongation<span class="w"> </span><span class="na">--group</span><span class="w"> </span>material
+material = aluminium
+<span class=" -SampleKit -SampleKit-Identity">name</span><span class="w">           </span><span class=" -SampleKit -SampleKit-Header">material</span><span class="w">    </span><span class=" -SampleKit -SampleKit-Header">elongation</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Unit">[%]</span>
+─────────────────────────────────────────
+<span class=" -SampleKit -SampleKit-Identity">aluminium-01</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Attribute">aluminium</span><span class="w">             </span><span class=" -SampleKit -SampleKit-Value">12.0</span>
+
+material = copper
+<span class=" -SampleKit -SampleKit-Identity">name</span><span class="w">        </span><span class=" -SampleKit -SampleKit-Header">material</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Header">elongation</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Unit">[%]</span>
+─────────────────────────────────────
+<span class=" -SampleKit -SampleKit-Identity">copper-01</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Attribute">copper</span><span class="w">               </span><span class=" -SampleKit -SampleKit-Value">44.0</span>
+
+material = steel
+<span class=" -SampleKit -SampleKit-Identity">name</span><span class="w">       </span><span class=" -SampleKit -SampleKit-Header">material</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Header">elongation</span><span class="w"> </span><span class=" -SampleKit -SampleKit-Unit">[%]</span>
+────────────────────────────────────
+<span class=" -SampleKit -SampleKit-Identity">steel-01</span><span class="w">   </span><span class=" -SampleKit -SampleKit-Attribute">steel</span><span class="w">                </span><span class=" -SampleKit -SampleKit-Value">24.0</span>
+
+3 of 3 samples
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--summary</span></code> gives each column's statistics instead of its rows, and
+<code class="docutils literal notranslate"><span class="pre">--group</span></code> with it, the statistics of each group.</p>
+</section>
+<section id="write-the-table-to-a-file">
+<h2>Write the table to a file<a class="headerlink" href="#write-the-table-to-a-file" title="Link to this heading">¶</a></h2>
+<p>Every table on this page can go to a file. <code class="docutils literal notranslate"><span class="pre">--csv</span></code>, <code class="docutils literal notranslate"><span class="pre">--tsv</span></code> and <code class="docutils literal notranslate"><span class="pre">--json</span></code>
+print it as data for another program: a value and its uncertainty in two
+columns, each headed with its unit, and a column empty in every sample left
+out, with a note saying so:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-c</span><span class="w"> </span>name,material,tensile_strength=Rm<span class="w"> </span><span class="na">-s</span><span class="w"> </span><span class="na">-tensile_strength</span><span class="w"> </span><span class="na">--csv</span>
+<span class=" -SampleKit -SampleKit-Muted">note: Rm_uncertainty is left out: it is empty for every sample</span>
+name,material,Rm_value [MPa]
+steel-01,steel,518
+aluminium-01,aluminium,318
+copper-01,copper,221
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">-o</span></code> names the file, and its extension says what it holds: <code class="docutils literal notranslate"><span class="pre">.csv</span></code>, <code class="docutils literal notranslate"><span class="pre">.tsv</span></code> or
+<code class="docutils literal notranslate"><span class="pre">.json</span></code> a data file, <code class="docutils literal notranslate"><span class="pre">.tex</span></code>, <code class="docutils literal notranslate"><span class="pre">.md</span></code> or <code class="docutils literal notranslate"><span class="pre">.html</span></code> a table for a document, in that
+style. It is previewed, and <code class="docutils literal notranslate"><span class="pre">--write</span></code> writes it:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-c</span><span class="w"> </span>name,tensile_strength=Rm<span class="w"> </span><span class="na">-s</span><span class="w"> </span><span class="na">-tensile_strength</span><span class="w"> </span><span class="na">-o</span><span class="w"> </span>strongest.md<span class="w"> </span><span class="na">--write</span>
+<span class=" -SampleKit -SampleKit-Current">written:</span> strongest.md
+</pre></div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">strongest.md</span><a class="headerlink" href="#id1" title="Link to this code">¶</a></div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>| name | Rm (MPa) |
+| --- | --- |
+| steel-01 | 518 |
+| aluminium-01 | 318 |
+| copper-01 | 221 |
+</pre></div>
+</div>
+</div>
+<p>A file is written at the precision a table shows, and <code class="docutils literal notranslate"><span class="pre">--precision</span> <span class="pre">.17g</span></code>
+writes every digit; a value not current is written all the same, said, and
+the command exits with code 2, unless <code class="docutils literal notranslate"><span class="pre">--accept</span></code> names its state. A table
+written again at each draft is better declared once, as an export: <code class="docutils literal notranslate"><span class="pre">--save</span> <span class="pre">export=NAME</span></code>, below, declares one from what the table shows, and <a class="reference internal" href="export-for-a-paper.html"><span class="std std-doc">tables and
+figures for a paper</span></a> goes further, labels, styles and
+the history of each file written.</p>
+<section id="a-sample-s-own-table">
+<h3>A sample's own table<a class="headerlink" href="#a-sample-s-own-table" title="Link to this heading">¶</a></h3>
+<p>A sample's own table, its curve, is written the same way, a row of the curve
+a row of the file. <code class="docutils literal notranslate"><span class="pre">view</span></code> followed by the table's name shows that table
+alone, and takes <code class="docutils literal notranslate"><span class="pre">--csv</span></code>, <code class="docutils literal notranslate"><span class="pre">--tsv</span></code>, <code class="docutils literal notranslate"><span class="pre">--json</span></code> and <code class="docutils literal notranslate"><span class="pre">-o</span></code>:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span>samples/steel-01.md<span class="w"> </span><span class="k">view</span><span class="w"> </span>curve<span class="w"> </span><span class="na">-o</span><span class="w"> </span>curve.csv<span class="w"> </span><span class="na">--write</span>
+<span class=" -SampleKit -SampleKit-Muted">note: strain_uncertainty is left out: it is empty in every row</span>
+<span class=" -SampleKit -SampleKit-Muted">note: force_uncertainty is left out: it is empty in every row</span>
+<span class=" -SampleKit -SampleKit-Muted">note: stress_uncertainty is left out: it is empty in every row</span>
+<span class=" -SampleKit -SampleKit-Current">written:</span> curve.csv
+</pre></div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">curve.csv (its first rows)</span><a class="headerlink" href="#id2" title="Link to this code">¶</a></div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>strain_value [%],force_value [kN],stress_value [MPa]
+0,0.0,0.0
+0.025,1.281,51.1
+0.05,2.585,103.2
+</pre></div>
+</div>
+</div>
+<p>Its columns are written as a table of samples writes a property, at the
+precision declared for each, every digit stored where none is. Over several
+samples, <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">samples</span> <span class="pre">view</span> <span class="pre">curve</span> <span class="pre">--csv</span></code>, a column <code class="docutils literal notranslate"><span class="pre">name</span></code> comes first
+and each sample's rows follow one another. From Python,
+<code class="docutils literal notranslate"><span class="pre">steel.curve.to_csv()</span></code> gives the same text.</p>
+</section>
+</section>
+<section id="saved-shapes">
+<h2>Saved shapes<a class="headerlink" href="#saved-shapes" title="Link to this heading">¶</a></h2>
+<p>A profile saves columns, labels, an order and groups; a query saves a filter;
+both are declared in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, and listed:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="k">list</span><span class="w"> </span>queries
+ductile   elongation &gt; 20
+<span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="k">list</span><span class="w"> </span>profiles
+overview   name, material, young_modulus, yield_strength, tensile_strength, elongation
+data       name, young_modulus, yield_strength
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--save</span></code> declares what a table shows, under a name: <code class="docutils literal notranslate"><span class="pre">query=NAME</span></code> its filter,
+<code class="docutils literal notranslate"><span class="pre">profile=NAME</span></code> its columns, order and groups, <code class="docutils literal notranslate"><span class="pre">export=NAME</span></code> both and an export
+to <code class="docutils literal notranslate"><span class="pre">out/NAME.csv</span></code>. It shows the lines it adds to <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, and asks:</p>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-c</span><span class="w"> </span>name,tensile_strength=Rm<span class="w"> </span><span class="na">-s</span><span class="w"> </span><span class="na">-tensile_strength</span><span class="w"> </span><span class="na">--save</span><span class="w"> </span>profile=strongest
+save in .samplekitrc
+  +  45  [profile.strongest]
+  +  46  columns = [{ field = "name" }, { field = "tensile_strength", label = "Rm", header = "Rm" }]
+  +  47  sort = ["-tensile_strength"]
+  +  48
+
+apply these changes? [y/N] n
+<span class=" -SampleKit -SampleKit-Muted">nothing written</span>
+</pre></div>
+</div>
+</section>
+<section id="in-the-terminal-interface">
+<h2>In the terminal interface<a class="headerlink" href="#in-the-terminal-interface" title="Link to this heading">¶</a></h2>
+<p>On the list of samples, each question is a key, and the table changes as you
+type (<a class="reference internal" href="terminal-interface.html"><span class="std std-doc">work in the terminal interface</span></a>):</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Does what the command line does with</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-f</span></code>: the same language, <code class="docutils literal notranslate"><span class="pre">Tab</span></code> completing fields, operators and values</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-s</span></code>: choose the columns to sort by; <code class="docutils literal notranslate"><span class="pre">r</span></code> on one sorts it highest first</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">c</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-c</span></code>: tick the columns to show</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">g</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--group</span></code>: a heading above each group</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">f</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--query</span></code>, <code class="docutils literal notranslate"><span class="pre">--profile</span></code>: apply a saved one</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">S</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--summary</span></code>: the columns' statistics, or the samples again</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">W</span></code></p></td>
+<td><p>save what is shown in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, as a query, a profile or an export</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="from-python">
+<h2>From Python<a class="headerlink" href="#from-python" title="Link to this heading">¶</a></h2>
+<p>The same questions from Python: <code class="docutils literal notranslate"><span class="pre">filter</span></code>, <code class="docutils literal notranslate"><span class="pre">query</span></code> and <code class="docutils literal notranslate"><span class="pre">sorted</span></code> take what
+<code class="docutils literal notranslate"><span class="pre">-f</span></code>, <code class="docutils literal notranslate"><span class="pre">--query</span></code> and <code class="docutils literal notranslate"><span class="pre">-s</span></code> take, and give a new list; <code class="docutils literal notranslate"><span class="pre">stats</span></code> gives what
+<code class="docutils literal notranslate"><span class="pre">--summary</span></code> gives (<a class="reference internal" href="work-from-python.html"><span class="std std-doc">work from Python</span></a>):</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">scripts/selecting.py</span><a class="headerlink" href="#id3" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">"""The questions of the guide to selecting samples, from Python."""</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
+
+<span class="n">specimens</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">specimen</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">specimen</span> <span class="ow">in</span> <span class="n">specimens</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">"curve where (strain &gt; 30)"</span><span class="p">)])</span>
+<span class="k">for</span> <span class="n">specimen</span> <span class="ow">in</span> <span class="n">specimens</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"ductile"</span><span class="p">)</span><span class="o">.</span><span class="n">sorted</span><span class="p">(</span><span class="s2">"-elongation"</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">specimen</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">specimen</span><span class="o">.</span><span class="n">elongation</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">specimens</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="s2">"elongation"</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<!-- run: tensile/04-results -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">python</span><span class="w"> </span>scripts/selecting.py
+['copper-01']
+copper-01 44.0 %
+steel-01 24.0 %
+26.666666666666668
+</pre></div>
+</div>
+</section>
+<section id="a-mistake-is-said-never-guessed">
+<h2>A mistake is said, never guessed<a class="headerlink" href="#a-mistake-is-said-never-guessed" title="Link to this heading">¶</a></h2>
+<p>SampleKit refuses what it would have to guess, and says why:</p>
+<ul class="simple">
+<li><p><strong>A name misspelt</strong> is refused naming the nearest one; in a terminal, it
+asks whether to use it, <code class="docutils literal notranslate"><span class="pre">use</span> <span class="pre">'tensile_strength'?</span> <span class="pre">[Y/n]</span></code>.</p></li>
+<li><p><strong>A condition that does not read</strong> is refused at the character where it
+stops:</p></li>
+</ul>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="na">-f</span><span class="w"> </span><span class="s">'material = steel'</span>
+<span class=" -SampleKit -SampleKit-Failed">error:</span> at character 10: expected a comparison operator, found '='
+  material = steel
+           ^
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>A text compared with a number</strong>, <code class="docutils literal notranslate"><span class="pre">grade</span> <span class="pre">&gt;</span> <span class="pre">3</span></code>, is refused where every
+sample holds text; where one sample holds text among numbers, the others are
+compared and the one left aside is named.</p></li>
+<li><p><strong>A file that cannot be read</strong> is never skipped in silence: the command
+names it, reads the rest, and exits with code 2. <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">list</span> <span class="pre">skipped</span></code>
+lists every file set aside, and why.</p></li>
+</ul>
+<p><a class="reference internal" href="when-something-goes-wrong.html"><span class="std std-doc">When something goes wrong</span></a> gathers these and
+the others.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../reference/filters.html"><span class="std std-doc">Filters</span></a>, every form.</p></li>
+<li><p><a class="reference internal" href="../concepts/projects.html#queries-profiles-and-groups"><span class="std std-ref">Queries, profiles and groups</span></a>.</p></li>
+<li><p>Tables written to a file: <a class="reference internal" href="#write-the-table-to-a-file">above</a>, <a class="reference internal" href="../index.html#tables-written-to-files"><span class="std std-ref">the home
+page</span></a>, and <a class="reference internal" href="export-for-a-paper.html"><span class="std std-doc">tables and figures for a
+paper</span></a>; what each file holds, column by column:
+<a class="reference internal" href="../reference/written-files.html"><span class="std std-doc">written files</span></a>.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="link-samples.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Link samples</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="edit-samples.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Edit samples</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Find and select samples</a><ul>
+<li><a class="reference internal" href="#which-samples-a-command-reads">Which samples a command reads</a></li>
+<li><a class="reference internal" href="#columns">Columns</a></li>
+<li><a class="reference internal" href="#filters">Filters</a></li>
+<li><a class="reference internal" href="#order-and-groups">Order and groups</a></li>
+<li><a class="reference internal" href="#write-the-table-to-a-file">Write the table to a file</a><ul>
+<li><a class="reference internal" href="#a-sample-s-own-table">A sample's own table</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#saved-shapes">Saved shapes</a></li>
+<li><a class="reference internal" href="#in-the-terminal-interface">In the terminal interface</a></li>
+<li><a class="reference internal" href="#from-python">From Python</a></li>
+<li><a class="reference internal" href="#a-mistake-is-said-never-guessed">A mistake is said, never guessed</a></li>
+<li><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

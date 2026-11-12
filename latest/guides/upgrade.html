@@ -4,9 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Concepts" href="../concepts/index.html"><link rel="prev" title="When something goes wrong" href="when-something-goes-wrong.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Upgrade from an older SampleKit - SampleKit 1.0.0-rc.2</title>
+        <title>Upgrade from an older SampleKit - SampleKit 1.0.0-rc.3</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -175,7 +177,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -195,8 +197,12 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -216,10 +222,12 @@
 <li class="toctree-l2"><a class="reference internal" href="start-a-project.html">Start a project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="move-existing-data.html">Bring existing data in</a></li>
 <li class="toctree-l2"><a class="reference internal" href="first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-from-templates.html">Start from templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="edit-samples.html">Edit samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="find-and-select.html">Find and select samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="link-samples.html">Link samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="colours.html">Choose the colours</a></li>
 <li class="toctree-l2"><a class="reference internal" href="work-from-python.html">Work from Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="run-a-script.html">Run a script of the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="export-for-a-paper.html">Tables and figures for a paper</a></li>
@@ -320,7 +328,7 @@ $ .venv/bin/python samplekit-migrate.pyz old --to new --model old/specimen.py
 </div>
 <p>Without <code class="docutils literal notranslate"><span class="pre">--write</span></code>, it reads everything and says what it would write. Here, a
 tensile project of 0.2, its model in <code class="docutils literal notranslate"><span class="pre">old/specimen.py</span></code>:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>SampleKit migration tool, for SampleKit 1.0.0-rc.2.
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>SampleKit migration tool, for SampleKit 1.0.0-rc.3.
 
 Nothing guarantees that this tool carries your data correctly: it cannot fit
 every use, and it will miss some. It works on a copy, so that nothing is lost:
@@ -362,7 +370,7 @@ Read as SampleKit 0.x (0.1.0 to 0.2.0).
 
 ## What to do next
 
-1. Make the project's environment, in the new folder: `python -m venv .venv`, then `.venv/bin/python -m pip install samplekit==1.0.0-rc.2`.
+1. Make the project's environment, in the new folder: `python -m venv .venv`, then `.venv/bin/python -m pip install samplekit==1.0.0-rc.3`.
 2. Read the model and every line marked `# TODO(migrate)`.
 3. `samplekit . validate`, then `samplekit . compute --write`, which computes again what was not carried.
 4. Compare a few samples with the earlier version's by hand before trusting the rest.
@@ -395,6 +403,25 @@ rc.1 first, as it says too.</p></li>
 <p><code class="docutils literal notranslate"><span class="pre">samplekit-migrate.pyz</span> <span class="pre">--help</span></code> lists its options. The sections below say what
 the tool does, step by step, for those who would rather do it by hand, or
 check what it did.</p>
+</section>
+<section id="from-1-0-0-rc-2">
+<h2>From 1.0.0-rc.2<a class="headerlink" href="#from-1-0-0-rc-2" title="Link to this heading">¶</a></h2>
+<p>The sample files, the configuration and the history are the same: nothing in
+a project changes, and the migration tool is not needed.</p>
+<ul class="simple">
+<li><p><strong>Install the command line and the package together</strong>, on every computer
+that shares a project, as below: the package of rc.2 in a project's
+environment is refused by this version's command line, which names both
+versions.</p></li>
+<li><p><strong>The terminal interface has themes</strong>: it draws in SampleKit's own where
+the terminal draws every colour, and the roles your <code class="docutils literal notranslate"><span class="pre">[colors]</span></code> names are
+laid over it. To keep the terminal's sixteen colours, as rc.2 drew, choose
+<code class="docutils literal notranslate"><span class="pre">terminal</span></code> with <code class="docutils literal notranslate"><span class="pre">T</span></code>, or write <code class="docutils literal notranslate"><span class="pre">theme</span> <span class="pre">=</span> <span class="pre">&quot;terminal&quot;</span></code> in the project's
+<code class="docutils literal notranslate"><span class="pre">[colors]</span></code> (<a class="reference internal" href="colours.html"><span class="std std-doc">Choose the colours</span></a>).</p></li>
+<li><p><strong>The terminal interface keeps every change waiting until <code class="docutils literal notranslate"><span class="pre">w</span></code> writes
+it</strong>, and a value's window is gone: <code class="docutils literal notranslate"><span class="pre">e</span></code> types in a cell, <code class="docutils literal notranslate"><span class="pre">i</span></code> opens a
+value's card (<a class="reference internal" href="terminal-interface.html"><span class="std std-doc">The terminal interface</span></a>).</p></li>
+</ul>
 </section>
 <section id="from-1-0-0-rc-1">
 <h2>From 1.0.0-rc.1<a class="headerlink" href="#from-1-0-0-rc-1" title="Link to this heading">¶</a></h2>
@@ -904,6 +931,7 @@ read. The next command that writes it rewrites it in the fixed form;
             <ul>
 <li><a class="reference internal" href="#">Upgrade from an older SampleKit</a><ul>
 <li><a class="reference internal" href="#the-migration-tool">The migration tool</a></li>
+<li><a class="reference internal" href="#from-1-0-0-rc-2">From 1.0.0-rc.2</a></li>
 <li><a class="reference internal" href="#from-1-0-0-rc-1">From 1.0.0-rc.1</a><ul>
 <li><a class="reference internal" href="#before-you-upgrade-bring-every-value-up-to-date-with-rc-1">Before you upgrade: bring every value up to date, with rc.1</a></li>
 <li><a class="reference internal" href="#install-the-command-line-and-the-package-together">Install the command line and the package together</a></li>
@@ -934,7 +962,7 @@ read. The next command that writes it rewrites it in the fixed form;
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

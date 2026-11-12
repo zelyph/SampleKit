@@ -1,0 +1,23 @@
+# Catppuccin Latte, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "catppuccin-latte" in a project's [colors] does; or copy this table.
+[colors]
+background = "#eff1f5"   # the screen
+foreground = "#4c4f69"   # its text
+failed     = "#d20f39"   # red
+outdated   = "#df8e1d"   # yellow
+edited     = "#fe640b"   # peach
+current    = "#40a02b"   # green
+selected   = "#179299"   # teal
+attribute  = "#1e66f5"   # blue
+link       = "#209fb5"   # sapphire
+value      = "#4c4f69"   # text
+unit       = "#04a5e5"   # sky
+table      = "#8839ef"   # mauve
+index      = "#dc8a78"   # rosewater
+key        = "#7287fd"   # lavender
+muted      = "#9ca0b0"   # overlay0
+message    = "#6c6f85"   # subtext0
+error      = "#e64553"   # maroon
+accent     = "#ea76cb"   # pink
+waiting    = "#dd7878"   # flamingo
+line       = "#ccd0da"   # surface0

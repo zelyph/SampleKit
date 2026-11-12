@@ -1,0 +1,23 @@
+# Solarized dark, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "solarized-dark" in a project's [colors] does; or copy this table.
+[colors]
+background = "#002b36"   # the screen
+foreground = "#839496"   # its text
+failed     = "#dc322f"   # red
+outdated   = "#b58900"   # yellow
+edited     = "#cb4b16"   # orange
+current    = "#859900"   # green
+selected   = "#2aa198"   # cyan
+attribute  = "#268bd2"   # blue
+link       = "#6c71c4"   # violet
+value      = "#839496"   # base0
+unit       = "#2aa198"   # cyan
+table      = "#6c71c4"   # violet
+index      = "#2aa198"   # cyan
+key        = "#93a1a1"   # base1
+muted      = "#586e75"   # base01
+message    = "#93a1a1"   # base1
+error      = "#dc322f"   # red
+accent     = "#d33682"   # magenta
+waiting    = "#d33682"   # magenta
+line       = "#073642"   # base02

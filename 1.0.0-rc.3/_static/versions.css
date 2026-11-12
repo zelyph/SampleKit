@@ -1,0 +1,30 @@
+/* The version selector of the sidebar (_templates/sidebar/versions.html). */
+.sk-versions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0 var(--sidebar-item-spacing-horizontal) 0.75rem;
+  font-size: var(--sidebar-item-font-size);
+}
+.sk-versions[hidden] {
+  display: none;
+}
+.sk-versions-label {
+  color: var(--color-sidebar-caption-text);
+}
+.sk-versions-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.2rem 0.35rem;
+  color: var(--color-foreground-primary);
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-background-border);
+  border-radius: 0.2rem;
+  font: inherit;
+}
+.sk-versions-older {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-foreground-secondary);
+}

@@ -18,7 +18,7 @@ at the same version:
 ## The command line
 
 With Rust installed ([rustup](https://rustup.rs) installs it), cargo builds
-the command line on any system, `VERSION` being the release's, `1.0.0-rc.2`
+the command line on any system, `VERSION` being the release's, `1.0.0-rc.3`
 for instance:
 
 ```console
@@ -78,14 +78,14 @@ The Python package is not installed once for the whole machine: it goes into
 which its `.samplekitrc` names: `python = ".venv"`. When SampleKit needs
 Python, it runs that one, and never looks for another. `samplekit init`, and
 the TUI's start page when it writes the demo ([the home page's example, in
-five steps](../index.md)), make that environment and install the package into it from
+six steps](../index.md)), make that environment and install the package into it from
 the Python Package Index, at the version of the command line: the two are
 one release, and go together. To do it yourself, with the version
 `samplekit --version` says:
 
 ```console
 $ python -m venv .venv                         # python3 where python is not Python 3
-$ .venv/bin/pip install samplekit==VERSION     # 1.0.0-rc.2, for instance
+$ .venv/bin/pip install samplekit==VERSION     # 1.0.0-rc.3, for instance
 ```
 
 On Windows the environment's programs are in `.venv\Scripts\`:
@@ -122,7 +122,8 @@ file, which `samplekit init` names for the shell you use:
 Open a new terminal for it to apply. An alias, `alias sk=samplekit`,
 completes as the command does in zsh and fish; bash completes no alias by
 itself, and needs one more line after the first, `complete -F
-_clap_complete_samplekit sk`.
+_clap_complete_samplekit sk`. In PowerShell, an alias completes where it is
+defined before the line, `Set-Alias sk samplekit` above it in `$PROFILE`.
 
 ## Next
 

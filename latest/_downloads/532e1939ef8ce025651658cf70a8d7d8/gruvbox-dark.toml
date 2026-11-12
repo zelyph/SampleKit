@@ -1,0 +1,23 @@
+# Gruvbox dark, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "gruvbox-dark" in a project's [colors] does; or copy this table.
+[colors]
+background = "#282828"   # the screen
+foreground = "#ebdbb2"   # its text
+failed     = "#fb4934"   # red
+outdated   = "#fabd2f"   # yellow
+edited     = "#fe8019"   # orange
+current    = "#b8bb26"   # green
+selected   = "#8ec07c"   # aqua
+attribute  = "#83a598"   # blue
+link       = "#83a598"   # blue
+value      = "#ebdbb2"   # fg
+unit       = "#8ec07c"   # aqua
+table      = "#d3869b"   # purple
+index      = "#8ec07c"   # aqua
+key        = "#8ec07c"   # aqua
+muted      = "#928374"   # gray
+message    = "#a89984"   # fg4
+error      = "#fb4934"   # red
+accent     = "#fe8019"   # orange
+waiting    = "#d3869b"   # purple
+line       = "#3c3836"   # bg1

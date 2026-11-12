@@ -1,0 +1,71 @@
+# A project's configuration: save this file as `.samplekitrc` in the
+# project's folder. It works as it is, with the model, the sample and the
+# script of the same templates; every value marked `← change` is one of your
+# own choices. Every section but `schema_version` is optional, and each key is
+# explained in the configuration reference.
+
+schema_version = 1
+
+
+# Which files are samples, and where a sample's own files are.
+[collection]
+recursive = true                     # read the folders below this one too
+exclude = ["draft-*"]                # ← files left out: drafts, notes
+files = ["photos", "raw/{name}/*"]   # ← a folder searched for files named
+                                     #   as the sample, and a pattern where
+                                     #   {name} is the sample's file name
+
+
+# The Python model, and the environment it runs in.
+[model]
+path = "model/model.py"              # ← where your model's file is
+class = "Specimen"                   # ← its class
+python = ".venv"                     # ← the environment, made by samplekit init
+
+
+# How many digits a value is shown with: one section per property, and a
+# table's column quoted as "table.column".
+[property.area]
+precision = ".2f"                    # ← two decimals
+
+[property."curve.stress"]
+precision = ".1f"                    # ← your column, your digits
+
+
+# A named filter: samplekit --query large
+[query.large]
+filter = "area > 100"                # ← in the language of -f
+
+
+# A named table: samplekit --profile overview
+[profile.overview]
+columns = [
+  { field = "name" },
+  { field = "material" },            # ← your attributes
+  { field = "length", precision = ".2f" },
+  { field = "width", precision = ".2f" },
+  { field = "area", label = "A" },   # ← a column's title
+]
+sort = ["-area"]                     # ← a leading - sorts from high to low
+
+
+# A file written again by one command: samplekit export overview --write
+[export.overview]
+profile = "overview"
+format = "csv"                       # ← csv, tsv or json
+output = "out/overview.csv"          # ← where it is written
+
+
+# A figure: samplekit plot curves
+[figure.curves]
+kind = "line"                        # ← scatter, line, step, bar or box
+x = "curve.strain"
+y = "curve.stress"
+group = "material"                   # ← one series per value of this field
+
+
+# The colours of the terminal interface and the command line, by role: the
+# guide "Choose the colours" has a [colors] table for each of nine themes, to
+# copy here.
+# [colors]
+# outdated = "#ff8800"

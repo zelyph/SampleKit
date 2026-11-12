@@ -1,0 +1,23 @@
+# Catppuccin Mocha, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "catppuccin-mocha" in a project's [colors] does; or copy this table.
+[colors]
+background = "#1e1e2e"   # the screen
+foreground = "#cdd6f4"   # its text
+failed     = "#f38ba8"   # red
+outdated   = "#f9e2af"   # yellow
+edited     = "#fab387"   # peach
+current    = "#a6e3a1"   # green
+selected   = "#94e2d5"   # teal
+attribute  = "#89b4fa"   # blue
+link       = "#74c7ec"   # sapphire
+value      = "#cdd6f4"   # text
+unit       = "#89dceb"   # sky
+table      = "#cba6f7"   # mauve
+index      = "#f5e0dc"   # rosewater
+key        = "#b4befe"   # lavender
+muted      = "#6c7086"   # overlay0
+message    = "#a6adc8"   # subtext0
+error      = "#eba0ac"   # maroon
+accent     = "#f5c2e7"   # pink
+waiting    = "#f2cdcd"   # flamingo
+line       = "#313244"   # surface0

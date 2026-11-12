@@ -60,7 +60,7 @@ A job, as a shell script any CI runs:
 set -e
 # One version for the command line and the package: the release's tag
 # without its `v`.
-VERSION=1.0.0-rc.2
+VERSION=1.0.0-rc.3
 curl -sSfL "https://github.com/zelyph/SampleKit/releases/download/v$VERSION/samplekit-x86_64-unknown-linux-gnu.tar.gz" \
     | tar -xz -C /usr/local/bin samplekit
 

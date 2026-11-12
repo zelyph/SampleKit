@@ -1,0 +1,23 @@
+# Tokyo Night, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "tokyo-night" in a project's [colors] does; or copy this table.
+[colors]
+background = "#1a1b26"   # the screen
+foreground = "#c0caf5"   # its text
+failed     = "#f7768e"   # red
+outdated   = "#e0af68"   # yellow
+edited     = "#ff9e64"   # orange
+current    = "#9ece6a"   # green
+selected   = "#73daca"   # teal
+attribute  = "#7aa2f7"   # blue
+link       = "#7dcfff"   # cyan
+value      = "#c0caf5"   # foreground
+unit       = "#7dcfff"   # cyan
+table      = "#bb9af7"   # purple
+index      = "#73daca"   # teal
+key        = "#7dcfff"   # cyan
+muted      = "#565f89"   # comment
+message    = "#737aa2"   # dark5
+error      = "#f7768e"   # red
+accent     = "#7aa2f7"   # blue
+waiting    = "#bb9af7"   # purple
+line       = "#292e42"   # background highlight

@@ -4,9 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="prev" title="Glossary" href="reference/glossary.html">
+        <link rel="prefetch" href="_static/logo.svg" as="image">
+        <link rel="prefetch" href="_static/logo.svg" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Changelog - SampleKit 1.0.0-rc.2</title>
+        <title>Changelog - SampleKit 1.0.0-rc.3</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -175,7 +177,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+      <a href="index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -195,8 +197,12 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="_static/logo.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -216,10 +222,12 @@
 <li class="toctree-l2"><a class="reference internal" href="guides/start-a-project.html">Start a project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/move-existing-data.html">Bring existing data in</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/start-from-templates.html">Start from templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/edit-samples.html">Edit samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/find-and-select.html">Find and select samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/link-samples.html">Link samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/colours.html">Choose the colours</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/work-from-python.html">Work from Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/run-a-script.html">Run a script of the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
@@ -298,6 +306,122 @@ version says what was added, changed, removed and fixed, for someone who uses
 SampleKit rather than works on it.</p>
 <p>A version ending in <code class="docutils literal notranslate"><span class="pre">-rc.N</span></code> is a release candidate: tried before the version
 of that number is published, and replaced by it.</p>
+<section id="rc-3-2026-11-11">
+<h2>[1.0.0-rc.3] — 2026-11-11<a class="headerlink" href="#rc-3-2026-11-11" title="Link to this heading">¶</a></h2>
+<p>The third release candidate of SampleKit 1.0 (<code class="docutils literal notranslate"><span class="pre">1.0.0rc3</span></code> for Python).</p>
+<section id="upgrading-from-1-0-0-rc-2">
+<h3>Upgrading from 1.0.0-rc.2<a class="headerlink" href="#upgrading-from-1-0-0-rc-2" title="Link to this heading">¶</a></h3>
+<p>Sample files, the configuration and the history are unchanged. <strong>Install the
+command line and the Python package together</strong>, at the same version, in each
+project's environment: this version refuses rc.2's package. The terminal
+interface now draws in SampleKit's own theme where the terminal draws every
+colour; <code class="docutils literal notranslate"><span class="pre">theme</span> <span class="pre">=</span> <span class="pre">&quot;terminal&quot;</span></code> in <code class="docutils literal notranslate"><span class="pre">[colors]</span></code>, or <code class="docutils literal notranslate"><span class="pre">T</span></code>, keeps the terminal's
+sixteen colours, as rc.2 drew.</p>
+</section>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Themes for the terminal interface</strong>: SampleKit's own, <code class="docutils literal notranslate"><span class="pre">samplekit-dark</span></code>
+and <code class="docutils literal notranslate"><span class="pre">samplekit-light</span></code>, made to be read, each role a colour of its own and
+every colour at a contrast checked by a test; it is the default, light
+where the terminal says its background is (<code class="docutils literal notranslate"><span class="pre">COLORFGBG</span></code>), and the
+terminal's own sixteen colours where it does not say it draws every colour
+(<code class="docutils literal notranslate"><span class="pre">COLORTERM</span></code>; Windows Terminal draws them all). Ten more are
+built in by name: <code class="docutils literal notranslate"><span class="pre">terminal</span></code>, the sixteen colours as before, and Catppuccin
+Mocha and Latte, Dracula, Nord, Tokyo Night, Gruvbox and Solarized, dark
+and light. A theme paints the whole screen, its background and its text,
+the two new roles <code class="docutils literal notranslate"><span class="pre">background</span></code> and <code class="docutils literal notranslate"><span class="pre">foreground</span></code> of <code class="docutils literal notranslate"><span class="pre">[colors]</span></code>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">T</span></code> chooses the theme</strong>, on the start page, the collection and a
+sample: each is tried on the screen as the cursor reaches it, <code class="docutils literal notranslate"><span class="pre">Enter</span></code> keeps
+it for the folder and as your choice for the projects naming none. A
+project names its own with <code class="docutils literal notranslate"><span class="pre">theme</span> <span class="pre">=</span> <span class="pre">&quot;nord&quot;</span></code> in <code class="docutils literal notranslate"><span class="pre">[colors]</span></code>; the roles it
+names are laid over whichever theme is in force.</p></li>
+<li><p><strong>Your own themes</strong>: a file each in <code class="docutils literal notranslate"><span class="pre">themes/</span></code> of SampleKit's configuration
+folder (<code class="docutils literal notranslate"><span class="pre">~/.config/samplekit/themes/</span></code> on Linux), a <code class="docutils literal notranslate"><span class="pre">[colors]</span></code> table over the
+theme its <code class="docutils literal notranslate"><span class="pre">base</span></code> names. One that does not read is said, never passed over.</p></li>
+<li><p><strong>The README shows SampleKit at work</strong>: its sample's screen, pictures of
+the terminal interface, its themes and an animation of it, each drawn by
+the terminal interface itself; and a logo, SampleKit's name as the start
+page draws it.</p></li>
+<li><p><strong>The terminal interface keeps every change waiting until <code class="docutils literal notranslate"><span class="pre">w</span></code> writes
+it</strong>: a value, a row, an attribute, the note, tags, a sample made, removed
+or renamed, what a script changes, a state restored from the history, and
+what a computation gives. The screens show the files as the changes make
+them, marked, while the files themselves are untouched; <code class="docutils literal notranslate"><span class="pre">w</span></code> shows one
+preview of them all and writes them as one change of the history, and <code class="docutils literal notranslate"><span class="pre">u</span></code>
+takes back the last change waiting. A computation can be tried and dropped
+without leaving a trace. What waits outlasts the terminal interface:
+leaving asks whether to write, drop or keep it, and the project offers it
+again when it is next opened. A file changed meanwhile by another hand is
+not written over: what waits is laid again over it, field by field.</p></li>
+<li><p><strong>A typing mode in the terminal interface</strong>: <code class="docutils literal notranslate"><span class="pre">e</span></code> enters it, and what is
+typed replaces the cell under the cursor, as in a spreadsheet, the arrows
+going from cell to cell; <code class="docutils literal notranslate"><span class="pre">Esc</span></code> leaves it. A value and its uncertainty are
+typed in one cell, <code class="docutils literal notranslate"><span class="pre">12.6</span> <span class="pre">+-</span> <span class="pre">0.02</span></code>, an attribute is renamed by typing over
+its name, and <code class="docutils literal notranslate"><span class="pre">Delete</span></code> takes out an attribute or a table's row.</p></li>
+<li><p><strong>A value's card in the terminal interface</strong>: <code class="docutils literal notranslate"><span class="pre">i</span></code> on a value or a table's
+cell shows its state in words, what it reads and what reads it, each with
+its value and its state, and each typed in there: what a change makes
+outdated is seen at once. The list of
+samples is typed in too, a column for several samples at once, without
+opening one. A cell never widens as it is typed in, and the status line
+ends with the value under the cursor, every digit of it.</p></li>
+<li><p><strong>A PDF at a page</strong>: <code class="docutils literal notranslate"><span class="pre">[the</span> <span class="pre">method](method.pdf#page=12)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">[[method.pdf#page=12]]</span></code> open the PDF at that page, in the web browser.</p></li>
+<li><p><strong>Links as Obsidian writes them</strong>: <code class="docutils literal notranslate"><span class="pre">[[steel-02.md]]</span></code>, <code class="docutils literal notranslate"><span class="pre">[[2024/steel-02]]</span></code>
+where two samples share a name, <code class="docutils literal notranslate"><span class="pre">[[Steel-02]]</span></code> in another case, and
+<code class="docutils literal notranslate"><span class="pre">[[curve.csv]]</span></code>, any file of the project by its name. A Markdown link's
+<code class="docutils literal notranslate"><span class="pre">#section</span></code> is kept apart from its path. <code class="docutils literal notranslate"><span class="pre">rename</span></code> keeps each link as it was
+written, its folder, extension and heading.</p></li>
+<li><p><strong>The addresses of other tools</strong>: <code class="docutils literal notranslate"><span class="pre">zotero://</span></code>, <code class="docutils literal notranslate"><span class="pre">obsidian://</span></code>, <code class="docutils literal notranslate"><span class="pre">mailto:</span></code>,
+<code class="docutils literal notranslate"><span class="pre">ftp://</span></code> and <code class="docutils literal notranslate"><span class="pre">file://</span></code> are links, opened by the application that answers
+to them.</p></li>
+<li><p><strong>A sixth step of the demo, <em>Links</em></strong>: the specimens linked to each other,
+to their curves, to a PDF at a page and to a web page, in every form a link
+takes, with one link that leads nowhere for <code class="docutils literal notranslate"><span class="pre">validate</span></code> to report.</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>A value's window is gone from the terminal interface</strong>: what it showed
+side by side, a value, its uncertainty and its readings, is typed on the
+value's line or in its card. A sample's line shows the mark of its value's
+state, its words being the card's.</p></li>
+<li><p><strong>A large project is quick</strong>: over a project of 4,000 samples, the
+terminal interface opens in a sixteenth of the time it took, and after a
+write or an edit in an editor it reads again only the files that changed,
+in a thirtieth. A list takes a sixteenth of the time; <code class="docutils literal notranslate"><span class="pre">validate</span></code> an
+eleventh, and under a thirtieth where samples link to one another; <code class="docutils literal notranslate"><span class="pre">compute</span></code>'s
+preview, a fifth. A project's files are read on every core. Nothing a
+command or a screen says changes.</p></li>
+<li><p><strong>A file changed outside SampleKit is told by the system</strong>: the terminal
+interface no longer looks at every file of the project after each key and
+each second. Linux, macOS, Windows and the BSDs each tell it of a change
+in the project's folders; it looks all the same every thirty seconds, and
+where the system can tell nothing, a network drive for one, as before.</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>A model in a folder is found past another module of its name</strong>:
+<code class="docutils literal notranslate"><span class="pre">[model]</span> <span class="pre">path</span> <span class="pre">=</span> <span class="pre">&quot;model/specimen.py&quot;</span></code>, the demo's, failed with <em>No module
+named 'model.specimen'; 'model' is not a package</em> where Python found a
+<code class="docutils literal notranslate"><span class="pre">model.py</span></code> first, installed or another project's; the file is now imported
+by its path.</p></li>
+<li><p><strong>A figure under a folder whose name has an accent</strong>: on Windows, <code class="docutils literal notranslate"><span class="pre">p</span></code> on a
+figure under a folder such as <code class="docutils literal notranslate"><span class="pre">Thèse</span></code> said <em>the directory …\samples does not
+exist</em>, Python reading its request in its code page; every Python SampleKit
+starts now reads and prints UTF-8.</p></li>
+<li><p><strong>PowerShell completes under an alias</strong>: <code class="docutils literal notranslate"><span class="pre">Set-Alias</span> <span class="pre">sk</span> <span class="pre">samplekit</span></code>, defined
+before the completion's line, completes as <code class="docutils literal notranslate"><span class="pre">samplekit</span></code> does.</p></li>
+<li><p><strong>Paths written on Windows read on Linux and macOS</strong>: a <code class="docutils literal notranslate"><span class="pre">\</span></code> in a path of
+<code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> or of a Markdown link is read as <code class="docutils literal notranslate"><span class="pre">/</span></code>, which SampleKit itself
+always writes.</p></li>
+</ul>
+</section>
+</section>
 <section id="rc-2-2026-11-04">
 <h2>[1.0.0-rc.2] — 2026-11-04<a class="headerlink" href="#rc-2-2026-11-04" title="Link to this heading">¶</a></h2>
 <p>The second release candidate of SampleKit 1.0 (<code class="docutils literal notranslate"><span class="pre">1.0.0rc2</span></code> for Python).</p>
@@ -348,8 +472,8 @@ that computed it, and is taken as current: if that formula changed since,
 compute it again, <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">DIR</span> <span class="pre">compute</span> <span class="pre">-p</span> <span class="pre">NAME</span> <span class="pre">--rerun</span> <span class="pre">--write</span></code>.</p></li>
 </ul>
 </section>
-<section id="added">
-<h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
+<section id="id1">
+<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>A migration tool</strong>, <code class="docutils literal notranslate"><span class="pre">samplekit-migrate.pyz</span></code>, attached to each release: a
 project of 0.1.0, 0.1.1, 0.1.2, 0.2.0 or 1.0.0-rc.1, carried into a new
@@ -466,8 +590,8 @@ outside the range a defect for <code class="docutils literal notranslate"><span 
 stops a formula that runs too long and computes the others.</p></li>
 </ul>
 </section>
-<section id="changed">
-<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h3>Changed<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>The demo is a tensile test</strong>: three metal specimens in five steps, from
 their sizes written by hand to their curves, results, a paper's tables and
@@ -578,8 +702,8 @@ how to carry each over.</p></li>
 SampleKit wrote is now found in the projects around it.</p></li>
 </ul>
 </section>
-<section id="fixed">
-<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<section id="id3">
+<h3>Fixed<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <p>Many defects found by testing rc.1, among them values reported as current
 that were not, edits lost when two changes met, and a colleague's work pulled
 through git that the history took for your own.</p>
@@ -595,8 +719,8 @@ Rust, with a Python package beside them for your formulas and your scripts.
 Both come from one source and carry one version (<code class="docutils literal notranslate"><span class="pre">1.0.0rc1</span></code> for Python).</p>
 <p>It does not read the files 0.2.0 wrote, and no command converts them: see
 <a class="reference internal" href="#upgrading-from-0-2-0">Upgrading from 0.2.0</a> below.</p>
-<section id="id1">
-<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h3>Added<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p><strong>The command line</strong>, <code class="docutils literal notranslate"><span class="pre">samplekit</span></code>, a program with no Python inside. Reading,
 selecting, showing, checking and exporting samples never start Python.</p>
 <ul class="simple">
@@ -759,8 +883,8 @@ explanations, a page per notion; how-to guides for a task you have in mind;
 and a reference — every command and option, the Python API, the TUI's keys,
 every key of <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code>, the sample file format, the exit codes.</p>
 </section>
-<section id="id2">
-<h3>Changed<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h3>Changed<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
 <p><strong>The note below the data is yours.</strong> 0.2.0 wrote the body of a file from the
 model's <code class="docutils literal notranslate"><span class="pre">template()</span></code> at every save. SampleKit now never writes, reformats or
 reads the note: not a character, not a line ending. Tables for a reader are
@@ -891,8 +1015,8 @@ afterwards that it is still current; beside a formula that takes seconds, it
 does not show. <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">new</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code> and the TUI start no Python while the
 model's description is current.</p>
 </section>
-<section id="id3">
-<h3>Removed<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h3>Removed<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Reading 0.2.0 files.</strong> Every command names such a file, says why, reads
 the rest and exits with code 2.</p></li>
@@ -920,8 +1044,8 @@ tables and text — with both versions installed side by side, into a new
 folder, and how to check the result.</p>
 </section>
 </section>
-<section id="id4">
-<h2>[0.2.0]<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<section id="id7">
+<h2>[0.2.0]<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
 <p>The previous SampleKit, a Python package published on the Python Package
 Index. Its changes are not recorded here.</p>
 </section>
@@ -975,23 +1099,30 @@ Index. Its changes are not recorded here.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Changelog</a><ul>
-<li><a class="reference internal" href="#rc-2-2026-11-04">[1.0.0-rc.2] — 2026-11-04</a><ul>
-<li><a class="reference internal" href="#upgrading-from-1-0-0-rc-1">Upgrading from 1.0.0-rc.1</a></li>
-<li><a class="reference internal" href="#cleaning-up-after-rc-1">Cleaning up after rc.1</a></li>
+<li><a class="reference internal" href="#rc-3-2026-11-11">[1.0.0-rc.3] — 2026-11-11</a><ul>
+<li><a class="reference internal" href="#upgrading-from-1-0-0-rc-2">Upgrading from 1.0.0-rc.2</a></li>
 <li><a class="reference internal" href="#added">Added</a></li>
 <li><a class="reference internal" href="#changed">Changed</a></li>
-<li><a class="reference internal" href="#removed">Removed</a></li>
 <li><a class="reference internal" href="#fixed">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#rc-1-2026-09-28">[1.0.0-rc.1] — 2026-09-28</a><ul>
+<li><a class="reference internal" href="#rc-2-2026-11-04">[1.0.0-rc.2] — 2026-11-04</a><ul>
+<li><a class="reference internal" href="#upgrading-from-1-0-0-rc-1">Upgrading from 1.0.0-rc.1</a></li>
+<li><a class="reference internal" href="#cleaning-up-after-rc-1">Cleaning up after rc.1</a></li>
 <li><a class="reference internal" href="#id1">Added</a></li>
 <li><a class="reference internal" href="#id2">Changed</a></li>
-<li><a class="reference internal" href="#id3">Removed</a></li>
+<li><a class="reference internal" href="#removed">Removed</a></li>
+<li><a class="reference internal" href="#id3">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#rc-1-2026-09-28">[1.0.0-rc.1] — 2026-09-28</a><ul>
+<li><a class="reference internal" href="#id4">Added</a></li>
+<li><a class="reference internal" href="#id5">Changed</a></li>
+<li><a class="reference internal" href="#id6">Removed</a></li>
 <li><a class="reference internal" href="#upgrading-from-0-2-0">Upgrading from 0.2.0</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id4">[0.2.0]</a></li>
+<li><a class="reference internal" href="#id7">[0.2.0]</a></li>
 </ul>
 </li>
 </ul>
@@ -1003,7 +1134,7 @@ Index. Its changes are not recorded here.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=7cf4fce2"></script>
+</div><script src="_static/documentation_options.js?v=d88c78fb"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>

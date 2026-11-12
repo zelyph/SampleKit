@@ -3,10 +3,12 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Work from Python" href="work-from-python.html"><link rel="prev" title="Link samples" href="link-samples.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Choose the colours" href="colours.html"><link rel="prev" title="Link samples" href="link-samples.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Work in the terminal interface - SampleKit 1.0.0-rc.2</title>
+        <title>Work in the terminal interface - SampleKit 1.0.0-rc.3</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -175,7 +177,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -195,8 +197,12 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -216,10 +222,12 @@
 <li class="toctree-l2"><a class="reference internal" href="start-a-project.html">Start a project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="move-existing-data.html">Bring existing data in</a></li>
 <li class="toctree-l2"><a class="reference internal" href="first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="start-from-templates.html">Start from templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="edit-samples.html">Edit samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="find-and-select.html">Find and select samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="link-samples.html">Link samples</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="colours.html">Choose the colours</a></li>
 <li class="toctree-l2"><a class="reference internal" href="work-from-python.html">Work from Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="run-a-script.html">Run a script of the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="export-for-a-paper.html">Tables and figures for a paper</a></li>
@@ -297,6 +305,7 @@
 keyboard rather than by commands: browse and filter them, open one, change a
 value, compute, draw, read the history. The terminal interface, the <em>TUI</em>,
 does what the commands do, and shows the same previews before it writes.</p>
+<p><img alt="The terminal interface at work on the demo: a sample opened, a value typed with its uncertainty, what it feeds outdated, the value's card, the change previewed and written" src="../_images/at-work.svg" /></p>
 <section id="open-it">
 <h2>Open it<a class="headerlink" href="#open-it" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">samplekit</span></code> alone, in a terminal, opens its <strong>start page</strong>. It offers the
@@ -304,12 +313,15 @@ project of the folder you are in first, then the projects you opened
 recently; <code class="docutils literal notranslate"><span class="pre">Enter</span></code> opens the one marked, <code class="docutils literal notranslate"><span class="pre">1</span></code> to <code class="docutils literal notranslate"><span class="pre">9</span></code> a recent one. From the
 start page, <code class="docutils literal notranslate"><span class="pre">n</span></code> sets up a new project by a few questions, <code class="docutils literal notranslate"><span class="pre">o</span></code> opens another
 folder, and <code class="docutils literal notranslate"><span class="pre">g</span></code> opens this documentation in the browser, or the demo: the
-<a class="reference internal" href="../index.html"><span class="std std-doc">home page</span></a>'s tensile test in five steps, each a project to try.</p>
+<a class="reference internal" href="../index.html"><span class="std std-doc">home page</span></a>'s tensile test in six steps, each a project to try.</p>
 <p><code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">FOLDER</span> <span class="pre">tui</span></code> opens a folder directly, past the start page.</p>
 <p>The foot of each screen names the keys used most, and ends with <code class="docutils literal notranslate"><span class="pre">?</span> <span class="pre">all</span> <span class="pre">keys</span></code>:
 <code class="docutils literal notranslate"><span class="pre">?</span></code> lists every key of the screen you are on, and <code class="docutils literal notranslate"><span class="pre">q</span></code> goes back to the screen
 you came from, until it quits. Every key is also listed in <a class="reference internal" href="../reference/tui.html"><span class="std std-doc">the TUI's
 keys</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">T</span></code>, on the start page, the collection or a sample, chooses the TUI's
+<strong>theme</strong>: each is tried on the screen as the cursor reaches it, and <code class="docutils literal notranslate"><span class="pre">Enter</span></code>
+keeps it (<a class="reference internal" href="colours.html"><span class="std std-doc">choose the colours</span></a>).</p>
 </section>
 <section id="the-list-of-samples">
 <h2>The list of samples<a class="headerlink" href="#the-list-of-samples" title="Link to this heading">¶</a></h2>
@@ -385,8 +397,8 @@ columns and the basket, and opens there next time; <code class="docutils literal
 </section>
 <section id="a-sample">
 <h2>A sample<a class="headerlink" href="#a-sample" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> on a sample opens it: its attributes, its values and their states,
-its tables, its note.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> on a sample opens it: its attributes, its values and the marks of
+their states, its tables, its note.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -396,33 +408,36 @@ its tables, its note.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
-<td><p>change the value under the cursor</p></td>
+<td><p>the typing mode, on the cell under the cursor: see <a class="reference internal" href="#typing">Typing</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">A</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">i</span></code></p></td>
+<td><p>the value's card: see <a class="reference internal" href="#a-value-s-card">A value's card</a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">A</span></code></p></td>
 <td><p>add an attribute: its name, then its value</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
 <td><p>write the note; <code class="docutils literal notranslate"><span class="pre">Esc</span></code> shows the change</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">→</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">→</span></code></p></td>
 <td><p>open the table under the cursor; there, <code class="docutils literal notranslate"><span class="pre">e</span></code> on the empty last row adds one</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">c</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">c</span></code></p></td>
 <td><p>compute the value under the cursor, even typed over its formula</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></td>
 <td><p>update the sample: compute what is not current in it</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">o</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">o</span></code></p></td>
 <td><p>open the sample's own files: its photos, its reports</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code>, <code class="docutils literal notranslate"><span class="pre">o</span></code> on a link</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code>, <code class="docutils literal notranslate"><span class="pre">o</span></code> on a link</p></td>
 <td><p>follow an attribute <code class="docutils literal notranslate"><span class="pre">&quot;[[steel-02]]&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;[text](path)&quot;</span></code>: a sample on its screen, a file in its application, a page in the browser; on a list of links, <code class="docutils literal notranslate"><span class="pre">Enter</span></code> opens its items and <code class="docutils literal notranslate"><span class="pre">o</span></code> follows one, as <code class="docutils literal notranslate"><span class="pre">Enter</span></code> does on an item</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">R</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">R</span></code></p></td>
 <td><p>rename the sample, its own files and the links leading to it</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">p</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">p</span></code></p></td>
 <td><p>the scripts, figures and exports of the sample</p></td>
 </tr>
 </tbody>
@@ -442,21 +457,118 @@ reads the file again. An editor of its own window, Notepad or <code class="docut
 leaves the TUI drawn, saying what it waits for; one in the terminal, <code class="docutils literal notranslate"><span class="pre">vim</span></code> or
 <code class="docutils literal notranslate"><span class="pre">nano</span></code>, takes the terminal while it runs. <code class="docutils literal notranslate"><span class="pre">n</span></code> on one of a sample's own files, after <code class="docutils literal notranslate"><span class="pre">o</span></code>, shows it
 in its folder, selected in Windows's Explorer.</p>
-<p>A value opens selected, so that what you type replaces it; an arrow or <code class="docutils literal notranslate"><span class="pre">End</span></code>
-keeps it, to change. Lines are edited as in a text editor: the mouse or
-<code class="docutils literal notranslate"><span class="pre">Shift</span></code> and the arrows select, <code class="docutils literal notranslate"><span class="pre">Ctrl</span></code> and the arrows move by word,
-<code class="docutils literal notranslate"><span class="pre">Ctrl+Z</span></code> undoes.</p>
 </section>
-<section id="writes-and-taking-them-back">
-<h2>Writes, and taking them back<a class="headerlink" href="#writes-and-taking-them-back" title="Link to this heading">¶</a></h2>
-<p>Every change you type is shown before it is written, as a command's preview
-is, and <code class="docutils literal notranslate"><span class="pre">y</span></code> writes it. <code class="docutils literal notranslate"><span class="pre">C</span></code> shows what it would compute, as <code class="docutils literal notranslate"><span class="pre">compute</span></code> does,
-and <code class="docutils literal notranslate"><span class="pre">y</span></code> computes and writes; <code class="docutils literal notranslate"><span class="pre">c</span></code> computes the value under the cursor at once.
-A computation is kept in the history, as every change is, and <code class="docutils literal notranslate"><span class="pre">u</span></code> takes it
-back. <code class="docutils literal notranslate"><span class="pre">H</span></code> lists the history, each change and what it changed: there, <code class="docutils literal notranslate"><span class="pre">r</span></code>
-puts the files back as a change left them, previewed. <code class="docutils literal notranslate"><span class="pre">d</span></code> shows what one
-change changed, and marks it; <code class="docutils literal notranslate"><span class="pre">d</span></code> on another then compares the two, value by
-value, as <code class="docutils literal notranslate"><span class="pre">restore</span> <span class="pre">--at</span></code> and <code class="docutils literal notranslate"><span class="pre">diff</span></code> do (<a class="reference internal" href="../concepts/history.html"><span class="std std-doc">the history</span></a>).</p>
+<section id="typing">
+<h2>Typing<a class="headerlink" href="#typing" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">e</span></code> enters the <strong>typing mode</strong> on the cell under the cursor, as
+Vim's insert mode is entered: <code class="docutils literal notranslate"><span class="pre">TYPING</span></code> at the foot of the screen says so, and
+every other key keeps its meaning outside it. In the typing mode:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>What it does</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>a letter, a digit</p></td>
+<td><p>replaces the cell with what you type</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code></p></td>
+<td><p>keeps the cell and goes down; on a cell not typed in, changes it without replacing it</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Tab</span></code></p></td>
+<td><p>keeps the cell and goes right</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">↑</span></code> <code class="docutils literal notranslate"><span class="pre">↓</span></code> <code class="docutils literal notranslate"><span class="pre">←</span></code> <code class="docutils literal notranslate"><span class="pre">→</span></code></p></td>
+<td><p>go from cell to cell, keeping a cell typed in</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">F2</span></code></p></td>
+<td><p>changes the cell without replacing it</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Delete</span></code></p></td>
+<td><p>takes out the attribute, or the table's row, under the cursor</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Esc</span></code></p></td>
+<td><p>leaves the cell typed in, then the typing mode</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A sample's line is its cells: an attribute's name and its value, a value
+with its uncertainty, its readings. Typing over a name renames the attribute;
+<code class="docutils literal notranslate"><span class="pre">A</span></code>, out of the typing mode, adds one. A value and its
+uncertainty are typed in one cell, with <code class="docutils literal notranslate"><span class="pre">+-</span></code>, which every keyboard has: <code class="docutils literal notranslate"><span class="pre">12.6</span> <span class="pre">+-</span> <span class="pre">0.02</span></code>, shown <code class="docutils literal notranslate"><span class="pre">12.6</span> <span class="pre">±</span> <span class="pre">0.02</span></code>. <code class="docutils literal notranslate"><span class="pre">12.6</span></code> alone keeps the uncertainty, and <code class="docutils literal notranslate"><span class="pre">12.6</span> <span class="pre">+-</span></code> takes it out; a value without one shows <code class="docutils literal notranslate"><span class="pre">±</span> <span class="pre">—</span></code>, where it can be given, and
+opens as <code class="docutils literal notranslate"><span class="pre">12.6</span> <span class="pre">+-</span> </code>. A value opens as it is shown, rounded:
+left as it is, it keeps every digit it has. A cell never widens as you type
+in it: its text scrolls inside it. The end of the status line shows the value
+under the cursor with every digit, <code class="docutils literal notranslate"><span class="pre">width</span> <span class="pre">=</span> <span class="pre">12.513333333333334</span> <span class="pre">±</span> <span class="pre">0.010088497300281277</span> <span class="pre">mm</span></code>.</p>
+<p>A table is typed cell by cell in the same way, and its empty row at the foot
+takes a new row, written once its index is given. The list of samples is
+typed in too, without opening a sample: <code class="docutils literal notranslate"><span class="pre">←</span></code> <code class="docutils literal notranslate"><span class="pre">→</span></code> choose the column, and
+<code class="docutils literal notranslate"><span class="pre">Shift+↑</span></code> <code class="docutils literal notranslate"><span class="pre">Shift+↓</span></code> take several rows in the typing mode, what you type then
+going to each; a sample in the basket takes it with the basket's others.</p>
+<p>Lines are edited as in a text editor: the mouse or <code class="docutils literal notranslate"><span class="pre">Shift</span></code> and the arrows
+select, <code class="docutils literal notranslate"><span class="pre">Ctrl</span></code> and the arrows move by word, <code class="docutils literal notranslate"><span class="pre">Ctrl+Z</span></code> undoes.</p>
+</section>
+<section id="a-value-s-card">
+<h2>A value's card<a class="headerlink" href="#a-value-s-card" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">i</span></code> on a value, or on a table's cell holding one, opens its <strong>card</strong>: its
+value with its uncertainty and its unit, its readings, its state in words and
+why, then what it <strong>reads</strong> and what <strong>reads it</strong>, each with its value and its
+state. A line of a sample shows only the mark of its value's state, <code class="docutils literal notranslate"><span class="pre">⚠</span></code>,
+<code class="docutils literal notranslate"><span class="pre">✎</span></code>, <code class="docutils literal notranslate"><span class="pre">✗</span></code> or <code class="docutils literal notranslate"><span class="pre">∅</span></code>; its words are the card's. <code class="docutils literal notranslate"><span class="pre">↑</span></code> <code class="docutils literal notranslate"><span class="pre">↓</span></code> go from line to line of
+the card, and <code class="docutils literal notranslate"><span class="pre">e</span></code> types over the line under the cursor, as the typing mode
+does: the value itself, one it reads, or one that reads it. The change waits,
+as every change does, and the card is drawn again as it makes it: what reads
+a value changed is seen outdated at once. <code class="docutils literal notranslate"><span class="pre">Esc</span></code> closes the card.</p>
+</section>
+<section id="changes-wait-until-w-writes-them">
+<h2>Changes wait until <code class="docutils literal notranslate"><span class="pre">w</span></code> writes them<a class="headerlink" href="#changes-wait-until-w-writes-them" title="Link to this heading">¶</a></h2>
+<p>Nothing you change is written at once: a value, a row, an attribute, the
+note, tags, a sample made with <code class="docutils literal notranslate"><span class="pre">N</span></code>, removed with <code class="docutils literal notranslate"><span class="pre">D</span></code> or renamed with <code class="docutils literal notranslate"><span class="pre">R</span></code>, what
+a script changes, a state restored from the history, and what a computation
+gives. Each change <strong>waits</strong>, and the screens show the files as it makes
+them: what changed, and a sample made, in italics and in their own colour,
+the theme's <code class="docutils literal notranslate"><span class="pre">waiting</span></code>
+(<a class="reference internal" href="colours.html"><span class="std std-doc">choose the colours</span></a>);
+what is taken out is no longer shown, and the status line counts the files
+not written. The files themselves are untouched until you write them,
+so a computation can be tried and looked at before it counts: one that went
+wrong is dropped, and leaves the history as it was.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>What it does</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">w</span></code></p></td>
+<td><p>one preview of everything waiting, file by file; <code class="docutils literal notranslate"><span class="pre">y</span></code> writes it all, one change of the history</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
+<td><p>takes back the last change waiting; once nothing waits, the last change written</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">C</span></code> shows what it would compute, as <code class="docutils literal notranslate"><span class="pre">compute</span></code> does, and <code class="docutils literal notranslate"><span class="pre">y</span></code> computes; <code class="docutils literal notranslate"><span class="pre">c</span></code>
+computes the value under the cursor at once. What they give waits with the
+rest. Leaving with changes waiting asks whether to write them (<code class="docutils literal notranslate"><span class="pre">w</span></code>), drop
+them (<code class="docutils literal notranslate"><span class="pre">d</span></code>) or keep them for next time (<code class="docutils literal notranslate"><span class="pre">k</span></code>); the terminal closed without the
+question keeps them. Opened again, the project offers what waits, how many
+files and since when.</p>
+<p>A file changed meanwhile by another hand, in an editor or on the command line,
+is not written over: what waits for it is laid again over the file as it now
+is, field by field, and where both changed the same field, <code class="docutils literal notranslate"><span class="pre">w</span></code> says so and
+writes nothing. An export and a figure are made from what is shown, changes
+waiting included.</p>
+<p><code class="docutils literal notranslate"><span class="pre">H</span></code> lists the history, each change and what it changed: there, <code class="docutils literal notranslate"><span class="pre">r</span></code> puts the
+files back as a change left them, the change waiting as any other. <code class="docutils literal notranslate"><span class="pre">d</span></code> shows
+what one change changed, and marks it; <code class="docutils literal notranslate"><span class="pre">d</span></code> on another then compares the two,
+value by value, as <code class="docutils literal notranslate"><span class="pre">restore</span> <span class="pre">--at</span></code> and <code class="docutils literal notranslate"><span class="pre">diff</span></code> do (<a class="reference internal" href="../concepts/history.html"><span class="std std-doc">the
+history</span></a>).</p>
 </section>
 <section id="scripts-figures-and-exports">
 <h2>Scripts, figures and exports<a class="headerlink" href="#scripts-figures-and-exports" title="Link to this heading">¶</a></h2>
@@ -481,6 +593,8 @@ of the project the samples shown belong to (<a class="reference internal" href="
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="../reference/tui.html"><span class="std std-doc">The TUI's keys</span></a>, screen by screen.</p></li>
+<li><p><a class="reference internal" href="colours.html"><span class="std std-doc">Choose the colours</span></a>: the themes SampleKit has, each drawn by
+the TUI, and how to make your own.</p></li>
 <li><p>The <a class="reference internal" href="../index.html"><span class="std std-doc">home page</span></a> does with commands what this guide does with
 keys.</p></li>
 </ul>
@@ -492,12 +606,12 @@ keys.</p></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="work-from-python.html">
+          <a class="next-page" href="colours.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Work from Python</div>
+                <div class="title">Choose the colours</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -546,7 +660,9 @@ keys.</p></li>
 <li><a class="reference internal" href="#open-it">Open it</a></li>
 <li><a class="reference internal" href="#the-list-of-samples">The list of samples</a></li>
 <li><a class="reference internal" href="#a-sample">A sample</a></li>
-<li><a class="reference internal" href="#writes-and-taking-them-back">Writes, and taking them back</a></li>
+<li><a class="reference internal" href="#typing">Typing</a></li>
+<li><a class="reference internal" href="#a-value-s-card">A value's card</a></li>
+<li><a class="reference internal" href="#changes-wait-until-w-writes-them">Changes wait until <code class="docutils literal notranslate"><span class="pre">w</span></code> writes them</a></li>
 <li><a class="reference internal" href="#scripts-figures-and-exports">Scripts, figures and exports</a></li>
 <li><a class="reference internal" href="#several-projects">Several projects</a></li>
 <li><a class="reference internal" href="#see-also">See also</a></li>
@@ -561,7 +677,7 @@ keys.</p></li>
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

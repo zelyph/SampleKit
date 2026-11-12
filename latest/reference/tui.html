@@ -4,9 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Configuration" href="configuration.html"><link rel="prev" title="The Python API" href="python.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>The TUI&#39;s keys - SampleKit 1.0.0-rc.2</title>
+        <title>The TUI&#39;s keys - SampleKit 1.0.0-rc.3</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -175,7 +177,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -195,8 +197,12 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -216,10 +222,12 @@
 <li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-from-templates.html">Start from templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/colours.html">Choose the colours</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
@@ -300,7 +308,7 @@
 <p>In a list to choose from, <code class="docutils literal notranslate"><span class="pre">Space</span></code> ticks and <code class="docutils literal notranslate"><span class="pre">Enter</span></code> accepts what is ticked, and <code class="docutils literal notranslate"><span class="pre">/</span></code> narrows the list to what holds the letters typed. Every line typed has a cursor that <code class="docutils literal notranslate"><span class="pre">←</span></code> <code class="docutils literal notranslate"><span class="pre">→</span></code> <code class="docutils literal notranslate"><span class="pre">Home</span></code> <code class="docutils literal notranslate"><span class="pre">End</span></code> move; a sample's value opens selected, so that what is typed replaces it, and an arrow or <code class="docutils literal notranslate"><span class="pre">End</span></code> keeps it to edit.</p>
 <section id="typing">
 <h2>Typing<a class="headerlink" href="#typing" title="Link to this heading">¶</a></h2>
-<p>In every line typed (the filter, a prompt, a value's window, a list's <code class="docutils literal notranslate"><span class="pre">/</span></code>, the start page's name and narrowing) and in the note. A window's <code class="docutils literal notranslate"><span class="pre">Enter</span></code>, <code class="docutils literal notranslate"><span class="pre">Esc</span></code> and <code class="docutils literal notranslate"><span class="pre">Tab</span></code> stay the window's.</p>
+<p>In every line typed (the filter, a prompt, a cell of the typing mode, a list's <code class="docutils literal notranslate"><span class="pre">/</span></code>, the start page's name and narrowing) and in the note. A window's <code class="docutils literal notranslate"><span class="pre">Enter</span></code>, <code class="docutils literal notranslate"><span class="pre">Esc</span></code> and <code class="docutils literal notranslate"><span class="pre">Tab</span></code> stay the window's.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -432,13 +440,16 @@
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">g</span></code></p></td>
 <td><p>Guide and demo: the guide in the browser; the demo's page, its steps; the first time, the demo is written and its first step opened</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">q</span></code> <code class="docutils literal notranslate"><span class="pre">Esc</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">T</span></code></p></td>
+<td><p>the theme: each tried on the page as the cursor reaches it, Enter keeps it for the projects naming none</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">q</span></code> <code class="docutils literal notranslate"><span class="pre">Esc</span></code></p></td>
 <td><p>quit</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Ctrl+C</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Ctrl+C</span></code></p></td>
 <td><p>quit, from the page or from a project</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
 <td><p>this help</p></td>
 </tr>
 </tbody>
@@ -489,7 +500,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1…5</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1…6</span></code></p></td>
 <td><p>open that step; quitting it comes back to the demo's page</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code></p></td>
@@ -621,11 +632,17 @@
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
 <td><p>undo the last change written</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">D</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">w</span></code></p></td>
+<td><p>write the changes waiting, all previewed: one change of the history</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">D</span></code></p></td>
 <td><p>remove the sample, or the basket's: its file, asked first, u gives it back</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">R</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">R</span></code></p></td>
 <td><p>rename the sample, its own files and the links leading to it, asked first</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
+<td><p>the typing mode: ← → the column, what you type goes to the sample, the rows Shift+↑ ↓ took, or the basket</p></td>
 </tr>
 </tbody>
 </table>
@@ -702,10 +719,13 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">T</span></code></p></td>
+<td><p>the theme: each tried on the screen as the cursor reaches it, Enter keeps it</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
 <td><p>this help</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">q</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">q</span></code></p></td>
 <td><p>quit</p></td>
 </tr>
 </tbody>
@@ -802,22 +822,25 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">D</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">w</span></code></p></td>
+<td><p>write the changes waiting, all previewed: one change of the history</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">D</span></code></p></td>
 <td><p>remove this sample: its file, asked first, u gives it back</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">R</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">R</span></code></p></td>
 <td><p>rename this sample, its own files and the links leading to it, asked first</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
-<td><p>change the value, previewed</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
+<td><p>the typing mode: what you type replaces the cell, the arrows go from cell to cell, Esc leaves</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
 <td><p>edit the note</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">A</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">A</span></code></p></td>
 <td><p>add an attribute: its name, then its value</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
 <td><p>undo the last change written</p></td>
 </tr>
 </tbody>
@@ -835,13 +858,16 @@
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">H</span></code></p></td>
 <td><p>this sample's history: each change kept, and what it changed</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code></p></td>
-<td><p>open the value in its window (value, uncertainty, readings), or an attribute's items; a link, its sample or its address</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">i</span></code></p></td>
+<td><p>the value's card: its state, what it reads and what reads it, each typed in with e</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">c</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code></p></td>
+<td><p>an attribute's items; a link, its sample or its address; a table, unfolded</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">c</span></code></p></td>
 <td><p>compute the selected values, or this one, even if current or edited</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></td>
 <td><p>compute what is not current in the sample</p></td>
 </tr>
 </tbody>
@@ -889,7 +915,10 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">T</span></code></p></td>
+<td><p>the theme: each tried on the screen as the cursor reaches it, Enter keeps it</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
 <td><p>this help</p></td>
 </tr>
 </tbody>
@@ -965,10 +994,13 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
-<td><p>change the index or a text cell; on the empty row, add one; a value is changed in its window, Enter</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">w</span></code></p></td>
+<td><p>write the changes waiting, all previewed: one change of the history</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
+<td><p>the typing mode: what you type replaces the cell, a value with its uncertainty; on the empty row, a new row; Delete takes a row out</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
 <td><p>undo the last change written</p></td>
 </tr>
 </tbody>
@@ -986,8 +1018,8 @@
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">H</span></code></p></td>
 <td><p>the sample's history: each change kept, and what it changed</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code></p></td>
-<td><p>open the cell: its value, its uncertainty, where it came from; e there changes them</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">i</span></code></p></td>
+<td><p>the cell's card: its state, what it reads and what reads it, each typed in with e</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">c</span></code></p></td>
 <td><p>compute the selected columns, or this one, even if current or edited</p></td>
@@ -1047,10 +1079,9 @@
 </table>
 </div>
 </section>
-<section id="a-value-s-window">
-<h2>A value's window<a class="headerlink" href="#a-value-s-window" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> on a value of a sample: its value, its uncertainty and its readings, a column each.</p>
-<p><strong>Moving</strong></p>
+<section id="a-value-s-card">
+<h2>A value's card<a class="headerlink" href="#a-value-s-card" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">i</span></code> on a value of a sample, or on a table's cell holding one: the value, its readings, what it reads and what reads it, each with its value and its state.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -1059,65 +1090,20 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">l</span></code> <code class="docutils literal notranslate"><span class="pre">→</span></code></p></td>
-<td><p>next column</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">j</span></code> <code class="docutils literal notranslate"><span class="pre">k</span></code> <code class="docutils literal notranslate"><span class="pre">↓</span></code> <code class="docutils literal notranslate"><span class="pre">↑</span></code></p></td>
+<td><p>the next line, the line above</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">h</span></code> <code class="docutils literal notranslate"><span class="pre">←</span></code></p></td>
-<td><p>previous column; from the first, back to the sample</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code> <code class="docutils literal notranslate"><span class="pre">Enter</span></code> <code class="docutils literal notranslate"><span class="pre">F2</span></code></p></td>
+<td><p>type over the line under the cursor: what is typed waits, and the card is drawn again as it makes it</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Esc</span></code> <code class="docutils literal notranslate"><span class="pre">q</span></code></p></td>
-<td><p>back to the sample</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p><strong>Changing</strong></p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Keys</p></th>
-<th class="head"><p>What they do</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
-<td><p>change the cell, previewed; on readings, their list</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">w</span></code></p></td>
+<td><p>the changes waiting, previewed, written by y</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">u</span></code></p></td>
-<td><p>undo the last change written</p></td>
+<td><p>take back the last change</p></td>
 </tr>
-</tbody>
-</table>
-</div>
-<p><strong>Computing and checking</strong></p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Keys</p></th>
-<th class="head"><p>What they do</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">c</span></code></p></td>
-<td><p>compute the property, even if current or edited</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code></p></td>
-<td><p>where the value came from</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p><strong>The TUI</strong></p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Keys</p></th>
-<th class="head"><p>What they do</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
-<td><p>this help</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Esc</span></code> <code class="docutils literal notranslate"><span class="pre">q</span></code> <code class="docutils literal notranslate"><span class="pre">i</span></code></p></td>
+<td><p>close the card</p></td>
 </tr>
 </tbody>
 </table>
@@ -1125,7 +1111,7 @@
 </section>
 <section id="a-list-s-window">
 <h2>A list's window<a class="headerlink" href="#a-list-s-window" title="Link to this heading">¶</a></h2>
-<p>A value's readings, or an attribute's items, one per row.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> on an attribute: its items, one per row.</p>
 <p><strong>Moving</strong></p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
@@ -1675,7 +1661,7 @@
 <li><a class="reference internal" href="#the-collection">The collection</a></li>
 <li><a class="reference internal" href="#a-sample">A sample</a></li>
 <li><a class="reference internal" href="#a-table">A table</a></li>
-<li><a class="reference internal" href="#a-value-s-window">A value's window</a></li>
+<li><a class="reference internal" href="#a-value-s-card">A value's card</a></li>
 <li><a class="reference internal" href="#a-list-s-window">A list's window</a></li>
 <li><a class="reference internal" href="#the-collection-s-state">The collection's state</a></li>
 <li><a class="reference internal" href="#the-history">The history</a></li>
@@ -1694,7 +1680,7 @@
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

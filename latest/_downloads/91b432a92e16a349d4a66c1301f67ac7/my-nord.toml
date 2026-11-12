@@ -1,0 +1,7 @@
+# My theme: Nord, its accent purple and the cursor's line lighter. Saved in
+# SampleKit's themes folder, as themes/my-nord.toml, it is named my-nord.
+base = "nord"
+
+[colors]
+accent = "#b48ead"   # nord15
+line   = "#434c5e"   # nord2

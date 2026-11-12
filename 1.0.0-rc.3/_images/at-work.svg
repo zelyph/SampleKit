@@ -1,0 +1,989 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="530" viewBox="0 0 900 530" font-family="'DejaVu Sans Mono', Menlo, Consolas, monospace" font-size="15" xml:space="preserve" style="white-space:pre">
+<rect width="900" height="530" fill="#11151c"/>
+<defs>
+<g id="r0">
+<text x="18" y="13" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">SampleKit</text>
+<text x="108" y="13" textLength="99" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">· ~/tensile</text>
+</g>
+<g id="r1">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 54H36M27 54V72M36 54H54M54 54H72M72 54H90M90 54H108M108 54H126M126 54H144M144 54H162M162 54H180M180 54H198M198 54H216M216 54H234M234 54H252M252 54H270M270 54H288M288 54H306M306 54H324M324 54H342M342 54H360M360 54H378M378 54H396M396 54H414M414 54H432M432 54H450M450 54H468M468 54H486M486 54H504M504 54H522M522 54H540M540 54H558M558 54H576M576 54H594M594 54H612M612 54H630M630 54H648M648 54H666M666 54H684M684 54H702M702 54H720M720 54H738M738 54H756M756 54H774M774 54H792M792 54H810M810 54H828M828 54H846M846 54H864M864 54H882M882 54H900M900 54H918M918 54H936M936 54H954M954 54H972M972 54H990M990 54H1008M1008 54H1026M1026 54H1044M1044 54H1062M1062 54H1080M1080 54H1098M1098 54H1116M1116 54H1134M1134 54H1152M1152 54H1170M1170 54H1188M1188 54H1206M1206 54H1224M1224 54H1242M1242 54H1260M1260 54H1278M1278 54H1296M1296 54H1314M1314 54H1332M1332 54H1350M1350 54H1368M1368 54H1386M1386 54H1404M1404 54H1422M1422 54H1440M1440 54H1458M1458 54H1476M1476 54H1494M1494 54H1512M1512 54H1530M1530 54H1548M1548 54H1566M1566 54H1584M1584 54H1602M1602 54H1620M1620 54H1638M1638 54H1656M1656 54H1674M1674 54H1692M1692 54H1710M1710 54H1728M1728 54H1746M1746 54H1764M1764 54H1773M1773 54V72"/>
+</g>
+<g id="r2">
+<text x="54" y="49" textLength="36" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">name</text>
+<text x="189" y="49" textLength="72" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">material</text>
+<text x="297" y="49" textLength="63" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">E [GPa]</text>
+<text x="423" y="49" textLength="99" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">Rp0.2 [MPa]</text>
+<text x="549" y="49" textLength="72" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">Rm [MPa]</text>
+<text x="648" y="49" textLength="45" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">A [%]</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 72V108M1773 72V108"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 72V108M567 72V108M819 72V108M1071 72V108M1269 72V108"/>
+</g>
+<g id="r3">
+<rect x="27" y="54" width="846" height="18" fill="#232a36"/>
+<text x="54" y="67" textLength="108" lengthAdjust="spacing" fill="#d1d7e0">aluminium-01</text>
+<text x="189" y="67" textLength="81" lengthAdjust="spacing" fill="#60a5fa">aluminium</text>
+<text x="306" y="67" textLength="90" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">69.2 ± 0.3</text>
+<text x="423" y="67" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">285</text>
+<text x="549" y="67" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">318</text>
+<text x="648" y="67" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 108V144M1773 108V144"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 108V144M567 108V144M819 108V144M1071 108V144M1269 108V144"/>
+</g>
+<g id="r4">
+<text x="54" y="85" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="189" y="85" textLength="54" lengthAdjust="spacing" fill="#60a5fa">copper</text>
+<text x="297" y="85" textLength="99" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.2 ± 0.9</text>
+<text x="423" y="85" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="549" y="85" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">221</text>
+<text x="648" y="85" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 144V180M1773 144V180"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 144V180M567 144V180M819 144V180M1071 144V180M1269 144V180"/>
+</g>
+<g id="r5">
+<text x="54" y="103" textLength="72" lengthAdjust="spacing" fill="#d1d7e0">steel-01</text>
+<text x="189" y="103" textLength="45" lengthAdjust="spacing" fill="#60a5fa">steel</text>
+<text x="297" y="103" textLength="99" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">206.3 ± 1.1</text>
+<text x="423" y="103" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">387</text>
+<text x="549" y="103" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">518</text>
+<text x="648" y="103" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 180V216M1773 180V216"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 180V216M567 180V216M819 180V216M1071 180V216M1269 180V216"/>
+</g>
+<g id="r6">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 216V252M1773 216V252"/>
+</g>
+<g id="r7">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 252V288M1773 252V288"/>
+</g>
+<g id="r8">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 288V324M1773 288V324"/>
+</g>
+<g id="r9">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M1773 324V360"/>
+</g>
+<g id="r10">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 360V396M1773 360V396"/>
+</g>
+<g id="r11">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M1773 396V432"/>
+</g>
+<g id="r12">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 432V468M1773 432V468"/>
+</g>
+<g id="r13">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 468V504M1773 468V504"/>
+</g>
+<g id="r14">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 504V540M1773 504V540"/>
+</g>
+<g id="r15">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 540V576M1773 540V576"/>
+</g>
+<g id="r16">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 576V612M1773 576V612"/>
+</g>
+<g id="r17">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 612V648M1773 612V648"/>
+</g>
+<g id="r18">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 648V684M1773 648V684"/>
+</g>
+<g id="r19">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 684V720M1773 684V720"/>
+</g>
+<g id="r20">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 720V756M1773 720V756"/>
+</g>
+<g id="r21">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 756V792M1773 756V792"/>
+</g>
+<g id="r22">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 792V828M1773 792V828"/>
+</g>
+<g id="r23">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 828V864M1773 828V864"/>
+</g>
+<g id="r24">
+<text x="459" y="445" textLength="45" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Enter</text>
+<text x="513" y="445" textLength="54" lengthAdjust="spacing" fill="#8b949e">open ·</text>
+<text x="576" y="445" textLength="45" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Space</text>
+<text x="630" y="445" textLength="72" lengthAdjust="spacing" fill="#8b949e">basket ·</text>
+<text x="711" y="445" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">o</text>
+<text x="729" y="445" textLength="63" lengthAdjust="spacing" fill="#8b949e">files ·</text>
+<text x="801" y="445" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">E</text>
+<text x="819" y="445" textLength="54" lengthAdjust="spacing" fill="#8b949e">editor</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 882H36M27 864V882M36 882H54M54 882H72M72 882H90M90 882H108M108 882H126M126 882H144M144 882H162M162 882H180M180 882H198M198 882H216M216 882H234M234 882H252M252 882H270M270 882H288M288 882H306M306 882H324M324 882H342M342 882H360M360 882H378M378 882H396M396 882H414M414 882H432M432 882H450M450 882H468M468 882H486M486 882H504M504 882H522M522 882H540M540 882H558M558 882H576M576 882H594M594 882H612M612 882H630M630 882H648M648 882H666M666 882H684M684 882H702M702 882H720M720 882H738M738 882H756M756 882H774M774 882H792M792 882H810M810 882H828M828 882H846M846 882H864M864 882H882M882 882H900M1764 882H1773M1773 864V882"/>
+</g>
+<g id="r25">
+<text x="18" y="463" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples</text>
+</g>
+<g id="r26">
+<text x="18" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">/</text>
+<text x="36" y="481" textLength="72" lengthAdjust="spacing" fill="#8b949e">filter ·</text>
+<text x="117" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">s</text>
+<text x="135" y="481" textLength="54" lengthAdjust="spacing" fill="#8b949e">sort ·</text>
+<text x="198" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">c</text>
+<text x="216" y="481" textLength="81" lengthAdjust="spacing" fill="#8b949e">columns ·</text>
+<text x="306" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">C</text>
+<text x="324" y="481" textLength="72" lengthAdjust="spacing" fill="#8b949e">update ·</text>
+<text x="405" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">N</text>
+<text x="423" y="481" textLength="45" lengthAdjust="spacing" fill="#8b949e">new ·</text>
+<text x="477" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="495" y="481" textLength="54" lengthAdjust="spacing" fill="#8b949e">undo ·</text>
+<text x="558" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">p</text>
+<text x="576" y="481" textLength="81" lengthAdjust="spacing" fill="#8b949e">produce ·</text>
+<text x="666" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">v</text>
+<text x="684" y="481" textLength="63" lengthAdjust="spacing" fill="#8b949e">state ·</text>
+<text x="756" y="481" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">H</text>
+<text x="774" y="481" textLength="63" lengthAdjust="spacing" fill="#8b949e">history</text>
+</g>
+<g id="r27">
+<text x="18" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">M</text>
+<text x="36" y="499" textLength="63" lengthAdjust="spacing" fill="#8b949e">model ·</text>
+<text x="108" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">D</text>
+<text x="126" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">remove ·</text>
+<text x="207" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">R</text>
+<text x="225" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">rename ·</text>
+<text x="306" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">q</text>
+<text x="324" y="499" textLength="54" lengthAdjust="spacing" fill="#8b949e">quit ·</text>
+<text x="387" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">S</text>
+<text x="405" y="499" textLength="81" lengthAdjust="spacing" fill="#8b949e">summary ·</text>
+<text x="495" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">P</text>
+<text x="513" y="499" textLength="135" lengthAdjust="spacing" fill="#8b949e">configuration ·</text>
+<text x="657" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">g</text>
+<text x="675" y="499" textLength="63" lengthAdjust="spacing" fill="#8b949e">group ·</text>
+<text x="747" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">?</text>
+<text x="765" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">all keys</text>
+</g>
+<g id="r28">
+<text x="54" y="67" textLength="108" lengthAdjust="spacing" fill="#d1d7e0">aluminium-01</text>
+<text x="189" y="67" textLength="81" lengthAdjust="spacing" fill="#60a5fa">aluminium</text>
+<text x="306" y="67" textLength="90" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">69.2 ± 0.3</text>
+<text x="423" y="67" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">285</text>
+<text x="549" y="67" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">318</text>
+<text x="648" y="67" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 108V144M1773 108V144"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 108V144M567 108V144M819 108V144M1071 108V144M1269 108V144"/>
+</g>
+<g id="r29">
+<rect x="27" y="72" width="846" height="18" fill="#232a36"/>
+<text x="54" y="85" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">copper-01</text>
+<text x="189" y="85" textLength="54" lengthAdjust="spacing" fill="#60a5fa">copper</text>
+<text x="297" y="85" textLength="99" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.2 ± 0.9</text>
+<text x="423" y="85" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="549" y="85" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">221</text>
+<text x="648" y="85" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 144V180M1773 144V180"/>
+<path transform="scale(0.5)" stroke="#8b949e" stroke-width="2" fill="none" d="M351 144V180M567 144V180M819 144V180M1071 144V180M1269 144V180"/>
+</g>
+<g id="r30">
+<text x="18" y="13" textLength="81" lengthAdjust="spacing" fill="#22d3ee" font-weight="bold">SampleKit</text>
+<text x="108" y="13" textLength="99" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">· copper-01</text>
+</g>
+<g id="r31">
+<text x="27" y="31" textLength="54" lengthAdjust="spacing" fill="#d1d7e0">values</text>
+<text x="468" y="31" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 54H36M27 54V72M180 54H198M198 54H216M216 54H234M234 54H252M252 54H270M270 54H288M288 54H306M306 54H324M324 54H342M342 54H360M360 54H378M378 54H396M396 54H414M414 54H432M432 54H450M450 54H468M468 54H486M486 54H504M504 54H522M522 54H540M540 54H558M558 54H576M576 54H594M594 54H612M612 54H630M630 54H648M648 54H666M666 54H684M684 54H702M702 54H720M720 54H738M738 54H756M756 54H774M774 54H792M792 54H810M810 54H828M828 54H846M846 54H864M864 54H882M882 54H891M891 54V72M909 54H918M909 54V72M1026 54H1044M1044 54H1062M1062 54H1080M1080 54H1098M1098 54H1116M1116 54H1134M1134 54H1152M1152 54H1170M1170 54H1188M1188 54H1206M1206 54H1224M1224 54H1242M1242 54H1260M1260 54H1278M1278 54H1296M1296 54H1314M1314 54H1332M1332 54H1350M1350 54H1368M1368 54H1386M1386 54H1404M1404 54H1422M1422 54H1440M1440 54H1458M1458 54H1476M1476 54H1494M1494 54H1512M1512 54H1530M1530 54H1548M1548 54H1566M1566 54H1584M1584 54H1602M1602 54H1620M1620 54H1638M1638 54H1656M1656 54H1674M1674 54H1692M1692 54H1710M1710 54H1728M1728 54H1746M1746 54H1764M1764 54H1773M1773 54V72"/>
+</g>
+<g id="r32">
+<rect x="27" y="36" width="405" height="18" fill="#232a36"/>
+<text x="54" y="49" textLength="36" lengthAdjust="spacing" fill="#60a5fa">name</text>
+<text x="216" y="49" textLength="81" lengthAdjust="spacing" fill="#60a5fa">copper-01</text>
+<text x="468" y="49" textLength="342" lengthAdjust="spacing" fill="#d1d7e0">Tested at 2 mm/min, across the rolling</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 72V108M891 72V108M909 72V108M1773 72V108"/>
+</g>
+<g id="r33">
+<text x="54" y="67" textLength="36" lengthAdjust="spacing" fill="#60a5fa">tags</text>
+<text x="216" y="67" textLength="9" lengthAdjust="spacing" fill="#60a5fa">—</text>
+<text x="468" y="67" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">direction.</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 108V144M891 108V144M909 108V144M1773 108V144"/>
+</g>
+<g id="r34">
+<text x="54" y="85" textLength="72" lengthAdjust="spacing" fill="#60a5fa">material</text>
+<text x="216" y="85" textLength="54" lengthAdjust="spacing" fill="#60a5fa">copper</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 144V180M891 144V180M909 144V180M1773 144V180"/>
+</g>
+<g id="r35">
+<text x="54" y="103" textLength="45" lengthAdjust="spacing" fill="#60a5fa">grade</text>
+<text x="216" y="103" textLength="54" lengthAdjust="spacing" fill="#60a5fa">C11000</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 180V216M891 180V216M909 180V216M1773 180V216"/>
+</g>
+<g id="r36">
+<text x="54" y="121" textLength="81" lengthAdjust="spacing" fill="#60a5fa">direction</text>
+<text x="216" y="121" textLength="9" lengthAdjust="spacing" fill="#60a5fa">T</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 216V252M891 216V252M909 216V252M1773 216V252"/>
+</g>
+<g id="r37">
+<text x="54" y="139" textLength="54" lengthAdjust="spacing" fill="#60a5fa">tested</text>
+<text x="216" y="139" textLength="90" lengthAdjust="spacing" fill="#60a5fa">2026-03-03</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 252V288M891 252V288M909 252V288M1773 252V288"/>
+</g>
+<g id="r38">
+<text x="54" y="157" textLength="117" lengthAdjust="spacing" fill="#60a5fa">compared_with</text>
+<text x="216" y="157" textLength="72" lengthAdjust="spacing" fill="#7dd3fc" text-decoration="underline">steel-01</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 288V324M891 288V324M909 288V324M1773 288V324"/>
+</g>
+<g id="r39">
+<text x="54" y="175" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="216" y="175" textLength="144" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.5043 ± 0.0033</text>
+<text x="369" y="175" textLength="18" lengthAdjust="spacing" fill="#2dd4bf">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M891 324V360M909 324V360M1773 324V360"/>
+</g>
+<g id="r40">
+<text x="54" y="193" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">thickness</text>
+<text x="225" y="193" textLength="135" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">1.9967 ± 0.0056</text>
+<text x="369" y="193" textLength="18" lengthAdjust="spacing" fill="#2dd4bf">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 360V396M891 360V396M909 360V396M1773 360V396"/>
+</g>
+<g id="r41">
+<text x="54" y="211" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">area</text>
+<text x="225" y="211" textLength="126" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.967 ± 0.070</text>
+<text x="360" y="211" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">mm²</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M891 396V432M909 396V432M1773 396V432"/>
+</g>
+<g id="r42">
+<text x="54" y="229" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="225" y="229" textLength="117" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.19 ± 0.88</text>
+<text x="351" y="229" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">GPa</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 432V468M891 432V468M909 432V468M1773 432V468"/>
+</g>
+<g id="r43">
+<text x="54" y="247" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="261" y="247" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="288" y="247" textLength="27" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">± —</text>
+<text x="324" y="247" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 468V504M891 468V504M909 468V504M1773 468V504"/>
+</g>
+<g id="r44">
+<text x="54" y="265" textLength="144" lengthAdjust="spacing" fill="#d1d7e0">tensile_strength</text>
+<text x="252" y="265" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">221</text>
+<text x="288" y="265" textLength="27" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">± —</text>
+<text x="324" y="265" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 504V540M891 504V540M909 504V540M1773 504V540"/>
+</g>
+<g id="r45">
+<text x="54" y="283" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="243" y="283" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="288" y="283" textLength="27" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">± —</text>
+<text x="324" y="283" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 540V576M891 540V576M909 540V576M1773 540V576"/>
+</g>
+<g id="r46">
+<text x="54" y="301" textLength="45" lengthAdjust="spacing" fill="#818cf8">curve</text>
+<text x="216" y="301" textLength="162" lengthAdjust="spacing" fill="#d1d7e0">a table of 15 rows</text>
+<text x="396" y="301" textLength="9" lengthAdjust="spacing" fill="#d1d7e0">▸</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 576V612M891 576V612M909 576V612M1773 576V612"/>
+</g>
+<g id="r47">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 612V648M891 612V648M909 612V648M1773 612V648"/>
+</g>
+<g id="r48">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 648V684M891 648V684M909 648V684M1773 648V684"/>
+</g>
+<g id="r49">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 684V720M891 684V720M909 684V720M1773 684V720"/>
+</g>
+<g id="r50">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 720V756M891 720V756M909 720V756M1773 720V756"/>
+</g>
+<g id="r51">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 756V792M891 756V792M909 756V792M1773 756V792"/>
+</g>
+<g id="r52">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 792V828M891 792V828M909 792V828M1773 792V828"/>
+</g>
+<g id="r53">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 828V864M891 828V864M909 828V864M1773 828V864"/>
+</g>
+<g id="r54">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 864V900M891 864V900M909 864V900M1773 864V900"/>
+</g>
+<g id="r55">
+<text x="378" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">e</text>
+<text x="396" y="463" textLength="36" lengthAdjust="spacing" fill="#8b949e">edit</text>
+<text x="693" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">N</text>
+<text x="711" y="463" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="774" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">n</text>
+<text x="792" y="463" textLength="81" lengthAdjust="spacing" fill="#8b949e">hide note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 918H36M27 900V918M36 918H54M54 918H72M72 918H90M90 918H108M108 918H126M126 918H144M144 918H162M162 918H180M180 918H198M198 918H216M216 918H234M234 918H252M252 918H270M270 918H288M288 918H306M306 918H324M324 918H342M342 918H360M360 918H378M378 918H396M396 918H414M414 918H432M432 918H450M450 918H468M468 918H486M486 918H504M504 918H522M522 918H540M540 918H558M558 918H576M576 918H594M594 918H612M612 918H630M630 918H648M648 918H666M666 918H684M684 918H702M702 918H720M720 918H738M882 918H891M891 900V918M909 918H918M909 900V918M918 918H936M936 918H954M954 918H972M972 918H990M990 918H1008M1008 918H1026M1026 918H1044M1044 918H1062M1062 918H1080M1080 918H1098M1098 918H1116M1116 918H1134M1134 918H1152M1152 918H1170M1170 918H1188M1188 918H1206M1206 918H1224M1224 918H1242M1242 918H1260M1260 918H1278M1278 918H1296M1296 918H1314M1314 918H1332M1332 918H1350M1350 918H1368M1764 918H1773M1773 900V918"/>
+</g>
+<g id="r56">
+<text x="18" y="481" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples</text>
+</g>
+<g id="r57">
+<text x="18" y="499" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Esc</text>
+<text x="54" y="499" textLength="54" lengthAdjust="spacing" fill="#8b949e">back ·</text>
+<text x="117" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">H</text>
+<text x="135" y="499" textLength="81" lengthAdjust="spacing" fill="#8b949e">history ·</text>
+<text x="225" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="243" y="499" textLength="54" lengthAdjust="spacing" fill="#8b949e">undo ·</text>
+<text x="306" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">C</text>
+<text x="324" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">update ·</text>
+<text x="405" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">a</text>
+<text x="423" y="499" textLength="45" lengthAdjust="spacing" fill="#8b949e">all ·</text>
+<text x="477" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">x</text>
+<text x="495" y="499" textLength="63" lengthAdjust="spacing" fill="#8b949e">clear ·</text>
+<text x="567" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">o</text>
+<text x="585" y="499" textLength="63" lengthAdjust="spacing" fill="#8b949e">files ·</text>
+<text x="657" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">E</text>
+<text x="675" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">editor ·</text>
+<text x="756" y="499" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">?</text>
+<text x="774" y="499" textLength="72" lengthAdjust="spacing" fill="#8b949e">all keys</text>
+</g>
+<g id="r58">
+<text x="54" y="49" textLength="36" lengthAdjust="spacing" fill="#60a5fa">name</text>
+<text x="216" y="49" textLength="81" lengthAdjust="spacing" fill="#60a5fa">copper-01</text>
+<text x="468" y="49" textLength="342" lengthAdjust="spacing" fill="#d1d7e0">Tested at 2 mm/min, across the rolling</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 72V108M891 72V108M909 72V108M1773 72V108"/>
+</g>
+<g id="r59">
+<rect x="27" y="162" width="405" height="18" fill="#232a36"/>
+<text x="54" y="175" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="216" y="175" textLength="144" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.5043 ± 0.0033</text>
+<text x="369" y="175" textLength="18" lengthAdjust="spacing" fill="#2dd4bf">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M891 324V360M909 324V360M1773 324V360"/>
+</g>
+<g id="r60">
+<text x="54" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">e</text>
+<text x="72" y="463" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="135" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">i</text>
+<text x="153" y="463" textLength="54" lengthAdjust="spacing" fill="#8b949e">card ·</text>
+<text x="216" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">c</text>
+<text x="234" y="463" textLength="81" lengthAdjust="spacing" fill="#8b949e">compute ·</text>
+<text x="324" y="463" textLength="45" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Space</text>
+<text x="378" y="463" textLength="54" lengthAdjust="spacing" fill="#8b949e">select</text>
+<text x="693" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">N</text>
+<text x="711" y="463" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="774" y="463" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">n</text>
+<text x="792" y="463" textLength="81" lengthAdjust="spacing" fill="#8b949e">hide note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 918H36M27 900V918M36 918H54M54 918H72M72 918H90M882 918H891M891 900V918M909 918H918M909 900V918M918 918H936M936 918H954M954 918H972M972 918H990M990 918H1008M1008 918H1026M1026 918H1044M1044 918H1062M1062 918H1080M1080 918H1098M1098 918H1116M1116 918H1134M1134 918H1152M1152 918H1170M1170 918H1188M1188 918H1206M1206 918H1224M1224 918H1242M1242 918H1260M1260 918H1278M1278 918H1296M1296 918H1314M1314 918H1332M1332 918H1350M1350 918H1368M1764 918H1773M1773 900V918"/>
+</g>
+<g id="r61">
+<text x="18" y="481" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples</text>
+<text x="414" y="481" textLength="477" lengthAdjust="spacing" fill="#8b949e">width = 12.504333333333333 ± 0.0032829526005988064 mm</text>
+</g>
+<g id="r62">
+<rect x="27" y="162" width="189" height="18" fill="#232a36"/>
+<rect x="216" y="162" width="153" height="18" fill="#f5f7fa"/>
+<rect x="369" y="162" width="18" height="18" fill="#2dd4bf"/>
+<rect x="387" y="162" width="18" height="18" fill="#d1d7e0"/>
+<rect x="405" y="162" width="27" height="18" fill="#232a36"/>
+<text x="54" y="175" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="216" y="175" textLength="144" lengthAdjust="spacing" fill="#232a36" font-weight="bold">12.5043 ± 0.0033</text>
+<text x="369" y="175" textLength="18" lengthAdjust="spacing" fill="#232a36">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M891 324V360M909 324V360M1773 324V360"/>
+</g>
+<g id="r63">
+<text x="27" y="409" textLength="369" lengthAdjust="spacing" fill="#e7d7b5">typing: what you type replaces the cell ·</text>
+<text x="405" y="409" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Esc</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 792V828M891 792V828M909 792V828M1773 792V828"/>
+</g>
+<g id="r64">
+<text x="27" y="427" textLength="54" lengthAdjust="spacing" fill="#e7d7b5">leaves</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 828V864M891 828V864M909 828V864M1773 828V864"/>
+</g>
+<g id="r65">
+<text x="54" y="445" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">e</text>
+<text x="72" y="445" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="135" y="445" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">i</text>
+<text x="153" y="445" textLength="54" lengthAdjust="spacing" fill="#8b949e">card ·</text>
+<text x="216" y="445" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">c</text>
+<text x="234" y="445" textLength="81" lengthAdjust="spacing" fill="#8b949e">compute ·</text>
+<text x="324" y="445" textLength="45" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Space</text>
+<text x="378" y="445" textLength="54" lengthAdjust="spacing" fill="#8b949e">select</text>
+<text x="693" y="445" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">N</text>
+<text x="711" y="445" textLength="54" lengthAdjust="spacing" fill="#8b949e">edit ·</text>
+<text x="774" y="445" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">n</text>
+<text x="792" y="445" textLength="81" lengthAdjust="spacing" fill="#8b949e">hide note</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 882H36M27 864V882M36 882H54M54 882H72M72 882H90M882 882H891M891 864V882M909 882H918M909 864V882M918 882H936M936 882H954M954 882H972M972 882H990M990 882H1008M1008 882H1026M1026 882H1044M1044 882H1062M1062 882H1080M1080 882H1098M1098 882H1116M1116 882H1134M1134 882H1152M1152 882H1170M1170 882H1188M1188 882H1206M1206 882H1224M1224 882H1242M1242 882H1260M1260 882H1278M1278 882H1296M1296 882H1314M1314 882H1332M1332 882H1350M1350 882H1368M1764 882H1773M1773 864V882"/>
+</g>
+<g id="r66">
+<text x="18" y="463" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples</text>
+<text x="414" y="463" textLength="477" lengthAdjust="spacing" fill="#8b949e">width = 12.504333333333333 ± 0.0032829526005988064 mm</text>
+</g>
+<g id="r67">
+<rect x="9" y="468" width="72" height="18" fill="#22d3ee"/>
+<text x="18" y="481" textLength="54" lengthAdjust="spacing" fill="#11151c" font-weight="bold">TYPING</text>
+<text x="90" y="481" textLength="234" lengthAdjust="spacing" fill="#8b949e">type to replace the cell ·</text>
+<text x="333" y="481" textLength="45" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Enter</text>
+<text x="387" y="481" textLength="108" lengthAdjust="spacing" fill="#8b949e">keep, down ·</text>
+<text x="504" y="481" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Tab</text>
+<text x="540" y="481" textLength="117" lengthAdjust="spacing" fill="#8b949e">keep, right ·</text>
+<text x="666" y="481" textLength="63" lengthAdjust="spacing" fill="#fde047" font-weight="bold">↑ ↓ ← →</text>
+<text x="738" y="481" textLength="45" lengthAdjust="spacing" fill="#8b949e">cells</text>
+</g>
+<g id="r68">
+<text x="18" y="499" textLength="99" lengthAdjust="spacing" fill="#8b949e">F2 change ·</text>
+<text x="126" y="499" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Del</text>
+<text x="162" y="499" textLength="90" lengthAdjust="spacing" fill="#8b949e">take out ·</text>
+<text x="261" y="499" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Esc</text>
+<text x="297" y="499" textLength="45" lengthAdjust="spacing" fill="#8b949e">leave</text>
+</g>
+<g id="r69">
+<rect x="27" y="162" width="189" height="18" fill="#232a36"/>
+<text x="54" y="175" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="216" y="175" textLength="108" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.6 +- 0.02</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M891 324V360M909 324V360M1773 324V360"/>
+</g>
+<g id="r70">
+<text x="36" y="175" textLength="9" lengthAdjust="spacing" fill="#c084fc">✎</text>
+<text x="54" y="175" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="216" y="175" textLength="126" lengthAdjust="spacing" fill="#f0abfc" font-weight="bold" font-style="italic">12.600 ± 0.020</text>
+<text x="351" y="175" textLength="18" lengthAdjust="spacing" fill="#f0abfc" font-style="italic">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M891 324V360M909 324V360M1773 324V360"/>
+</g>
+<g id="r71">
+<rect x="27" y="180" width="189" height="18" fill="#232a36"/>
+<rect x="216" y="180" width="144" height="18" fill="#f5f7fa"/>
+<rect x="360" y="180" width="18" height="18" fill="#2dd4bf"/>
+<rect x="378" y="180" width="27" height="18" fill="#d1d7e0"/>
+<rect x="405" y="180" width="27" height="18" fill="#232a36"/>
+<text x="54" y="193" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">thickness</text>
+<text x="216" y="193" textLength="135" lengthAdjust="spacing" fill="#232a36" font-weight="bold">1.9967 ± 0.0056</text>
+<text x="360" y="193" textLength="18" lengthAdjust="spacing" fill="#232a36">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 360V396M891 360V396M909 360V396M1773 360V396"/>
+</g>
+<g id="r72">
+<text x="36" y="211" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="211" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">area</text>
+<text x="216" y="211" textLength="126" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.967 ± 0.070</text>
+<text x="351" y="211" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">mm²</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M891 396V432M909 396V432M1773 396V432"/>
+</g>
+<g id="r73">
+<text x="36" y="229" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="229" textLength="117" lengthAdjust="spacing" fill="#d1d7e0">young_modulus</text>
+<text x="216" y="229" textLength="117" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">117.19 ± 0.88</text>
+<text x="342" y="229" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">GPa</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 432V468M891 432V468M909 432V468M1773 432V468"/>
+</g>
+<g id="r74">
+<text x="36" y="247" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="247" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">yield_strength</text>
+<text x="252" y="247" textLength="18" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">76</text>
+<text x="279" y="247" textLength="27" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">± —</text>
+<text x="315" y="247" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 468V504M891 468V504M909 468V504M1773 468V504"/>
+</g>
+<g id="r75">
+<text x="36" y="265" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="265" textLength="144" lengthAdjust="spacing" fill="#d1d7e0">tensile_strength</text>
+<text x="243" y="265" textLength="27" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">221</text>
+<text x="279" y="265" textLength="27" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">± —</text>
+<text x="315" y="265" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">MPa</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 504V540M891 504V540M909 504V540M1773 504V540"/>
+</g>
+<g id="r76">
+<text x="54" y="283" textLength="90" lengthAdjust="spacing" fill="#d1d7e0">elongation</text>
+<text x="234" y="283" textLength="36" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">44.0</text>
+<text x="279" y="283" textLength="27" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">± —</text>
+<text x="315" y="283" textLength="9" lengthAdjust="spacing" fill="#2dd4bf">%</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 540V576M891 540V576M909 540V576M1773 540V576"/>
+</g>
+<g id="r77">
+<text x="36" y="301" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="301" textLength="45" lengthAdjust="spacing" fill="#818cf8">curve</text>
+<text x="216" y="301" textLength="162" lengthAdjust="spacing" fill="#d1d7e0">a table of 15 rows</text>
+<text x="396" y="301" textLength="9" lengthAdjust="spacing" fill="#d1d7e0">▸</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 576V612M891 576V612M909 576V612M1773 576V612"/>
+</g>
+<g id="r78">
+<text x="27" y="409" textLength="378" lengthAdjust="spacing" fill="#e7d7b5">changed samples/copper-01.md — not written</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 792V828M891 792V828M909 792V828M1773 792V828"/>
+</g>
+<g id="r79">
+<text x="27" y="427" textLength="180" lengthAdjust="spacing" fill="#e7d7b5">yet: 1 file waiting,</text>
+<text x="216" y="427" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">w</text>
+<text x="234" y="427" textLength="63" lengthAdjust="spacing" fill="#e7d7b5">writes,</text>
+<text x="306" y="427" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="324" y="427" textLength="72" lengthAdjust="spacing" fill="#e7d7b5">takes it</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 828V864M891 828V864M909 828V864M1773 828V864"/>
+</g>
+<g id="r80">
+<text x="18" y="463" textLength="315" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples · 1 file not written</text>
+<text x="387" y="463" textLength="504" lengthAdjust="spacing" fill="#8b949e">thickness = 1.9966666666666668 ± 0.005547772325697763 mm</text>
+</g>
+<g id="r81">
+<text x="54" y="139" textLength="54" lengthAdjust="spacing" fill="#60a5fa">tested</text>
+<text x="153" y="139" textLength="135" lengthAdjust="spacing" fill="#d1d7e0">area · its card</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 252V288M279 270H288M279 270V288M594 270H612M612 270H630M630 270H648M648 270H666M666 270H684M684 270H702M702 270H720M720 270H738M738 270H756M756 270H774M774 270H792M792 270H810M810 270H828M828 270H846M846 270H864M864 270H882M882 270H900M900 270H918M918 270H936M936 270H954M954 270H972M972 270H990M990 270H1008M1008 270H1026M1026 270H1044M1044 270H1062M1062 270H1080M1080 270H1098M1098 270H1116M1116 270H1134M1134 270H1152M1152 270H1170M1170 270H1188M1188 270H1206M1206 270H1224M1224 270H1242M1242 270H1260M1260 270H1278M1278 270H1296M1296 270H1314M1314 270H1332M1332 270H1350M1350 270H1368M1368 270H1386M1386 270H1404M1404 270H1422M1422 270H1440M1440 270H1458M1458 270H1476M1476 270H1494M1494 270H1512M1512 270H1521M1521 270V288M1773 252V288"/>
+</g>
+<g id="r82">
+<rect x="153" y="144" width="594" height="18" fill="#232a36"/>
+<text x="54" y="157" textLength="81" lengthAdjust="spacing" fill="#60a5fa">compared_</text>
+<text x="162" y="157" textLength="36" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">area</text>
+<text x="288" y="157" textLength="126" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.967 ± 0.070</text>
+<text x="423" y="157" textLength="27" lengthAdjust="spacing" fill="#2dd4bf" font-weight="bold">mm²</text>
+<text x="468" y="157" textLength="162" lengthAdjust="spacing" fill="#fb923c">⚠ outdated — width</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 288V324M279 288V324M1521 288V324M1773 288V324"/>
+</g>
+<g id="r83">
+<text x="36" y="175" textLength="9" lengthAdjust="spacing" fill="#c084fc">✎</text>
+<text x="54" y="175" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M279 324V360M1521 324V360M1773 324V360"/>
+</g>
+<g id="r84">
+<text x="54" y="193" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">thickness</text>
+<text x="162" y="193" textLength="45" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">reads</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 360V396M279 360V396M1521 360V396M1773 360V396"/>
+</g>
+<g id="r85">
+<rect x="27" y="198" width="108" height="18" fill="#232a36"/>
+<text x="36" y="211" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="211" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">area</text>
+<text x="180" y="211" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">thickness</text>
+<text x="306" y="211" textLength="135" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">1.9967 ± 0.0056</text>
+<text x="450" y="211" textLength="18" lengthAdjust="spacing" fill="#2dd4bf">mm</text>
+<text x="504" y="211" textLength="63" lengthAdjust="spacing" fill="#4ade80">current</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M279 396V432M1521 396V432M1773 396V432"/>
+</g>
+<g id="r86">
+<text x="36" y="229" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="229" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">young_mod</text>
+<text x="180" y="229" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="306" y="229" textLength="153" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.600 ± 0.020 mm</text>
+<text x="486" y="229" textLength="261" lengthAdjust="spacing" fill="#c084fc">✎ edited — typed over its fo…</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 432V468M279 432V468M1521 432V468M1773 432V468"/>
+</g>
+<g id="r87">
+<text x="36" y="247" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="247" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">yield_str</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 468V504M279 468V504M1521 468V504M1773 468V504"/>
+</g>
+<g id="r88">
+<text x="36" y="265" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="265" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">tensile_s</text>
+<text x="162" y="265" textLength="63" lengthAdjust="spacing" fill="#8b949e" font-weight="bold">read by</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 504V540M279 504V540M1521 504V540M1773 504V540"/>
+</g>
+<g id="r89">
+<text x="54" y="283" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">elongatio</text>
+<text x="180" y="283" textLength="108" lengthAdjust="spacing" fill="#d1d7e0">curve.stress</text>
+<text x="306" y="283" textLength="63" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">15 rows</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 540V576M279 540V576M1521 540V576M1773 540V576"/>
+</g>
+<g id="r90">
+<text x="36" y="301" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="301" textLength="45" lengthAdjust="spacing" fill="#818cf8">curve</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 576V612M279 576V612M1521 576V612M1773 576V612"/>
+</g>
+<g id="r91">
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 612V648M279 612V648M1521 612V648M1773 612V648"/>
+</g>
+<g id="r92">
+<text x="225" y="337" textLength="18" lengthAdjust="spacing" fill="#fde047" font-weight="bold">↑↓</text>
+<text x="252" y="337" textLength="54" lengthAdjust="spacing" fill="#8b949e">line ·</text>
+<text x="315" y="337" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">e</text>
+<text x="333" y="337" textLength="108" lengthAdjust="spacing" fill="#8b949e">type in it ·</text>
+<text x="450" y="337" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">Esc</text>
+<text x="486" y="337" textLength="63" lengthAdjust="spacing" fill="#8b949e">close ·</text>
+<text x="558" y="337" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">w</text>
+<text x="576" y="337" textLength="63" lengthAdjust="spacing" fill="#8b949e">write ·</text>
+<text x="648" y="337" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="666" y="337" textLength="81" lengthAdjust="spacing" fill="#8b949e">take back</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 648V684M279 666H288M279 648V666M288 666H306M306 666H324M324 666H342M342 666H360M360 666H378M378 666H396M396 666H414M414 666H432M1512 666H1521M1521 648V666M1773 648V684"/>
+</g>
+<g id="r93">
+<text x="18" y="481" textLength="315" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples · 1 file not written</text>
+<text x="432" y="481" textLength="459" lengthAdjust="spacing" fill="#8b949e">area = 24.966985555555556 ± 0.06968019906785453 mm²</text>
+</g>
+<g id="r94">
+<text x="54" y="193" textLength="81" lengthAdjust="spacing" fill="#d1d7e0">thickness</text>
+<text x="216" y="193" textLength="135" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">1.9967 ± 0.0056</text>
+<text x="360" y="193" textLength="18" lengthAdjust="spacing" fill="#2dd4bf">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 360V396M891 360V396M909 360V396M1773 360V396"/>
+</g>
+<g id="r95">
+<rect x="27" y="198" width="126" height="18" fill="#232a36"/>
+<text x="36" y="211" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="211" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">area</text>
+<text x="171" y="211" textLength="126" lengthAdjust="spacing" fill="#d1d7e0" font-weight="bold">write · 1 file</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M315 414H324M315 414V432M612 414H630M630 414H648M648 414H666M666 414H684M684 414H702M702 414H720M720 414H738M738 414H756M756 414H774M774 414H792M792 414H810M810 414H828M828 414H846M846 414H864M864 414H882M882 414H900M900 414H918M918 414H936M936 414H954M954 414H972M972 414H990M990 414H1008M1008 414H1026M1026 414H1044M1044 414H1062M1062 414H1080M1080 414H1098M1098 414H1116M1116 414H1134M1134 414H1152M1152 414H1170M1170 414H1188M1188 414H1206M1206 414H1224M1224 414H1242M1242 414H1260M1260 414H1278M1278 414H1296M1296 414H1314M1314 414H1332M1332 414H1350M1350 414H1368M1368 414H1386M1386 414H1404M1404 414H1422M1422 414H1440M1440 414H1458M1458 414H1467M1467 414V432M1773 396V432"/>
+</g>
+<g id="r96">
+<text x="36" y="229" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="229" textLength="99" lengthAdjust="spacing" fill="#d1d7e0">young_modul</text>
+<text x="171" y="229" textLength="180" lengthAdjust="spacing" fill="#d1d7e0">samples/copper-01.md</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 432V468M315 432V468M1467 432V468M1773 432V468"/>
+</g>
+<g id="r97">
+<text x="36" y="247" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="247" textLength="99" lengthAdjust="spacing" fill="#d1d7e0">yield_stren</text>
+<text x="189" y="247" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="261" y="247" textLength="171" lengthAdjust="spacing" fill="#d1d7e0">12.5043 ± 0.0033 mm</text>
+<text x="450" y="247" textLength="9" lengthAdjust="spacing" fill="#d1d7e0">→</text>
+<text x="477" y="247" textLength="153" lengthAdjust="spacing" fill="#d1d7e0">12.600 ± 0.020 mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 468V504M315 468V504M1467 468V504M1773 468V504"/>
+</g>
+<g id="r98">
+<text x="36" y="265" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="265" textLength="99" lengthAdjust="spacing" fill="#d1d7e0">tensile_str</text>
+<text x="441" y="265" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">y</text>
+<text x="459" y="265" textLength="63" lengthAdjust="spacing" fill="#8b949e">write ·</text>
+<text x="531" y="265" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">n</text>
+<text x="549" y="265" textLength="72" lengthAdjust="spacing" fill="#8b949e">cancel ·</text>
+<text x="630" y="265" textLength="27" lengthAdjust="spacing" fill="#fde047" font-weight="bold">j k</text>
+<text x="666" y="265" textLength="54" lengthAdjust="spacing" fill="#8b949e">scroll</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 504V540M315 522H324M315 504V522M324 522H342M342 522H360M360 522H378M378 522H396M396 522H414M414 522H432M432 522H450M450 522H468M468 522H486M486 522H504M504 522H522M522 522H540M540 522H558M558 522H576M576 522H594M594 522H612M612 522H630M630 522H648M648 522H666M666 522H684M684 522H702M702 522H720M720 522H738M738 522H756M756 522H774M774 522H792M792 522H810M810 522H828M828 522H846M846 522H864M1458 522H1467M1467 504V522M1773 504V540"/>
+</g>
+<g id="r99">
+<text x="36" y="175" textLength="9" lengthAdjust="spacing" fill="#c084fc">✎</text>
+<text x="54" y="175" textLength="45" lengthAdjust="spacing" fill="#d1d7e0">width</text>
+<text x="216" y="175" textLength="126" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">12.600 ± 0.020</text>
+<text x="351" y="175" textLength="18" lengthAdjust="spacing" fill="#2dd4bf">mm</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 324V360M891 324V360M909 324V360M1773 324V360"/>
+</g>
+<g id="r100">
+<rect x="27" y="198" width="405" height="18" fill="#232a36"/>
+<text x="36" y="211" textLength="9" lengthAdjust="spacing" fill="#fb923c">⚠</text>
+<text x="54" y="211" textLength="36" lengthAdjust="spacing" fill="#d1d7e0">area</text>
+<text x="216" y="211" textLength="126" lengthAdjust="spacing" fill="#f5f7fa" font-weight="bold">24.967 ± 0.070</text>
+<text x="351" y="211" textLength="27" lengthAdjust="spacing" fill="#2dd4bf">mm²</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 396V432M891 396V432M909 396V432M1773 396V432"/>
+</g>
+<g id="r101">
+<text x="27" y="427" textLength="279" lengthAdjust="spacing" fill="#e7d7b5">written: samples/copper-01.md ·</text>
+<text x="315" y="427" textLength="9" lengthAdjust="spacing" fill="#fde047" font-weight="bold">u</text>
+<text x="333" y="427" textLength="72" lengthAdjust="spacing" fill="#e7d7b5">takes it</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 828V864M891 828V864M909 828V864M1773 828V864"/>
+</g>
+<g id="r102">
+<text x="27" y="445" textLength="36" lengthAdjust="spacing" fill="#e7d7b5">back</text>
+<path transform="scale(0.5)" stroke="#d1d7e0" stroke-width="2" fill="none" d="M27 864V900M891 864V900M909 864V900M1773 864V900"/>
+</g>
+<g id="r103">
+<text x="18" y="481" textLength="126" lengthAdjust="spacing" fill="#d1d7e0">3 of 3 samples</text>
+<text x="432" y="481" textLength="459" lengthAdjust="spacing" fill="#8b949e">area = 24.966985555555556 ± 0.06968019906785453 mm²</text>
+</g>
+</defs>
+<g visibility="visible">
+<animate attributeName="visibility" values="visible;hidden" keyTimes="0;0.1304" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r0"/>
+<use href="#r1"/>
+<use href="#r2"/>
+<use href="#r3"/>
+<use href="#r4"/>
+<use href="#r5"/>
+<use href="#r6"/>
+<use href="#r7"/>
+<use href="#r8"/>
+<use href="#r9"/>
+<use href="#r10"/>
+<use href="#r11"/>
+<use href="#r12"/>
+<use href="#r13"/>
+<use href="#r14"/>
+<use href="#r15"/>
+<use href="#r16"/>
+<use href="#r17"/>
+<use href="#r18"/>
+<use href="#r19"/>
+<use href="#r20"/>
+<use href="#r21"/>
+<use href="#r22"/>
+<use href="#r23"/>
+<use href="#r24"/>
+<use href="#r25"/>
+<use href="#r26"/>
+<use href="#r27"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">samplekit</tspan><tspan fill="#d1d7e0">  the terminal interface, on the demo's specimens</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.1304;0.1739" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r0"/>
+<use href="#r1"/>
+<use href="#r2"/>
+<use href="#r28"/>
+<use href="#r29"/>
+<use href="#r5"/>
+<use href="#r6"/>
+<use href="#r7"/>
+<use href="#r8"/>
+<use href="#r9"/>
+<use href="#r10"/>
+<use href="#r11"/>
+<use href="#r12"/>
+<use href="#r13"/>
+<use href="#r14"/>
+<use href="#r15"/>
+<use href="#r16"/>
+<use href="#r17"/>
+<use href="#r18"/>
+<use href="#r19"/>
+<use href="#r20"/>
+<use href="#r21"/>
+<use href="#r22"/>
+<use href="#r23"/>
+<use href="#r24"/>
+<use href="#r25"/>
+<use href="#r26"/>
+<use href="#r27"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">j</tspan><tspan fill="#d1d7e0">  down to copper-01</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.1739;0.2609" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r32"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<use href="#r38"/>
+<use href="#r39"/>
+<use href="#r40"/>
+<use href="#r41"/>
+<use href="#r42"/>
+<use href="#r43"/>
+<use href="#r44"/>
+<use href="#r45"/>
+<use href="#r46"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r52"/>
+<use href="#r53"/>
+<use href="#r54"/>
+<use href="#r55"/>
+<use href="#r56"/>
+<use href="#r57"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">Enter</tspan><tspan fill="#d1d7e0">  opens it: its values, its note</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.2609;0.3043" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r58"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<use href="#r38"/>
+<use href="#r59"/>
+<use href="#r40"/>
+<use href="#r41"/>
+<use href="#r42"/>
+<use href="#r43"/>
+<use href="#r44"/>
+<use href="#r45"/>
+<use href="#r46"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r52"/>
+<use href="#r53"/>
+<use href="#r54"/>
+<use href="#r60"/>
+<use href="#r61"/>
+<use href="#r57"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">j</tspan><tspan fill="#d1d7e0">  down to its width</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.3043;0.3913" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r58"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<use href="#r38"/>
+<use href="#r62"/>
+<use href="#r40"/>
+<use href="#r41"/>
+<use href="#r42"/>
+<use href="#r43"/>
+<use href="#r44"/>
+<use href="#r45"/>
+<use href="#r46"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r63"/>
+<use href="#r64"/>
+<use href="#r65"/>
+<use href="#r66"/>
+<use href="#r67"/>
+<use href="#r68"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">e</tspan><tspan fill="#d1d7e0">  the typing mode: what is typed replaces the cell</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.3913;0.4783" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r58"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<use href="#r38"/>
+<use href="#r69"/>
+<use href="#r40"/>
+<use href="#r41"/>
+<use href="#r42"/>
+<use href="#r43"/>
+<use href="#r44"/>
+<use href="#r45"/>
+<use href="#r46"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r52"/>
+<use href="#r53"/>
+<use href="#r65"/>
+<use href="#r66"/>
+<use href="#r67"/>
+<use href="#r68"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">12.6 +- 0.02</tspan><tspan fill="#d1d7e0">  a value and its uncertainty, in one cell</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.4783;0.6087" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r58"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<use href="#r38"/>
+<use href="#r70"/>
+<use href="#r71"/>
+<use href="#r72"/>
+<use href="#r73"/>
+<use href="#r74"/>
+<use href="#r75"/>
+<use href="#r76"/>
+<use href="#r77"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r78"/>
+<use href="#r79"/>
+<use href="#r65"/>
+<use href="#r80"/>
+<use href="#r67"/>
+<use href="#r68"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">Enter</tspan><tspan fill="#d1d7e0">  kept, waiting to be written: what it feeds is outdated at once</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.6087;0.7391" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r58"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r81"/>
+<use href="#r82"/>
+<use href="#r83"/>
+<use href="#r84"/>
+<use href="#r85"/>
+<use href="#r86"/>
+<use href="#r87"/>
+<use href="#r88"/>
+<use href="#r89"/>
+<use href="#r90"/>
+<use href="#r91"/>
+<use href="#r92"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r52"/>
+<use href="#r53"/>
+<use href="#r54"/>
+<use href="#r60"/>
+<use href="#r93"/>
+<use href="#r57"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">i</tspan><tspan fill="#d1d7e0">  area's card: what it reads, and what reads it</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible;hidden" keyTimes="0;0.7391;0.8696" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r58"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<use href="#r38"/>
+<use href="#r70"/>
+<use href="#r94"/>
+<use href="#r95"/>
+<use href="#r96"/>
+<use href="#r97"/>
+<use href="#r98"/>
+<use href="#r76"/>
+<use href="#r77"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r52"/>
+<use href="#r53"/>
+<use href="#r54"/>
+<use href="#r60"/>
+<use href="#r93"/>
+<use href="#r57"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">w</tspan><tspan fill="#d1d7e0">  every change waiting, previewed before it is written</tspan></text>
+</g>
+<g visibility="hidden">
+<animate attributeName="visibility" values="hidden;visible" keyTimes="0;0.8696" dur="27.6s" calcMode="discrete" repeatCount="indefinite"/>
+<use href="#r30"/>
+<use href="#r31"/>
+<use href="#r58"/>
+<use href="#r33"/>
+<use href="#r34"/>
+<use href="#r35"/>
+<use href="#r36"/>
+<use href="#r37"/>
+<use href="#r38"/>
+<use href="#r99"/>
+<use href="#r94"/>
+<use href="#r100"/>
+<use href="#r73"/>
+<use href="#r74"/>
+<use href="#r75"/>
+<use href="#r76"/>
+<use href="#r77"/>
+<use href="#r47"/>
+<use href="#r48"/>
+<use href="#r49"/>
+<use href="#r50"/>
+<use href="#r51"/>
+<use href="#r52"/>
+<use href="#r101"/>
+<use href="#r102"/>
+<use href="#r60"/>
+<use href="#r103"/>
+<use href="#r57"/>
+<line x1="0" y1="505" x2="900" y2="505" stroke="#8b949e"/>
+<text x="9" y="523"><tspan fill="#fde047" font-weight="bold">y</tspan><tspan fill="#d1d7e0">  written: one change of the project's history, u takes it back</tspan></text>
+</g>
+</svg>

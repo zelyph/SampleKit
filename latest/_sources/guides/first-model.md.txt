@@ -153,6 +153,11 @@ folder `example/`, from the folder you run it in: run it beside your
 project, not inside it, so that the two stay apart. It has one formula of
 each kind, working, and the commands to try.
 
+The [templates](start-from-templates.md) are a smaller model to start
+from, with values measured several times, a value computed from them and a
+table with a computed column, beside a configuration, a sample and a script
+that go with it: files to download and fill in.
+
 ## See also
 
 - [Models and formulas](../concepts/models-and-formulas.md): where a model

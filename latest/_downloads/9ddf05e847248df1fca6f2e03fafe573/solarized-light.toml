@@ -1,0 +1,23 @@
+# Solarized light, built into SampleKit: T in the terminal interface chooses it,
+# as theme = "solarized-light" in a project's [colors] does; or copy this table.
+[colors]
+background = "#fdf6e3"   # the screen
+foreground = "#657b83"   # its text
+failed     = "#dc322f"   # red
+outdated   = "#b58900"   # yellow
+edited     = "#cb4b16"   # orange
+current    = "#859900"   # green
+selected   = "#2aa198"   # cyan
+attribute  = "#268bd2"   # blue
+link       = "#6c71c4"   # violet
+value      = "#657b83"   # base00
+unit       = "#2aa198"   # cyan
+table      = "#6c71c4"   # violet
+index      = "#2aa198"   # cyan
+key        = "#586e75"   # base01
+muted      = "#93a1a1"   # base1
+message    = "#586e75"   # base01
+error      = "#dc322f"   # red
+accent     = "#d33682"   # magenta
+waiting    = "#d33682"   # magenta
+line       = "#eee8d5"   # base2

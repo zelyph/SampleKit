@@ -4,9 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Filters" href="filters.html"><link rel="prev" title="The TUI&#39;s keys" href="tui.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Configuration - SampleKit 1.0.0-rc.2</title>
+        <title>Configuration - SampleKit 1.0.0-rc.3</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -175,7 +177,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -195,8 +197,12 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -216,10 +222,12 @@
 <li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-from-templates.html">Start from templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/colours.html">Choose the colours</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
@@ -304,7 +312,9 @@ from. Configurations are combined only by <code class="docutils literal notransl
 <li><p>A folder below a project with a <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> of its own is a separate
 project.</p></li>
 <li><p>Paths written in <code class="docutils literal notranslate"><span class="pre">.samplekitrc</span></code> are relative to the file itself, imported
-ones to the file that declares them.</p></li>
+ones to the file that declares them. Write them with <code class="docutils literal notranslate"><span class="pre">/</span></code>, which every system
+reads; a <code class="docutils literal notranslate"><span class="pre">\</span></code> written on Windows is read as <code class="docutils literal notranslate"><span class="pre">/</span></code> on Linux and macOS too, so
+that the project reads wherever it is copied.</p></li>
 <li><p>What <code class="docutils literal notranslate"><span class="pre">list</span></code>, the completion and the TUI's <code class="docutils literal notranslate"><span class="pre">f</span></code> offer is the configuration of
 the folder a command runs from, or of its target.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--rc</span> <span class="pre">PATH</span></code> uses another configuration for one command; <code class="docutils literal notranslate"><span class="pre">--show-rc</span></code> prints
@@ -1107,6 +1117,12 @@ of the terminal's sixteen by name (<code class="docutils literal notranslate"><s
 <code class="docutils literal notranslate"><span class="pre">magenta</span></code>, <code class="docutils literal notranslate"><span class="pre">cyan</span></code>, <code class="docutils literal notranslate"><span class="pre">grey</span></code>, <code class="docutils literal notranslate"><span class="pre">dark-grey</span></code>, <code class="docutils literal notranslate"><span class="pre">light-red</span></code>, <code class="docutils literal notranslate"><span class="pre">light-green</span></code>,
 <code class="docutils literal notranslate"><span class="pre">light-yellow</span></code>, <code class="docutils literal notranslate"><span class="pre">light-blue</span></code>, <code class="docutils literal notranslate"><span class="pre">light-magenta</span></code>, <code class="docutils literal notranslate"><span class="pre">light-cyan</span></code>, <code class="docutils literal notranslate"><span class="pre">white</span></code>; <code class="docutils literal notranslate"><span class="pre">gray</span></code>
 and <code class="docutils literal notranslate"><span class="pre">dark-gray</span></code> too), or <code class="docutils literal notranslate"><span class="pre">#rrggbb</span></code>.</p>
+<p>In the terminal interface, a role the table leaves out is its <strong>theme's</strong>:
+SampleKit's own, <code class="docutils literal notranslate"><span class="pre">samplekit-dark</span></code> or <code class="docutils literal notranslate"><span class="pre">samplekit-light</span></code>, or <code class="docutils literal notranslate"><span class="pre">terminal</span></code> where
+the terminal does not say it draws every colour, unless one is chosen with <code class="docutils literal notranslate"><span class="pre">T</span></code>
+or named by <code class="docutils literal notranslate"><span class="pre">theme</span></code>, and the roles the table names are laid over it.
+The command line has no theme: a role left out there is the default below,
+one of the terminal's sixteen, which is also the theme <code class="docutils literal notranslate"><span class="pre">terminal</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -1118,105 +1134,137 @@ and <code class="docutils literal notranslate"><span class="pre">dark-gray</span
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">failed</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">theme</span></code></p></td>
+<td><p>text</p></td>
+<td><p>none</p></td>
+<td><p>The terminal interface's theme for this project: one SampleKit has, or one of your own; a theme chosen with <code class="docutils literal notranslate"><span class="pre">T</span></code> in this folder comes first. A name no theme bears is said, and passed over</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">theme</span> <span class="pre">=</span> <span class="pre">&quot;nord&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">background</span></code></p></td>
+<td><p>colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">default</span></code></p></td>
+<td><p>The background of the terminal interface's whole screen; the command line leaves the terminal's</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">background</span> <span class="pre">=</span> <span class="pre">&quot;#1e1e2e&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">foreground</span></code></p></td>
+<td><p>colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">default</span></code></p></td>
+<td><p>The terminal interface's text, where nothing else colours it</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">foreground</span> <span class="pre">=</span> <span class="pre">&quot;#cdd6f4&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">failed</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">red</span></code></p></td>
 <td><p>A value whose formula failed</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">failed</span> <span class="pre">=</span> <span class="pre">&quot;light-red&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">outdated</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">outdated</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">yellow</span></code></p></td>
 <td><p>A value that is not current</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">outdated</span> <span class="pre">=</span> <span class="pre">&quot;#ff8800&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">edited</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">edited</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">magenta</span></code></p></td>
 <td><p>A value written by hand over its formula</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">edited</span> <span class="pre">=</span> <span class="pre">&quot;light-magenta&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">current</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">current</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">green</span></code></p></td>
 <td><p>A computed value that is current</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">current</span> <span class="pre">=</span> <span class="pre">&quot;light-green&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">selected</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">selected</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>The line or item under the cursor</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">selected</span> <span class="pre">=</span> <span class="pre">&quot;light-cyan&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">attribute</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">attribute</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">blue</span></code></p></td>
 <td><p>Attributes, and an attribute's value</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">attribute</span> <span class="pre">=</span> <span class="pre">&quot;light-blue&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">link</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">link</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">blue</span></code></p></td>
 <td><p>A link, underlined; one leading nowhere takes <code class="docutils literal notranslate"><span class="pre">error</span></code>'s colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">link</span> <span class="pre">=</span> <span class="pre">&quot;light-blue&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">value</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">value</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">default</span></code></p></td>
 <td><p>A value and its uncertainty, drawn bold</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">value</span> <span class="pre">=</span> <span class="pre">&quot;white&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">unit</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">unit</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>A unit, after a number and in a header</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">unit</span> <span class="pre">=</span> <span class="pre">&quot;grey&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">table</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">table</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">magenta</span></code></p></td>
 <td><p>Tables</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">table</span> <span class="pre">=</span> <span class="pre">&quot;magenta&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">index</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">index</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>A table's index column</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">index</span> <span class="pre">=</span> <span class="pre">&quot;cyan&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">key</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">key</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>Keys, in the help and at the foot</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">key</span> <span class="pre">=</span> <span class="pre">&quot;yellow&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">muted</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">muted</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">dark-grey</span></code></p></td>
 <td><p>Secondary text</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">muted</span> <span class="pre">=</span> <span class="pre">&quot;grey&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">yellow</span></code></p></td>
 <td><p>Messages</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">message</span> <span class="pre">=</span> <span class="pre">&quot;default&quot;</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">red</span></code></p></td>
 <td><p>Errors</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">error</span> <span class="pre">=</span> <span class="pre">&quot;light-red&quot;</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">accent</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">accent</span></code></p></td>
 <td><p>colour</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cyan</span></code></p></td>
 <td><p>The name in the title bar, a computation in progress</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">accent</span> <span class="pre">=</span> <span class="pre">&quot;#5fafd7&quot;</span></code></p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">waiting</span></code></p></td>
+<td><p>colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">light-magenta</span></code></p></td>
+<td><p>What waits to be written in the terminal interface, in italics</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">waiting</span> <span class="pre">=</span> <span class="pre">&quot;light-yellow&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">line</span></code></p></td>
+<td><p>colour</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dark-grey</span></code></p></td>
+<td><p>The background of the cursor's line on the collection, a sample and a table; in the typing mode the cell under the cursor reversed on it</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">line</span> <span class="pre">=</span> <span class="pre">&quot;#313244&quot;</span></code></p></td>
+</tr>
 </tbody>
 </table>
 </div>
+<p><a class="reference internal" href="../guides/colours.html"><span class="std std-doc">Choose the colours</span></a> shows every theme SampleKit has,
+says how one is chosen, and how to make your own.</p>
 </section>
 <section id="history">
 <h2><code class="docutils literal notranslate"><span class="pre">[history]</span></code><a class="headerlink" href="#history" title="Link to this heading">¶</a></h2>
@@ -1397,7 +1445,7 @@ importing it. See <a class="reference internal" href="../guides/share-a-project.
       
     </aside>
   </div>
-</div><script src="../_static/documentation_options.js?v=7cf4fce2"></script>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>

@@ -1,0 +1,646 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Exit codes" href="exit-codes.html"><link rel="prev" title="Written files" href="written-files.html">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+        <link rel="prefetch" href="../_static/logo.svg" as="image">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Fingerprints - SampleKit 1.0.0-rc.3</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/versions.css?v=dbc48dce" />
+    <link rel="stylesheet" type="text/css" href="../_static/samplekit.css?v=f3154f72" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0e7490;
+  --color-brand-content: #0e7490;
+  --color-brand-visited: #0e7490;
+  --color-inline-code-background: #ecfeff;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
+  --color-brand-primary: #22d3ee;
+  --color-brand-content: #22d3ee;
+  --color-brand-visited: #22d3ee;
+  --color-inline-code-background: #16323a;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
+  
+</a><div class="sk-versions" hidden>
+  <label class="sk-versions-label" for="sk-versions-select">Version</label>
+  <select class="sk-versions-select" id="sk-versions-select"></select>
+  <p class="sk-versions-older" hidden>
+    An older version. <a href="../index.html">The latest</a>
+  </p>
+</div><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../guides/index.html">Guides</a><input aria-label="Toggle navigation of Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../guides/install.html">Install SampleKit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-a-project.html">Start a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/move-existing-data.html">Bring existing data in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/start-from-templates.html">Start from templates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/edit-samples.html">Edit samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/find-and-select.html">Find and select samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/link-samples.html">Link samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/colours.html">Choose the colours</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/work-from-python.html">Work from Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/run-a-script.html">Run a script of the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/several-projects.html">Several projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/organise-settings.html">Organise a project's settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/share-a-project.html">Share a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/continuous-integration.html">Check a project in continuous integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/when-something-goes-wrong.html">When something goes wrong</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../guides/upgrade.html">Upgrade from an older SampleKit</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/samples-and-files.html">Samples and their files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/values-and-uncertainty.html">Values, uncertainty and units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/readings-and-statistics.html">Readings and statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/models-and-formulas.html">Models and formulas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/current-and-outdated.html">Current and outdated values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/history.html">History</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/projects.html">Projects</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cli.html">The command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python.html">The Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tui.html">The TUI's keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html">Filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sample-files.html">Sample files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="written-files.html">Written files</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Fingerprints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exit-codes.html">Exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="glossary.html">Glossary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+</div></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/reference/fingerprints.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section class="tex2jax_ignore mathjax_ignore" id="fingerprints">
+<h1>Fingerprints<a class="headerlink" href="#fingerprints" title="Link to this heading">¶</a></h1>
+<p>A sample file records, beside each computed value, what its inputs held when
+it was computed: <code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{width:</span> <span class="pre">25920047999d}</span></code>. And it records, on the value
+itself, what it held then: <code class="docutils literal notranslate"><span class="pre">fingerprint:</span> <span class="pre">17b7fdf04105</span></code>. Both are
+<strong>fingerprints</strong>: twelve hexadecimal digits that change whenever the numbers
+they cover change.</p>
+<p>Nothing in them is secret or SampleKit's own. This page gives the exact recipe,
+so that any fingerprint of a file can be computed again by hand, with
+<code class="docutils literal notranslate"><span class="pre">sha256sum</span></code> or three lines of Python, and checked without SampleKit.</p>
+<section id="the-recipe">
+<h2>The recipe<a class="headerlink" href="#the-recipe" title="Link to this heading">¶</a></h2>
+<p>A fingerprint is <strong>the first twelve characters of the SHA-256 of a short
+text</strong>, written in lowercase hexadecimal. The text is the numbers of a
+property, between braces:</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">a terminal</span><a class="headerlink" href="#id1" title="Link to this code">¶</a></div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span>printf<span class="w"> </span><span class="s">'%s'</span><span class="w"> </span><span class="s">'{v: 1.05}'</span><span class="w"> </span>|<span class="w"> </span>sha256sum<span class="w"> </span>|<span class="w"> </span>cut<span class="w"> </span><span class="na">-c1-12</span>
+760c72163408
+</pre></div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">printf</span> <span class="pre">'%s'</span></code> writes the text with nothing after it: <code class="docutils literal notranslate"><span class="pre">echo</span></code> would add a
+newline, and the newline would be hashed too. In Python:</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">Python</span><a class="headerlink" href="#id2" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+
+<span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="s2">"</span><span class="si">{v: 1.05}</span><span class="s2">"</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">12</span><span class="p">]</span>   <span class="c1"># '760c72163408'</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="the-text-that-is-hashed">
+<h2>The text that is hashed<a class="headerlink" href="#the-text-that-is-hashed" title="Link to this heading">¶</a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{v: VALUE, readings: [R1, R2, R3], u: UNCERTAINTY}
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>The fields a property has, in this order</strong>: <code class="docutils literal notranslate"><span class="pre">v</span></code>, then <code class="docutils literal notranslate"><span class="pre">readings</span></code>, then
+<code class="docutils literal notranslate"><span class="pre">u</span></code>. A field the property does not have is left out with its comma: <code class="docutils literal notranslate"><span class="pre">{v:</span> <span class="pre">20.5,</span> <span class="pre">u:</span> <span class="pre">0.2886751345948129}</span></code>, <code class="docutils literal notranslate"><span class="pre">{v:</span> <span class="pre">1.05}</span></code>.</p></li>
+<li><p><strong>Separated by a comma and a space</strong>, each written <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">number</span></code>, inside
+braces, on one line.</p></li>
+<li><p><strong>The numbers as the file spells them</strong>: copy them from the file,
+<code class="docutils literal notranslate"><span class="pre">6.666666666666673e-4</span></code> included. One exception: a whole number is hashed
+as its decimal, <code class="docutils literal notranslate"><span class="pre">v:</span> <span class="pre">65</span></code> as <code class="docutils literal notranslate"><span class="pre">{v:</span> <span class="pre">65.0}</span></code>, so that writing <code class="docutils literal notranslate"><span class="pre">65.0</span></code> in its place
+changes nothing.</p></li>
+<li><p><strong>Nothing else</strong>: not the unit, the symbol, the statistics, the records,
+nor the name. A unit corrected from <code class="docutils literal notranslate"><span class="pre">g</span></code> to <code class="docutils literal notranslate"><span class="pre">kg</span></code> without its number makes
+nothing outdated, and a value renamed keeps its fingerprint.</p></li>
+</ul>
+</section>
+<section id="which-text-for-which-record">
+<h2>Which text, for which record<a class="headerlink" href="#which-text-for-which-record" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Record</p></th>
+<th class="head"><p>Text hashed</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> of a value nothing computes</p></td>
+<td><p>the whole property: <code class="docutils literal notranslate"><span class="pre">{v,</span> <span class="pre">readings,</span> <span class="pre">u}</span></code>, those it has</p></td>
+</tr>
+<tr class="row-odd"><td><p>An input in <code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{…}</span></code></p></td>
+<td><p>the input whole, the same text</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> of a computed value</p></td>
+<td><p>only what its formula gives: <code class="docutils literal notranslate"><span class="pre">{v,</span> <span class="pre">u}</span></code> for <code class="docutils literal notranslate"><span class="pre">compute</span></code>, <code class="docutils literal notranslate"><span class="pre">{v}</span></code> for <code class="docutils literal notranslate"><span class="pre">compute_value</span></code>, <code class="docutils literal notranslate"><span class="pre">{u}</span></code> for <code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> of a value its readings give</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{v}</span></code>: the readings are recorded apart, and an uncertainty they give is theirs</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{readings:</span> <span class="pre">…}</span></code></p></td>
+<td><p>the readings alone: <code class="docutils literal notranslate"><span class="pre">{readings:</span> <span class="pre">[R1,</span> <span class="pre">R2,</span> <span class="pre">R3]}</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>An input read by one of its channels, <code class="docutils literal notranslate"><span class="pre">force.v</span></code></p></td>
+<td><p>that channel alone: <code class="docutils literal notranslate"><span class="pre">{v:</span> <span class="pre">9.5}</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>A whole column, <code class="docutils literal notranslate"><span class="pre">curve.strain</span></code></p></td>
+<td><p>each cell's text followed by a newline, in the order of the rows, hashed together</p></td>
+</tr>
+<tr class="row-odd"><td><p>The same row's cell, <code class="docutils literal notranslate"><span class="pre">row.force</span></code></p></td>
+<td><p>the cell's text: <code class="docutils literal notranslate"><span class="pre">{v:</span> <span class="pre">9.516}</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>An attribute, <code class="docutils literal notranslate"><span class="pre">heat:</span> <span class="pre">7</span></code></p></td>
+<td><p>not hashed: its value, written as it is</p></td>
+</tr>
+<tr class="row-odd"><td><p>A list attribute</p></td>
+<td><p>its list as the file writes it: <code class="docutils literal notranslate"><span class="pre">[ana,</span> <span class="pre">tom]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>A value written by hand over its formula</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{edited:</span> <span class="pre">…}</span></code>: the fingerprint of the value as it stands, marked</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A value's own <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> answers <em>has a hand changed what the formula
+gave?</em>, which is why it covers only what the formula gave. The records in
+<code class="docutils literal notranslate"><span class="pre">computed</span></code> answer <em>have the inputs moved?</em>, which is why they cover each input
+whole.</p>
+</section>
+<section id="checking-a-file-by-hand">
+<h2>Checking a file by hand<a class="headerlink" href="#checking-a-file-by-hand" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">examples/tensile/04-results/samples/steel-01.md</span></code>, the steel specimen of the
+<a class="reference internal" href="../index.html"><span class="std std-doc">home page</span></a>, holds, among its properties:</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">samples/steel-01.md</span><a class="headerlink" href="#id3" title="Link to this code">¶</a></div>
+<div class="highlight-sample notranslate"><div class="highlight"><pre><span></span><span class="nt">properties</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">width</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12.513333333333334</span>
+<span class="w">    </span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">12.494</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">12.528</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">12.518</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.01008849730028156</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm</span>
+<span class="w">    </span><span class="nt">statistics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">mean</span><span class="p p-Indicator">,</span><span class="nt"> u</span><span class="p">:</span><span class="w"> </span><span class="nv">standard_error</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">readings</span><span class="p">:</span><span class="w"> </span><span class="nv">b1b4d9b56ab1</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">f099c3bf0938</span>
+<span class="w">  </span><span class="nt">area</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">25.05586444444445</span>
+<span class="w">    </span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05217296159913354</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm²</span>
+<span class="w">    </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="nv">2b1079ab857e</span><span class="p p-Indicator">,</span><span class="nt"> width</span><span class="p">:</span><span class="w"> </span><span class="nv">25920047999d</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">17b7fdf04105</span>
+<span class="w">  </span><span class="nt">young_modulus</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">206.33891963549178</span>
+<span class="w">    </span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0599559413170074</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPa</span>
+<span class="w">    </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">curve.strain</span><span class="p">:</span><span class="w"> </span><span class="nv">ed9e87a6f01a</span><span class="p p-Indicator">,</span><span class="nt"> curve.stress</span><span class="p">:</span><span class="w"> </span><span class="nv">82a1e45e269c</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1e199aaf2a11</span>
+<span class="w">  </span><span class="nt">elongation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="s">"%"</span>
+<span class="w">    </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">curve.strain</span><span class="p">:</span><span class="w"> </span><span class="nv">ed9e87a6f01a</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">d4a65cab1618</span>
+</pre></div>
+</div>
+</div>
+<p>and, in its table, the curve's first row:</p>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-text">samples/steel-01.md</span><a class="headerlink" href="#id4" title="Link to this code">¶</a></div>
+<div class="highlight-sample notranslate"><div class="highlight"><pre><span></span><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">strain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">        </span><span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span>
+<span class="w">        </span><span class="nt">stress</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="nt"> computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">row.force</span><span class="p">:</span><span class="w"> </span><span class="nv">d3e1083d25fb</span><span class="p p-Indicator">,</span><span class="nt"> area</span><span class="p">:</span><span class="w"> </span><span class="nv">17b7fdf04105</span><span class="p p-Indicator">},</span><span class="nt"> fingerprint</span><span class="p">:</span><span class="w"> </span><span class="nv">d3e1083d25fb</span><span class="p p-Indicator">}</span>
+</pre></div>
+</div>
+</div>
+<p>Each digest, computed again:</p>
+<div class="literal-block-wrapper docutils container" id="id5">
+<div class="code-block-caption"><span class="caption-text">a terminal</span><a class="headerlink" href="#id5" title="Link to this code">¶</a></div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span>f()<span class="w"> </span>{<span class="w"> </span>printf<span class="w"> </span><span class="s">'%s'</span><span class="w"> </span><span class="s">"$1"</span><span class="w"> </span>|<span class="w"> </span>sha256sum<span class="w"> </span>|<span class="w"> </span>cut<span class="w"> </span><span class="na">-c1-12</span>;<span class="w"> </span>}
+<span class="nb">$</span><span class="w"> </span>f<span class="w"> </span><span class="s">'{readings: [12.494, 12.528, 12.518]}'</span>
+b1b4d9b56ab1
+<span class="nb">$</span><span class="w"> </span>f<span class="w"> </span><span class="s">'{v: 12.513333333333334}'</span>
+f099c3bf0938
+<span class="nb">$</span><span class="w"> </span>f<span class="w"> </span><span class="s">'{v: 12.513333333333334, readings: [12.494, 12.528, 12.518], u: 0.01008849730028156}'</span>
+25920047999d
+<span class="nb">$</span><span class="w"> </span>f<span class="w"> </span><span class="s">'{v: 25.05586444444445, u: 0.05217296159913354}'</span>
+17b7fdf04105
+<span class="nb">$</span><span class="w"> </span>f<span class="w"> </span><span class="s">'{v: 206.33891963549178, u: 1.0599559413170074}'</span>
+1e199aaf2a11
+<span class="nb">$</span><span class="w"> </span>f<span class="w"> </span><span class="s">'{v: 24.0}'</span>
+d4a65cab1618
+<span class="nb">$</span><span class="w"> </span>f<span class="w"> </span><span class="s">'{v: 0.0}'</span>
+d3e1083d25fb
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">width</span></code>'s readings give its value and its uncertainty: its <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code>
+covers the value, and <code class="docutils literal notranslate"><span class="pre">computed:</span> <span class="pre">{readings:</span> <span class="pre">…}</span></code> the readings.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">area</span></code> records <code class="docutils literal notranslate"><span class="pre">width</span></code> whole, <code class="docutils literal notranslate"><span class="pre">25920047999d</span></code>, which is not <code class="docutils literal notranslate"><span class="pre">width</span></code>'s own
+<code class="docutils literal notranslate"><span class="pre">fingerprint</span></code>: the area's formula read the value, the readings and the
+uncertainty. Its own <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> covers what its formula gave, the value
+and its uncertainty.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">elongation</span></code>, a whole number in the file, <code class="docutils literal notranslate"><span class="pre">24</span></code>, is hashed as a decimal,
+<code class="docutils literal notranslate"><span class="pre">{v:</span> <span class="pre">24.0}</span></code>.</p></li>
+<li><p>A cell of a table is a value of its own: the stress of the first row
+records the force of its row, <code class="docutils literal notranslate"><span class="pre">row.force</span></code>, and the area it read.</p></li>
+</ul>
+<p>A whole column hashes its cells one per line. In Python, for the curve's
+<code class="docutils literal notranslate"><span class="pre">strain</span></code>, thirteen rows, as <code class="docutils literal notranslate"><span class="pre">young_modulus</span></code> and <code class="docutils literal notranslate"><span class="pre">elongation</span></code> record it:</p>
+<div class="literal-block-wrapper docutils container" id="id6">
+<div class="code-block-caption"><span class="caption-text">Python</span><a class="headerlink" href="#id6" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+
+<span class="n">strain</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.025</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">24</span><span class="p">]</span>
+<span class="n">text</span> <span class="o">=</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">{{</span><span class="s2">v: </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="si">}</span><span class="se">}}\n</span><span class="s2">"</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">strain</span><span class="p">)</span>
+<span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">text</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">12</span><span class="p">]</span>   <span class="c1"># 'ed9e87a6f01a'</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="attributes-channels-and-values-written-by-hand">
+<h2>Attributes, channels and values written by hand<a class="headerlink" href="#attributes-channels-and-values-written-by-hand" title="Link to this heading">¶</a></h2>
+<p>A specimen whose width is corrected by the offset of the callipers of the
+people who measured it, <code class="docutils literal notranslate"><span class="pre">operators</span></code>, for the heat of steel it was cut from,
+<code class="docutils literal notranslate"><span class="pre">heat</span></code>; its area computed from that corrected width; and its force given an
+uncertainty of 0.5 % of its own value:</p>
+<div class="literal-block-wrapper docutils container" id="id7">
+<div class="code-block-caption"><span class="caption-text">s.md</span><a class="headerlink" href="#id7" title="Link to this code">¶</a></div>
+<div class="highlight-sample notranslate"><div class="highlight"><pre><span></span><span class="nt">heat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7</span>
+<span class="nt">operators</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ana</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tom</span><span class="p p-Indicator">]</span>
+<span class="nt">properties</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="nv">12.5</span><span class="p p-Indicator">,</span><span class="nt"> unit</span><span class="p">:</span><span class="w"> </span><span class="nv">mm</span><span class="p p-Indicator">,</span><span class="nt"> fingerprint</span><span class="p">:</span><span class="w"> </span><span class="nv">87c43f2ca298</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">corrected_width</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12.4</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm</span>
+<span class="w">    </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">heat</span><span class="p">:</span><span class="w"> </span><span class="nv">7</span><span class="p p-Indicator">,</span><span class="nt"> operators</span><span class="p">:</span><span class="w"> </span><span class="nv">d68eb8bfbb21</span><span class="p p-Indicator">,</span><span class="nt"> width</span><span class="p">:</span><span class="w"> </span><span class="nv">87c43f2ca298</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">edited</span><span class="p">:</span><span class="w"> </span><span class="nv">0c1743bc5b20</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">area</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24.8</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm²</span>
+<span class="w">    </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">corrected_width</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">edited</span><span class="p">:</span><span class="w"> </span><span class="nv">0c1743bc5b20</span><span class="p p-Indicator">}}</span>
+<span class="w">    </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0f03d747f724</span>
+<span class="w">  </span><span class="nt">force</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">v</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9.5</span>
+<span class="w">    </span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0475</span>
+<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kN</span>
+<span class="w">    </span><span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">u</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">force.v</span><span class="p">:</span><span class="w"> </span><span class="nv">20403669cede</span><span class="p p-Indicator">}}</span>
+<span class="w">    </span><span class="nt">fingerprint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">699d0feb180e</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">heat</span></code> is an attribute: <code class="docutils literal notranslate"><span class="pre">corrected_width</span></code> records its value, <code class="docutils literal notranslate"><span class="pre">7</span></code>, which a
+reader compares by eye. <code class="docutils literal notranslate"><span class="pre">operators</span></code> is a list: <code class="docutils literal notranslate"><span class="pre">corrected_width</span></code> records
+<code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">'[ana,</span> <span class="pre">tom]'</span></code>, <code class="docutils literal notranslate"><span class="pre">d68eb8bfbb21</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">corrected_width</span></code> was written by hand over its formula, <code class="docutils literal notranslate"><span class="pre">samplekit</span> <span class="pre">s.md</span> <span class="pre">set</span> <span class="pre">corrected_width=12.4</span></code>: its <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> is <code class="docutils literal notranslate"><span class="pre">{edited:</span> <span class="pre">f</span> <span class="pre">'{v:</span> <span class="pre">12.4}'}</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">area</span></code>, computed from it, carries the mark too.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">force</span></code>'s uncertainty is 0.5 % of its own value, so it reads <code class="docutils literal notranslate"><span class="pre">force.v</span></code>, the
+value alone: <code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">'{v:</span> <span class="pre">9.5}'</span></code>, <code class="docutils literal notranslate"><span class="pre">20403669cede</span></code>. Its own <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> covers
+what its formula gives, the uncertainty: <code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">'{u:</span> <span class="pre">0.0475}'</span></code>.</p></li>
+</ul>
+</section>
+<section id="what-decides-that-a-value-is-outdated">
+<h2>What decides that a value is outdated<a class="headerlink" href="#what-decides-that-a-value-is-outdated" title="Link to this heading">¶</a></h2>
+<p>A computed value is <strong>current</strong> when each input, hashed as it stands now,
+gives the fingerprint its record holds, and each computed input is current
+too. An input whose fingerprint differs makes it <em>outdated</em>, and so does an
+input that is itself outdated. A value whose own fingerprint no longer matches
+its numbers was changed by hand: it is <em>edited</em>, and is kept.</p>
+<p>SampleKit never compares two stored fingerprints: it always computes the
+input's again. A file edited by hand changes the numbers and neither record,
+and only computing again sees it. The <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> written on an input is
+there for a reader: equal to what a value records means unchanged since.</p>
+</section>
+<section id="a-formula-s-digest-is-something-else">
+<h2>A formula's digest is something else<a class="headerlink" href="#a-formula-s-digest-is-something-else" title="Link to this heading">¶</a></h2>
+<p>When a formula itself changes, its inputs have not moved, and no fingerprint
+of the file can tell. SampleKit keeps, in the project's history
+(<code class="docutils literal notranslate"><span class="pre">.samplekit/history</span></code>) and not in the files, a <strong>digest of each formula</strong>: the
+SHA-256 of a description the model's Python takes of it, made of the keyword it
+is given under (<code class="docutils literal notranslate"><span class="pre">compute</span></code>, <code class="docutils literal notranslate"><span class="pre">compute_value</span></code>, <code class="docutils literal notranslate"><span class="pre">compute_uncertainty</span></code>,
+<code class="docutils literal notranslate"><span class="pre">compute_column</span></code>, a statistic), its unit, what a table's formula fills, the source of every function of
+the model's own code that it reaches, without its comments or docstrings, and the
+names it declares in <code class="docutils literal notranslate"><span class="pre">depends_on</span></code>. A formula whose digest changed makes its
+values outdated, <em>formula changed</em>.</p>
+<p>That digest is taken by running the model's code, and is not meant to be
+computed by hand: it is what says <em>the code changed</em>, where the fingerprints
+say <em>the numbers changed</em>. Checking a file's numbers never needs it.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="exit-codes.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Exit codes</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="written-files.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Written files</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, zelyph
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Fingerprints</a><ul>
+<li><a class="reference internal" href="#the-recipe">The recipe</a></li>
+<li><a class="reference internal" href="#the-text-that-is-hashed">The text that is hashed</a></li>
+<li><a class="reference internal" href="#which-text-for-which-record">Which text, for which record</a></li>
+<li><a class="reference internal" href="#checking-a-file-by-hand">Checking a file by hand</a></li>
+<li><a class="reference internal" href="#attributes-channels-and-values-written-by-hand">Attributes, channels and values written by hand</a></li>
+<li><a class="reference internal" href="#what-decides-that-a-value-is-outdated">What decides that a value is outdated</a></li>
+<li><a class="reference internal" href="#a-formula-s-digest-is-something-else">A formula's digest is something else</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=d88c78fb"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/versions.js?v=4fd25fd1"></script>
+    </body>
+</html>

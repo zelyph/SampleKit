@@ -4,9 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Guides" href="guides/index.html">
+        <link rel="prefetch" href="_static/logo.svg" as="image">
+        <link rel="prefetch" href="_static/logo.svg" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>SampleKit 1.0.0-rc.2</title>
+        <title>SampleKit 1.0.0-rc.3</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -175,7 +177,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">SampleKit 1.0.0-rc.2</div></a>
+      <a href="#"><div class="brand">SampleKit 1.0.0-rc.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -195,8 +197,12 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="#">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="_static/logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="_static/logo.svg" alt="Dark Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.2</span>
+  <span class="sidebar-brand-text">SampleKit 1.0.0-rc.3</span>
   
 </a><div class="sk-versions" hidden>
   <label class="sk-versions-label" for="sk-versions-select">Version</label>
@@ -216,10 +222,12 @@
 <li class="toctree-l2"><a class="reference internal" href="guides/start-a-project.html">Start a project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/move-existing-data.html">Bring existing data in</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/first-model.html">Write a model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/start-from-templates.html">Start from templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/edit-samples.html">Edit samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/find-and-select.html">Find and select samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/link-samples.html">Link samples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/terminal-interface.html">Work in the terminal interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guides/colours.html">Choose the colours</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/work-from-python.html">Work from Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/run-a-script.html">Run a script of the model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="guides/export-for-a-paper.html">Tables and figures for a paper</a></li>
@@ -323,22 +331,25 @@ itself: you need neither to install git nor to use it.</p></li>
 <tr class="row-even"><td><p>keep each sample in a file you can read anywhere</p></td>
 <td><p><a class="reference internal" href="#samples-and-projects">Samples and projects</a>, <a class="reference internal" href="#files">files</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>compute values with formulas you write in Python</p></td>
+<tr class="row-odd"><td><p>link a sample to others, its files, a PDF's page, a web page</p></td>
+<td><p><a class="reference internal" href="#links">Links</a></p></td>
+</tr>
+<tr class="row-even"><td><p>compute values with formulas you write in Python</p></td>
 <td><p><a class="reference internal" href="#the-model-what-a-sample-holds">The model</a>, <a class="reference internal" href="#values-computed-from-others">values computed from others</a></p></td>
 </tr>
-<tr class="row-even"><td><p>know which results no longer hold, and why</p></td>
+<tr class="row-odd"><td><p>know which results no longer hold, and why</p></td>
 <td><p><a class="reference internal" href="#values-out-of-date">Values out of date</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>write tables for another program or a paper</p></td>
+<tr class="row-even"><td><p>write tables for another program or a paper</p></td>
 <td><p><a class="reference internal" href="#tables-written-to-files">Tables written to files</a></p></td>
 </tr>
-<tr class="row-even"><td><p>draw figures in one style for the whole project</p></td>
+<tr class="row-odd"><td><p>draw figures in one style for the whole project</p></td>
 <td><p><a class="reference internal" href="#figures">Figures</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>see, compare and take back any change</p></td>
+<tr class="row-even"><td><p>see, compare and take back any change</p></td>
 <td><p><a class="reference internal" href="#the-history-of-every-change">The history of every change</a></p></td>
 </tr>
-<tr class="row-even"><td><p>work from a full-screen view, or from Python</p></td>
+<tr class="row-odd"><td><p>work from a full-screen view, or from Python</p></td>
 <td><p><a class="reference internal" href="guides/terminal-interface.html"><span class="std std-doc">The terminal interface</span></a>, <a class="reference internal" href="#python">Python</a></p></td>
 </tr>
 </tbody>
@@ -351,7 +362,7 @@ itself: you need neither to install git nor to use it.</p></li>
 name. With Rust installed, cargo builds the command line on any system; then,
 in a folder of your own, <code class="docutils literal notranslate"><span class="pre">init</span></code> makes it a project, with its own Python
 environment holding the package, where your formulas run:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>install<span class="w"> </span>samplekit<span class="w"> </span>--locked<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0-rc.2
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>install<span class="w"> </span>samplekit<span class="w"> </span>--locked<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0-rc.3
 samplekit<span class="w"> </span>init<span class="w"> </span>--write
 </pre></div>
 </div>
@@ -378,7 +389,7 @@ disappeared tomorrow, your data would still be readable.</p></li>
 <section id="samples-and-projects">
 <h2>Samples and projects<a class="headerlink" href="#samples-and-projects" title="Link to this heading">¶</a></h2>
 <p>The rest of this page builds one example, a step at a time: a few material
-specimens, tested in tension. SampleKit carries it as a <strong>demo</strong> in five
+specimens, tested in tension. SampleKit carries it as a <strong>demo</strong> in six
 steps, each a project to try the commands on: <code class="docutils literal notranslate"><span class="pre">samplekit</span></code> alone opens the
 start page, where <code class="docutils literal notranslate"><span class="pre">g</span></code>, then <em>The demo</em>, writes it and opens its first step.</p>
 <section id="one-sample-one-file">
@@ -2075,7 +2086,7 @@ alone, and <code class="docutils literal notranslate"><span class="pre">--naviga
 <p>A file no name finds, or another sample, is named by a <strong>link</strong>, an attribute
 written as Obsidian or Markdown writes one: here the aluminium and copper
 specimens hold <code class="docutils literal notranslate"><span class="pre">compared_with:</span> <span class="pre">&quot;[[steel-01]]&quot;</span></code>, which the terminal interface
-follows and <code class="docutils literal notranslate"><span class="pre">rename</span></code> keeps (<a class="reference internal" href="guides/link-samples.html"><span class="std std-doc">link samples</span></a>).</p>
+follows and <code class="docutils literal notranslate"><span class="pre">rename</span></code> keeps (<a class="reference internal" href="#links">links</a>).</p>
 <figure class="align-default" id="id73">
 <a class="reference internal image-reference" href="_images/tensile-fracture.jpg"><img alt="A flat tensile specimen broken in the jaws of a testing machine" src="_images/tensile-fracture.jpg" style="width: 280px;" />
 </a>
@@ -2084,6 +2095,69 @@ follows and <code class="docutils literal notranslate"><span class="pre">rename<
 machine's jaws. Photo by Cdang, Wikimedia Commons, public domain.</span><a class="headerlink" href="#id73" title="Link to this image">¶</a></p>
 </figcaption>
 </figure>
+</section>
+<section id="links">
+<h2>Links<a class="headerlink" href="#links" title="Link to this heading">¶</a></h2>
+<p>A specimen names others: the one it is compared with, the one tested before
+it. It names files too, the curve the machine wrote, the method it was tested
+by, and the standard that method follows. Each is a <strong>link</strong>, an attribute
+written as Obsidian or Markdown writes one. The demo's last step,
+<code class="docutils literal notranslate"><span class="pre">06-links</span></code>, gives the specimens one in every form; the steel specimen's:</p>
+<div class="literal-block-wrapper docutils container" id="id74">
+<div class="code-block-caption"><span class="caption-text">samples/steel-01.md</span><a class="headerlink" href="#id74" title="Link to this code">¶</a></div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">compared_with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"[[aluminium-01]]"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"[[copper-01]]"</span><span class="p p-Indicator">]</span>
+<span class="nt">tested_after</span><span class="p">:</span><span class="w"> </span><span class="s">"[[Copper-01]]"</span>
+<span class="nt">raw</span><span class="p">:</span><span class="w"> </span><span class="s">"[the</span><span class="nv"> </span><span class="s">curve](../machine/steel-01/curve.csv)"</span>
+<span class="nt">standard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://www.iso.org/standard/78322.html</span>
+<span class="nt">repeated_by</span><span class="p">:</span><span class="w"> </span><span class="s">"[[steel-02]]"</span>
+</pre></div>
+</div>
+</div>
+<p>Two samples in a list; a sample written in another case than its file,
+<code class="docutils literal notranslate"><span class="pre">copper-01.md</span></code>; its curve, by its path from the sample's folder; the
+standard's web page; and a second steel specimen, not written yet. The
+others write a sample with its extension, <code class="docutils literal notranslate"><span class="pre">[[aluminium-01.md]]</span></code>, or by the
+end of its path, <code class="docutils literal notranslate"><span class="pre">[[samples/steel-01]]</span></code>, and the method's PDF at its second
+page, <code class="docutils literal notranslate"><span class="pre">[[method.pdf#page=2]]</span></code> (<a class="reference internal" href="reference/sample-files.html#links"><span class="std std-ref">every form</span></a>).</p>
+<p>In a terminal a link is shown as Markdown shows one, its text alone,
+underlined. In the terminal interface, <code class="docutils literal notranslate"><span class="pre">Enter</span></code> on it goes where it leads: a
+sample opens on its screen, <code class="docutils literal notranslate"><span class="pre">Esc</span></code> coming back; the curve opens in your
+spreadsheet, the PDF at its page and the standard in the browser. A sample's
+screen ends with the samples whose links lead to it, <em>linked from</em>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">validate</span></code> says which link leads nowhere, and exits with an error:</p>
+<div class="literal-block-wrapper docutils container" id="id75">
+<div class="code-block-caption"><span class="caption-text">~/tensile-tests</span><a class="headerlink" href="#id75" title="Link to this code">¶</a></div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span><span class="k">validate</span>
+  steel-01               repeated_by: [[steel-02]] leads to no sample — no file of the project is named steel-02, and no sample's name is
+
+3 samples · 1 defect · 0 notes
+<span class=" -SampleKit -SampleKit-Failed">error:</span> 1 defect in 1 file
+</pre></div>
+</div>
+</div>
+<p>Renaming a sample writes again every link leading to it, each in its own
+form, and renames its own files with it. It is previewed first, and
+<code class="docutils literal notranslate"><span class="pre">--write</span></code> makes it:</p>
+<!-- run: tensile/06-links -->
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="nb">$</span><span class="w"> </span><span class="nb">samplekit</span><span class="w"> </span>samples/aluminium-01.md<span class="w"> </span>rename<span class="w"> </span>aluminium-02
+samples/aluminium-01.md · rename to aluminium-02.md
+
+  file         <span class=" -SampleKit -SampleKit-Attribute">samples/aluminium-01.md</span>  →  <span class=" -SampleKit -SampleKit-Attribute">samples/aluminium-02.md</span>
+  name         <span class=" -SampleKit -SampleKit-Attribute">aluminium-01</span>  →  <span class=" -SampleKit -SampleKit-Attribute">aluminium-02</span>
+  files        <span class=" -SampleKit -SampleKit-Attribute">machine/aluminium-01</span>  →  <span class=" -SampleKit -SampleKit-Attribute">machine/aluminium-02</span>
+
+  2 links leading to it, written again:
+  samples/copper-01.md
+    tested_after       <span class=" -SampleKit -SampleKit-Attribute">[[aluminium-01.md]]</span>  →  <span class=" -SampleKit -SampleKit-Attribute">[[aluminium-02.md]]</span>
+  samples/steel-01.md
+    compared_with[#0]  <span class=" -SampleKit -SampleKit-Attribute">[[aluminium-01]]</span>  →  <span class=" -SampleKit -SampleKit-Attribute">[[aluminium-02]]</span>
+
+apply these changes? [y/N] n
+<span class=" -SampleKit -SampleKit-Muted">nothing written</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="guides/link-samples.html"><span class="std std-doc">Link samples</span></a> goes further: the filter <code class="docutils literal notranslate"><span class="pre">links</span> <span class="pre">to</span></code>,
+links from Python, a project opened in Obsidian.</p>
 </section>
 <section id="python">
 <h2>Python<a class="headerlink" href="#python" title="Link to this heading">¶</a></h2>
@@ -2099,8 +2173,8 @@ a list of samples. <code class="docutils literal notranslate"><span class="pre">
 property is a value, an uncertainty and a unit, and <code class="docutils literal notranslate"><span class="pre">.value</span></code> is a number to
 compute with; <code class="docutils literal notranslate"><span class="pre">to_csv</span></code> and <code class="docutils literal notranslate"><span class="pre">to_dict</span></code> give the columns as <code class="docutils literal notranslate"><span class="pre">--csv</span></code> does (the
 table printed as CSV rather than drawn), which pandas reads as they are:</p>
-<div class="literal-block-wrapper docutils container" id="id74">
-<div class="code-block-caption"><span class="caption-text">report.py</span><a class="headerlink" href="#id74" title="Link to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id76">
+<div class="code-block-caption"><span class="caption-text">report.py</span><a class="headerlink" href="#id76" title="Link to this code">¶</a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
 
 <span class="n">specimens</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">)</span><span class="o">.</span><span class="n">sorted</span><span class="p">(</span><span class="s2">"-tensile_strength"</span><span class="p">)</span>
@@ -2112,8 +2186,8 @@ table printed as CSV rather than drawn), which pandas reads as they are:</p>
 </pre></div>
 </div>
 </div>
-<div class="literal-block-wrapper docutils container" id="id75">
-<div class="code-block-caption"><span class="caption-text">output</span><a class="headerlink" href="#id75" title="Link to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id77">
+<div class="code-block-caption"><span class="caption-text">output</span><a class="headerlink" href="#id77" title="Link to this code">¶</a></div>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>steel-01      521 MPa   Rp0.2/Rm = 0.75
 aluminium-01  318 MPa   Rp0.2/Rm = 0.90
 copper-01     221 MPa   Rp0.2/Rm = 0.34
@@ -2129,8 +2203,8 @@ copper-01,117.19476480206947,0.8787328442349305
 <p>A sample changes as an object does. <code class="docutils literal notranslate"><span class="pre">not_current</span></code> says what the change made
 out of date, <code class="docutils literal notranslate"><span class="pre">compute</span></code> runs the model's formulas, and nothing is written until
 <code class="docutils literal notranslate"><span class="pre">save</span></code>:</p>
-<div class="literal-block-wrapper docutils container" id="id76">
-<div class="code-block-caption"><span class="caption-text">remeasure.py</span><a class="headerlink" href="#id76" title="Link to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id78">
+<div class="code-block-caption"><span class="caption-text">remeasure.py</span><a class="headerlink" href="#id78" title="Link to this code">¶</a></div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">samplekit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sk</span>
 
 <span class="n">steel</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">Sample</span><span class="p">(</span><span class="s2">"samples/steel-01.md"</span><span class="p">)</span>
@@ -2142,8 +2216,8 @@ out of date, <code class="docutils literal notranslate"><span class="pre">comput
 </pre></div>
 </div>
 </div>
-<div class="literal-block-wrapper docutils container" id="id77">
-<div class="code-block-caption"><span class="caption-text">output</span><a class="headerlink" href="#id77" title="Link to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id79">
+<div class="code-block-caption"><span class="caption-text">output</span><a class="headerlink" href="#id79" title="Link to this code">¶</a></div>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{'width': 'outdated', 'area': 'outdated', 'young_modulus': 'outdated', 'yield_strength': 'outdated', 'tensile_strength': 'outdated', 'curve.stress': 'outdated'}
 24.918 ± 0.031 mm² 521 MPa
 </pre></div>
@@ -2267,6 +2341,7 @@ TUI's keys, every setting of <code class="docutils literal notranslate"><span cl
 </li>
 <li><a class="reference internal" href="#scripts">Scripts</a></li>
 <li><a class="reference internal" href="#files">Files</a></li>
+<li><a class="reference internal" href="#links">Links</a></li>
 <li><a class="reference internal" href="#python">Python</a><ul>
 <li><a class="reference internal" href="#reading">Reading</a></li>
 <li><a class="reference internal" href="#changing-and-computing">Changing and computing</a></li>
@@ -2284,7 +2359,7 @@ TUI's keys, every setting of <code class="docutils literal notranslate"><span cl
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=7cf4fce2"></script>
+</div><script src="_static/documentation_options.js?v=d88c78fb"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>

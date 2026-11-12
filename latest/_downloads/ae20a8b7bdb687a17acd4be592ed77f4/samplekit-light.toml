@@ -1,0 +1,26 @@
+# SampleKit light, SampleKit's own theme for a light terminal: T in the terminal
+# interface chooses it, as theme = "samplekit-light" in a project's [colors]
+# does. Each colour is its role's alone, and read: the text and the values at
+# 7:1 at least against the background and the cursor's line, every other role
+# at 4.5:1, by WCAG's contrast.
+[colors]
+background = "#fbfbfa"   # a warm white, short of pure white's glare
+foreground = "#24292f"   # near black: long reading, softer than black
+failed     = "#b91c1c"   # red, the colour of what went wrong
+outdated   = "#b33c0a"   # burnt orange, a warning: what no longer rests on its measurements
+edited     = "#7e22ce"   # purple, a hand over a formula, apart from every state of a computation
+current    = "#14773a"   # green, what is right as it is
+selected   = "#48730e"   # olive, the basket and the item chosen, a green yellower than current
+attribute  = "#1d4ed8"   # blue, what describes a sample rather than measures it
+link       = "#0369a1"   # sky, apart from an attribute's blue, and underlined
+value      = "#0b0f14"   # black, bold: a number is what the screen is for
+unit       = "#0d6f68"   # teal, after the number it belongs to, no longer the accent's cyan
+table      = "#4338ca"   # indigo, a table among values, between the blues and the purple
+index      = "#be185d"   # raspberry, a table's index column, set apart from its values
+key        = "#975b06"   # ochre, bold: the light theme's yellow, dark enough to read
+muted      = "#5c6570"   # slate, what explains rather than says, still at 5.7:1
+message    = "#6b5426"   # umber, what the TUI says, warm beside the cool text
+error      = "#be123c"   # crimson, an error said, pinker than a failed value
+accent     = "#0e7490"   # cyan, SampleKit's own: its name, its logo, a computation under way
+waiting    = "#a21caf"   # magenta, in italics: what waits to be written
+line       = "#e7eaef"   # a step below the background, the cursor's line, the text on it at 12:1
